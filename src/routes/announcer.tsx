@@ -184,9 +184,10 @@ function AnnouncerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailQueries.map((q) => q.dataUpdatedAt).join(","), wantedIds]);
 
-  // A "Progress" round whose every competing allocation has a Result is
-  // effectively finished — promote it from Käynnissä to Lopputulokset even
-  // before the official confirms it.
+  // The lightweight competition list endpoint caches Status slowly, so a round
+  // can still appear as "Progress" there even after the official has confirmed
+  // it. The per-event detail endpoint reflects the truth — if its round Status
+  // is "Official", promote the round from Käynnissä to Lopputulokset.
   const finishedProgressRoundIds = useMemo(() => {
     const s = new Set<number>();
     for (const r of inProgressAll) {
@@ -194,11 +195,7 @@ function AnnouncerPage() {
       if (!ev) continue;
       const round = ev.Rounds.find((rr) => rr.Id === r.Id);
       if (!round) continue;
-      const allocs = round.Heats.flatMap((h) => h.Allocations).filter(
-        (a) => !a.NotInCompetition,
-      );
-      if (allocs.length === 0) continue;
-      if (allocs.every((a) => a.Result)) s.add(r.Id);
+      if (round.Status === "Official") s.add(r.Id);
     }
     return s;
     // eslint-disable-next-line react-hooks/exhaustive-deps
