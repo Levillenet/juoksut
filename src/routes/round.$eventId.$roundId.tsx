@@ -133,9 +133,7 @@ function RoundView() {
                   {allocs.map((a) => (
                     <li
                       key={a.AllocId}
-                      className={`flex items-center gap-3 px-4 py-3 ${
-                        a.NotInCompetition ? "opacity-50" : ""
-                      }`}
+                      className="flex items-center gap-3 px-4 py-3"
                     >
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-base font-bold tabular-nums text-primary-foreground">
                         {a.Position}
