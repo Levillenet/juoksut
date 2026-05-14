@@ -142,8 +142,8 @@ function RoundView() {
                         <p className="truncate font-medium leading-tight">
                           {a.Name}
                           {a.NotInCompetition && (
-                            <span className="ml-2 text-xs font-normal text-muted-foreground">
-                              (ei kilpaile)
+                            <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
+                              ei lisenssiä?
                             </span>
                           )}
                         </p>
