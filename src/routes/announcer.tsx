@@ -608,7 +608,6 @@ function EventCard({
       ) : (
         <ol className="space-y-1.5">
           {list.map((a) => {
-            const rec = detectRecord(round.Category, a.Result, a.PB, a.SB);
             const rank = a.ResultRank ?? a.Position;
             return (
               <li
