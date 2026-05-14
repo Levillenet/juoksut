@@ -161,6 +161,9 @@ function AnnouncerPage() {
             className="h-14 w-14 shrink-0 rounded-lg object-contain"
           />
           <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">
+              Kuuluttajan näkymä
+            </p>
             <h1 className="truncate text-lg font-bold leading-tight">
               {name || `Kisa #${competitionId}`}
             </h1>
