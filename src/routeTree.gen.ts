@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WatchRouteImport } from './routes/watch'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as PrintRouteImport } from './routes/print'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
@@ -37,6 +38,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrintRoute = PrintRouteImport.update({
+  id: '/print',
+  path: '/print',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -53,9 +59,9 @@ const IndexRoute = IndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrintIndexRoute = PrintIndexRouteImport.update({
-  id: '/print/',
-  path: '/print/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => PrintRoute,
 } as any)
 const PrintClubRoute = PrintClubRouteImport.update({
   id: '/club',
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRoute
   '/login': typeof LoginRoute
+  '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/watch': typeof WatchRoute
@@ -117,6 +124,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRoute
   '/login': typeof LoginRoute
+  '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/watch': typeof WatchRoute
@@ -133,6 +141,7 @@ export interface FileRouteTypes {
     | '/'
     | '/announcer'
     | '/login'
+    | '/print'
     | '/reset-password'
     | '/search'
     | '/watch'
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/'
     | '/announcer'
     | '/login'
+    | '/print'
     | '/reset-password'
     | '/search'
     | '/watch'
@@ -176,12 +186,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnnouncerRoute: typeof AnnouncerRoute
   LoginRoute: typeof LoginRoute
+  PrintRoute: typeof PrintRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   SearchRoute: typeof SearchRoute
   WatchRoute: typeof WatchRoute
   AdminClubLocationsRoute: typeof AdminClubLocationsRoute
   AthleteKeyRoute: typeof AthleteKeyRoute
-  PrintIndexRoute: typeof PrintIndexRoute
   RoundEventIdRoundIdRoute: typeof RoundEventIdRoundIdRoute
   ApiPublicHooksHarvestResultsRoute: typeof ApiPublicHooksHarvestResultsRoute
 }
@@ -209,6 +219,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/print': {
+      id: '/print'
+      path: '/print'
+      fullPath: '/print'
+      preLoaderRoute: typeof PrintRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -232,10 +249,10 @@ declare module '@tanstack/react-router' {
     }
     '/print/': {
       id: '/print/'
-      path: '/print'
+      path: '/'
       fullPath: '/print/'
       preLoaderRoute: typeof PrintIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof PrintRoute
     }
     '/print/club': {
       id: '/print/club'
@@ -275,16 +292,28 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface PrintRouteChildren {
+  PrintClubRoute: typeof PrintClubRoute
+  PrintIndexRoute: typeof PrintIndexRoute
+}
+
+const PrintRouteChildren: PrintRouteChildren = {
+  PrintClubRoute: PrintClubRoute,
+  PrintIndexRoute: PrintIndexRoute,
+}
+
+const PrintRouteWithChildren = PrintRoute._addFileChildren(PrintRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnnouncerRoute: AnnouncerRoute,
   LoginRoute: LoginRoute,
+  PrintRoute: PrintRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   SearchRoute: SearchRoute,
   WatchRoute: WatchRoute,
   AdminClubLocationsRoute: AdminClubLocationsRoute,
   AthleteKeyRoute: AthleteKeyRoute,
-  PrintIndexRoute: PrintIndexRoute,
   RoundEventIdRoundIdRoute: RoundEventIdRoundIdRoute,
   ApiPublicHooksHarvestResultsRoute: ApiPublicHooksHarvestResultsRoute,
 }
