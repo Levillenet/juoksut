@@ -300,35 +300,6 @@ function Index() {
           Lähde: live.tuloslista.com · automaattinen päivitys 30&nbsp;s välein
         </p>
       </main>
-
-      <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Vaihda kisa</DialogTitle>
-            <DialogDescription>
-              Liitä kisan osoite tai pelkkä kisanumero (esim. https://live.tuloslista.com/19219).
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="link">Kisalinkki tai numero</Label>
-            <Input
-              id="link"
-              autoFocus
-              inputMode="url"
-              value={linkInput}
-              onChange={(e) => setLinkInput(e.target.value)}
-              placeholder="https://live.tuloslista.com/19219"
-              onKeyDown={(e) => e.key === "Enter" && saveLink()}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowSettings(false)}>
-              Peruuta
-            </Button>
-            <Button onClick={saveLink}>Tallenna</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
