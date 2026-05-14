@@ -67,17 +67,9 @@ export function EventGroupView({ group }: { group: EventGroup }) {
             </p>
           )}
         </div>
-        {group.pb && (
-          <div className="text-right">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              PB
-            </p>
-            <p className="text-base font-bold tabular-nums">{group.pb.result_text}</p>
-            <p className="text-[10px] text-muted-foreground">
-              {group.pb.competition_name} · {formatDate(group.pb.competition_date)}
-            </p>
-          </div>
-        )}
+        <p className="text-[11px] text-muted-foreground">
+          {group.rows.length} tulosta
+        </p>
       </div>
 
       {pbLine.length >= 2 ? (
@@ -136,24 +128,31 @@ export function EventGroupView({ group }: { group: EventGroup }) {
         </p>
       )}
 
-      <details className="mt-2">
-        <summary className="cursor-pointer text-[11px] text-muted-foreground">
-          Kaikki tulokset ({group.rows.length})
-        </summary>
-        <ul className="mt-1 divide-y divide-border text-xs">
-          {group.rows
-            .slice()
-            .reverse()
-            .map((r) => (
-              <li key={r.id} className="flex items-baseline justify-between gap-2 py-1">
-                <span className="tabular-nums">{r.result_text}</span>
-                <span className="truncate text-muted-foreground">
-                  {r.competition_name} · {formatDate(r.competition_date)}
-                </span>
-              </li>
-            ))}
-        </ul>
-      </details>
+      <ul className="mt-3 divide-y divide-border text-xs">
+        {group.rows
+          .slice()
+          .sort((a, b) =>
+            (b.competition_date ?? "").localeCompare(a.competition_date ?? ""),
+          )
+          .map((r) => (
+            <li
+              key={r.id}
+              className="flex items-baseline justify-between gap-2 py-1"
+            >
+              <span className="min-w-0 truncate text-muted-foreground">
+                {r.competition_name} · {formatDate(r.competition_date)}
+              </span>
+              <span className="shrink-0 tabular-nums font-medium">
+                {r.result_text}
+                {r.result_rank != null && (
+                  <span className="ml-1 font-normal text-muted-foreground">
+                    ({r.result_rank}.)
+                  </span>
+                )}
+              </span>
+            </li>
+          ))}
+      </ul>
     </li>
   );
 }
