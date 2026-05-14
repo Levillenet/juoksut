@@ -54,6 +54,8 @@ function Index() {
   const [error, setError] = useState<string | null>(null);
   const [activeDate, setActiveDate] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showPast, setShowPast] = useState(false);
+  const [now, setNow] = useState(() => new Date());
   const [linkInput, setLinkInput] = useState("");
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
