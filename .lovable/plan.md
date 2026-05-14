@@ -1,54 +1,48 @@
-## Tavoite
-Nopeuttaa `athlete_results`-backfill ~10 h → ~1 h. Riskit hallitaan advisory lockilla ja varovaisella rinnakkaisuudella.
+## Ongelma
 
-## Muutokset
+Bulk-add-toiminto on jo olemassa `/watch`-sivulla, mutta se on piilotettu pienenä katkoviivakorttina **"Seuran ohjelma" -osion sisälle** ja tulee näkyviin vasta kun käyttäjä on valinnut seuran sieltä. Käyttäjän mielikuvassa kyse on omasta toiminnosta ("valitse seura → valitse ikäluokat → lisää seurantaan"), eikä hän yhdistä sitä "Tulosta ohjelma" -korttiin. Siksi näyttää siltä, ettei toimintoa ole olemassa.
 
-### 1. Harvester (`src/routes/api/public/hooks/harvest-results.ts`)
-- Nosta batch 40 → **100** kisa-ID:tä per ajo.
-- Käsittele kisat **5 rinnakkain** (`p-limit`-tyylinen oma chunkkaaja, ei uutta riippuvuutta).
-- Säilytä nykyinen logiikka: hae kisa, parsraa tulokset, upsert `athlete_results`, päivitä `harvest_state.next_id`.
-- Lisää pieni jitter (50–150 ms) kisojen välillä rate-limit-paineen tasaamiseksi.
-- Käsittele 429/503 → keskeytä ajo siististi, ei advansoi kursoria niiden ID:iden yli.
+## Korjauksen idea
 
-### 2. Päällekkäisyyden esto (advisory lock)
-Harvester-handlerin alussa:
-```sql
-SELECT pg_try_advisory_lock(hashtext('harvest-tuloslista'))
-```
-Jos lukko ei aukea → palauta 200 `{skipped: true}` heti. Vapauta `pg_advisory_unlock` finally-blokissa.
+Tehdään tästä oma, erillinen osio `/watch`-sivulle, jossa flow on selkeästi kaksivaiheinen:
 
-### 3. Cron-tiheys
-Päivitä olemassaoleva `cron.schedule` 10 min → **2 min** välein (insert-työkalulla, ei migraatiolla — sisältää anon keyn).
+1. **Vaihe 1 — Valitse seura**: oma seuravalitsin (sama lista kuin nykyinenkin), otsikolla "Lisää seuran urheilijat seurantaan".
+2. **Vaihe 2 — Valitse ikäluokat**: kun seura on valittu, näytetään ikäluokkachipit (esim. `T8 (5)`, `T10 (3)`), joista voi valita yhden tai useamman. Mukana "Valitse kaikki" -pikalinkki.
+3. **Toiminto**: "Lisää N urheilijaa seurantaan" -nappi, joka kertoo paljonko **uusia** lisätään (jo seurattavat eivät kasvata lukua). Onnistumisen jälkeen toast + chip-valinnat tyhjenevät.
+
+"Seuran ohjelma" -osio jää ennalleen tulostusta varten, mutta nykyinen sisäinen bulk-add-kortti poistetaan sieltä, jotta toiminto ei ole kahdessa paikassa.
+
+## Sijoittelu sivulla
 
 ```text
-100 ID × (60/2) = 3000 ID/h  →  ~2500 jäljellä = valmis ~50 min
+[Hakukenttä sukunimellä]      ← jo olemassa
+[Hakutulokset]                 ← jo olemassa, näkyy haettaessa
+
+▸ Lisää seuran urheilijat seurantaan   ← UUSI oma osio (näkyvä heti)
+   1) Seuravalitsin
+   2) Ikäluokkachipit (kun seura valittu)
+   3) "Lisää N seurantaan" -nappi
+
+▸ Seuran ohjelma                       ← ennallaan, vain tulostusta varten
+   Seuravalitsin + "Tulosta ohjelma"
+
+▸ Seurannassa olevat urheilijat        ← ennallaan
 ```
 
-### 4. Rinnakkaisuus toteutuksessa
-```ts
-async function runChunked<T>(items: number[], size: number, fn: (id: number) => Promise<T>) {
-  for (let i = 0; i < items.length; i += size) {
-    await Promise.allSettled(items.slice(i, i + size).map(fn));
-  }
-}
-```
-Pidä Cloudflare Worker -subrequest-budjetti hallinnassa: 100 kisaa × ~1 fetch ≈ 100 → mahtuu.
+Uusi osio sijoitetaan **ennen** "Seuran ohjelma" -osiota, jotta se on löydettävissä.
 
-## Riskit ja niiden hallinta
+## Tekniset muutokset
 
-| Riski | Hallinta |
-|---|---|
-| Tuloslista.com rate limit / IP-blokki | Vain 5 rinnakkain + jitter; 429/503 → backoff (kursori ei advansoi) |
-| Päällekkäiset cron-ajot (2 min < 30 s ajo voi kasaantua) | `pg_try_advisory_lock` |
-| Cloudflare Worker CPU-timeout | Batch 100 mahtuu hyvin <30 s kun rinnakkaista |
-| Supabase write-piikki | 5 rinnakkain riittävän maltillinen Lovable Cloud -instanssille |
-| Yksittäinen parsintavirhe kaataa ajon | `Promise.allSettled` per chunk; virheellinen ID logataan ja ohitetaan |
+Kaikki muutokset `src/routes/watch.tsx`:ssä — ei backend- tai datamuutoksia (data `clubAgeClasses`, `bulkAddSelection`, `addSelectedToWatch`, `toggleAgeClass` on jo olemassa).
 
-## Backfillin valmistuttua
-Kun `next_id >= latest_id`, kanta on jo "tail mode" -tilassa (re-skannaa viimeiset 30). Voit halutessasi sen jälkeen palauttaa cronin 10 min välein (säästää resursseja). Lisätään tästä kommentti koodiin, ei automaatiota nyt.
+- Eriytä bulk-add omaan `<section>`:iin omalla `selectedBulkOrgId`-tilalla (erillinen seuran ohjelma -valitsimesta, jotta käyttäjän ei tarvitse vaihtaa kontekstia).
+- `clubAgeClasses`-memo viittaamaan `selectedBulkOrgId`:hen.
+- Lisää "Valitse kaikki / Tyhjennä" -pikatoiminto chippien yläpuolelle.
+- Napin teksti muotoon `"Lisää N urheilijaa seurantaan"` (tai disabloitu kun N=0). Tooltip/aputeksti: "Jo seurattavia ei lisätä uudestaan."
+- Poista nykyinen katkoviivakortti `Seuran ohjelma` -osion sisältä (rivit ~442–...).
+- Mobiili: chipit `flex-wrap`, samanlainen tyyli kuin nykyiset.
 
-## Tiedostomuutokset
-- `src/routes/api/public/hooks/harvest-results.ts` — batch 100, rinnakkaisuus 5, advisory lock, 429-backoff, jitter
-- Insert (ei migraatio): `cron.unschedule('harvest-tuloslista')` + uusi `cron.schedule` 2 min välein
+## Mitä EI tehdä
 
-Ei muutoksia frontend-koodiin.
+- Ei muuteta tietokantaa, watch-storea eikä index-sivun "Päivän parhaat" -osiota.
+- Ei kosketa `harvest-results.ts`:ään.
