@@ -752,14 +752,31 @@ function EventCard({
                   <span className="h-4 w-4 shrink-0" aria-hidden />
                 )}
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold leading-tight">{a.Name}</p>
+                  <div className="flex items-center gap-1.5">
+                    {isTrack && a.Number && (
+                      <span
+                        className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-primary"
+                        title="Rintanumero"
+                      >
+                        #{a.Number}
+                      </span>
+                    )}
+                    <p className="truncate text-sm font-semibold leading-tight">{a.Name}</p>
+                  </div>
                   <p className="truncate text-xs text-muted-foreground">
                     {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
                   </p>
                 </div>
                 <div className="col-start-3 col-end-4 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 sm:col-start-4 sm:col-end-5 sm:mt-0 sm:shrink-0 sm:justify-end">
                   {a.Result ? (
-                    <span className="text-base font-bold tabular-nums">{a.Result}</span>
+                    <>
+                      {isTrack && a.ResultRank != null && (
+                        <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+                          {a.ResultRank}.
+                        </span>
+                      )}
+                      <span className="text-base font-bold tabular-nums">{a.Result}</span>
+                    </>
                   ) : (
                     <span className="flex gap-2 text-xs text-muted-foreground">
                       {a.SB && <span title="Kauden ennätys">SB {a.SB}</span>}
