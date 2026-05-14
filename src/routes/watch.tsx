@@ -138,6 +138,78 @@ function WatchPage() {
 
   // Club selector state + derived data
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
+  const [selectedAgeClasses, setSelectedAgeClasses] = useState<Set<string>>(new Set());
+
+  // Reset age-class selection when club changes
+  const onSelectClub = (id: number | null) => {
+    setSelectedOrgId(id);
+    setSelectedAgeClasses(new Set());
+  };
+
+  // Age classes available for the selected club, with athlete counts
+  const clubAgeClasses = useMemo(() => {
+    if (!index || selectedOrgId == null) return [] as Array<{
+      group: string;
+      athletes: Array<{ key: string; surname: string; firstname: string; organization: string; organizationId: number | null }>;
+    }>;
+    const map = new Map<string, Map<string, { key: string; surname: string; firstname: string; organization: string; organizationId: number | null }>>();
+    for (const e of index) {
+      if ((e.alloc.Organization?.Id ?? -1) !== selectedOrgId) continue;
+      const group = e.round.GroupName || "(Muu)";
+      const orgId = e.alloc.Organization?.Id ?? null;
+      const k = athleteKey(e.alloc.Surname, e.alloc.Firstname, orgId);
+      if (!map.has(group)) map.set(group, new Map());
+      const inner = map.get(group)!;
+      if (!inner.has(k)) {
+        inner.set(k, {
+          key: k,
+          surname: e.alloc.Surname,
+          firstname: e.alloc.Firstname,
+          organization: e.alloc.Organization?.Name ?? "",
+          organizationId: orgId,
+        });
+      }
+    }
+    return Array.from(map.entries())
+      .map(([group, ath]) => ({ group, athletes: Array.from(ath.values()) }))
+      .sort((a, b) => a.group.localeCompare(b.group, "fi"));
+  }, [index, selectedOrgId]);
+
+  const toggleAgeClass = (group: string) => {
+    setSelectedAgeClasses((prev) => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return next;
+    });
+  };
+
+  const bulkAddSelection = useMemo(() => {
+    const seen = new Map<string, { key: string; surname: string; firstname: string; organization: string; organizationId: number | null }>();
+    for (const g of clubAgeClasses) {
+      if (!selectedAgeClasses.has(g.group)) continue;
+      for (const a of g.athletes) {
+        if (!seen.has(a.key)) seen.set(a.key, a);
+      }
+    }
+    return Array.from(seen.values());
+  }, [clubAgeClasses, selectedAgeClasses]);
+
+  const bulkAddNewCount = bulkAddSelection.filter((a) => !watchedKeys.has(a.key)).length;
+
+  const addSelectedToWatch = async () => {
+    for (const a of bulkAddSelection) {
+      if (watchedKeys.has(a.key)) continue;
+      await add({
+        key: a.key,
+        surname: a.surname,
+        firstname: a.firstname,
+        organization: a.organization,
+        organizationId: a.organizationId,
+      } satisfies WatchedAthlete);
+    }
+    setSelectedAgeClasses(new Set());
+  };
 
   const clubs = useMemo(() => {
     if (!index) return [] as Array<{ id: number; name: string; athletes: number; entries: number }>;
