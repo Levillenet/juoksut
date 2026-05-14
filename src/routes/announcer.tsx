@@ -205,6 +205,11 @@ function AnnouncerPage() {
 
   const clearRecords = () => setRecordAlerts([]);
 
+  const filteredRecords = useMemo(
+    () => (includeSB ? recordAlerts : recordAlerts.filter((a) => a.kind === "PB")),
+    [recordAlerts, includeSB],
+  );
+
   const toggleExpand = (eventId: number) => {
     setExpanded((prev) => {
       const next = new Set(prev);
