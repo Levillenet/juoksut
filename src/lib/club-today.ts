@@ -85,3 +85,41 @@ export async function fetchClubTodayResults(
   if (error) throw error;
   return (data ?? []) as ClubTodayRow[];
 }
+
+export type ClubPbMap = Record<string, { text: string; numeric: number }>;
+
+/** Best historical result per (athlete_key, event_name) across athlete_results. */
+export async function fetchClubPbs(
+  athleteKeys: string[],
+  eventNames: string[],
+): Promise<ClubPbMap> {
+  if (athleteKeys.length === 0 || eventNames.length === 0) return {};
+  const { data, error } = await supabase
+    .from("athlete_results")
+    .select("athlete_key, event_name, event_category, result_text, result_numeric")
+    .in("athlete_key", athleteKeys)
+    .in("event_name", eventNames)
+    .not("result_numeric", "is", null)
+    .limit(5000);
+  if (error) throw error;
+  const map: ClubPbMap = {};
+  for (const r of (data ?? []) as Array<{
+    athlete_key: string;
+    event_name: string;
+    event_category: string;
+    result_text: string;
+    result_numeric: number;
+  }>) {
+    if (r.result_numeric == null) continue;
+    const key = `${r.athlete_key}|${r.event_name}`;
+    const lower = r.event_category === "Track";
+    const cur = map[key];
+    if (
+      !cur ||
+      (lower ? r.result_numeric < cur.numeric : r.result_numeric > cur.numeric)
+    ) {
+      map[key] = { text: r.result_text, numeric: r.result_numeric };
+    }
+  }
+  return map;
+}
