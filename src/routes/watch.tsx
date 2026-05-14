@@ -155,7 +155,7 @@ function WatchPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={buildIndex}
+            onClick={reload}
             disabled={loading}
             aria-label="Päivitä"
           >
