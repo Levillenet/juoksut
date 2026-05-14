@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, RefreshCw, Trophy, Activity, Clock, ChevronDown, Star } from "lucide-react";
+import { ArrowLeft, RefreshCw, Trophy, Activity, Clock, ChevronDown, Star, ArrowUp, ArrowDown } from "lucide-react";
 import { detectRecord, formatImprovement, RecordBadge, RecordStar } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
 
