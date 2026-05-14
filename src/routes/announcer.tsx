@@ -16,6 +16,7 @@ import {
 } from "@/lib/tuloslista";
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
+import logo from "@/assets/lahden-ahkera-logo.png";
 
 export const Route = createFileRoute("/announcer")({
   head: () => ({
