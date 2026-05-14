@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Award, Loader2, RefreshCw, X } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Award, Loader2, RefreshCw, X, ExternalLink } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -272,11 +273,20 @@ export function RecordsPanel({ clubs }: Props) {
             const groups = groupByEvent(a.rows);
             return (
               <li key={a.key} className="rounded-xl border bg-card p-4 shadow-sm">
-                <div className="mb-3">
-                  <p className="text-base font-bold leading-tight">
-                    {a.surname} {a.firstname}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{a.organization}</p>
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-base font-bold leading-tight">
+                      {a.surname} {a.firstname}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{a.organization}</p>
+                  </div>
+                  <Link
+                    to="/athlete/$key"
+                    params={{ key: a.key }}
+                    className="shrink-0 inline-flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-xs font-medium hover:bg-accent"
+                  >
+                    Dashboard <ExternalLink className="h-3 w-3" />
+                  </Link>
                 </div>
                 <ul className="space-y-4">
                   {groups.map((g) => (
@@ -292,7 +302,7 @@ export function RecordsPanel({ clubs }: Props) {
   );
 }
 
-function EventGroupView({ group }: { group: EventGroup }) {
+export function EventGroupView({ group }: { group: EventGroup }) {
   const points = useMemo(
     () =>
       group.rows
