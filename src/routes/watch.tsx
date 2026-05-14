@@ -497,6 +497,31 @@ function WatchPage() {
                     </div>
                   </div>
 
+                  {(() => {
+                    const bests = dailyBestQuery.data?.[athlete.key] ?? [];
+                    if (bests.length === 0) return null;
+                    return (
+                      <ul className="mb-3 space-y-1 rounded-md border border-dashed bg-background/40 px-2 py-1.5">
+                        {bests.map((b) => (
+                          <li
+                            key={`${b.event_name}|${b.age_class}|${b.competition_id}`}
+                            className="flex items-baseline gap-2 text-[11px]"
+                          >
+                            <Trophy className="h-3 w-3 shrink-0 text-primary" />
+                            <span className="font-semibold">
+                              {b.event_name} {b.age_class}:
+                            </span>
+                            <span className="font-bold tabular-nums">{b.result_text}</span>
+                            <span className="min-w-0 truncate text-muted-foreground">
+                              — {b.surname} {b.firstname} ({b.organization}) ·{" "}
+                              {b.competition_name}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  })()}
+
                   {entries.length === 0 ? (
                     <p className="text-xs text-muted-foreground">
                       Ei lajeja tässä kisassa.
