@@ -50,6 +50,15 @@ function RoundView() {
     return [...hs].sort((a, b) => a.Index - b.Index);
   }, [round]);
 
+  const overall = useMemo(() => {
+    const all = heats.flatMap((h) =>
+      h.Allocations.map((a) => ({ ...a, _heatIndex: h.Index })),
+    );
+    const ranked = all.filter((a) => a.Result && a.ResultRank != null);
+    if (ranked.length === 0) return [];
+    return ranked.sort((a, b) => (a.ResultRank ?? 0) - (b.ResultRank ?? 0));
+  }, [heats]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
