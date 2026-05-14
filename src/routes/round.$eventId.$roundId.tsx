@@ -10,6 +10,7 @@ import {
   type Heat,
 } from "@/lib/tuloslista";
 import { RecordBadge } from "@/lib/records";
+import { captureBaselines, loadBaselines, effectiveRecord } from "@/lib/record-baseline";
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 
