@@ -191,7 +191,7 @@ export function ClubTodaySection({
                     </h3>
                     <ul className="divide-y divide-border rounded-lg border bg-background/50">
                       {g.rows.map((r, idx) => {
-                        const pb = pbs[`${r.athlete_key}|${r.event_name}`];
+                        const pb = pbs[`${r.athlete_key}|${normalizeEventName(r.event_name)}`];
                         const lower = r.event_category === "Track";
                         const isNewPb =
                           pb &&
