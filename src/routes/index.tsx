@@ -101,12 +101,43 @@ function Index() {
     }
   }, [dates, activeDate]);
 
-  const runs = useMemo<Round[]>(() => {
+  // Tick clock every 30s so past/upcoming filter stays accurate
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const allRuns = useMemo<Round[]>(() => {
     if (!data || !activeDate) return [];
     return (data[activeDate] ?? [])
       .filter(isRunningEvent)
       .sort((a, b) => a.BeginDateTimeWithTZ.localeCompare(b.BeginDateTimeWithTZ));
   }, [data, activeDate]);
+
+  // The API encodes local time as UTC ("06:20:00+00:00" really means 06:20 local),
+  // so compare using UTC parts of the round vs local parts of "now".
+  const isPast = (iso: string): boolean => {
+    const d = new Date(iso);
+    const roundLocal = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      d.getUTCHours(),
+      d.getUTCMinutes(),
+    );
+    // Anchor to the round's date (not today) so other dates aren't all "past"
+    const roundDateKey = `${d.getUTCDate()}.${d.getUTCMonth() + 1}.${d.getUTCFullYear()}`;
+    if (activeDate && roundDateKey !== activeDate) return false;
+    return roundLocal.getTime() < now.getTime();
+  };
+
+  const runs = useMemo(
+    () => (showPast ? allRuns : allRuns.filter((r) => !isPast(r.BeginDateTimeWithTZ))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allRuns, showPast, now, activeDate],
+  );
+
+  const hiddenPastCount = allRuns.length - runs.length;
 
   const saveLink = () => {
     const id = parseCompetitionId(linkInput);
