@@ -196,7 +196,8 @@ function AnnouncerPage() {
             seen.set(a.AllocId, a.Result);
             if (isFirstRun) return; // skip alerts on first load (avoid flooding)
             if (prevResult === a.Result) return; // no change
-            const rec = detectRecord(ev.EventCategory, a.Result, a.PB, a.SB);
+            const eff = effectiveRecord(ev.Id, a);
+            const rec = detectRecord(ev.EventCategory, a.Result, eff.pb, eff.sb);
             if (!rec) return;
             fresh.push({
               id: `${a.AllocId}-${a.Result}`,
@@ -206,7 +207,7 @@ function AnnouncerPage() {
               eventName: ev.Name,
               category: ev.EventCategory,
               result: a.Result,
-              previous: rec === "PB" ? a.PB : a.SB,
+              previous: rec === "PB" ? eff.pb : eff.sb,
               shownAt: Date.now(),
               eventId: ev.Id,
               roundId: round.Id,
