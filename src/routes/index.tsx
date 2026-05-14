@@ -18,6 +18,7 @@ import { useAuth } from "@/lib/auth";
 import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
 import { DailyBestSection } from "@/components/DailyBestSection";
 import { ClubTodaySection } from "@/components/ClubTodaySection";
+import { SeasonStatsSection } from "@/components/SeasonStatsSection";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
@@ -201,6 +202,14 @@ function Index() {
               Kuuluttaja
             </Link>
           )}
+          {role === "official" && (
+            <Link
+              to="/admin/club-locations"
+              className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+            >
+              Seurojen sijainnit
+            </Link>
+          )}
           <Link
             to="/print"
             className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
@@ -237,6 +246,7 @@ function Index() {
 
         <DailyBestSection />
         <ClubTodaySection excludeCompetitionId={competitionId} />
+        <SeasonStatsSection />
 
         {loading && !data && (
           <div className="py-12 text-center text-sm text-muted-foreground">Ladataan…</div>

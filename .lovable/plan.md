@@ -1,38 +1,59 @@
-## Tavoite
-
-Kun urheilijan tulos rikkoo henkilökohtaisen ennätyksen, se merkitään pysyvästi siihen riviin. Vaikka sama urheilija myöhemmin tekisi vielä paremman tuloksen, alkuperäinen rivi näyttää historiassa edelleen "🏆 PB" -merkin.
 
 ## Mitä rakennetaan
 
-### 1. Tietokanta: lippu `athlete_results`-tauluun
+Etusivulle (`/`) uusi laajennettava **"Kauden tilastot"** -osio, joka näyttää seuratut urheilijat (`watched_athletes`) valitulta kaudelta ja ikäluokalta. Erillinen toimitsijapuolen hallintanäkymä seurojen kotipaikoille km-laskentaa varten.
 
-Lisätään uusi sarake:
-- `was_pb` (boolean, default false) — `true` jos tulos oli urheilijan PB siinä lajissa sillä hetkellä, kun se kirjattiin.
+## Käyttäjän valinnat
 
-Lisäksi täytetään takautuvasti olemassa oleva data: jokaiselle (athlete_key, normalisoitu event_name) -parille merkitään `was_pb = true` niihin riveihin, joissa kyseinen tulos oli kronologisesti uusi paras siihen mennessä. Track-lajeissa pienin aika voittaa, Field-lajeissa suurin tulos.
+- **Kausi**: pudotusvalikko – Kuluva vuosi (1.1.–31.12.) / Kesäkausi (1.5.–30.9.) / Talvikausi (1.10.–30.4.)
+- **Ikäluokka**: pudotusvalikko, vaihtoehdot haetaan `athlete_results.age_class`-arvoista, jotka esiintyvät seurattujen urheilijoiden tuloksissa valitulla kaudella
+- Oletus: kuluva vuosi, "kaikki ikäluokat"
 
-### 2. Harvest-hookin päivitys
+## Mittarit per urheilija (taulukko)
 
-`src/routes/api/public/hooks/harvest-results.ts` — kun uusi tulos tallennetaan, verrataan urheilijan aiempiin tuloksiin samasta lajista (normalisoitu nimi). Jos uusi tulos on parempi (tai ensimmäinen koskaan), asetetaan `was_pb = true`.
+| Mittari | Laskenta |
+|---|---|
+| Lajien määrä | uniikit `normalize_event_name(event_name)` |
+| Kisojen määrä | uniikit `competition_id` |
+| Tunnit kisapaikalla | per kisapäivä: 1 h ennen + 0,5 h jälkeen + 0,5 h × (lajien_määrä − 1) arvio (ks. tekninen huom.) |
+| Juostut metrit yhteensä | summa `event_name`-merkkijonosta parsituista metreistä (`Track`-kategoria, esim. "60m" → 60, "1500m" → 1500). Aidat lasketaan myös. |
+| PB:t | `was_pb = true` rivien määrä |
+| Voitot | `result_rank = 1` rivien määrä |
+| Matkustetut km | per kisa: 2 × Haversine(seuran kotipaikka, kilpailupaikka), summattuna |
 
-### 3. Käyttöliittymä
+Yhteenveto-rivi alas (kaikkien urheilijoiden summat). Sarakkeet järjestettäviä.
 
-`ClubTodaySection`:
-- Korvataan nykyinen "korosta jos tulos ≤ PB" -logiikka tarkistuksella `was_pb === true`.
-- Näytetään pieni 🏆-merkki tai "PB!" -tagi tuloksen perässä, kun lippu on päällä.
-- PB-aika suluissa (nykyinen "PB 7.85") säilyy ennallaan vertailun vuoksi.
+## Seurojen kotipaikkojen hallinta (toimitsijapuoli)
 
-Sama merkintä viedään myös:
-- `round.$eventId.$roundId.tsx` (lopputulokset & erien rivit) — jos rivin athlete_keylle löytyy `was_pb`-merkintä tästä päivästä/lajista.
-- `athlete.$key.tsx` (urheilijan historia) — PB-merkki näkyy historiarivillä.
+Uusi sivu **`/admin/club-locations`** (vain kirjautuneille).
+- Lista kaikista `organization`-arvoista, joita esiintyy `athlete_results`-taulussa
+- Per seura: nimi + lat/lng + paikkakunta-tekstikenttä
+- "Ehdota koordinaatteja" -nappi käyttää OpenStreetMap Nominatim -ilmaisrajapintaa (server-fn) paikkakunnan nimellä
+- Tallennus uuteen tauluun `organization_locations`
 
-## Tekninen huomio
+## Tekniset muutokset
 
-- Normalisointi (T9 60m ↔ T11 60m ↔ M 60m) tehdään jo `normalizeEventName`-funktiolla. Sama logiikka käytetään takautuvassa täyttämisessä.
-- `was_pb` ei muutu jälkikäteen — se on snapshot tallennushetkestä. Tämä on tarkoitus: historiarivit pysyvät rehellisinä siitä, mikä oli ennätys silloin.
-- Ei rakenneta erillistä `personal_bests`-taulua, koska tieto on luonnollinen attribuutti tulosrivissä ja yksi sarake riittää.
+**Tietokanta (1 migraatio)**
+- `organization_locations`-taulu: `organization_id` (PK), `organization_name`, `city`, `lat`, `lng`, `updated_at`. RLS: kaikki autentikoidut voivat lukea + insertoida (samaa mallia kuin nykyiset taulut). Update sallitaan autentikoiduille.
+- `competition_locations`-taulu: `competition_id` (PK), `location` (text), `lat`, `lng`. Täytetään lazy: kun km-laskenta tarvitsee kilpailun koordinaatit ja niitä ei ole, server-fn geokoodaa `athlete_results.location`-kentästä Nominatimilla ja tallentaa.
 
-## Mitä ei muutu
+**Server functions** (`src/lib/season-stats.functions.ts`)
+- `getSeasonStats({ season, ageClass })` – vaatii authin, hakee watched_athletes ∩ athlete_results suodatettuna kaudella ja ikäluokalla, palauttaa per-urheilija-rivit (kaikki mittarit valmiiksi laskettuna palvelimella). Käyttää `supabase` (RLS) watched-listalle ja `supabaseAdmin` athlete_results-aggregointiin tehokkuuden vuoksi.
+- `geocodeOrganization({ name, city })` ja `geocodeCompetition({ competitionId })` – Nominatim-kutsut, server-only.
+- `upsertOrganizationLocation({...})` – auth, manuaalinen tallennus.
 
-- `result_numeric`, `result_text` ja muut nykyiset kentät pysyvät ennallaan.
-- "Nykyinen PB" -aika sulkujen sisällä lasketaan edelleen lennossa kuten nyt — vain sen rinnalle tulee pysyvä historiamerkki.
+**Client/UI**
+- `src/components/SeasonStatsSection.tsx` – uusi laajennettava paneeli `ClubTodaySection`-tyylillä, käyttää `useQuery` + `useServerFn`.
+- `src/routes/index.tsx` – lisätään `<SeasonStatsSection />` `<ClubTodaySection />`-osion alle.
+- `src/routes/admin.club-locations.tsx` – uusi reitti, taulukko + edit-rivi per seura.
+- Linkki "Seurojen sijainnit" toimitsijapuolen valikkoon (etsitään olemassa olevasta navigaatiosta).
+
+**Apufunktiot** (`src/lib/season-stats.ts`)
+- `parseTrackDistanceMeters(eventName: string): number | null` – regex `(\d+)\s*m\b`, palauttaa metrit tai null.
+- `seasonRange(season): { from: Date, to: Date }`.
+- `haversineKm(a, b)`.
+- `estimateHoursAtVenue(eventsCount: number): number` – `1 + 0.5 + 0.5 * (eventsCount - 1)` per kisapäivä, vähintään 1.5 h.
+
+## Avoin oletus (vahvistus suotavaa, ei estä toteutusta)
+
+**Tunnit kisapaikalla** – `athlete_results.captured_at` on harvesterin ajastus, ei urheilijan oikea aikaleima. Käytetään arviota: 1.5 h pohjaksi per kisapäivä + 0.5 h × (urheilijan lajit kisassa − 1). Tämä on lähellä todellisuutta tyypillisessä kisassa, mutta ei tunne lajien välistä taukoa. Voidaan myöhemmin vaihtaa kisaohjelman aikaleimoihin, jos sellainen data tulee saataville.

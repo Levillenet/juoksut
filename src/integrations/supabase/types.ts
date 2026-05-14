@@ -86,6 +86,30 @@ export type Database = {
         }
         Relationships: []
       }
+      competition_locations: {
+        Row: {
+          competition_id: number
+          lat: number | null
+          lng: number | null
+          location: string
+          updated_at: string
+        }
+        Insert: {
+          competition_id: number
+          lat?: number | null
+          lng?: number | null
+          location?: string
+          updated_at?: string
+        }
+        Update: {
+          competition_id?: number
+          lat?: number | null
+          lng?: number | null
+          location?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       harvest_state: {
         Row: {
           id: string
@@ -106,6 +130,33 @@ export type Database = {
           last_run_at?: string | null
           latest_id?: number
           next_id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      organization_locations: {
+        Row: {
+          city: string
+          lat: number | null
+          lng: number | null
+          organization_id: number
+          organization_name: string
+          updated_at: string
+        }
+        Insert: {
+          city?: string
+          lat?: number | null
+          lng?: number | null
+          organization_id: number
+          organization_name?: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string
+          lat?: number | null
+          lng?: number | null
+          organization_id?: number
+          organization_name?: string
           updated_at?: string
         }
         Relationships: []
