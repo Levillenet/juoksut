@@ -114,7 +114,38 @@ function AnnouncerPage() {
   const inProgress = showRunning
     ? inProgressAll
     : inProgressAll.filter((r) => r.Category !== "Track");
-  const completed = todayRounds.filter((r) => r.Status === "Official").reverse();
+  const completedAll = todayRounds.filter((r) => r.Status === "Official").reverse();
+
+  // Per-day dismissed completed rounds (kept in localStorage so the announcer
+  // can mark events as "read" and they disappear from the Lopputulokset list.)
+  const dismissKey = `announcer-dismissed-${competitionId}-${todayKey}`;
+  const [dismissedCompletedIds, setDismissedCompletedIds] = useState<Set<number>>(
+    new Set(),
+  );
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(dismissKey);
+      setDismissedCompletedIds(new Set(raw ? (JSON.parse(raw) as number[]) : []));
+    } catch {
+      setDismissedCompletedIds(new Set());
+    }
+  }, [dismissKey]);
+  const persistDismissed = (next: Set<number>) => {
+    setDismissedCompletedIds(next);
+    try {
+      localStorage.setItem(dismissKey, JSON.stringify(Array.from(next)));
+    } catch {
+      /* ignore */
+    }
+  };
+  const dismissCompleted = (roundId: number) => {
+    const next = new Set(dismissedCompletedIds);
+    next.add(roundId);
+    persistDismissed(next);
+  };
+  const restoreDismissed = () => persistDismissed(new Set());
+
+  const completed = completedAll.filter((r) => !dismissedCompletedIds.has(r.Id));
   const nowMs = (now ?? new Date()).getTime();
   const upcomingAll = todayRounds.filter(
     (r) => r.Status !== "Official" && r.Status !== "Progress",
