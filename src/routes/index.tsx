@@ -6,7 +6,7 @@ import logo from "@/assets/lahden-ahkera-logo.png";
 import {
   fetchRounds,
   fetchProperties,
-  isRunningEvent,
+  // isRunningEvent removed: show all events
   formatTime,
   helsinkiDateKey,
   STATUS_LABEL,
@@ -116,7 +116,7 @@ function Index() {
   const allRuns = useMemo<Round[]>(() => {
     if (!data || !activeDate) return [];
     return (data[activeDate] ?? [])
-      .filter(isRunningEvent)
+      .slice()
       .sort((a, b) => a.BeginDateTimeWithTZ.localeCompare(b.BeginDateTimeWithTZ));
   }, [data, activeDate]);
 
@@ -145,7 +145,7 @@ function Index() {
           />
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-semibold leading-tight">
-              {name || "Juoksulajit"}
+              {name || "Lajit"}
             </h1>
             <p className="truncate text-xs text-muted-foreground">
               Kisa #{competitionId}
@@ -153,7 +153,7 @@ function Index() {
             </p>
           </div>
           <h2 className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-lg font-black uppercase tracking-widest text-primary xl:block">
-            Juoksujen näkymä
+            Päivän lajit
           </h2>
           <Button
             variant="ghost"
@@ -264,8 +264,8 @@ function Index() {
         {!loading && data && runs.length === 0 && (
           <div className="py-12 text-center text-sm text-muted-foreground">
             {hiddenPastCount > 0
-              ? "Päivän juoksulajit on jo juostu. Paina ”Näytä menneet”."
-              : "Ei juoksulajeja valitulle päivälle."}
+              ? "Päivän lajit on jo suoritettu. Paina ”Näytä menneet”."
+              : "Ei lajeja valitulle päivälle."}
           </div>
         )}
 
