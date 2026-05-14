@@ -185,6 +185,12 @@ function Index() {
 
         <div className="mx-auto flex max-w-2xl gap-2 px-4 pb-3">
           <Link
+            to="/search"
+            className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+          >
+            Hae sukunimellä
+          </Link>
+          <Link
             to="/announcer"
             className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
           >
