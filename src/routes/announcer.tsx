@@ -114,7 +114,38 @@ function AnnouncerPage() {
   const inProgress = showRunning
     ? inProgressAll
     : inProgressAll.filter((r) => r.Category !== "Track");
-  const completed = todayRounds.filter((r) => r.Status === "Official").reverse();
+  const completedAll = todayRounds.filter((r) => r.Status === "Official").reverse();
+
+  // Per-day dismissed completed rounds (kept in localStorage so the announcer
+  // can mark events as "read" and they disappear from the Lopputulokset list.)
+  const dismissKey = `announcer-dismissed-${competitionId}-${todayKey}`;
+  const [dismissedCompletedIds, setDismissedCompletedIds] = useState<Set<number>>(
+    new Set(),
+  );
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(dismissKey);
+      setDismissedCompletedIds(new Set(raw ? (JSON.parse(raw) as number[]) : []));
+    } catch {
+      setDismissedCompletedIds(new Set());
+    }
+  }, [dismissKey]);
+  const persistDismissed = (next: Set<number>) => {
+    setDismissedCompletedIds(next);
+    try {
+      localStorage.setItem(dismissKey, JSON.stringify(Array.from(next)));
+    } catch {
+      /* ignore */
+    }
+  };
+  const dismissCompleted = (roundId: number) => {
+    const next = new Set(dismissedCompletedIds);
+    next.add(roundId);
+    persistDismissed(next);
+  };
+  const restoreDismissed = () => persistDismissed(new Set());
+
+  const completed = completedAll.filter((r) => !dismissedCompletedIds.has(r.Id));
   const nowMs = (now ?? new Date()).getTime();
   const upcomingAll = todayRounds.filter(
     (r) => r.Status !== "Official" && r.Status !== "Progress",
@@ -409,9 +440,25 @@ function AnnouncerPage() {
             )}
 
             <div className="mt-8">
-              <SectionTitle icon={<Trophy className="h-4 w-4" />} title="Lopputulokset" count={completed.length} />
-              {completed.length === 0 ? (
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <SectionTitle
+                  icon={<Trophy className="h-4 w-4" />}
+                  title="Lopputulokset"
+                  count={completedAll.length}
+                />
+                {dismissedCompletedIds.size > 0 && (
+                  <button
+                    onClick={restoreDismissed}
+                    className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-secondary"
+                  >
+                    Palauta piilotetut ({dismissedCompletedIds.size})
+                  </button>
+                )}
+              </div>
+              {completedAll.length === 0 ? (
                 <EmptyCard text="Ei julkaistuja lopputuloksia vielä." />
+              ) : completed.length === 0 ? (
+                <EmptyCard text="Kaikki lopputulokset merkitty luetuiksi." />
               ) : (
                 <ul className="grid gap-2 md:grid-cols-2">
                   {completed.map((r) => (
@@ -419,9 +466,9 @@ function AnnouncerPage() {
                       key={r.Id}
                       round={r}
                       detail={details[r.EventId]}
-                      open={expanded.has(r.EventId)}
-                      onToggle={() => toggleExpand(r.EventId)}
                       groupHeats={false}
+                      defaultOpen
+                      onDismiss={() => dismissCompleted(r.Id)}
                     />
                   ))}
                 </ul>
@@ -718,16 +765,27 @@ function AllocationRow({
 function UpcomingItem({
   round,
   detail,
-  open,
+  open: openProp,
   onToggle,
   groupHeats = true,
+  defaultOpen = false,
+  onDismiss,
 }: {
   round: Round;
   detail?: EventResults;
-  open: boolean;
-  onToggle: () => void;
+  open?: boolean;
+  onToggle?: () => void;
   groupHeats?: boolean;
+  defaultOpen?: boolean;
+  onDismiss?: () => void;
 }) {
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : internalOpen;
+  const handleToggle = () => {
+    if (isControlled) onToggle?.();
+    else setInternalOpen((v) => !v);
+  };
   // Find the matching round inside the event detail (an event can contain
   // qualifications + final, etc.).
   const matchingRound = useMemo(
@@ -756,7 +814,7 @@ function UpcomingItem({
   return (
     <li className="overflow-hidden rounded-xl border border-border bg-card">
       <button
-        onClick={onToggle}
+        onClick={handleToggle}
         className="flex w-full items-center gap-3 p-3 text-left hover:bg-secondary/50"
       >
         <div className="w-14 shrink-0 text-xl font-bold tabular-nums">
@@ -824,6 +882,16 @@ function UpcomingItem({
                 />
               ))}
             </ol>
+          )}
+          {onDismiss && (
+            <div className="mt-3 flex justify-end">
+              <button
+                onClick={onDismiss}
+                className="rounded-full border border-emerald-500/60 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300"
+              >
+                Merkitse luetuksi
+              </button>
+            </div>
           )}
         </div>
       )}
