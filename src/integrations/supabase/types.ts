@@ -177,6 +177,10 @@ export type Database = {
     Functions: {
       harvest_try_lock: { Args: never; Returns: boolean }
       harvest_unlock: { Args: never; Returns: undefined }
+      mark_pbs_for_competitions: {
+        Args: { comp_ids: number[] }
+        Returns: number
+      }
       normalize_event_name: { Args: { name: string }; Returns: string }
     }
     Enums: {
