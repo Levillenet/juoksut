@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, RefreshCw, Trophy, Activity, Clock } from "lucide-react";
+import { ArrowLeft, RefreshCw, Trophy, Activity, Clock, ChevronDown } from "lucide-react";
 
 import {
   fetchRounds,
@@ -31,20 +31,21 @@ export const Route = createFileRoute("/announcer")({
   component: AnnouncerPage,
 });
 
-interface EventDetailCache {
-  [eventId: number]: EventResults;
-}
+type DetailCache = Record<number, EventResults>;
 
 function AnnouncerPage() {
   const [competitionId] = useCompetitionId();
   const [data, setData] = useState<RoundsByDate | null>(null);
   const [name, setName] = useState("");
-  const [details, setDetails] = useState<EventDetailCache>({});
-  const [now, setNow] = useState(() => new Date());
-  const [loading, setLoading] = useState(false);
+  const [details, setDetails] = useState<DetailCache>({});
+  const [now, setNow] = useState<Date | null>(null);
+  const [manualLoading, setManualLoading] = useState(false);
+  const [showRunning, setShowRunning] = useState(false);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
-  const loadSchedule = async () => {
-    setLoading(true);
+  const loadSchedule = async (silent = true) => {
+    if (!silent) setManualLoading(true);
     try {
       const [r, p] = await Promise.all([
         fetchRounds(competitionId),
@@ -52,24 +53,27 @@ function AnnouncerPage() {
       ]);
       setData(r);
       setName(p?.Competition?.Name ?? "");
+      setUpdatedAt(new Date());
     } finally {
-      setLoading(false);
+      if (!silent) setManualLoading(false);
     }
   };
 
   useEffect(() => {
-    loadSchedule();
-    const t = setInterval(loadSchedule, 30_000);
+    loadSchedule(false);
+    const t = setInterval(() => loadSchedule(true), 15_000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [competitionId]);
 
+  // Client-only clock to avoid SSR hydration mismatch
   useEffect(() => {
+    setNow(new Date());
     const t = setInterval(() => setNow(new Date()), 10_000);
     return () => clearInterval(t);
   }, []);
 
-  const todayKey = helsinkiDateKey(new Date().toISOString());
+  const todayKey = helsinkiDateKey((now ?? new Date()).toISOString());
   const todayRounds = useMemo<Round[]>(() => {
     if (!data) return [];
     return [...(data[todayKey] ?? [])].sort((a, b) =>
@@ -77,36 +81,65 @@ function AnnouncerPage() {
     );
   }, [data, todayKey]);
 
-  const inProgress = todayRounds.filter((r) => r.Status === "Progress");
+  const inProgressAll = todayRounds.filter((r) => r.Status === "Progress");
+  const inProgress = showRunning
+    ? inProgressAll
+    : inProgressAll.filter((r) => r.Category !== "Track");
   const completed = todayRounds.filter((r) => r.Status === "Official").reverse().slice(0, 8);
+  const nowMs = (now ?? new Date()).getTime();
   const upcoming = todayRounds
     .filter((r) => {
       if (r.Status === "Official" || r.Status === "Progress") return false;
-      return new Date(r.BeginDateTimeWithTZ).getTime() > now.getTime() - 5 * 60_000;
+      return new Date(r.BeginDateTimeWithTZ).getTime() > nowMs - 5 * 60_000;
     })
     .slice(0, 12);
 
-  // Fetch detailed results for Progress + Official events
+  // Auto-fetch details for in-progress, completed, and any expanded upcoming events
+  const wantedIds = useMemo(() => {
+    const ids = new Set<number>();
+    inProgress.forEach((r) => ids.add(r.EventId));
+    completed.forEach((r) => ids.add(r.EventId));
+    expanded.forEach((id) => ids.add(id));
+    return Array.from(ids);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    JSON.stringify(inProgress.map((r) => r.EventId)),
+    JSON.stringify(completed.map((r) => r.EventId)),
+    expanded,
+  ]);
+
   useEffect(() => {
-    const ids = [...inProgress, ...completed].map((r) => r.EventId);
+    if (wantedIds.length === 0) return;
     let cancelled = false;
-    (async () => {
+    const tick = async () => {
       const results = await Promise.allSettled(
-        ids.map((id) => fetchEvent(competitionId, id)),
+        wantedIds.map((id) => fetchEvent(competitionId, id)),
       );
       if (cancelled) return;
       setDetails((prev) => {
         const next = { ...prev };
         results.forEach((res, i) => {
-          if (res.status === "fulfilled") next[ids[i]] = res.value;
+          if (res.status === "fulfilled") next[wantedIds[i]] = res.value;
         });
         return next;
       });
-    })();
+    };
+    tick();
+    const t = setInterval(tick, 15_000);
     return () => {
       cancelled = true;
+      clearInterval(t);
     };
-  }, [competitionId, JSON.stringify(inProgress.map((r) => r.EventId)), JSON.stringify(completed.map((r) => r.EventId))]);
+  }, [competitionId, wantedIds]);
+
+  const toggleExpand = (eventId: number) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(eventId)) next.delete(eventId);
+      else next.add(eventId);
+      return next;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -123,30 +156,49 @@ function AnnouncerPage() {
             </h1>
             <p className="truncate text-xs text-muted-foreground">
               Kuuluttajan dashboard · {todayKey}
+              {updatedAt && now && ` · päivitetty ${pad(updatedAt.getHours())}:${pad(updatedAt.getMinutes())}:${pad(updatedAt.getSeconds())}`}
             </p>
           </div>
-          <div className="text-right">
+          <div className="text-right" suppressHydrationWarning>
             <div className="text-3xl font-black tabular-nums leading-none">
-              {String(now.getHours()).padStart(2, "0")}:
-              {String(now.getMinutes()).padStart(2, "0")}
+              {now ? `${pad(now.getHours())}:${pad(now.getMinutes())}` : "--:--"}
             </div>
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              {inProgress.length} käynnissä · {completed.length} valmis
+              {inProgressAll.length} käynnissä · {completed.length} valmis
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={loadSchedule} aria-label="Päivitä">
-            <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
+          <Button variant="ghost" size="icon" onClick={() => loadSchedule(false)} aria-label="Päivitä">
+            <RefreshCw className={`h-5 w-5 ${manualLoading ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </header>
 
       <main className="mx-auto max-w-[1600px] px-6 py-6">
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* IN PROGRESS */}
           <section className="lg:col-span-2">
-            <SectionTitle icon={<Activity className="h-4 w-4" />} title="Käynnissä" count={inProgress.length} />
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <SectionTitle icon={<Activity className="h-4 w-4" />} title="Käynnissä" count={inProgress.length} />
+              <div className="flex gap-1 rounded-full border border-border bg-card p-1 text-xs font-medium">
+                <button
+                  onClick={() => setShowRunning(false)}
+                  className={`rounded-full px-3 py-1 transition-colors ${
+                    !showRunning ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
+                  }`}
+                >
+                  Kenttälajit
+                </button>
+                <button
+                  onClick={() => setShowRunning(true)}
+                  className={`rounded-full px-3 py-1 transition-colors ${
+                    showRunning ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
+                  }`}
+                >
+                  Kaikki lajit
+                </button>
+              </div>
+            </div>
             {inProgress.length === 0 ? (
-              <EmptyCard text="Ei käynnissä olevia lajeja." />
+              <EmptyCard text={showRunning ? "Ei käynnissä olevia lajeja." : "Ei käynnissä olevia kenttälajeja."} />
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {inProgress.map((r) => (
@@ -169,31 +221,20 @@ function AnnouncerPage() {
             </div>
           </section>
 
-          {/* UPCOMING */}
           <aside>
             <SectionTitle icon={<Clock className="h-4 w-4" />} title="Seuraavaksi" count={upcoming.length} />
             {upcoming.length === 0 ? (
               <EmptyCard text="Ei tulevia lajeja tänään." />
             ) : (
               <ul className="space-y-2">
-                {upcoming.map((r, i) => (
-                  <li
+                {upcoming.map((r) => (
+                  <UpcomingItem
                     key={r.Id}
-                    className={`flex items-center gap-3 rounded-xl border bg-card p-3 ${
-                      i === 0 ? "border-accent" : "border-border"
-                    }`}
-                  >
-                    <div className="w-14 shrink-0 text-xl font-bold tabular-nums">
-                      {formatTime(r.BeginDateTimeWithTZ)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold leading-tight">{r.EventName}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {r.Name}
-                        {r.SubCategory && ` · ${translateSub(r.SubCategory)}`}
-                      </p>
-                    </div>
-                  </li>
+                    round={r}
+                    detail={details[r.EventId]}
+                    open={expanded.has(r.EventId)}
+                    onToggle={() => toggleExpand(r.EventId)}
+                  />
                 ))}
               </ul>
             )}
@@ -201,11 +242,15 @@ function AnnouncerPage() {
         </div>
 
         <p className="mt-8 text-center text-xs text-muted-foreground">
-          Lähde: live.tuloslista.com · automaattinen päivitys 30&nbsp;s välein
+          Lähde: live.tuloslista.com · automaattinen päivitys 15&nbsp;s välein
         </p>
       </main>
     </div>
   );
+}
+
+function pad(n: number): string {
+  return String(n).padStart(2, "0");
 }
 
 function SectionTitle({
@@ -218,7 +263,7 @@ function SectionTitle({
   count: number;
 }) {
   return (
-    <div className="mb-3 flex items-center gap-2">
+    <div className="flex items-center gap-2">
       <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
         {icon}
       </span>
@@ -238,6 +283,48 @@ function EmptyCard({ text }: { text: string }) {
   );
 }
 
+function flattenAllocations(detail?: EventResults): Allocation[] {
+  if (!detail) return [];
+  const all: Allocation[] = [];
+  detail.Rounds.forEach((rd) => rd.Heats.forEach((h) => all.push(...h.Allocations)));
+  return all;
+}
+
+function rankedTop(detail: EventResults | undefined, n: number): Allocation[] {
+  return flattenAllocations(detail)
+    .filter((a) => !a.NotInCompetition && (a.ResultRank != null || a.Result))
+    .sort((a, b) => (a.ResultRank ?? 999) - (b.ResultRank ?? 999))
+    .slice(0, n);
+}
+
+// --- PB/SB highlight helpers ----------------------------------------------
+function parsePerf(s: string | null | undefined): number | null {
+  if (!s) return null;
+  const norm = s.replace(",", ".").trim();
+  if (!norm) return null;
+  if (norm.includes(":")) {
+    const parts = norm.split(":").map(parseFloat);
+    if (parts.some(isNaN)) return null;
+    return parts.reduce((acc, x) => acc * 60 + x, 0);
+  }
+  const v = parseFloat(norm);
+  return isNaN(v) ? null : v;
+}
+
+type Record = "PB" | "SB" | null;
+
+function detectRecord(category: string, result: string | null, pb: string, sb: string): Record {
+  const r = parsePerf(result);
+  if (r == null) return null;
+  const isTrack = category === "Track";
+  const better = (a: number, b: number) => (isTrack ? a <= b : a >= b);
+  const p = parsePerf(pb);
+  if (p != null && better(r, p)) return "PB";
+  const s = parsePerf(sb);
+  if (s != null && better(r, s)) return "SB";
+  return null;
+}
+
 function EventCard({
   round,
   detail,
@@ -247,19 +334,7 @@ function EventCard({
   detail?: EventResults;
   live?: boolean;
 }) {
-  const top3 = useMemo<Allocation[]>(() => {
-    if (!detail) return [];
-    const all: Allocation[] = [];
-    detail.Rounds.forEach((rd) => rd.Heats.forEach((h) => all.push(...h.Allocations)));
-    return all
-      .filter((a) => !a.NotInCompetition && (a.ResultRank != null || a.Result))
-      .sort((a, b) => {
-        const ra = a.ResultRank ?? 999;
-        const rb = b.ResultRank ?? 999;
-        return ra - rb;
-      })
-      .slice(0, 3);
-  }, [detail]);
+  const top3 = useMemo(() => rankedTop(detail, 3), [detail]);
 
   return (
     <Link
@@ -297,35 +372,151 @@ function EventCard({
         </p>
       ) : (
         <ol className="space-y-1.5">
-          {top3.map((a) => (
-            <li
-              key={a.AllocId}
-              className="flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2"
-            >
-              <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-black tabular-nums ${
-                  a.ResultRank === 1
-                    ? "bg-primary text-primary-foreground"
-                    : a.ResultRank === 2
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-secondary text-secondary-foreground"
-                }`}
+          {top3.map((a) => {
+            const rec = detectRecord(round.Category, a.Result, a.PB, a.SB);
+            return (
+              <li
+                key={a.AllocId}
+                className="flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2"
               >
-                {a.ResultRank ?? "–"}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold leading-tight">{a.Name}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {a.Organization?.NameShort ?? a.Organization?.Name ?? ""}
-                </p>
-              </div>
-              <span className="shrink-0 text-base font-bold tabular-nums">
-                {a.Result ?? "–"}
-              </span>
-            </li>
-          ))}
+                <span
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-black tabular-nums ${
+                    a.ResultRank === 1
+                      ? "bg-primary text-primary-foreground"
+                      : a.ResultRank === 2
+                        ? "bg-accent text-accent-foreground"
+                        : "bg-secondary text-secondary-foreground"
+                  }`}
+                >
+                  {a.ResultRank ?? "–"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold leading-tight">{a.Name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {a.Organization?.NameShort ?? a.Organization?.Name ?? ""}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {rec && (
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                        rec === "PB"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-accent text-accent-foreground"
+                      }`}
+                      title={rec === "PB" ? "Uusi henkilökohtainen ennätys" : "Uusi kauden ennätys"}
+                    >
+                      {rec}
+                    </span>
+                  )}
+                  <span className="text-base font-bold tabular-nums">{a.Result ?? "–"}</span>
+                </div>
+              </li>
+            );
+          })}
         </ol>
       )}
     </Link>
+  );
+}
+
+function UpcomingItem({
+  round,
+  detail,
+  open,
+  onToggle,
+}: {
+  round: Round;
+  detail?: EventResults;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const allocations = useMemo(() => flattenAllocations(detail), [detail]);
+  const hasResults = allocations.some((a) => a.Result);
+  const sorted = useMemo(() => {
+    if (hasResults) {
+      return [...allocations].sort((a, b) => (a.ResultRank ?? 999) - (b.ResultRank ?? 999));
+    }
+    return [...allocations].sort((a, b) => (a.Position ?? 999) - (b.Position ?? 999));
+  }, [allocations, hasResults]);
+
+  return (
+    <li className="overflow-hidden rounded-xl border border-border bg-card">
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center gap-3 p-3 text-left hover:bg-secondary/50"
+      >
+        <div className="w-14 shrink-0 text-xl font-bold tabular-nums">
+          {formatTime(round.BeginDateTimeWithTZ)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-semibold leading-tight">{round.EventName}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {round.Name}
+            {round.SubCategory && ` · ${translateSub(round.SubCategory)}`}
+          </p>
+        </div>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+      {open && (
+        <div className="border-t border-border bg-background/40 p-3">
+          {!detail ? (
+            <p className="py-3 text-center text-xs text-muted-foreground">Ladataan…</p>
+          ) : sorted.length === 0 ? (
+            <p className="py-3 text-center text-xs text-muted-foreground">
+              Osallistujia ei vielä julkaistu.
+            </p>
+          ) : (
+            <ol className="space-y-1">
+              {sorted.map((a) => {
+                const rec = detectRecord(round.Category, a.Result, a.PB, a.SB);
+                return (
+                  <li
+                    key={a.AllocId}
+                    className={`flex items-center gap-2 rounded px-2 py-1 text-sm ${
+                      a.NotInCompetition ? "text-muted-foreground" : ""
+                    }`}
+                  >
+                    <span className="w-6 shrink-0 text-xs font-bold tabular-nums text-muted-foreground">
+                      {hasResults ? (a.ResultRank ?? "–") : (a.Position ?? "–")}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {a.Name}
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        {a.Organization?.NameShort ?? ""}
+                      </span>
+                    </span>
+                    {a.Result ? (
+                      <span className="flex shrink-0 items-center gap-1">
+                        {rec && (
+                          <span
+                            className={`rounded px-1 py-0.5 text-[9px] font-bold uppercase ${
+                              rec === "PB"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-accent text-accent-foreground"
+                            }`}
+                          >
+                            {rec}
+                          </span>
+                        )}
+                        <span className="font-bold tabular-nums">{a.Result}</span>
+                      </span>
+                    ) : (
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {a.SB || a.PB || ""}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </div>
+      )}
+    </li>
   );
 }
