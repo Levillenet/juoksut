@@ -175,7 +175,7 @@ function Index() {
         </div>
 
         <div className="mx-auto px-4 pb-3 max-w-2xl">
-          <CompetitionSwitcher className="w-full" />
+          <CompetitionSwitcher className="w-full" confirmOnChange={role === "official"} />
         </div>
 
         <div className="mx-auto flex max-w-2xl flex-wrap gap-2 px-4 pb-3">
