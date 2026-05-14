@@ -603,7 +603,7 @@ function EventCard({
 
   // Track rank changes between detail updates so we can show ↑ / ↓ next to
   // athletes whose position improved or dropped during the live event.
-  // Changes are kept visible for ~12s so they don't disappear at the next poll.
+  // Arrow stays visible until the athlete's rank changes again.
   const prevRanksRef = useRef<Map<number, number>>(new Map());
   const [rankChanges, setRankChanges] = useState<Map<number, "up" | "down">>(
     new Map(),
@@ -628,15 +628,6 @@ function EventCard({
       for (const [id, dir] of newChanges) m.set(id, dir);
       return m;
     });
-    const ids = newChanges.map(([id]) => id);
-    const t = setTimeout(() => {
-      setRankChanges((old) => {
-        const m = new Map(old);
-        for (const id of ids) m.delete(id);
-        return m;
-      });
-    }, 12000);
-    return () => clearTimeout(t);
   }, [allRanked]);
 
   return (
