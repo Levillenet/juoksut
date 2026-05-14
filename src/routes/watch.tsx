@@ -22,6 +22,8 @@ import {
 } from "@/lib/tuloslista-queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { fetchDailyBestForAthletes } from "@/lib/daily-best";
+
 import { RequireRole } from "@/components/RequireRole";
 
 export const Route = createFileRoute("/watch")({
