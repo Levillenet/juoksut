@@ -63,6 +63,8 @@ function AnnouncerPage() {
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [showPastUpcoming, setShowPastUpcoming] = useState(false);
   const [recordAlerts, setRecordAlerts] = useState<RecordAlert[]>([]);
+  const [recordsCollapsed, setRecordsCollapsed] = useState(false);
+  const [recordsExpanded, setRecordsExpanded] = useState(false);
   const seenResultsRef = useRef<Map<number, string>>(new Map());
   const initializedRef = useRef(false);
 
