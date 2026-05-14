@@ -4,14 +4,27 @@ export type RecordKind = "PB" | "SB" | null;
 
 export function parsePerf(s: string | null | undefined): number | null {
   if (!s) return null;
-  const norm = s.replace(",", ".").trim();
-  if (!norm) return null;
-  if (norm.includes(":")) {
-    const parts = norm.split(":").map(parseFloat);
+  const trimmed = s.trim();
+  if (!trimmed) return null;
+  // Finnish track time "M.SS,xx" (e.g. "3.12,42" = 3 min 12.42 s) or
+  // "H.MM.SS,xx". Dot = unit separator, comma = decimal.
+  if (trimmed.includes(",")) {
+    const [intPart, frac] = trimmed.split(",");
+    const units = intPart.split(".").map((p) => parseFloat(p));
+    if (units.some((n) => isNaN(n))) return null;
+    const fracNum = parseFloat(`0.${frac}`);
+    if (isNaN(fracNum)) return null;
+    let secs = 0;
+    for (const u of units) secs = secs * 60 + u;
+    return secs + fracNum;
+  }
+  // Colon-separated "M:SS.xx" or plain seconds/meters with "." as decimal.
+  if (trimmed.includes(":")) {
+    const parts = trimmed.split(":").map(parseFloat);
     if (parts.some(isNaN)) return null;
     return parts.reduce((acc, x) => acc * 60 + x, 0);
   }
-  const v = parseFloat(norm);
+  const v = parseFloat(trimmed);
   return isNaN(v) ? null : v;
 }
 
