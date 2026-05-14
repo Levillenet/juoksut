@@ -451,10 +451,7 @@ function UpcomingItem({
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold leading-tight">{round.EventName}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {round.Name}
-            {round.SubCategory && ` · ${translateSub(round.SubCategory)}`}
-          </p>
+          <p className="truncate text-xs text-muted-foreground">{round.Name}</p>
         </div>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
