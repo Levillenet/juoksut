@@ -421,6 +421,7 @@ function AnnouncerPage() {
                       detail={details[r.EventId]}
                       open={expanded.has(r.EventId)}
                       onToggle={() => toggleExpand(r.EventId)}
+                      groupHeats={false}
                     />
                   ))}
                 </ul>
