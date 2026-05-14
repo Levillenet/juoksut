@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Search as SearchIcon, RefreshCw, Pin, X, UserPlus } from "lucide-react";
+import { ArrowLeft, Search as SearchIcon, RefreshCw, Pin, X, UserPlus, Printer, Building2 } from "lucide-react";
 import logo from "@/assets/lahden-ahkera-logo.png";
 
 import {
@@ -126,6 +126,58 @@ function WatchPage() {
     });
   }, [index, watched]);
 
+  // Club selector state + derived data
+  const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
+
+  const clubs = useMemo(() => {
+    if (!index) return [] as Array<{ id: number; name: string; athletes: number; entries: number }>;
+    const map = new Map<number, { id: number; name: string; athletes: Set<string>; entries: number }>();
+    for (const e of index) {
+      const id = e.alloc.Organization?.Id;
+      if (id == null) continue;
+      const nm = e.alloc.Organization?.Name ?? "";
+      if (!map.has(id)) map.set(id, { id, name: nm, athletes: new Set(), entries: 0 });
+      const c = map.get(id)!;
+      c.athletes.add(`${e.alloc.Surname}|${e.alloc.Firstname}`);
+      c.entries += 1;
+    }
+    return Array.from(map.values())
+      .map((c) => ({ id: c.id, name: c.name, athletes: c.athletes.size, entries: c.entries }))
+      .sort((a, b) => a.name.localeCompare(b.name, "fi"));
+  }, [index]);
+
+  const clubProgram = useMemo(() => {
+    if (!index || selectedOrgId == null) return [] as Array<{
+      date: string;
+      rounds: Array<{ round: IndexedEntry["round"]; allocs: IndexedEntry[] }>;
+    }>;
+    const filtered = index.filter(
+      (e) => (e.alloc.Organization?.Id ?? -1) === selectedOrgId,
+    );
+    const byDate = new Map<string, Map<number, { round: IndexedEntry["round"]; allocs: IndexedEntry[] }>>();
+    for (const e of filtered) {
+      const dk = helsinkiDateKey(e.heatBegin);
+      if (!byDate.has(dk)) byDate.set(dk, new Map());
+      const rounds = byDate.get(dk)!;
+      if (!rounds.has(e.round.Id)) rounds.set(e.round.Id, { round: e.round, allocs: [] });
+      rounds.get(e.round.Id)!.allocs.push(e);
+    }
+    return Array.from(byDate.entries())
+      .sort((a, b) => {
+        const [da, ma, ya] = a[0].split(".").map(Number);
+        const [db, mb, yb] = b[0].split(".").map(Number);
+        return new Date(ya, ma - 1, da).getTime() - new Date(yb, mb - 1, db).getTime();
+      })
+      .map(([date, rounds]) => ({
+        date,
+        rounds: Array.from(rounds.values()).sort((a, b) =>
+          a.round.BeginDateTimeWithTZ.localeCompare(b.round.BeginDateTimeWithTZ),
+        ),
+      }));
+  }, [index, selectedOrgId]);
+
+  const selectedClub = clubs.find((c) => c.id === selectedOrgId) ?? null;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
@@ -248,6 +300,144 @@ function WatchPage() {
             )}
           </section>
         )}
+
+        {/* Club program */}
+        <section className="mb-6">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Seuran ohjelma
+          </h3>
+          <div className="rounded-xl border bg-card p-4 shadow-sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <select
+                  value={selectedOrgId ?? ""}
+                  onChange={(e) =>
+                    setSelectedOrgId(e.target.value ? parseInt(e.target.value, 10) : null)
+                  }
+                  className="h-10 w-full appearance-none rounded-md border border-input bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  aria-label="Valitse seura"
+                  disabled={clubs.length === 0}
+                >
+                  <option value="">
+                    {clubs.length === 0 ? "Ladataan seuroja…" : `Valitse seura (${clubs.length})`}
+                  </option>
+                  {clubs.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.athletes})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button
+                size="sm"
+                disabled={!selectedClub}
+                onClick={() => {
+                  if (!selectedClub) return;
+                  window.open(
+                    `/print/club?org=${selectedClub.id}&auto=1`,
+                    "_blank",
+                    "noopener",
+                  );
+                }}
+                className="gap-2"
+              >
+                <Printer className="h-4 w-4" /> Tulosta ohjelma
+              </Button>
+            </div>
+
+            {selectedClub && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                {selectedClub.name} · {selectedClub.athletes}{" "}
+                {selectedClub.athletes === 1 ? "urheilija" : "urheilijaa"} ·{" "}
+                {selectedClub.entries}{" "}
+                {selectedClub.entries === 1 ? "lähtö" : "lähtöä"}
+              </p>
+            )}
+
+            {selectedClub && clubProgram.length > 0 && (
+              <div className="mt-4 space-y-4">
+                {clubProgram.map((g) => (
+                  <div key={g.date}>
+                    <h4 className="mb-1 border-b border-border pb-1 text-sm font-bold">
+                      {g.date}
+                    </h4>
+                    <ul className="divide-y divide-border">
+                      {g.rounds.map(({ round, allocs }) => {
+                        const isRun = isRunningEvent(round);
+                        return (
+                          <li key={round.Id} className="py-2">
+                            <Link
+                              to="/round/$eventId/$roundId"
+                              params={{
+                                eventId: String(round.EventId),
+                                roundId: String(round.Id),
+                              }}
+                              className="flex items-baseline gap-3 hover:opacity-80"
+                            >
+                              <span className="w-12 shrink-0 text-sm font-bold tabular-nums">
+                                {formatTime(round.BeginDateTimeWithTZ)}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold">
+                                  {round.EventName}
+                                </p>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {round.SubCategory && translateSub(round.SubCategory)}
+                                  {round.Name && ` · ${round.Name}`}
+                                </p>
+                                <ul className="mt-1 space-y-0.5">
+                                  {allocs
+                                    .slice()
+                                    .sort((a, b) => {
+                                      if (a.heatIndex !== b.heatIndex)
+                                        return a.heatIndex - b.heatIndex;
+                                      return (
+                                        (a.alloc.Position ?? 0) -
+                                        (b.alloc.Position ?? 0)
+                                      );
+                                    })
+                                    .map((e, idx) => (
+                                      <li
+                                        key={`${e.alloc.Id}-${idx}`}
+                                        className="flex flex-wrap items-baseline gap-x-2 text-xs"
+                                      >
+                                        <span className="font-medium text-foreground">
+                                          {e.alloc.Surname} {e.alloc.Firstname}
+                                        </span>
+                                        {e.alloc.Number && (
+                                          <span className="tabular-nums text-muted-foreground">
+                                            #{e.alloc.Number}
+                                          </span>
+                                        )}
+                                        <span className="text-muted-foreground">
+                                          {isRun
+                                            ? `Erä ${e.heatIndex}${e.alloc.Position != null ? ` · Rata ${e.alloc.Position}` : ""}`
+                                            : e.alloc.Position != null
+                                              ? `Järj. ${e.alloc.Position}`
+                                              : ""}
+                                        </span>
+                                      </li>
+                                    ))}
+                                </ul>
+                              </div>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {selectedClub && clubProgram.length === 0 && !loading && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Ei lähtöjä valitulla seuralla.
+              </p>
+            )}
+          </div>
+        </section>
 
         {/* Watched athletes */}
         <section>
