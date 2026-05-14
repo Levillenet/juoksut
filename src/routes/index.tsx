@@ -95,8 +95,7 @@ function Index() {
 
   useEffect(() => {
     if (!activeDate && dates.length) {
-      const today = new Date();
-      const todayKey = `${today.getDate()}.${today.getMonth() + 1}.${today.getFullYear()}`;
+      const todayKey = helsinkiDateKey(new Date().toISOString());
       setActiveDate(dates.includes(todayKey) ? todayKey : dates[0]);
     }
   }, [dates, activeDate]);
