@@ -393,7 +393,7 @@ function EventCard({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold leading-tight">{a.Name}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {a.Organization?.NameShort ?? a.Organization?.Name ?? ""}
+                    {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
