@@ -22,10 +22,7 @@ import {
 } from "@/lib/tuloslista-queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-
 import { RequireRole } from "@/components/RequireRole";
-import { RecordsPanel } from "@/components/RecordsPanel";
 
 export const Route = createFileRoute("/watch")({
   head: () => ({
