@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Navigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { Mail, Lock, ShieldCheck, LogIn } from "lucide-react";
+import { Mail, Lock, ShieldCheck, LogIn, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 
 import logo from "@/assets/lahden-ahkera-logo.png";
@@ -44,11 +44,22 @@ function LoginForm() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
   const [busy, setBusy] = useState(false);
   const [officialPw, setOfficialPw] = useState("");
 
   const handleEmail = async (e: FormEvent) => {
     e.preventDefault();
+    if (mode === "signup") {
+      if (password.length < 6) {
+        toast.error("Salasanan tulee olla vähintään 6 merkkiä");
+        return;
+      }
+      if (password !== password2) {
+        toast.error("Salasanat eivät täsmää");
+        return;
+      }
+    }
     setBusy(true);
     try {
       if (mode === "signup") {
@@ -58,7 +69,15 @@ function LoginForm() {
           options: { emailRedirectTo: `${window.location.origin}/` },
         });
         if (error) throw error;
-        toast.success("Tili luotu. Tarkista sähköposti vahvistuslinkin osalta.");
+        // auto-confirm on → try to sign in immediately
+        const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInErr) {
+          toast.success("Tili luotu. Voit nyt kirjautua sisään.");
+          setMode("signin");
+        } else {
+          toast.success("Tervetuloa!");
+          navigate({ to: "/" });
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -66,6 +85,25 @@ function LoginForm() {
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Kirjautuminen epäonnistui");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleForgot = async () => {
+    if (!email) {
+      toast.error("Anna ensin sähköpostiosoitteesi");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("Salasanan palautuslinkki lähetetty sähköpostiisi");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Palautus epäonnistui");
     } finally {
       setBusy(false);
     }
@@ -166,18 +204,49 @@ function LoginForm() {
                 />
               </div>
             </div>
+            {mode === "signup" && (
+              <div>
+                <Label htmlFor="password2">Vahvista salasana</Label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="password2"
+                    type="password"
+                    required
+                    minLength={6}
+                    className="pl-9"
+                    value={password2}
+                    onChange={(e) => setPassword2(e.target.value)}
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={busy}>
               {mode === "signup" ? "Luo tunnus" : "Kirjaudu sisään"}
             </Button>
-            <button
-              type="button"
-              onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
-              className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
-            >
-              {mode === "signup"
-                ? "Onko sinulla jo tunnus? Kirjaudu sisään"
-                : "Ei tunnusta? Luo uusi sähköpostilla"}
-            </button>
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {mode === "signup"
+                  ? "Onko sinulla jo tunnus? Kirjaudu sisään"
+                  : "Ei tunnusta? Luo uusi sähköpostilla"}
+              </button>
+              {mode === "signin" && (
+                <button
+                  type="button"
+                  onClick={handleForgot}
+                  disabled={busy}
+                  className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                >
+                  <KeyRound className="h-3 w-3" />
+                  Unohditko salasanan?
+                </button>
+              )}
+            </div>
           </form>
         </section>
 
