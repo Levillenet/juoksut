@@ -226,9 +226,29 @@ function AnnouncerPage() {
           </section>
 
           <aside>
-            <SectionTitle icon={<Clock className="h-4 w-4" />} title="Seuraavaksi" count={upcoming.length} />
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <SectionTitle icon={<Clock className="h-4 w-4" />} title="Seuraavaksi" count={upcoming.length} />
+              <button
+                onClick={() => setShowPastUpcoming((v) => !v)}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  showPastUpcoming
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-foreground hover:bg-secondary"
+                }`}
+              >
+                {showPastUpcoming
+                  ? "Piilota menneet"
+                  : `Näytä menneet${pastUpcomingCount > 0 ? ` (${pastUpcomingCount})` : ""}`}
+              </button>
+            </div>
             {upcoming.length === 0 ? (
-              <EmptyCard text="Ei tulevia lajeja tänään." />
+              <EmptyCard
+                text={
+                  pastUpcomingCount > 0
+                    ? "Ei enää tulevia lajeja. Paina ”Näytä menneet”."
+                    : "Ei tulevia lajeja tänään."
+                }
+              />
             ) : (
               <ul className="space-y-2">
                 {upcoming.map((r) => (
