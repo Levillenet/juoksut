@@ -33,7 +33,11 @@ function RoundView() {
     setLoading(true);
     setError(null);
     try {
-      const r = await fetchEvent(competitionId, parseInt(eventId, 10));
+      const eid = parseInt(eventId, 10);
+      const r = await fetchEvent(competitionId, eid);
+      const allocs = r.Rounds.flatMap((rd) => rd.Heats.flatMap((h) => h.Allocations));
+      await captureBaselines(competitionId, eid, allocs);
+      await loadBaselines(competitionId, eid);
       setData(r);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Tuntematon virhe");
