@@ -603,27 +603,40 @@ function EventCard({
 
   // Track rank changes between detail updates so we can show ↑ / ↓ next to
   // athletes whose position improved or dropped during the live event.
+  // Changes are kept visible for ~12s so they don't disappear at the next poll.
   const prevRanksRef = useRef<Map<number, number>>(new Map());
-  const rankChanges = useMemo(() => {
-    const changes = new Map<number, "up" | "down">();
-    const prev = prevRanksRef.current;
-    for (const a of allRanked) {
-      const cur = a.ResultRank ?? a.Position;
-      if (cur == null) continue;
-      const before = prev.get(a.AllocId);
-      if (before != null && before !== cur) {
-        changes.set(a.AllocId, cur < before ? "up" : "down");
-      }
-    }
-    return changes;
-  }, [allRanked]);
+  const [rankChanges, setRankChanges] = useState<Map<number, "up" | "down">>(
+    new Map(),
+  );
   useEffect(() => {
+    const prev = prevRanksRef.current;
+    const newChanges: Array<[number, "up" | "down"]> = [];
     const next = new Map<number, number>();
     for (const a of allRanked) {
       const cur = a.ResultRank ?? a.Position;
-      if (cur != null) next.set(a.AllocId, cur);
+      if (cur == null) continue;
+      next.set(a.AllocId, cur);
+      const before = prev.get(a.AllocId);
+      if (before != null && before !== cur) {
+        newChanges.push([a.AllocId, cur < before ? "up" : "down"]);
+      }
     }
     prevRanksRef.current = next;
+    if (newChanges.length === 0) return;
+    setRankChanges((old) => {
+      const m = new Map(old);
+      for (const [id, dir] of newChanges) m.set(id, dir);
+      return m;
+    });
+    const ids = newChanges.map(([id]) => id);
+    const t = setTimeout(() => {
+      setRankChanges((old) => {
+        const m = new Map(old);
+        for (const id of ids) m.delete(id);
+        return m;
+      });
+    }, 12000);
+    return () => clearTimeout(t);
   }, [allRanked]);
 
   return (
