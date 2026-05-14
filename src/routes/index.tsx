@@ -120,7 +120,9 @@ function Index() {
 
   // The API encodes local time as UTC ("06:20:00+00:00" really means 06:20 local),
   // so compare using UTC parts of the round vs local parts of "now".
-  const isPast = (iso: string): boolean => new Date(iso).getTime() < now.getTime();
+  // Kisat ovat usein hieman myöhässä → siirrä laji menneisiin vasta 5 min ajoitetun ajan jälkeen.
+  const isPast = (iso: string): boolean =>
+    new Date(iso).getTime() + 5 * 60_000 < now.getTime();
 
   const runs = useMemo(
     () => (showPast ? allRuns : allRuns.filter((r) => !isPast(r.BeginDateTimeWithTZ))),
