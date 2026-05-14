@@ -182,6 +182,16 @@ async function processCompetition(
   return { existed: true, rowsAdded, competitionDate };
 }
 
+function parseWind(w: unknown): number | null {
+  if (w === null || w === undefined || w === "") return null;
+  if (typeof w === "number") return Number.isFinite(w) ? w : null;
+  if (typeof w === "string") {
+    const n = Number(w.replace(",", ".").trim());
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 async function flush(rows: Row[]) {
   if (rows.length === 0) return;
   // Chunk to keep request bodies small.
