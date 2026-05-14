@@ -18,6 +18,7 @@ import { useAuth } from "@/lib/auth";
 import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
 import { DailyBestSection } from "@/components/DailyBestSection";
 import { ClubTodaySection } from "@/components/ClubTodaySection";
+import { SeasonStatsSection } from "@/components/SeasonStatsSection";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
