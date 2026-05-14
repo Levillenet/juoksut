@@ -175,7 +175,7 @@ function WatchPage() {
     return Array.from(map.entries())
       .map(([group, ath]) => ({ group, athletes: Array.from(ath.values()) }))
       .sort((a, b) => a.group.localeCompare(b.group, "fi"));
-  }, [index, selectedOrgId]);
+  }, [index, selectedBulkOrgId]);
 
   const toggleAgeClass = (group: string) => {
     setSelectedAgeClasses((prev) => {
