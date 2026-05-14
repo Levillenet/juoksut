@@ -674,10 +674,12 @@ function EventCard({
           {list.map((a) => {
             const rank = a.ResultRank ?? a.Position;
             const change = rankChanges.get(a.AllocId);
+            const eff = a.Result ? effectiveRecord(round.EventId, a) : null;
+            const recordKind = a.Result && eff ? detectRecord(round.Category, a.Result, eff.pb, eff.sb) : null;
             return (
               <li
                 key={a.AllocId}
-                className="flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2"
+                className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-2 rounded-lg bg-muted/40 px-3 py-2 sm:gap-x-3"
               >
                 <span
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-black tabular-nums ${
@@ -703,7 +705,7 @@ function EventCard({
                 ) : (
                   <span className="h-4 w-4 shrink-0" aria-hidden />
                 )}
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0">
                   <p className="truncate text-sm font-semibold leading-tight">{a.Name}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
@@ -711,21 +713,7 @@ function EventCard({
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {a.Result ? (
-                    <>
-                      {(() => {
-                        const eff = effectiveRecord(round.EventId, a);
-                        return (
-                          <RecordBadge
-                            category={round.Category}
-                            result={a.Result}
-                            pb={eff.pb}
-                            sb={eff.sb}
-                            size="lg"
-                          />
-                        );
-                      })()}
-                      <span className="text-base font-bold tabular-nums">{a.Result}</span>
-                    </>
+                    <span className="text-base font-bold tabular-nums">{a.Result}</span>
                   ) : (
                     <span className="flex gap-2 text-xs text-muted-foreground">
                       {a.SB && <span title="Kauden ennätys">SB {a.SB}</span>}
@@ -733,6 +721,17 @@ function EventCard({
                     </span>
                   )}
                 </div>
+                {recordKind && eff && a.Result && (
+                  <div className="col-start-3 col-end-5 mt-1 min-w-0 overflow-hidden">
+                    <RecordBadge
+                      category={round.Category}
+                      result={a.Result}
+                      pb={eff.pb}
+                      sb={eff.sb}
+                      size="sm"
+                    />
+                  </div>
+                )}
               </li>
             );
           })}
@@ -776,10 +775,10 @@ function AllocationRow({
         {rank ?? "–"}
       </span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate">
-            {a.Name}
-            <span className="ml-1 text-xs text-muted-foreground">
+        <div className="flex items-start gap-2">
+          <span className="min-w-0 flex-1">
+            <span className="block truncate">{a.Name}</span>
+            <span className="block truncate text-xs text-muted-foreground">
               {a.Organization?.Name ?? ""}
             </span>
           </span>
@@ -793,7 +792,7 @@ function AllocationRow({
           )}
         </div>
         {recordKind && eff && a.Result && (
-          <div className="mt-1 flex items-center gap-1.5">
+          <div className="mt-1 min-w-0 overflow-hidden">
             <RecordBadge
               category={round.Category}
               result={a.Result}
