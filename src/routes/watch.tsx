@@ -408,14 +408,19 @@ function WatchPage() {
                                       )}
                                     </p>
                                     <div className="mt-1 flex justify-end">
-                                      <RecordBadge
-                                        category={e.round.Category}
-                                        result={e.alloc.Result}
-                                        pb={e.alloc.PB}
-                                        sb={e.alloc.SB}
-                                        size="sm"
-                                        layout="row"
-                                      />
+                                      {(() => {
+                                        const eff = effectiveRecord(e.round.EventId, e.alloc);
+                                        return (
+                                          <RecordBadge
+                                            category={e.round.Category}
+                                            result={e.alloc.Result}
+                                            pb={eff.pb}
+                                            sb={eff.sb}
+                                            size="sm"
+                                            layout="row"
+                                          />
+                                        );
+                                      })()}
                                     </div>
                                   </>
                                 )}
