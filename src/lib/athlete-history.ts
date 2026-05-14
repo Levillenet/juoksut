@@ -24,6 +24,7 @@ export interface AthleteResultRow {
   result_numeric: number | null;
   result_rank: number | null;
   wind: number | null;
+  was_pb?: boolean;
 }
 
 /** Track times "11.34", "1:23.45" → seconds. Field marks "12.34" → meters. */
