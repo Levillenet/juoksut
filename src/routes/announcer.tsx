@@ -86,7 +86,7 @@ function AnnouncerPage() {
   const inProgress = showRunning
     ? inProgressAll
     : inProgressAll.filter((r) => r.Category !== "Track");
-  const completed = todayRounds.filter((r) => r.Status === "Official").reverse().slice(0, 8);
+  const completed = todayRounds.filter((r) => r.Status === "Official").reverse();
   const nowMs = (now ?? new Date()).getTime();
   const upcomingAll = todayRounds.filter(
     (r) => r.Status !== "Official" && r.Status !== "Progress",
@@ -212,15 +212,21 @@ function AnnouncerPage() {
             )}
 
             <div className="mt-8">
-              <SectionTitle icon={<Trophy className="h-4 w-4" />} title="Juuri valmistunut" count={completed.length} />
+              <SectionTitle icon={<Trophy className="h-4 w-4" />} title="Lopputulokset" count={completed.length} />
               {completed.length === 0 ? (
-                <EmptyCard text="Ei valmistuneita lajeja vielä." />
+                <EmptyCard text="Ei julkaistuja lopputuloksia vielä." />
               ) : (
-                <div className="grid gap-4 md:grid-cols-2">
+                <ul className="grid gap-2 md:grid-cols-2">
                   {completed.map((r) => (
-                    <EventCard key={r.Id} round={r} detail={details[r.EventId]} />
+                    <UpcomingItem
+                      key={r.Id}
+                      round={r}
+                      detail={details[r.EventId]}
+                      open={expanded.has(r.EventId)}
+                      onToggle={() => toggleExpand(r.EventId)}
+                    />
                   ))}
-                </div>
+                </ul>
               )}
             </div>
           </section>
