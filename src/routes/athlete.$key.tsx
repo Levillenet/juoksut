@@ -144,9 +144,9 @@ function AthletePage() {
           <div className="rounded-xl border border-dashed bg-card/50 px-6 py-10 text-center">
             <Activity className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              Tälle urheilijalle ei löydy vielä tallennettuja tuloksia. Lisää
-              hänet seurantaan ja aja "Etsi historia" Ennätykset-välilehdeltä,
-              tai odota yöllistä päivitystä.
+              Tälle urheilijalle ei löydy vielä tallennettuja tuloksia.
+              Tausta-ajo kerää tuloksia tuloslistalta — tarkista hetken
+              kuluttua uudelleen.
             </p>
           </div>
         ) : (

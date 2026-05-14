@@ -80,6 +80,30 @@ export type Database = {
         }
         Relationships: []
       }
+      harvest_state: {
+        Row: {
+          id: string
+          last_run_at: string | null
+          latest_id: number
+          next_id: number
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          last_run_at?: string | null
+          latest_id?: number
+          next_id?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          last_run_at?: string | null
+          latest_id?: number
+          next_id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       record_baseline: {
         Row: {
           athlete_id: number
