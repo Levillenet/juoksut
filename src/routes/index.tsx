@@ -54,6 +54,8 @@ function Index() {
   const [error, setError] = useState<string | null>(null);
   const [activeDate, setActiveDate] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showPast, setShowPast] = useState(false);
+  const [now, setNow] = useState(() => new Date());
   const [linkInput, setLinkInput] = useState("");
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
@@ -99,12 +101,43 @@ function Index() {
     }
   }, [dates, activeDate]);
 
-  const runs = useMemo<Round[]>(() => {
+  // Tick clock every 30s so past/upcoming filter stays accurate
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const allRuns = useMemo<Round[]>(() => {
     if (!data || !activeDate) return [];
     return (data[activeDate] ?? [])
       .filter(isRunningEvent)
       .sort((a, b) => a.BeginDateTimeWithTZ.localeCompare(b.BeginDateTimeWithTZ));
   }, [data, activeDate]);
+
+  // The API encodes local time as UTC ("06:20:00+00:00" really means 06:20 local),
+  // so compare using UTC parts of the round vs local parts of "now".
+  const isPast = (iso: string): boolean => {
+    const d = new Date(iso);
+    const roundLocal = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      d.getUTCHours(),
+      d.getUTCMinutes(),
+    );
+    // Anchor to the round's date (not today) so other dates aren't all "past"
+    const roundDateKey = `${d.getUTCDate()}.${d.getUTCMonth() + 1}.${d.getUTCFullYear()}`;
+    if (activeDate && roundDateKey !== activeDate) return false;
+    return roundLocal.getTime() < now.getTime();
+  };
+
+  const runs = useMemo(
+    () => (showPast ? allRuns : allRuns.filter((r) => !isPast(r.BeginDateTimeWithTZ))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allRuns, showPast, now, activeDate],
+  );
+
+  const hiddenPastCount = allRuns.length - runs.length;
 
   const saveLink = () => {
     const id = parseCompetitionId(linkInput);
@@ -185,19 +218,42 @@ function Index() {
           <div className="py-12 text-center text-sm text-muted-foreground">Ladataan…</div>
         )}
 
+        {data && allRuns.length > 0 && (
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              {runs.length} lajia
+              {!showPast && hiddenPastCount > 0 && ` · ${hiddenPastCount} mennyttä piilotettu`}
+            </p>
+            <button
+              onClick={() => setShowPast((v) => !v)}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                showPast
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:bg-secondary"
+              }`}
+            >
+              {showPast ? "Piilota menneet" : "Näytä menneet"}
+            </button>
+          </div>
+        )}
+
         {!loading && data && runs.length === 0 && (
           <div className="py-12 text-center text-sm text-muted-foreground">
-            Ei juoksulajeja valitulle päivälle.
+            {hiddenPastCount > 0
+              ? "Päivän juoksulajit on jo juostu. Paina ”Näytä menneet”."
+              : "Ei juoksulajeja valitulle päivälle."}
           </div>
         )}
 
         <ul className="space-y-2">
-          {runs.map((r) => (
+          {runs.map((r) => {
+            const past = isPast(r.BeginDateTimeWithTZ);
+            return (
             <li key={r.Id}>
               <Link
                 to="/round/$eventId/$roundId"
                 params={{ eventId: String(r.EventId), roundId: String(r.Id) }}
-                className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm transition-colors hover:bg-secondary active:bg-secondary"
+                className={`flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm transition-colors hover:bg-secondary active:bg-secondary ${past ? "opacity-50" : ""}`}
               >
                 <div className="flex w-14 shrink-0 flex-col items-center">
                   <span className="text-lg font-bold tabular-nums tracking-tight text-foreground">
@@ -219,7 +275,8 @@ function Index() {
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </Link>
             </li>
-          ))}
+            );
+          })}
         </ul>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
