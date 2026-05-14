@@ -18,10 +18,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const API = "https://cached-public-api.tuloslista.com/live/v1";
-const BATCH_SIZE = 40;       // competition IDs scanned per invocation
+const BATCH_SIZE = 100;      // competition IDs scanned per invocation
 const TAIL_RESCAN = 30;      // IDs to re-scan when caught up
-const CONCURRENCY = 6;
+const CONCURRENCY = 5;       // parallel competitions per chunk
 const HARD_MAX_ID = 30000;   // safety ceiling
+
+// Soft rate-limit signal shared across the run. If tuloslista.com starts
+// returning 429/503 we stop advancing so the cursor can retry these IDs
+// on a later run instead of skipping them.
+let rateLimited = false;
 
 interface Allocation {
   Surname?: string;
