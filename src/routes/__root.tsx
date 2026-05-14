@@ -72,14 +72,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Juoksulajien lähtöjärjestys" },
+      {
+        name: "description",
+        content:
+          "Mobiilioptimoitu toimitsijanäkymä juoksulajien eräjakoihin – tiedot live.tuloslista.com:sta.",
+      },
+      { name: "author", content: "Toimitsijatyökalu" },
+      { property: "og:title", content: "Juoksulajien lähtöjärjestys" },
+      {
+        property: "og:description",
+        content: "Selkeä mobiilinäkymä juoksulajien eriin ja lähtöjärjestyksiin.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
