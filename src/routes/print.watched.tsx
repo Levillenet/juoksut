@@ -185,10 +185,11 @@ function PrintWatchedPage() {
                         <div className="font-semibold leading-tight">
                           {round.EventName}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {round.SubCategory && translateSub(round.SubCategory)}
-                          {round.Name && ` · ${round.Name}`}
-                        </div>
+                        {round.Name && (
+                          <div className="text-xs text-muted-foreground">
+                            {round.Name}
+                          </div>
+                        )}
                         <ul className="mt-1 space-y-0.5 text-sm print:text-xs">
                           {allocs.map((e, idx) => (
                             <li
