@@ -246,7 +246,7 @@ function AnnouncerPage() {
               {inProgressAll.length} käynnissä · {completed.length} valmis
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => loadSchedule(false)} aria-label="Päivitä">
+          <Button variant="ghost" size="icon" onClick={reload} aria-label="Päivitä">
             <RefreshCw className={`h-5 w-5 ${manualLoading ? "animate-spin" : ""}`} />
           </Button>
         </div>
