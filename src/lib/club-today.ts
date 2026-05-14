@@ -19,6 +19,7 @@ export interface ClubTodayRow {
   result_text: string;
   result_numeric: number | null;
   result_rank: number | null;
+  was_pb: boolean;
 }
 
 export interface ClubOption {
@@ -73,7 +74,7 @@ export async function fetchClubTodayResults(
   let query = supabase
     .from("athlete_results")
     .select(
-      "athlete_key, surname, firstname, organization, organization_id, competition_id, competition_name, event_name, age_class, sub_category, event_category, result_text, result_numeric, result_rank",
+      "athlete_key, surname, firstname, organization, organization_id, competition_id, competition_name, event_name, age_class, sub_category, event_category, result_text, result_numeric, result_rank, was_pb",
     )
     .eq("organization_id", organizationId)
     .gte("competition_date", startISO)

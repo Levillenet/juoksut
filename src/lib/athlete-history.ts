@@ -24,6 +24,7 @@ export interface AthleteResultRow {
   result_numeric: number | null;
   result_rank: number | null;
   wind: number | null;
+  was_pb?: boolean;
 }
 
 /** Track times "11.34", "1:23.45" → seconds. Field marks "12.34" → meters. */
@@ -55,7 +56,7 @@ export async function fetchStoredHistory(
   const { data, error } = await supabase
     .from("athlete_results")
     .select(
-      "id, athlete_key, surname, firstname, organization, organization_id, competition_id, competition_name, competition_date, location, event_id, event_name, sub_category, event_category, result_text, result_numeric, result_rank, wind",
+      "id, athlete_key, surname, firstname, organization, organization_id, competition_id, competition_name, competition_date, location, event_id, event_name, sub_category, event_category, result_text, result_numeric, result_rank, wind, was_pb",
     )
     .in("athlete_key", athleteKeys)
     .order("competition_date", { ascending: true });
@@ -70,7 +71,7 @@ export async function fetchClubHistory(
   const { data, error } = await supabase
     .from("athlete_results")
     .select(
-      "id, athlete_key, surname, firstname, organization, organization_id, competition_id, competition_name, competition_date, location, event_id, event_name, sub_category, event_category, result_text, result_numeric, result_rank, wind",
+      "id, athlete_key, surname, firstname, organization, organization_id, competition_id, competition_name, competition_date, location, event_id, event_name, sub_category, event_category, result_text, result_numeric, result_rank, wind, was_pb",
     )
     .eq("organization_id", organizationId)
     .order("competition_date", { ascending: true });

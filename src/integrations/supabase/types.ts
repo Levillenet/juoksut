@@ -35,6 +35,7 @@ export type Database = {
           result_text: string
           sub_category: string
           surname: string
+          was_pb: boolean
           wind: number | null
         }
         Insert: {
@@ -57,6 +58,7 @@ export type Database = {
           result_text?: string
           sub_category?: string
           surname: string
+          was_pb?: boolean
           wind?: number | null
         }
         Update: {
@@ -79,6 +81,7 @@ export type Database = {
           result_text?: string
           sub_category?: string
           surname?: string
+          was_pb?: boolean
           wind?: number | null
         }
         Relationships: []
@@ -174,6 +177,11 @@ export type Database = {
     Functions: {
       harvest_try_lock: { Args: never; Returns: boolean }
       harvest_unlock: { Args: never; Returns: undefined }
+      mark_pbs_for_competitions: {
+        Args: { comp_ids: number[] }
+        Returns: number
+      }
+      normalize_event_name: { Args: { name: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

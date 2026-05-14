@@ -200,6 +200,7 @@ async function harvestRange(ids: number[]) {
   let existed = 0;
   let lastScannedId = ids.length > 0 ? ids[0] - 1 : -1;
   const pending: Row[] = [];
+  const touchedCompIds = new Set<number>();
 
   // Process IDs in chunks of CONCURRENCY in source order, so that if we
   // bail out on rate-limit we know exactly which IDs were attempted.
@@ -216,12 +217,24 @@ async function harvestRange(ids: number[]) {
       const r = results[j];
       scanned++;
       lastScannedId = chunk[j];
-      if (r.status === "fulfilled" && r.value.existed) existed++;
+      if (r.status === "fulfilled" && r.value.existed) {
+        existed++;
+        touchedCompIds.add(chunk[j]);
+      }
       if (r.status === "rejected") console.error("comp", chunk[j], r.reason);
     }
     if (pending.length >= 400) await flush(pending.splice(0));
   }
   await flush(pending);
+
+  // After all rows are inserted, mark which ones broke the athlete's PB.
+  if (touchedCompIds.size > 0) {
+    const { error } = await supabaseAdmin.rpc("mark_pbs_for_competitions", {
+      comp_ids: Array.from(touchedCompIds),
+    });
+    if (error) console.error("mark_pbs error:", error.message);
+  }
+
   return { scanned, existed, lastScannedId };
 }
 

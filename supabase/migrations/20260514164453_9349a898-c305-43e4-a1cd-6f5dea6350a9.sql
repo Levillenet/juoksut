@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.mark_pbs_for_competitions(integer[]) FROM PUBLIC, anon, authenticated;

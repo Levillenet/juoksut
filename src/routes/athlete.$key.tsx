@@ -252,7 +252,15 @@ function AthletePage() {
                               </span>
                             )}
                           </span>
-                          <span className="shrink-0 tabular-nums font-semibold">
+                          <span className={`shrink-0 tabular-nums font-semibold ${r.was_pb ? "text-primary" : ""}`}>
+                            {r.was_pb && (
+                              <span
+                                title="Henkilökohtainen ennätys"
+                                className="mr-1"
+                              >
+                                🏆
+                              </span>
+                            )}
                             {r.result_text}
                             {r.result_rank != null && (
                               <span className="ml-1 font-normal text-muted-foreground">
