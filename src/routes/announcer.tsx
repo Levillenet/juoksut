@@ -721,7 +721,6 @@ function UpcomingItem({
           ) : (
             <ol className="space-y-1">
               {sorted.map((a) => {
-                const rec = detectRecord(round.Category, a.Result, a.PB, a.SB);
                 return (
                   <li
                     key={a.AllocId}
@@ -740,7 +739,13 @@ function UpcomingItem({
                     </span>
                     {a.Result ? (
                       <span className="flex shrink-0 items-center gap-1">
-                        {rec && <RecordStar kind={rec} size="sm" />}
+                        <RecordBadge
+                          category={round.Category}
+                          result={a.Result}
+                          pb={a.PB}
+                          sb={a.SB}
+                          size="sm"
+                        />
                         <span className="font-bold tabular-nums">{a.Result}</span>
                       </span>
                     ) : (
