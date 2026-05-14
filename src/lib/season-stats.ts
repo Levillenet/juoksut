@@ -304,6 +304,8 @@ export async function fetchSeasonStats(
       meters: a.meters,
       pbs: a.pbs,
       wins: a.wins,
+      seconds: a.seconds,
+      thirds: a.thirds,
       km: a.km,
     }))
     .sort((a, b) =>
