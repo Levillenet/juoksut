@@ -18,9 +18,13 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PrintIndexRouteImport } from './routes/print.index'
+import { Route as AnnouncerIndexRouteImport } from './routes/announcer.index'
 import { Route as PrintWatchedRouteImport } from './routes/print.watched'
 import { Route as PrintClubRouteImport } from './routes/print.club'
 import { Route as AthleteKeyRouteImport } from './routes/athlete.$key'
+import { Route as AnnouncerPlanningRouteImport } from './routes/announcer.planning'
+import { Route as AnnouncerLiveRouteImport } from './routes/announcer.live'
+import { Route as AnnouncerCombinedRouteImport } from './routes/announcer.combined'
 import { Route as AdminClubLocationsRouteImport } from './routes/admin.club-locations'
 import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
 import { Route as ApiPublicHooksHarvestResultsRouteImport } from './routes/api/public/hooks/harvest-results'
@@ -70,6 +74,11 @@ const PrintIndexRoute = PrintIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PrintRoute,
 } as any)
+const AnnouncerIndexRoute = AnnouncerIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AnnouncerRoute,
+} as any)
 const PrintWatchedRoute = PrintWatchedRouteImport.update({
   id: '/watched',
   path: '/watched',
@@ -84,6 +93,21 @@ const AthleteKeyRoute = AthleteKeyRouteImport.update({
   id: '/athlete/$key',
   path: '/athlete/$key',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AnnouncerPlanningRoute = AnnouncerPlanningRouteImport.update({
+  id: '/planning',
+  path: '/planning',
+  getParentRoute: () => AnnouncerRoute,
+} as any)
+const AnnouncerLiveRoute = AnnouncerLiveRouteImport.update({
+  id: '/live',
+  path: '/live',
+  getParentRoute: () => AnnouncerRoute,
+} as any)
+const AnnouncerCombinedRoute = AnnouncerCombinedRouteImport.update({
+  id: '/combined',
+  path: '/combined',
+  getParentRoute: () => AnnouncerRoute,
 } as any)
 const AdminClubLocationsRoute = AdminClubLocationsRouteImport.update({
   id: '/admin/club-locations',
@@ -104,7 +128,7 @@ const ApiPublicHooksHarvestResultsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/announcer': typeof AnnouncerRoute
+  '/announcer': typeof AnnouncerRouteWithChildren
   '/login': typeof LoginRoute
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
@@ -112,25 +136,32 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/watch': typeof WatchRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
+  '/announcer/combined': typeof AnnouncerCombinedRoute
+  '/announcer/live': typeof AnnouncerLiveRoute
+  '/announcer/planning': typeof AnnouncerPlanningRoute
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
+  '/announcer/': typeof AnnouncerIndexRoute
   '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/announcer': typeof AnnouncerRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/watch': typeof WatchRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
+  '/announcer/combined': typeof AnnouncerCombinedRoute
+  '/announcer/live': typeof AnnouncerLiveRoute
+  '/announcer/planning': typeof AnnouncerPlanningRoute
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
+  '/announcer': typeof AnnouncerIndexRoute
   '/print': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
@@ -138,7 +169,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/announcer': typeof AnnouncerRoute
+  '/announcer': typeof AnnouncerRouteWithChildren
   '/login': typeof LoginRoute
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
@@ -146,9 +177,13 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/watch': typeof WatchRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
+  '/announcer/combined': typeof AnnouncerCombinedRoute
+  '/announcer/live': typeof AnnouncerLiveRoute
+  '/announcer/planning': typeof AnnouncerPlanningRoute
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
+  '/announcer/': typeof AnnouncerIndexRoute
   '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
@@ -165,25 +200,32 @@ export interface FileRouteTypes {
     | '/settings'
     | '/watch'
     | '/admin/club-locations'
+    | '/announcer/combined'
+    | '/announcer/live'
+    | '/announcer/planning'
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
+    | '/announcer/'
     | '/print/'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-results'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/announcer'
     | '/login'
     | '/reset-password'
     | '/search'
     | '/settings'
     | '/watch'
     | '/admin/club-locations'
+    | '/announcer/combined'
+    | '/announcer/live'
+    | '/announcer/planning'
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
+    | '/announcer'
     | '/print'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-results'
@@ -198,9 +240,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/watch'
     | '/admin/club-locations'
+    | '/announcer/combined'
+    | '/announcer/live'
+    | '/announcer/planning'
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
+    | '/announcer/'
     | '/print/'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-results'
@@ -208,7 +254,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AnnouncerRoute: typeof AnnouncerRoute
+  AnnouncerRoute: typeof AnnouncerRouteWithChildren
   LoginRoute: typeof LoginRoute
   PrintRoute: typeof PrintRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -286,6 +332,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrintIndexRouteImport
       parentRoute: typeof PrintRoute
     }
+    '/announcer/': {
+      id: '/announcer/'
+      path: '/'
+      fullPath: '/announcer/'
+      preLoaderRoute: typeof AnnouncerIndexRouteImport
+      parentRoute: typeof AnnouncerRoute
+    }
     '/print/watched': {
       id: '/print/watched'
       path: '/watched'
@@ -306,6 +359,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/athlete/$key'
       preLoaderRoute: typeof AthleteKeyRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/announcer/planning': {
+      id: '/announcer/planning'
+      path: '/planning'
+      fullPath: '/announcer/planning'
+      preLoaderRoute: typeof AnnouncerPlanningRouteImport
+      parentRoute: typeof AnnouncerRoute
+    }
+    '/announcer/live': {
+      id: '/announcer/live'
+      path: '/live'
+      fullPath: '/announcer/live'
+      preLoaderRoute: typeof AnnouncerLiveRouteImport
+      parentRoute: typeof AnnouncerRoute
+    }
+    '/announcer/combined': {
+      id: '/announcer/combined'
+      path: '/combined'
+      fullPath: '/announcer/combined'
+      preLoaderRoute: typeof AnnouncerCombinedRouteImport
+      parentRoute: typeof AnnouncerRoute
     }
     '/admin/club-locations': {
       id: '/admin/club-locations'
@@ -331,6 +405,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AnnouncerRouteChildren {
+  AnnouncerCombinedRoute: typeof AnnouncerCombinedRoute
+  AnnouncerLiveRoute: typeof AnnouncerLiveRoute
+  AnnouncerPlanningRoute: typeof AnnouncerPlanningRoute
+  AnnouncerIndexRoute: typeof AnnouncerIndexRoute
+}
+
+const AnnouncerRouteChildren: AnnouncerRouteChildren = {
+  AnnouncerCombinedRoute: AnnouncerCombinedRoute,
+  AnnouncerLiveRoute: AnnouncerLiveRoute,
+  AnnouncerPlanningRoute: AnnouncerPlanningRoute,
+  AnnouncerIndexRoute: AnnouncerIndexRoute,
+}
+
+const AnnouncerRouteWithChildren = AnnouncerRoute._addFileChildren(
+  AnnouncerRouteChildren,
+)
+
 interface PrintRouteChildren {
   PrintClubRoute: typeof PrintClubRoute
   PrintWatchedRoute: typeof PrintWatchedRoute
@@ -347,7 +439,7 @@ const PrintRouteWithChildren = PrintRoute._addFileChildren(PrintRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AnnouncerRoute: AnnouncerRoute,
+  AnnouncerRoute: AnnouncerRouteWithChildren,
   LoginRoute: LoginRoute,
   PrintRoute: PrintRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,

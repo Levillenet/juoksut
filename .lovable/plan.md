@@ -57,3 +57,18 @@ Uusi sivu **`/admin/club-locations`** (vain kirjautuneille).
 ## Avoin oletus (vahvistus suotavaa, ei estä toteutusta)
 
 **Tunnit kisapaikalla** – `athlete_results.captured_at` on harvesterin ajastus, ei urheilijan oikea aikaleima. Käytetään arviota: 1.5 h pohjaksi per kisapäivä + 0.5 h × (urheilijan lajit kisassa − 1). Tämä on lähellä todellisuutta tyypillisessä kisassa, mutta ei tunne lajien välistä taukoa. Voidaan myöhemmin vaihtaa kisaohjelman aikaleimoihin, jos sellainen data tulee saataville.
+
+---
+
+## Kuuluttajan moodit (toteutettu)
+
+`/announcer` jaettu kolmeen valittavaan moodiin:
+- `/announcer/combined` – nykyinen yhden laitteen näkymä
+- `/announcer/live` – aktiivinen kuulutus: PB/SB-banneri full-tilassa + käynnissä olevat lajit yhden palstan kortteina (oletuksena auki)
+- `/announcer/planning` – seuraavat lajit ilman 20-rajaa + lopputulokset dismiss-toiminnolla
+
+Yhteinen tilanhallinta `useAnnouncerData`-hookissa (Tanstack Query -cache jaetaan eri reittien välillä). Valintasivu `/announcer` muistaa moodin laitekohtaisesti localStoragessa avaimella `announcer.preferredMode`.
+
+### Avoin: dismissalit eri laitteiden välillä
+
+`dismissedCompletedIds` on edelleen per-laite (localStorage). Kun kuuluttaja merkitsee Live- tai Planning-tabletilla lopputuloksen luetuksi, toinen laite ei tiedä siitä. Synkronointi Supabaseen (esim. taulu `announcer_dismissed`) tehdään seuraavassa vaiheessa – vasta sen jälkeen kun käytännön käyttö varmistaa että dismiss on hyödyllinen tila kahdella laitteella.
