@@ -86,6 +86,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Juoksulajien lähtöjärjestys" },
+      { name: "description", content: "Race Day Assist provides a streamlined UI for race organizers to manage running events, filtering out non-running disciplines." },
+      { property: "og:description", content: "Race Day Assist provides a streamlined UI for race organizers to manage running events, filtering out non-running disciplines." },
+      { name: "twitter:description", content: "Race Day Assist provides a streamlined UI for race organizers to manage running events, filtering out non-running disciplines." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/baf7fcb3-39fe-4109-b697-aeb1e1036d70/id-preview-8c6417f7--293ee435-938e-49f8-9f0c-88f8952d582f.lovable.app-1778742309693.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/baf7fcb3-39fe-4109-b697-aeb1e1036d70/id-preview-8c6417f7--293ee435-938e-49f8-9f0c-88f8952d582f.lovable.app-1778742309693.png" },
     ],
     links: [
       {
