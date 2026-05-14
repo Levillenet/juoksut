@@ -14,7 +14,7 @@ import {
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/print")({
+export const Route = createFileRoute("/print/")({
   head: () => ({
     meta: [
       { title: "Tulostettava aikataulu – juoksulajit" },
