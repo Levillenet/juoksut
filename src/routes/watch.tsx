@@ -17,6 +17,7 @@ import {
 } from "@/lib/tuloslista";
 import { useCompetitionId } from "@/lib/competition-store";
 import { useWatchedAthletes, athleteKey, type WatchedAthlete } from "@/lib/watch-store";
+import { RecordBadge } from "@/lib/records";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
