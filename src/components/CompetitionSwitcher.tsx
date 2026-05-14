@@ -1,10 +1,13 @@
-import { useState } from "react";
-import { useTodayCompetitions } from "@/lib/competition-list";
+import { useMemo, useState } from "react";
+import { useCompetitionsWindow } from "@/lib/competition-list";
 import { useCompetitionId } from "@/lib/competition-store";
+import { helsinkiDateKey } from "@/lib/tuloslista";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
