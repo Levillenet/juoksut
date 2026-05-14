@@ -442,7 +442,7 @@ function AnnouncerPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           <section className="lg:col-span-2">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <SectionTitle icon={<Activity className="h-4 w-4" />} title="Käynnissä" count={inProgress.length} />
+              <SectionTitle icon={<Activity className="h-4 w-4" />} title="Käynnissä" count={inProgressVisible.length} />
               <div className="flex gap-1 rounded-full border border-border bg-card p-1 text-xs font-medium">
                 <button
                   onClick={() => setShowRunning(false)}
@@ -462,11 +462,11 @@ function AnnouncerPage() {
                 </button>
               </div>
             </div>
-            {inProgress.length === 0 ? (
+            {inProgressVisible.length === 0 ? (
               <EmptyCard text={showRunning ? "Ei käynnissä olevia lajeja." : "Ei käynnissä olevia kenttälajeja."} />
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
-                {inProgress.map((r) => (
+                {inProgressVisible.map((r) => (
                   <EventCard
                     key={r.Id}
                     round={r}
@@ -484,7 +484,7 @@ function AnnouncerPage() {
                 <SectionTitle
                   icon={<Trophy className="h-4 w-4" />}
                   title="Lopputulokset"
-                  count={completedAll.length}
+                  count={completedAllMerged.length}
                 />
                 {dismissedCompletedIds.size > 0 && (
                   <button
@@ -495,13 +495,13 @@ function AnnouncerPage() {
                   </button>
                 )}
               </div>
-              {completedAll.length === 0 ? (
+              {completedAllMerged.length === 0 ? (
                 <EmptyCard text="Ei julkaistuja lopputuloksia vielä." />
-              ) : completed.length === 0 ? (
+              ) : completedVisible.length === 0 ? (
                 <EmptyCard text="Kaikki lopputulokset merkitty luetuiksi." />
               ) : (
                 <ul className="grid gap-2 md:grid-cols-2">
-                  {completed.map((r) => (
+                  {completedVisible.map((r) => (
                     <UpcomingItem
                       key={r.Id}
                       round={r}
