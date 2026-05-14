@@ -7,6 +7,7 @@ import {
   fetchProperties,
   isRunningEvent,
   formatTime,
+  helsinkiDateKey,
   parseCompetitionId,
   STATUS_LABEL,
   type Round,
