@@ -151,6 +151,20 @@ function AnnouncerPage() {
         wantedIds.map((id) => fetchEvent(competitionId, id)),
       );
       if (cancelled) return;
+      // Capture + load PB/SB baselines for each event before updating details,
+      // so the first render after fetch can already use baseline values.
+      await Promise.allSettled(
+        results.map(async (res, i) => {
+          if (res.status !== "fulfilled") return;
+          const ev = res.value;
+          const allocs = ev.Rounds.flatMap((r) =>
+            r.Heats.flatMap((h) => h.Allocations),
+          );
+          await captureBaselines(competitionId, ev.Id, allocs);
+          await loadBaselines(competitionId, ev.Id);
+        }),
+      );
+      if (cancelled) return;
       setDetails((prev) => {
         const next = { ...prev };
         results.forEach((res, i) => {
