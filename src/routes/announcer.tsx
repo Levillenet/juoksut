@@ -633,9 +633,17 @@ function EventCard({
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  {rec && <RecordStar kind={rec} size="lg" />}
                   {a.Result ? (
-                    <span className="text-base font-bold tabular-nums">{a.Result}</span>
+                    <>
+                      <RecordBadge
+                        category={round.Category}
+                        result={a.Result}
+                        pb={a.PB}
+                        sb={a.SB}
+                        size="lg"
+                      />
+                      <span className="text-base font-bold tabular-nums">{a.Result}</span>
+                    </>
                   ) : (
                     <span className="flex gap-2 text-xs text-muted-foreground">
                       {a.SB && <span title="Kauden ennätys">SB {a.SB}</span>}
