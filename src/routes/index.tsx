@@ -163,35 +163,40 @@ function Index() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              setLinkInput(String(competitionId));
-              setShowSettings(true);
-            }}
-            aria-label="Asetukset"
+            onClick={() => signOut()}
+            aria-label="Kirjaudu ulos"
           >
-            <Settings2 className="h-5 w-5" />
+            <LogOut className="h-5 w-5" />
           </Button>
         </div>
 
-        <div className="mx-auto flex max-w-2xl gap-2 px-4 pb-3">
+        <div className="mx-auto px-4 pb-3 max-w-2xl">
+          <CompetitionSwitcher className="w-full" />
+        </div>
+
+        <div className="mx-auto flex max-w-2xl flex-wrap gap-2 px-4 pb-3">
           <Link
             to="/search"
             className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
           >
             Hae sukunimellä
           </Link>
-          <Link
-            to="/watch"
-            className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
-          >
-            Kilpailijaseuranta
-          </Link>
-          <Link
-            to="/announcer"
-            className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
-          >
-            Kuuluttaja
-          </Link>
+          {role === "user" && (
+            <Link
+              to="/watch"
+              className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+            >
+              Kilpailijaseuranta
+            </Link>
+          )}
+          {role === "official" && (
+            <Link
+              to="/announcer"
+              className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+            >
+              Kuuluttaja
+            </Link>
+          )}
           <Link
             to="/print"
             className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
