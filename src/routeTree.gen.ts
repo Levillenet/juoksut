@@ -18,6 +18,7 @@ import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PrintClubRouteImport } from './routes/print.club'
 import { Route as AthleteKeyRouteImport } from './routes/athlete.$key'
+import { Route as AdminClubLocationsRouteImport } from './routes/admin.club-locations'
 import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
 import { Route as ApiPublicHooksHarvestResultsRouteImport } from './routes/api/public/hooks/harvest-results'
 
@@ -66,6 +67,11 @@ const AthleteKeyRoute = AthleteKeyRouteImport.update({
   path: '/athlete/$key',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminClubLocationsRoute = AdminClubLocationsRouteImport.update({
+  id: '/admin/club-locations',
+  path: '/admin/club-locations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RoundEventIdRoundIdRoute = RoundEventIdRoundIdRouteImport.update({
   id: '/round/$eventId/$roundId',
   path: '/round/$eventId/$roundId',
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/watch': typeof WatchRoute
+  '/admin/club-locations': typeof AdminClubLocationsRoute
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/watch': typeof WatchRoute
+  '/admin/club-locations': typeof AdminClubLocationsRoute
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/watch': typeof WatchRoute
+  '/admin/club-locations': typeof AdminClubLocationsRoute
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/search'
     | '/watch'
+    | '/admin/club-locations'
     | '/athlete/$key'
     | '/print/club'
     | '/round/$eventId/$roundId'
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/search'
     | '/watch'
+    | '/admin/club-locations'
     | '/athlete/$key'
     | '/print/club'
     | '/round/$eventId/$roundId'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/search'
     | '/watch'
+    | '/admin/club-locations'
     | '/athlete/$key'
     | '/print/club'
     | '/round/$eventId/$roundId'
@@ -168,6 +180,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SearchRoute: typeof SearchRoute
   WatchRoute: typeof WatchRoute
+  AdminClubLocationsRoute: typeof AdminClubLocationsRoute
   AthleteKeyRoute: typeof AthleteKeyRoute
   RoundEventIdRoundIdRoute: typeof RoundEventIdRoundIdRoute
   ApiPublicHooksHarvestResultsRoute: typeof ApiPublicHooksHarvestResultsRoute
@@ -238,6 +251,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AthleteKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/club-locations': {
+      id: '/admin/club-locations'
+      path: '/admin/club-locations'
+      fullPath: '/admin/club-locations'
+      preLoaderRoute: typeof AdminClubLocationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/round/$eventId/$roundId': {
       id: '/round/$eventId/$roundId'
       path: '/round/$eventId/$roundId'
@@ -273,6 +293,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SearchRoute: SearchRoute,
   WatchRoute: WatchRoute,
+  AdminClubLocationsRoute: AdminClubLocationsRoute,
   AthleteKeyRoute: AthleteKeyRoute,
   RoundEventIdRoundIdRoute: RoundEventIdRoundIdRoute,
   ApiPublicHooksHarvestResultsRoute: ApiPublicHooksHarvestResultsRoute,
@@ -280,3 +301,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
