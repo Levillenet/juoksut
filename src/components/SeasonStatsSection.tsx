@@ -138,6 +138,8 @@ export function SeasonStatsSection() {
                       <th className="px-1 py-1 text-right">Kisat</th>
                       <th className="px-1 py-1 text-right">PB</th>
                       <th className="px-1 py-1 text-right">1.</th>
+                      <th className="px-1 py-1 text-right">2.</th>
+                      <th className="px-1 py-1 text-right">3.</th>
                       <th className="px-1 py-1 text-right">Tunnit</th>
                       <th className="px-1 py-1 text-right">Juostu</th>
                       <th className="px-1 py-1 text-right">Matka</th>
