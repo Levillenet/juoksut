@@ -1,50 +1,62 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "./auth";
 
-const KEY = "tuloslista.competitionId";
+const KEY_BASE = "tuloslista.competitionId";
 const DEFAULT_ID = 19219;
 
-type Listener = (id: number) => void;
-const listeners = new Set<Listener>();
-let currentId: number = DEFAULT_ID;
-let initialized = false;
+function keyFor(role: string | null): string {
+  // Eri valinta toimitsija- ja käyttäjäroolille, jotta kirjautuminen
+  // sisään/ulos ei vaihda toisen näkymän aktiivista kisaa.
+  return role === "official" ? `${KEY_BASE}.official` : `${KEY_BASE}.user`;
+}
 
-function init() {
-  if (initialized) return;
-  initialized = true;
+const listenersByKey = new Map<string, Set<(id: number) => void>>();
+const valueByKey = new Map<string, number>();
+
+function getValue(key: string): number {
+  if (valueByKey.has(key)) return valueByKey.get(key)!;
+  let v = DEFAULT_ID;
   try {
-    const stored = localStorage.getItem(KEY);
+    // Migraatio: vanha yhteinen avain, jos roolikohtaista ei vielä ole
+    const stored =
+      localStorage.getItem(key) ?? localStorage.getItem(KEY_BASE);
     if (stored) {
       const n = parseInt(stored, 10);
-      if (!isNaN(n)) currentId = n;
+      if (!isNaN(n)) v = n;
     }
   } catch {
     /* ignore */
   }
+  valueByKey.set(key, v);
+  return v;
 }
 
 export function useCompetitionId(): [number, (id: number) => void] {
-  init();
-  const [id, setId] = useState<number>(currentId);
+  const { role } = useAuth();
+  const key = keyFor(role);
+  const [id, setId] = useState<number>(() => getValue(key));
 
   useEffect(() => {
-    const listener: Listener = (next) => setId(next);
-    listeners.add(listener);
-    // Sync in case currentId changed before subscription
-    if (currentId !== id) setId(currentId);
+    setId(getValue(key));
+    let set = listenersByKey.get(key);
+    if (!set) {
+      set = new Set();
+      listenersByKey.set(key, set);
+    }
+    set.add(setId);
     return () => {
-      listeners.delete(listener);
+      set!.delete(setId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [key]);
 
   const update = (next: number) => {
-    currentId = next;
+    valueByKey.set(key, next);
     try {
-      localStorage.setItem(KEY, String(next));
+      localStorage.setItem(key, String(next));
     } catch {
       /* ignore */
     }
-    listeners.forEach((l) => l(next));
+    listenersByKey.get(key)?.forEach((l) => l(next));
   };
 
   return [id, update];
