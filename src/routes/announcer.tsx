@@ -371,6 +371,25 @@ function detectRecord(category: string, result: string | null, pb: string, sb: s
   return null;
 }
 
+function RecordStar({ kind, size = "lg" }: { kind: "PB" | "SB"; size?: "lg" | "sm" }) {
+  const px = size === "lg" ? 36 : 26;
+  const fontClass = size === "lg" ? "text-[10px]" : "text-[8px]";
+  return (
+    <span
+      className="relative inline-flex shrink-0 items-center justify-center"
+      style={{ width: px, height: px }}
+      title={kind === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
+      aria-label={kind === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
+    >
+      <Star
+        className="fill-yellow-400 text-yellow-500 drop-shadow-sm"
+        size={px}
+        strokeWidth={1.5}
+      />
+      <span className={`absolute font-black text-black ${fontClass}`}>{kind}</span>
+    </span>
+  );
+
 function EventCard({
   round,
   detail,
