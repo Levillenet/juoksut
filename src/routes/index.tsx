@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Settings2, RefreshCw, ChevronRight } from "lucide-react";
+import { RefreshCw, ChevronRight, LogOut } from "lucide-react";
 import logo from "@/assets/lahden-ahkera-logo.png";
 
 import {
@@ -9,37 +9,41 @@ import {
   isRunningEvent,
   formatTime,
   helsinkiDateKey,
-  parseCompetitionId,
   STATUS_LABEL,
   type Round,
   type RoundsByDate,
 } from "@/lib/tuloslista";
 import { useCompetitionId } from "@/lib/competition-store";
+import { useAuth } from "@/lib/auth";
+import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Juoksulajien lähtöjärjestys – toimitsijanäkymä" },
+      { title: "Live tuloslista seuranta – Lahden Ahkera" },
       {
         name: "description",
         content:
-          "Mobiilioptimoitu toimitsijanäkymä juoksulajien eräjakoihin. Tiedot live.tuloslista.com:sta.",
+          "Lahden Ahkeran live tuloslista seurantapalvelu yleisurheilun kisoihin.",
       },
     ],
   }),
-  component: Index,
+  component: IndexGate,
 });
+
+function IndexGate() {
+  const { role, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Ladataan…
+      </div>
+    );
+  }
+  if (!role) return <Navigate to="/login" />;
+  return <Index />;
+}
 
 const STATUS_STYLE: Record<Round["Status"], string> = {
   Unallocated: "bg-muted text-muted-foreground",
@@ -49,16 +53,15 @@ const STATUS_STYLE: Record<Round["Status"], string> = {
 };
 
 function Index() {
-  const [competitionId, setCompetitionId] = useCompetitionId();
+  const { role, signOut } = useAuth();
+  const [competitionId] = useCompetitionId();
   const [data, setData] = useState<RoundsByDate | null>(null);
   const [name, setName] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeDate, setActiveDate] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
   const [showPast, setShowPast] = useState(false);
   const [now, setNow] = useState(() => new Date());
-  const [linkInput, setLinkInput] = useState("");
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
   const load = async () => {
@@ -127,19 +130,6 @@ function Index() {
 
   const hiddenPastCount = allRuns.length - runs.length;
 
-  const saveLink = () => {
-    const id = parseCompetitionId(linkInput);
-    if (!id) {
-      setError("Anna kelvollinen kisalinkki tai kisanumero.");
-      return;
-    }
-    setCompetitionId(id);
-    setShowSettings(false);
-    setLinkInput("");
-    setData(null);
-    setActiveDate(null);
-  };
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
@@ -173,35 +163,40 @@ function Index() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              setLinkInput(String(competitionId));
-              setShowSettings(true);
-            }}
-            aria-label="Asetukset"
+            onClick={() => signOut()}
+            aria-label="Kirjaudu ulos"
           >
-            <Settings2 className="h-5 w-5" />
+            <LogOut className="h-5 w-5" />
           </Button>
         </div>
 
-        <div className="mx-auto flex max-w-2xl gap-2 px-4 pb-3">
+        <div className="mx-auto px-4 pb-3 max-w-2xl">
+          <CompetitionSwitcher className="w-full" />
+        </div>
+
+        <div className="mx-auto flex max-w-2xl flex-wrap gap-2 px-4 pb-3">
           <Link
             to="/search"
             className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
           >
             Hae sukunimellä
           </Link>
-          <Link
-            to="/watch"
-            className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
-          >
-            Kilpailijaseuranta
-          </Link>
-          <Link
-            to="/announcer"
-            className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
-          >
-            Kuuluttaja
-          </Link>
+          {role === "user" && (
+            <Link
+              to="/watch"
+              className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+            >
+              Kilpailijaseuranta
+            </Link>
+          )}
+          {role === "official" && (
+            <Link
+              to="/announcer"
+              className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+            >
+              Kuuluttaja
+            </Link>
+          )}
           <Link
             to="/print"
             className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
@@ -305,35 +300,6 @@ function Index() {
           Lähde: live.tuloslista.com · automaattinen päivitys 30&nbsp;s välein
         </p>
       </main>
-
-      <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Vaihda kisa</DialogTitle>
-            <DialogDescription>
-              Liitä kisan osoite tai pelkkä kisanumero (esim. https://live.tuloslista.com/19219).
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="link">Kisalinkki tai numero</Label>
-            <Input
-              id="link"
-              autoFocus
-              inputMode="url"
-              value={linkInput}
-              onChange={(e) => setLinkInput(e.target.value)}
-              placeholder="https://live.tuloslista.com/19219"
-              onKeyDown={(e) => e.key === "Enter" && saveLink()}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowSettings(false)}>
-              Peruuta
-            </Button>
-            <Button onClick={saveLink}>Tallenna</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

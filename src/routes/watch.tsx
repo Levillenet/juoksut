@@ -20,6 +20,8 @@ import { useWatchedAthletes, athleteKey, type WatchedAthlete } from "@/lib/watch
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+import { RequireRole } from "@/components/RequireRole";
+
 export const Route = createFileRoute("/watch")({
   head: () => ({
     meta: [
@@ -30,7 +32,11 @@ export const Route = createFileRoute("/watch")({
       },
     ],
   }),
-  component: WatchPage,
+  component: () => (
+    <RequireRole allow={["user"]}>
+      <WatchPage />
+    </RequireRole>
+  ),
 });
 
 interface IndexedEntry {

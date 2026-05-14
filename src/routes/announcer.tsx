@@ -18,6 +18,8 @@ import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/lahden-ahkera-logo.png";
 
+import { RequireRole } from "@/components/RequireRole";
+
 export const Route = createFileRoute("/announcer")({
   head: () => ({
     meta: [
@@ -29,7 +31,11 @@ export const Route = createFileRoute("/announcer")({
       },
     ],
   }),
-  component: AnnouncerPage,
+  component: () => (
+    <RequireRole allow={["official"]}>
+      <AnnouncerPage />
+    </RequireRole>
+  ),
 });
 
 type DetailCache = { [k: number]: EventResults };
