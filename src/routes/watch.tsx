@@ -476,14 +476,23 @@ function WatchPage() {
                         </p>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => remove(athlete.key)}
-                      aria-label="Poista seurannasta"
-                    >
-                      <X className="h-4 w-4" /> Poista
-                    </Button>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Link
+                        to="/athlete/$key"
+                        params={{ key: athlete.key }}
+                        className="inline-flex items-center rounded-md border bg-background px-2 py-1 text-xs font-medium hover:bg-accent"
+                      >
+                        Dashboard
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => remove(athlete.key)}
+                        aria-label="Poista seurannasta"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
 
                   {entries.length === 0 ? (
