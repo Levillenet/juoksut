@@ -139,43 +139,18 @@ function AnnouncerPage() {
     expanded,
   ]);
 
-  useEffect(() => {
-    if (wantedIds.length === 0) return;
-    let cancelled = false;
-    const tick = async () => {
-      const results = await Promise.allSettled(
-        wantedIds.map((id) => fetchEvent(competitionId, id)),
-      );
-      if (cancelled) return;
-      // Capture + load PB/SB baselines for each event before updating details,
-      // so the first render after fetch can already use baseline values.
-      await Promise.allSettled(
-        results.map(async (res, i) => {
-          if (res.status !== "fulfilled") return;
-          const ev = res.value;
-          const allocs = ev.Rounds.flatMap((r) =>
-            r.Heats.flatMap((h) => h.Allocations),
-          );
-          await captureBaselines(competitionId, ev.Id, allocs);
-          await loadBaselines(competitionId, ev.Id);
-        }),
-      );
-      if (cancelled) return;
-      setDetails((prev) => {
-        const next = { ...prev };
-        results.forEach((res, i) => {
-          if (res.status === "fulfilled") next[wantedIds[i]] = res.value;
-        });
-        return next;
-      });
-    };
-    tick();
-    const t = setInterval(tick, 15_000);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, [competitionId, wantedIds]);
+  const detailQueries = useQueries({
+    queries: wantedIds.map((id) => eventDetailsQueryOptions(competitionId, id)),
+  });
+
+  const details: DetailCache = useMemo(() => {
+    const out: DetailCache = {};
+    detailQueries.forEach((q, i) => {
+      if (q.data) out[wantedIds[i]] = q.data;
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailQueries.map((q) => q.dataUpdatedAt).join(","), wantedIds]);
 
   // Detect new PB/SB results when details update; show alert banner for ~1 min
   useEffect(() => {
