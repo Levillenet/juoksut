@@ -366,22 +366,39 @@ function EventCard({
   round,
   detail,
   live = false,
+  open = false,
+  onToggle,
 }: {
   round: Round;
   detail?: EventResults;
   live?: boolean;
+  open?: boolean;
+  onToggle?: () => void;
 }) {
   const top3 = useMemo(() => rankedTop(detail, 3), [detail]);
+  const allRanked = useMemo(
+    () =>
+      flattenAllocations(detail)
+        .filter((a) => a.ResultRank != null || a.Result || a.Position != null)
+        .sort((a, b) => {
+          const ar = a.ResultRank ?? a.Position ?? 999;
+          const br = b.ResultRank ?? b.Position ?? 999;
+          return ar - br;
+        }),
+    [detail],
+  );
+  const list = open ? allRanked : top3;
 
   return (
-    <Link
-      to="/round/$eventId/$roundId"
-      params={{ eventId: String(round.EventId), roundId: String(round.Id) }}
-      className={`block rounded-2xl border bg-card p-4 transition-colors hover:bg-secondary/50 ${
+    <div
+      className={`overflow-hidden rounded-2xl border bg-card ${
         live ? "border-primary/60 ring-1 ring-primary/30" : "border-border"
       }`}
     >
-      <div className="mb-3 flex items-baseline justify-between gap-3">
+      <button
+        onClick={onToggle}
+        className="flex w-full items-baseline justify-between gap-3 p-4 text-left hover:bg-secondary/50"
+      >
         <div className="min-w-0">
           <p className="truncate text-xl font-bold leading-tight">{round.EventName}</p>
           <p className="truncate text-xs text-muted-foreground">
@@ -389,7 +406,7 @@ function EventCard({
             {round.SubCategory && ` · ${translateSub(round.SubCategory)}`}
           </p>
         </div>
-        <div className="shrink-0 text-right">
+        <div className="flex shrink-0 items-center gap-2">
           {live ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase text-primary-foreground">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary-foreground" />
@@ -400,17 +417,22 @@ function EventCard({
               {formatTime(round.BeginDateTimeWithTZ)}
             </span>
           )}
+          <ChevronDown
+            className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+          />
         </div>
-      </div>
+      </button>
 
-      {top3.length === 0 ? (
+      <div className="px-4 pb-4">
+      {list.length === 0 ? (
         <p className="rounded-lg bg-muted/50 px-3 py-4 text-center text-xs text-muted-foreground">
           {detail ? "Tulokset eivät vielä saatavilla" : "Ladataan tuloksia…"}
         </p>
       ) : (
         <ol className="space-y-1.5">
-          {top3.map((a) => {
+          {list.map((a) => {
             const rec = detectRecord(round.Category, a.Result, a.PB, a.SB);
+            const rank = a.ResultRank ?? a.Position;
             return (
               <li
                 key={a.AllocId}
@@ -418,14 +440,14 @@ function EventCard({
               >
                 <span
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-black tabular-nums ${
-                    a.ResultRank === 1
+                    rank === 1
                       ? "bg-primary text-primary-foreground"
-                      : a.ResultRank === 2
+                      : rank === 2
                         ? "bg-accent text-accent-foreground"
                         : "bg-secondary text-secondary-foreground"
                   }`}
                 >
-                  {a.ResultRank ?? "–"}
+                  {rank ?? "–"}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold leading-tight">{a.Name}</p>
@@ -446,14 +468,33 @@ function EventCard({
                       {rec === "PB" ? "Uusi PB" : "Uusi SB"}
                     </span>
                   )}
-                  <span className="text-base font-bold tabular-nums">{a.Result ?? "–"}</span>
+                  {a.Result ? (
+                    <span className="text-base font-bold tabular-nums">{a.Result}</span>
+                  ) : (
+                    <span className="flex gap-2 text-xs text-muted-foreground">
+                      {a.SB && <span title="Kauden ennätys">SB {a.SB}</span>}
+                      {a.PB && <span title="Oma ennätys">PB {a.PB}</span>}
+                    </span>
+                  )}
                 </div>
               </li>
             );
           })}
         </ol>
       )}
-    </Link>
+      {open && (
+        <div className="mt-3 text-right">
+          <Link
+            to="/round/$eventId/$roundId"
+            params={{ eventId: String(round.EventId), roundId: String(round.Id) }}
+            className="text-xs font-semibold text-primary hover:underline"
+          >
+            Avaa täysi näkymä →
+          </Link>
+        </div>
+      )}
+      </div>
+    </div>
   );
 }
 
