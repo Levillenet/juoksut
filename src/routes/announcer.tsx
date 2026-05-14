@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, RefreshCw, Trophy, Activity, Clock, ChevronDown, Star } from "lucide-react";
+import { ArrowLeft, RefreshCw, Trophy, Activity, Clock, ChevronDown } from "lucide-react";
+import { detectRecord, formatImprovement, RecordBadge } from "@/lib/records";
 
 import {
   fetchRounds,
