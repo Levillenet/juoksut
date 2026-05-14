@@ -160,6 +160,8 @@ export function SeasonStatsSection() {
                         <td className="px-1 py-1.5 text-right tabular-nums">{r.competitions}</td>
                         <td className="px-1 py-1.5 text-right tabular-nums">{r.pbs || "–"}</td>
                         <td className="px-1 py-1.5 text-right tabular-nums">{r.wins || "–"}</td>
+                        <td className="px-1 py-1.5 text-right tabular-nums">{r.seconds || "–"}</td>
+                        <td className="px-1 py-1.5 text-right tabular-nums">{r.thirds || "–"}</td>
                         <td className="px-1 py-1.5 text-right tabular-nums">{fmtHours(r.hours)}</td>
                         <td className="px-1 py-1.5 text-right tabular-nums">{fmtMeters(r.meters)}</td>
                         <td className="px-1 py-1.5 text-right tabular-nums">{fmtKm(r.km)}</td>
