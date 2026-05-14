@@ -440,9 +440,25 @@ function AnnouncerPage() {
             )}
 
             <div className="mt-8">
-              <SectionTitle icon={<Trophy className="h-4 w-4" />} title="Lopputulokset" count={completed.length} />
-              {completed.length === 0 ? (
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <SectionTitle
+                  icon={<Trophy className="h-4 w-4" />}
+                  title="Lopputulokset"
+                  count={completedAll.length}
+                />
+                {dismissedCompletedIds.size > 0 && (
+                  <button
+                    onClick={restoreDismissed}
+                    className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-secondary"
+                  >
+                    Palauta piilotetut ({dismissedCompletedIds.size})
+                  </button>
+                )}
+              </div>
+              {completedAll.length === 0 ? (
                 <EmptyCard text="Ei julkaistuja lopputuloksia vielä." />
+              ) : completed.length === 0 ? (
+                <EmptyCard text="Kaikki lopputulokset merkitty luetuiksi." />
               ) : (
                 <ul className="grid gap-2 md:grid-cols-2">
                   {completed.map((r) => (
@@ -450,9 +466,9 @@ function AnnouncerPage() {
                       key={r.Id}
                       round={r}
                       detail={details[r.EventId]}
-                      open={expanded.has(r.EventId)}
-                      onToggle={() => toggleExpand(r.EventId)}
                       groupHeats={false}
+                      defaultOpen
+                      onDismiss={() => dismissCompleted(r.Id)}
                     />
                   ))}
                 </ul>
