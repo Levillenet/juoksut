@@ -65,6 +65,7 @@ function AnnouncerPage() {
   const [recordAlerts, setRecordAlerts] = useState<RecordAlert[]>([]);
   const [recordsCollapsed, setRecordsCollapsed] = useState(false);
   const [recordsExpanded, setRecordsExpanded] = useState(false);
+  const [includeSB, setIncludeSB] = useState(false);
   const seenResultsRef = useRef<Map<number, string>>(new Map());
   const initializedRef = useRef(false);
 
