@@ -258,6 +258,47 @@ function AnnouncerPage() {
         </div>
       </header>
 
+      {recordAlerts.length > 0 && (
+        <div className="sticky top-[68px] z-10 border-b border-yellow-400/40 bg-yellow-50 dark:bg-yellow-950/40">
+          <div className="mx-auto max-w-[1600px] space-y-2 px-6 py-3">
+            {recordAlerts.map((a) => (
+              <div
+                key={a.id}
+                className="flex items-center gap-4 rounded-lg border border-yellow-400/60 bg-card px-4 py-2 shadow-sm"
+              >
+                <RecordStar kind={a.kind} size="lg" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-base font-bold leading-tight">
+                    Uusi {a.kind === "PB" ? "henkilökohtainen" : "kauden"} ennätys! {a.athleteName}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {a.eventName}
+                    {a.organization && ` · ${a.organization}`}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-xl font-black tabular-nums leading-none text-primary">
+                    {a.result}
+                  </div>
+                  {a.previous && (
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      ed. {a.previous}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => dismissAlert(a.id)}
+                  className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-secondary"
+                  aria-label="Sulje"
+                >
+                  <span className="text-lg leading-none">×</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <main className="mx-auto max-w-[1600px] px-6 py-6">
         <div className="grid gap-6 lg:grid-cols-3">
           <section className="lg:col-span-2">
