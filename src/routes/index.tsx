@@ -150,6 +150,9 @@ function Index() {
             className="h-9 w-9 shrink-0 rounded-md object-contain"
           />
           <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">
+              Juoksujen näkymä
+            </p>
             <h1 className="truncate text-base font-semibold leading-tight">
               {name || "Juoksulajit"}
             </h1>
