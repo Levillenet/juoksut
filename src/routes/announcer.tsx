@@ -40,6 +40,7 @@ interface RecordAlert {
   athleteName: string;
   organization: string;
   eventName: string;
+  category: string;
   result: string;
   previous: string;
   shownAt: number;
@@ -47,7 +48,8 @@ interface RecordAlert {
   roundId: number;
 }
 
-const ALERT_TTL_MS = 60_000;
+const MAX_RECORDS = 50;
+const VISIBLE_RECORDS = 3;
 
 function AnnouncerPage() {
   const [competitionId] = useCompetitionId();
@@ -61,6 +63,8 @@ function AnnouncerPage() {
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [showPastUpcoming, setShowPastUpcoming] = useState(false);
   const [recordAlerts, setRecordAlerts] = useState<RecordAlert[]>([]);
+  const [recordsCollapsed, setRecordsCollapsed] = useState(false);
+  const [recordsExpanded, setRecordsExpanded] = useState(false);
   const seenResultsRef = useRef<Map<number, string>>(new Map());
   const initializedRef = useRef(false);
 
@@ -177,6 +181,7 @@ function AnnouncerPage() {
               athleteName: a.Name,
               organization: a.Organization?.Name ?? "",
               eventName: ev.Name,
+              category: ev.EventCategory,
               result: a.Result,
               previous: rec === "PB" ? a.PB : a.SB,
               shownAt: Date.now(),
@@ -191,23 +196,13 @@ function AnnouncerPage() {
     if (fresh.length > 0) {
       setRecordAlerts((prev) => {
         const existingIds = new Set(prev.map((p) => p.id));
-        const merged = [...prev, ...fresh.filter((f) => !existingIds.has(f.id))];
-        return merged.slice(-5); // cap at 5 visible
+        const merged = [...fresh.filter((f) => !existingIds.has(f.id)), ...prev];
+        return merged.slice(0, MAX_RECORDS);
       });
     }
   }, [details]);
 
-  // Auto-expire alerts after TTL
-  useEffect(() => {
-    if (recordAlerts.length === 0) return;
-    const t = setInterval(() => {
-      setRecordAlerts((prev) => prev.filter((a) => Date.now() - a.shownAt < ALERT_TTL_MS));
-    }, 5_000);
-    return () => clearInterval(t);
-  }, [recordAlerts.length]);
-
-  const dismissAlert = (id: string) =>
-    setRecordAlerts((prev) => prev.filter((a) => a.id !== id));
+  const clearRecords = () => setRecordAlerts([]);
 
   const toggleExpand = (eventId: number) => {
     setExpanded((prev) => {
@@ -258,46 +253,99 @@ function AnnouncerPage() {
         </div>
       </header>
 
-      {recordAlerts.length > 0 && (
-        <div className="sticky top-[68px] z-10 border-b border-yellow-400/40 bg-yellow-50 dark:bg-yellow-950/40">
-          <div className="mx-auto max-w-[1600px] space-y-2 px-6 py-3">
-            {recordAlerts.map((a) => (
-              <div
-                key={a.id}
-                className="flex items-center gap-4 rounded-lg border border-yellow-400/60 bg-card px-4 py-2 shadow-sm"
-              >
-                <RecordStar kind={a.kind} size="lg" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-bold leading-tight">
-                    Uusi {a.kind === "PB" ? "henkilökohtainen" : "kauden"} ennätys! {a.athleteName}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {a.eventName}
-                    {a.organization && ` · ${a.organization}`}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <div className="text-xl font-black tabular-nums leading-none text-primary">
-                    {a.result}
-                  </div>
-                  {a.previous && (
-                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      ed. {a.previous}
-                    </div>
-                  )}
-                </div>
+      <div className="sticky top-[68px] z-10 border-b border-yellow-400/40 bg-yellow-50/95 backdrop-blur dark:bg-yellow-950/60">
+        <div className="mx-auto max-w-[1600px] px-6 py-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Star className="h-4 w-4 fill-yellow-400 text-yellow-500" />
+              <h2 className="text-sm font-bold uppercase tracking-widest">
+                Uudet ennätykset
+              </h2>
+              <span className="rounded-full bg-yellow-400/30 px-2 py-0.5 text-xs font-semibold">
+                {recordAlerts.length}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              {recordAlerts.length > VISIBLE_RECORDS && !recordsCollapsed && (
                 <button
-                  onClick={() => dismissAlert(a.id)}
-                  className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-secondary"
-                  aria-label="Sulje"
+                  onClick={() => setRecordsExpanded((v) => !v)}
+                  className="rounded-full border border-yellow-400/60 bg-card px-3 py-1 text-xs font-medium hover:bg-secondary"
                 >
-                  <span className="text-lg leading-none">×</span>
+                  {recordsExpanded ? "Näytä vain 3" : `Näytä kaikki (${recordAlerts.length})`}
                 </button>
-              </div>
-            ))}
+              )}
+              {recordAlerts.length > 0 && !recordsCollapsed && (
+                <button
+                  onClick={clearRecords}
+                  className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-secondary"
+                >
+                  Tyhjennä
+                </button>
+              )}
+              <button
+                onClick={() => setRecordsCollapsed((v) => !v)}
+                className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium hover:bg-secondary"
+                aria-label={recordsCollapsed ? "Näytä ennätykset" : "Pienennä"}
+              >
+                {recordsCollapsed ? "Avaa" : "Pienennä"}
+              </button>
+            </div>
           </div>
+
+          {!recordsCollapsed && (
+            <div className="mt-2 space-y-2">
+              {recordAlerts.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-yellow-400/40 bg-card/60 px-4 py-3 text-center text-xs text-muted-foreground">
+                  Ei vielä uusia ennätyksiä tänään. Uudet PB- ja SB-ennätykset näkyvät tässä heti syntyessään.
+                </p>
+              ) : (
+                (recordsExpanded ? recordAlerts : recordAlerts.slice(0, VISIBLE_RECORDS)).map((a) => {
+                  const imp = formatImprovement(a.category, a.result, a.previous);
+                  return (
+                    <div
+                      key={a.id}
+                      className="flex items-center gap-4 rounded-lg border border-yellow-400/60 bg-card px-4 py-2 shadow-sm"
+                    >
+                      <RecordStar kind={a.kind} size="lg" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-base font-bold leading-tight">
+                          {a.athleteName}
+                          {a.organization && (
+                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                              {a.organization}
+                            </span>
+                          )}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {a.eventName} · uusi {a.kind === "PB" ? "henkilökohtainen" : "kauden"} ennätys
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xl font-black tabular-nums leading-none text-primary">
+                          {a.result}
+                        </div>
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {a.previous ? `ed. ${a.previous}` : "ensimmäinen tulos"}
+                        </div>
+                      </div>
+                      {imp && (
+                        <div className="shrink-0 rounded-md bg-emerald-500/15 px-2 py-1 text-right">
+                          <div className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                            Parannus
+                          </div>
+                          <div className="text-sm font-black tabular-nums text-emerald-700 dark:text-emerald-300">
+                            {imp}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       <main className="mx-auto max-w-[1600px] px-6 py-6">
         <div className="grid gap-6 lg:grid-cols-3">
@@ -468,6 +516,24 @@ function parsePerf(s: string | null | undefined): number | null {
   }
   const v = parseFloat(norm);
   return isNaN(v) ? null : v;
+}
+
+function formatImprovement(category: string, result: string, previous: string): string | null {
+  const r = parsePerf(result);
+  const p = parsePerf(previous);
+  if (r == null || p == null) return null;
+  const isTrack = category === "Track";
+  const diff = isTrack ? p - r : r - p;
+  if (diff <= 0) return null;
+  if (isTrack) {
+    if (diff >= 60) {
+      const m = Math.floor(diff / 60);
+      const s = (diff - m * 60).toFixed(2);
+      return `−${m}:${s.padStart(5, "0")}`;
+    }
+    return `−${diff.toFixed(2)} s`;
+  }
+  return `+${diff.toFixed(2)} m`;
 }
 
 type RecordKind = "PB" | "SB" | null;
