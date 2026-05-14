@@ -19,6 +19,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PrintClubRouteImport } from './routes/print.club'
 import { Route as AthleteKeyRouteImport } from './routes/athlete.$key'
 import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
+import { Route as ApiPublicHooksHarvestResultsRouteImport } from './routes/api/public/hooks/harvest-results'
 
 const WatchRoute = WatchRouteImport.update({
   id: '/watch',
@@ -70,6 +71,12 @@ const RoundEventIdRoundIdRoute = RoundEventIdRoundIdRouteImport.update({
   path: '/round/$eventId/$roundId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksHarvestResultsRoute =
+  ApiPublicHooksHarvestResultsRouteImport.update({
+    id: '/api/public/hooks/harvest-results',
+    path: '/api/public/hooks/harvest-results',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
+  '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +102,7 @@ export interface FileRoutesByTo {
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
+  '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +116,7 @@ export interface FileRoutesById {
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
+  '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/athlete/$key'
     | '/print/club'
     | '/round/$eventId/$roundId'
+    | '/api/public/hooks/harvest-results'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/athlete/$key'
     | '/print/club'
     | '/round/$eventId/$roundId'
+    | '/api/public/hooks/harvest-results'
   id:
     | '__root__'
     | '/'
@@ -145,6 +157,7 @@ export interface FileRouteTypes {
     | '/athlete/$key'
     | '/print/club'
     | '/round/$eventId/$roundId'
+    | '/api/public/hooks/harvest-results'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -157,6 +170,7 @@ export interface RootRouteChildren {
   WatchRoute: typeof WatchRoute
   AthleteKeyRoute: typeof AthleteKeyRoute
   RoundEventIdRoundIdRoute: typeof RoundEventIdRoundIdRoute
+  ApiPublicHooksHarvestResultsRoute: typeof ApiPublicHooksHarvestResultsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -231,6 +245,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RoundEventIdRoundIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/harvest-results': {
+      id: '/api/public/hooks/harvest-results'
+      path: '/api/public/hooks/harvest-results'
+      fullPath: '/api/public/hooks/harvest-results'
+      preLoaderRoute: typeof ApiPublicHooksHarvestResultsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -254,6 +275,7 @@ const rootRouteChildren: RootRouteChildren = {
   WatchRoute: WatchRoute,
   AthleteKeyRoute: AthleteKeyRoute,
   RoundEventIdRoundIdRoute: RoundEventIdRoundIdRoute,
+  ApiPublicHooksHarvestResultsRoute: ApiPublicHooksHarvestResultsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
