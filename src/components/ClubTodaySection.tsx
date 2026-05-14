@@ -6,6 +6,7 @@ import {
   fetchClubPbs,
   fetchClubTodayResults,
   fetchTodayClubs,
+  normalizeEventName,
   type ClubTodayRow,
 } from "@/lib/club-today";
 
