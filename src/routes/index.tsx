@@ -143,16 +143,13 @@ function Index() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
-        <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+        <div className="relative mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <img
             src={logo}
             alt="Lahden Ahkera"
             className="h-9 w-9 shrink-0 rounded-md object-contain"
           />
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">
-              Juoksujen näkymä
-            </p>
             <h1 className="truncate text-base font-semibold leading-tight">
               {name || "Juoksulajit"}
             </h1>
@@ -161,6 +158,9 @@ function Index() {
               {updatedAt && ` · päivitetty ${formatClock(updatedAt)}`}
             </p>
           </div>
+          <h2 className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-3xl font-black uppercase tracking-widest text-primary lg:block">
+            Juoksujen näkymä
+          </h2>
           <Button
             variant="ghost"
             size="icon"
