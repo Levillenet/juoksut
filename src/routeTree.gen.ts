@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PrintRouteImport } from './routes/print'
 import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
 
+const PrintRoute = PrintRouteImport.update({
+  id: '/print',
+  path: '/print',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnnouncerRoute = AnnouncerRouteImport.update({
   id: '/announcer',
   path: '/announcer',
@@ -32,35 +38,46 @@ const RoundEventIdRoundIdRoute = RoundEventIdRoundIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRoute
+  '/print': typeof PrintRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRoute
+  '/print': typeof PrintRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRoute
+  '/print': typeof PrintRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/announcer' | '/round/$eventId/$roundId'
+  fullPaths: '/' | '/announcer' | '/print' | '/round/$eventId/$roundId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/announcer' | '/round/$eventId/$roundId'
-  id: '__root__' | '/' | '/announcer' | '/round/$eventId/$roundId'
+  to: '/' | '/announcer' | '/print' | '/round/$eventId/$roundId'
+  id: '__root__' | '/' | '/announcer' | '/print' | '/round/$eventId/$roundId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnnouncerRoute: typeof AnnouncerRoute
+  PrintRoute: typeof PrintRoute
   RoundEventIdRoundIdRoute: typeof RoundEventIdRoundIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/print': {
+      id: '/print'
+      path: '/print'
+      fullPath: '/print'
+      preLoaderRoute: typeof PrintRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/announcer': {
       id: '/announcer'
       path: '/announcer'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnnouncerRoute: AnnouncerRoute,
+  PrintRoute: PrintRoute,
   RoundEventIdRoundIdRoute: RoundEventIdRoundIdRoute,
 }
 export const routeTree = rootRouteImport
