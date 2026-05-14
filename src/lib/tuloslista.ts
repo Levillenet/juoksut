@@ -131,3 +131,16 @@ export const STATUS_LABEL: Record<Round["Status"], string> = {
   Progress: "Käynnissä",
   Official: "Virallinen",
 };
+
+export function translateSub(sub: string): string {
+  switch (sub) {
+    case "Sprint": return "Pikajuoksu";
+    case "Run": return "Juoksu";
+    case "Hurdles": return "Aidat";
+    case "Steeple": return "Estejuoksu";
+    case "Relay": return "Viesti";
+    case "Walk": return "Kävely";
+    default: return sub;
+  }
+}
+
