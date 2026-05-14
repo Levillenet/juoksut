@@ -13,7 +13,7 @@ function AnnouncerLive() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <AnnouncerHeader data={data} mode="live" />
-      <RecordsBanner data={data} variant="full" />
+      <RecordsBanner data={data} variant="compact" />
       <main className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6">
         <InProgressSection data={data} layout="wide" />
         <p className="mt-8 text-center text-xs text-muted-foreground">
