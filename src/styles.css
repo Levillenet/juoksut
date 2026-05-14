@@ -148,4 +148,11 @@
   body { background: white !important; color: black !important; }
   .print\:hidden { display: none !important; }
   a { color: inherit !important; text-decoration: none !important; }
+  /* Force muted/secondary text to be visible on white paper */
+  .text-muted-foreground { color: #444 !important; }
+  /* Ensure athlete lists render inside table cells in print */
+  table, thead, tbody, tr, td, th { page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+  ul, ol { display: block !important; }
+  li { display: list-item !important; list-style: none !important; }
 }
