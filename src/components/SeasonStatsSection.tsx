@@ -175,6 +175,8 @@ export function SeasonStatsSection() {
                       <td className="px-1 py-1.5 text-right tabular-nums">{totals.competitions}</td>
                       <td className="px-1 py-1.5 text-right tabular-nums">{totals.pbs || "–"}</td>
                       <td className="px-1 py-1.5 text-right tabular-nums">{totals.wins || "–"}</td>
+                      <td className="px-1 py-1.5 text-right tabular-nums">{totals.seconds || "–"}</td>
+                      <td className="px-1 py-1.5 text-right tabular-nums">{totals.thirds || "–"}</td>
                       <td className="px-1 py-1.5 text-right tabular-nums">{fmtHours(totals.hours)}</td>
                       <td className="px-1 py-1.5 text-right tabular-nums">{fmtMeters(totals.meters)}</td>
                       <td className="px-1 py-1.5 text-right tabular-nums">{fmtKm(totals.km)}</td>
