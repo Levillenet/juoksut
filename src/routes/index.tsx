@@ -116,7 +116,7 @@ function Index() {
   const allRuns = useMemo<Round[]>(() => {
     if (!data || !activeDate) return [];
     return (data[activeDate] ?? [])
-      .filter(isRunningEvent)
+      .slice()
       .sort((a, b) => a.BeginDateTimeWithTZ.localeCompare(b.BeginDateTimeWithTZ));
   }, [data, activeDate]);
 
