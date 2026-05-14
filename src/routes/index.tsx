@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Settings2, RefreshCw, ChevronRight } from "lucide-react";
+import { RefreshCw, ChevronRight, LogOut } from "lucide-react";
 import logo from "@/assets/lahden-ahkera-logo.png";
 
 import {
@@ -9,37 +9,41 @@ import {
   isRunningEvent,
   formatTime,
   helsinkiDateKey,
-  parseCompetitionId,
   STATUS_LABEL,
   type Round,
   type RoundsByDate,
 } from "@/lib/tuloslista";
 import { useCompetitionId } from "@/lib/competition-store";
+import { useAuth } from "@/lib/auth";
+import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Juoksulajien lähtöjärjestys – toimitsijanäkymä" },
+      { title: "Live tuloslista seuranta – Lahden Ahkera" },
       {
         name: "description",
         content:
-          "Mobiilioptimoitu toimitsijanäkymä juoksulajien eräjakoihin. Tiedot live.tuloslista.com:sta.",
+          "Lahden Ahkeran live tuloslista seurantapalvelu yleisurheilun kisoihin.",
       },
     ],
   }),
-  component: Index,
+  component: IndexGate,
 });
+
+function IndexGate() {
+  const { role, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Ladataan…
+      </div>
+    );
+  }
+  if (!role) return <Navigate to="/login" />;
+  return <Index />;
+}
 
 const STATUS_STYLE: Record<Round["Status"], string> = {
   Unallocated: "bg-muted text-muted-foreground",
