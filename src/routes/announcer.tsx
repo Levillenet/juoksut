@@ -669,6 +669,7 @@ function EventCard({
         <ol className="space-y-1.5">
           {list.map((a) => {
             const rank = a.ResultRank ?? a.Position;
+            const change = rankChanges.get(a.AllocId);
             return (
               <li
                 key={a.AllocId}
@@ -685,6 +686,19 @@ function EventCard({
                 >
                   {rank ?? "–"}
                 </span>
+                {change === "up" ? (
+                  <ArrowUp
+                    className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                    aria-label="Sijoitus parani"
+                  />
+                ) : change === "down" ? (
+                  <ArrowDown
+                    className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400"
+                    aria-label="Sijoitus putosi"
+                  />
+                ) : (
+                  <span className="h-4 w-4 shrink-0" aria-hidden />
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold leading-tight">{a.Name}</p>
                   <p className="truncate text-xs text-muted-foreground">
