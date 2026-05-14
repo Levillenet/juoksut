@@ -775,10 +775,10 @@ function AllocationRow({
         {rank ?? "–"}
       </span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate">
-            {a.Name}
-            <span className="ml-1 text-xs text-muted-foreground">
+        <div className="flex items-start gap-2">
+          <span className="min-w-0 flex-1">
+            <span className="block truncate">{a.Name}</span>
+            <span className="block truncate text-xs text-muted-foreground">
               {a.Organization?.Name ?? ""}
             </span>
           </span>
@@ -792,7 +792,7 @@ function AllocationRow({
           )}
         </div>
         {recordKind && eff && a.Result && (
-          <div className="mt-1 flex items-center gap-1.5">
+          <div className="mt-1 min-w-0 overflow-hidden">
             <RecordBadge
               category={round.Category}
               result={a.Result}
