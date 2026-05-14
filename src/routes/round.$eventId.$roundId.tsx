@@ -152,10 +152,34 @@ function RoundView() {
                           {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
                         </p>
                       </div>
-                      <div className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-                        {a.Number && <div>#{a.Number}</div>}
-                        {a.SB && <div>SB {a.SB}</div>}
-                        {!a.SB && a.PB && <div>PB {a.PB}</div>}
+                      <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs tabular-nums text-muted-foreground">
+                        {a.Result ? (
+                          <>
+                            <div className="flex items-center gap-1">
+                              <span className="text-base font-bold tabular-nums text-foreground">
+                                {a.Result}
+                              </span>
+                              {a.ResultRank != null && (
+                                <span className="text-xs text-muted-foreground">
+                                  ({a.ResultRank}.)
+                                </span>
+                              )}
+                            </div>
+                            <RecordBadge
+                              category={data?.EventCategory ?? ""}
+                              result={a.Result}
+                              pb={a.PB}
+                              sb={a.SB}
+                              size="sm"
+                            />
+                          </>
+                        ) : (
+                          <>
+                            {a.Number && <div>#{a.Number}</div>}
+                            {a.SB && <div>SB {a.SB}</div>}
+                            {!a.SB && a.PB && <div>PB {a.PB}</div>}
+                          </>
+                        )}
                       </div>
                     </li>
                   ))}
