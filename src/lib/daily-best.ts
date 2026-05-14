@@ -3,7 +3,7 @@
 // tuloslista.com here.
 
 import { supabase } from "@/integrations/supabase/client";
-import { isLowerBetter, type AthleteResultRow } from "./athlete-history";
+import { isLowerBetter } from "./athlete-history";
 
 export interface DailyBestRow {
   event_name: string;
