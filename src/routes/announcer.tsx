@@ -404,9 +404,9 @@ function EventCard({
                           ? "bg-primary text-primary-foreground"
                           : "bg-accent text-accent-foreground"
                       }`}
-                      title={rec === "PB" ? "Uusi henkilökohtainen ennätys" : "Uusi kauden ennätys"}
+                      title={rec === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
                     >
-                      {rec}
+                      {rec === "PB" ? "Uusi OE" : "Uusi KE"}
                     </span>
                   )}
                   <span className="text-base font-bold tabular-nums">{a.Result ?? "–"}</span>
