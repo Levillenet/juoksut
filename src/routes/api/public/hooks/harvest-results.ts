@@ -371,6 +371,7 @@ async function run(request: Request): Promise<Response> {
       mode,
       scanned: result.scanned,
       existed: result.existed,
+      revisited: result.revisited,
       rateLimited,
       fromId: ids[0] ?? null,
       toId: ids[ids.length - 1] ?? null,
