@@ -238,6 +238,7 @@ function Index() {
 
         <DailyBestSection />
         <ClubTodaySection excludeCompetitionId={competitionId} />
+        <SeasonStatsSection />
 
         {loading && !data && (
           <div className="py-12 text-center text-sm text-muted-foreground">Ladataan…</div>
