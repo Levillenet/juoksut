@@ -720,11 +720,13 @@ function UpcomingItem({
   detail,
   open,
   onToggle,
+  groupHeats = true,
 }: {
   round: Round;
   detail?: EventResults;
   open: boolean;
   onToggle: () => void;
+  groupHeats?: boolean;
 }) {
   // Find the matching round inside the event detail (an event can contain
   // qualifications + final, etc.).
@@ -738,7 +740,7 @@ function UpcomingItem({
     [heats],
   );
   const hasResults = allocations.some((a) => a.Result);
-  const isTrackHeats = round.Category === "Track" && heats.length > 1;
+  const isTrackHeats = groupHeats && round.Category === "Track" && heats.length > 1;
 
   const sortAllocs = (list: Allocation[]) => {
     if (hasResults) {
