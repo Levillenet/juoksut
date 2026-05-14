@@ -264,8 +264,8 @@ function Index() {
         {!loading && data && runs.length === 0 && (
           <div className="py-12 text-center text-sm text-muted-foreground">
             {hiddenPastCount > 0
-              ? "Päivän juoksulajit on jo juostu. Paina ”Näytä menneet”."
-              : "Ei juoksulajeja valitulle päivälle."}
+              ? "Päivän lajit on jo suoritettu. Paina ”Näytä menneet”."
+              : "Ei lajeja valitulle päivälle."}
           </div>
         )}
 
