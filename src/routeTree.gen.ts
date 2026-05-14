@@ -16,6 +16,7 @@ import { Route as PrintRouteImport } from './routes/print'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PrintIndexRouteImport } from './routes/print.index'
 import { Route as PrintClubRouteImport } from './routes/print.club'
 import { Route as AthleteKeyRouteImport } from './routes/athlete.$key'
 import { Route as AdminClubLocationsRouteImport } from './routes/admin.club-locations'
@@ -57,6 +58,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrintIndexRoute = PrintIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PrintRoute,
+} as any)
 const PrintClubRoute = PrintClubRouteImport.update({
   id: '/club',
   path: '/club',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
+  '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
 }
@@ -102,13 +109,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRoute
   '/login': typeof LoginRoute
-  '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/watch': typeof WatchRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
+  '/print': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
 }
@@ -124,6 +131,7 @@ export interface FileRoutesById {
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
+  '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
 }
@@ -140,6 +148,7 @@ export interface FileRouteTypes {
     | '/admin/club-locations'
     | '/athlete/$key'
     | '/print/club'
+    | '/print/'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-results'
   fileRoutesByTo: FileRoutesByTo
@@ -147,13 +156,13 @@ export interface FileRouteTypes {
     | '/'
     | '/announcer'
     | '/login'
-    | '/print'
     | '/reset-password'
     | '/search'
     | '/watch'
     | '/admin/club-locations'
     | '/athlete/$key'
     | '/print/club'
+    | '/print'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-results'
   id:
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/admin/club-locations'
     | '/athlete/$key'
     | '/print/club'
+    | '/print/'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-results'
   fileRoutesById: FileRoutesById
@@ -237,6 +247,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/print/': {
+      id: '/print/'
+      path: '/'
+      fullPath: '/print/'
+      preLoaderRoute: typeof PrintIndexRouteImport
+      parentRoute: typeof PrintRoute
+    }
     '/print/club': {
       id: '/print/club'
       path: '/club'
@@ -277,10 +294,12 @@ declare module '@tanstack/react-router' {
 
 interface PrintRouteChildren {
   PrintClubRoute: typeof PrintClubRoute
+  PrintIndexRoute: typeof PrintIndexRoute
 }
 
 const PrintRouteChildren: PrintRouteChildren = {
   PrintClubRoute: PrintClubRoute,
+  PrintIndexRoute: PrintIndexRoute,
 }
 
 const PrintRouteWithChildren = PrintRoute._addFileChildren(PrintRouteChildren)
