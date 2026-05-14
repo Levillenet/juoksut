@@ -20,6 +20,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 const API = "https://cached-public-api.tuloslista.com/live/v1";
 const BATCH_SIZE = 100;      // competition IDs scanned per invocation
 const TAIL_RESCAN = 30;      // IDs to re-scan when caught up
+const REVISIT_LIMIT = 40;    // tuloksettomien kisojen uudelleentarkistus per ajo
+const REVISIT_MAX_AGE_DAYS = 14; // kuinka kauan palataan tyhjiin kisoihin
 const CONCURRENCY = 5;       // parallel competitions per chunk
 const HARD_MAX_ID = 30000;   // safety ceiling
 
@@ -124,13 +126,14 @@ type Row = {
 async function processCompetition(
   id: number,
   pending: Row[],
-): Promise<{ existed: boolean }> {
+): Promise<{ existed: boolean; rowsAdded: number; competitionDate: string | null }> {
   const props = await fetchJson<PropertiesShape>(
     `${API}/competition/${id}/properties`,
   );
-  if (!props?.Competition?.Id) return { existed: false };
+  if (!props?.Competition?.Id) return { existed: false, rowsAdded: 0, competitionDate: null };
+  const competitionDate = props.Competition?.BeginDate ?? null;
   const byDate = await fetchJson<RoundsByDateShape>(`${API}/competition/${id}`);
-  if (!byDate) return { existed: true };
+  if (!byDate) return { existed: true, rowsAdded: 0, competitionDate };
   // Map EventId → GroupName (age class) from the schedule
   const ageByEvent = new Map<number, string>();
   for (const list of Object.values(byDate)) {
@@ -139,6 +142,7 @@ async function processCompetition(
     }
   }
   const eventIds = Array.from(ageByEvent.keys());
+  let rowsAdded = 0;
   for (const eid of eventIds) {
     const ev = await fetchJson<EventShape>(`${API}/results/${id}/${eid}`);
     if (!ev) continue;
@@ -158,8 +162,7 @@ async function processCompetition(
             organization_id: orgId,
             competition_id: id,
             competition_name: props.Competition?.Name ?? "",
-            competition_date:
-              props.Competition?.BeginDate ?? ev.BeginDateTimeWithTZ ?? null,
+            competition_date: competitionDate ?? ev.BeginDateTimeWithTZ ?? null,
             location: "",
             event_id: ev.Id,
             event_name: ev.Name,
@@ -171,12 +174,12 @@ async function processCompetition(
             wind: a.Wind ?? null,
             age_class: ageClass,
           });
-
+          rowsAdded++;
         }
       }
     }
   }
-  return { existed: true };
+  return { existed: true, rowsAdded, competitionDate };
 }
 
 async function flush(rows: Row[]) {
@@ -198,9 +201,20 @@ async function flush(rows: Row[]) {
 async function harvestRange(ids: number[]) {
   let scanned = 0;
   let existed = 0;
+  let revisited = 0;
   let lastScannedId = ids.length > 0 ? ids[0] - 1 : -1;
   const pending: Row[] = [];
   const touchedCompIds = new Set<number>();
+  const scanRecords: Array<{
+    competition_id: number;
+    competition_date: string | null;
+    row_count: number;
+    exists_in_source: boolean;
+    done: boolean;
+    last_scanned_at: string;
+  }> = [];
+
+  const cutoffMs = Date.now() - REVISIT_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
 
   // Process IDs in chunks of CONCURRENCY in source order, so that if we
   // bail out on rate-limit we know exactly which IDs were attempted.
@@ -213,19 +227,49 @@ async function harvestRange(ids: number[]) {
         return processCompetition(id, pending);
       }),
     );
+    const nowIso = new Date().toISOString();
     for (let j = 0; j < results.length; j++) {
       const r = results[j];
+      const id = chunk[j];
       scanned++;
-      lastScannedId = chunk[j];
-      if (r.status === "fulfilled" && r.value.existed) {
-        existed++;
-        touchedCompIds.add(chunk[j]);
+      lastScannedId = id;
+      if (r.status === "fulfilled") {
+        const v = r.value;
+        if (v.existed) {
+          existed++;
+          if (v.rowsAdded > 0) touchedCompIds.add(id);
+        }
+        // Päätä onko tämä kisa "done" — eli ei tarvitse palata
+        const dateMs = v.competitionDate ? Date.parse(v.competitionDate) : NaN;
+        const tooOldToRevisit = Number.isFinite(dateMs) && dateMs < cutoffMs;
+        const done = !v.existed || v.rowsAdded > 0 || tooOldToRevisit;
+        scanRecords.push({
+          competition_id: id,
+          competition_date: v.competitionDate,
+          row_count: v.rowsAdded,
+          exists_in_source: v.existed,
+          done,
+          last_scanned_at: nowIso,
+        });
+        if (v.existed && v.rowsAdded === 0) revisited++;
       }
-      if (r.status === "rejected") console.error("comp", chunk[j], r.reason);
+      if (r.status === "rejected") console.error("comp", id, r.reason);
     }
     if (pending.length >= 400) await flush(pending.splice(0));
   }
   await flush(pending);
+
+  // Kirjaa skannauskirjanpito (chunked upsert)
+  if (scanRecords.length > 0) {
+    const CHUNK = 500;
+    for (let i = 0; i < scanRecords.length; i += CHUNK) {
+      const slice = scanRecords.slice(i, i + CHUNK);
+      const { error } = await supabaseAdmin
+        .from("harvest_competitions")
+        .upsert(slice, { onConflict: "competition_id" });
+      if (error) console.error("harvest_competitions upsert:", error.message);
+    }
+  }
 
   // After all rows are inserted, mark which ones broke the athlete's PB.
   if (touchedCompIds.size > 0) {
@@ -235,7 +279,7 @@ async function harvestRange(ids: number[]) {
     if (error) console.error("mark_pbs error:", error.message);
   }
 
-  return { scanned, existed, lastScannedId };
+  return { scanned, existed, revisited, lastScannedId };
 }
 
 async function run(request: Request): Promise<Response> {
@@ -281,6 +325,22 @@ async function run(request: Request): Promise<Response> {
       mode = "tail";
     }
 
+    // Lisää uudelleenkäyntiin kisat, jotka olivat aiemmin tuloksettomia
+    // mutta saattavat nyt olla valmiina (esim. tämän päivän kisa). Vain
+    // backfill/tail-moodissa, ei manuaalisessa toistossa.
+    if (mode !== "manual") {
+      const { data: revisitRows } = await supabaseAdmin
+        .from("harvest_competitions")
+        .select("competition_id")
+        .eq("done", false)
+        .order("last_scanned_at", { ascending: true })
+        .limit(REVISIT_LIMIT);
+      const existing = new Set(ids);
+      for (const r of (revisitRows ?? []) as Array<{ competition_id: number }>) {
+        if (!existing.has(r.competition_id)) ids.push(r.competition_id);
+      }
+    }
+
     const result = await harvestRange(ids);
 
     // Advance cursor only as far as we actually attempted (so a rate-limit
@@ -311,6 +371,7 @@ async function run(request: Request): Promise<Response> {
       mode,
       scanned: result.scanned,
       existed: result.existed,
+      revisited: result.revisited,
       rateLimited,
       fromId: ids[0] ?? null,
       toId: ids[ids.length - 1] ?? null,

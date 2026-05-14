@@ -110,6 +110,33 @@ export type Database = {
         }
         Relationships: []
       }
+      harvest_competitions: {
+        Row: {
+          competition_date: string | null
+          competition_id: number
+          done: boolean
+          exists_in_source: boolean
+          last_scanned_at: string
+          row_count: number
+        }
+        Insert: {
+          competition_date?: string | null
+          competition_id: number
+          done?: boolean
+          exists_in_source?: boolean
+          last_scanned_at?: string
+          row_count?: number
+        }
+        Update: {
+          competition_date?: string | null
+          competition_id?: number
+          done?: boolean
+          exists_in_source?: boolean
+          last_scanned_at?: string
+          row_count?: number
+        }
+        Relationships: []
+      }
       harvest_state: {
         Row: {
           id: string
