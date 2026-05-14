@@ -85,9 +85,14 @@ function PrintPage() {
           </div>
           <Button onClick={() => window.print()} size="sm" className="gap-2">
             <Printer className="h-4 w-4" />
-            Tulosta
+            Tulosta / Tallenna PDF
           </Button>
         </div>
+        <p className="mx-auto max-w-3xl px-4 pb-3 text-xs text-muted-foreground">
+          Vinkki: tulostusikkunassa valitse kohde <strong>"Tallenna PDF-tiedostona"</strong>
+          (tai iPhonella jaa &rarr; <strong>Tallenna tiedostoihin</strong>) tallentaaksesi
+          aikataulun laitteelle.
+        </p>
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-6 print:py-2">
