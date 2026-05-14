@@ -31,7 +31,7 @@ export const Route = createFileRoute("/announcer")({
   component: AnnouncerPage,
 });
 
-type DetailCache = Record<number, EventResults>;
+type DetailCache = { [k: number]: EventResults };
 
 function AnnouncerPage() {
   const [competitionId] = useCompetitionId();
@@ -311,9 +311,9 @@ function parsePerf(s: string | null | undefined): number | null {
   return isNaN(v) ? null : v;
 }
 
-type Record = "PB" | "SB" | null;
+type RecordKind = "PB" | "SB" | null;
 
-function detectRecord(category: string, result: string | null, pb: string, sb: string): Record {
+function detectRecord(category: string, result: string | null, pb: string, sb: string): RecordKind {
   const r = parsePerf(result);
   if (r == null) return null;
   const isTrack = category === "Track";
