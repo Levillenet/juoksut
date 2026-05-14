@@ -585,18 +585,7 @@ function UpcomingItem({
                     </span>
                     {a.Result ? (
                       <span className="flex shrink-0 items-center gap-1">
-                        {rec && (
-                          <span
-                            className={`rounded px-1 py-0.5 text-[9px] font-bold uppercase ${
-                              rec === "PB"
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-accent text-accent-foreground"
-                            }`}
-                            title={rec === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
-                          >
-                            {rec === "PB" ? "Uusi PB" : "Uusi SB"}
-                          </span>
-                        )}
+                        {rec && <RecordStar kind={rec} size="sm" />}
                         <span className="font-bold tabular-nums">{a.Result}</span>
                       </span>
                     ) : (
