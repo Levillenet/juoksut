@@ -144,7 +144,11 @@ function Index() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
-          <Timer className="h-5 w-5 text-primary" aria-hidden />
+          <img
+            src={logo}
+            alt="Lahden Ahkera"
+            className="h-9 w-9 shrink-0 rounded-md object-contain"
+          />
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-semibold leading-tight">
               {name || "Juoksulajit"}
