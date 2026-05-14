@@ -1,29 +1,36 @@
-## Muutos kuuluttajan näkymään (`src/routes/announcer.tsx`)
+## Tavoite
 
-### 1. Lopputulokset auki automaattisesti
+Käynnissä-paneelin kenttälaji-korteissa näkyy jokaisen kilpailijan rivillä kuinka monta suoritusta hän on jo tehnyt (esim. pituus 3/6). Näin kuuluttaja näkee yhdellä silmäyksellä, kuka on ehtinyt mihinkin kierrokseen.
 
-`UpcomingItem`-komponentille lisätään uusi prop `defaultOpen?: boolean`. Jos `open`-propia ei hallita ulkoa, komponentti käyttää sisäistä tilaa, jonka alkuarvo tulee `defaultOpen`-propista.
+## Muutokset
 
-Käytännössä Lopputulokset-listan kutsuun lisätään `defaultOpen`. Jotta sama `expanded`-Set ei pakota kaikkia muiden paneelien kortteja auki, hallinta siirretään niin että:
+### 1. Tyyppi: `src/lib/tuloslista.ts`
 
-- Lopputulokset-kortit hallitsevat itse open/close-tilansa (alkuarvo = auki).
-- Käynnissä- ja Seuraavaksi-paneelien `expanded`-Set jää nykyiselleen.
+Lisätään API-vastauksen mukainen kenttä `Allocation`-tyyppiin:
 
-### 2. "Merkitse luetuksi" -nappi piilottaa kortin
+```ts
+Attempts?: { Line1: string | null }[];
+```
 
-- Lisätään uusi local-storage-pohjainen tila `dismissedCompletedIds: Set<number>` (avain esim. `announcer-dismissed-{competitionId}-{todayKey}`, jotta seuraavana kisapäivänä alkaa puhtaalta pöydältä ja samalla selaimella säilyy päivän aikana).
-- `completed`-listasta suodatetaan pois ne `Round`-rivit, joiden `Id` on `dismissedCompletedIds`-joukossa.
-- `UpcomingItem`-komponentille lisätään valinnainen prop `onDismiss?: () => void`. Kun se on annettu, kortin alaosassa (auki-tilassa) näytetään "Merkitse luetuksi" -nappi, joka kutsuu `onDismiss`.
-- Lopputulokset-kutsuun annetaan `onDismiss={() => dismissCompleted(r.Id)}`, joka lisää id:n joukkoon ja päivittää localStorageen.
-- Otsikon laskuriin (`completed.length`) käytetään suodatettua määrää, jotta luku vastaa näkyviä kortteja. Headerin "X valmis" säilyy alkuperäisessä `completedAll.length`-luvussa, jotta kuuluttaja näkee kuinka monta lajia on yhteensä valmistunut.
-- Lisätään pieni "Palauta piilotetut (n)" -linkki Lopputulokset-otsikon viereen, jos `dismissedCompletedIds.size > 0`, jotta vahingossa piilotetun saa takaisin.
+(API palauttaa Attempts-taulukon kenttälajeille; muut tiedot jätetään koskematta.)
+
+### 2. UI: `src/routes/announcer.tsx` → `EventCard`
+
+Vain kun `round.Category === "Field"`:
+
+- Lasketaan `attemptsDone = a.Attempts?.length ?? 0`.
+- Näytetään tulos-/SB-arvon vieressä pieni tunnus, esim.:
+  - normaali kenttä (pituus, kuula, keihäs, kiekko, moukari, kolmiloikka): `3/6` (kun `attemptsDone < 6`) tai pelkkä numero kun lopussa
+  - korkeus & seiväs (`SubCategory === "HighJump" | "PoleVault"`): pelkkä `3 yrit.` (yritysten kokonaismäärä vaihtelee, ei kiinteää maksimia)
+- Tunnus näytetään `text-xs text-muted-foreground tabular-nums` -tyylillä, jotta ei kilpaile itse tuloksen kanssa.
+- Näkyy sekä suljetussa top3-näkymässä että avatussa täydessä listassa.
+- Ei muutoksia juoksulajeihin (Track) eikä Lopputulokset-/Seuraavaksi-paneeleihin.
 
 ### Mitä ei muuteta
 
-- Käynnissä-paneelin `EventCard` ja sen avaus/sulkeminen.
-- Seuraavaksi-paneelin `UpcomingItem` (jää käyttämään `expanded`-Setiä, ei avaudu automaattisesti, ei "Luettu"-nappia).
-- Datalähteet, queryt, ennätyslogiikka, eräryhmittely.
+- Datalähteet, queryt, statuslogiikka, ennätyslogiikka, `UpcomingItem`.
+- API-kutsut: `Attempts` tulee jo nykyisellä `fetchEvent`-kutsulla; vain TS-tyyppi laajenee.
 
-### Lopputulos
+## Lopputulos
 
-Kuuluttaja näkee Lopputulokset-paneelissa jokaisen valmistuneen lajin sijoitukset valmiiksi auki ilman klikkausta. Kun laji on luettu kuulutuksessa, "Merkitse luetuksi" -napin painallus piilottaa kortin näkyvistä, jolloin lista pysyy lyhyenä ja seuraavat luettavat lajit erottuvat selvästi. Tarvittaessa piilotetut saa takaisin "Palauta piilotetut" -linkistä.
+Käynnissä-paneelin kenttälajikortissa jokaisen rivin oikeassa laidassa näkyy esim. `5,42  3/6` tai korkeudessa `175  4 yrit.`, joten kuuluttaja näkee suoraan kuinka pitkällä kukin kilpailija on.
