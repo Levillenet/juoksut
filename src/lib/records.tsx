@@ -65,6 +65,13 @@ export function formatImprovement(
     }
     return `−${diff.toFixed(2).replace(".", ",")} s`;
   }
+  // Field events: korkeus/seiväs raportoidaan usein pelkkinä sentteinä
+  // (esim. "185" = 1,85 m). Jos kummassakaan arvossa ei ole desimaalierotinta,
+  // tulokset ovat sentteinä ja parannus näytetään cm:nä.
+  const hasDecimal = (s: string) => s.includes(",") || s.includes(".");
+  if (!hasDecimal(result) && !hasDecimal(previous)) {
+    return `+${Math.round(diff)} cm`;
+  }
   return `+${diff.toFixed(2).replace(".", ",")} m`;
 }
 
