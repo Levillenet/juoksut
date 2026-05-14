@@ -191,6 +191,12 @@ function Index() {
             Hae sukunimellä
           </Link>
           <Link
+            to="/watch"
+            className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+          >
+            Kilpailijaseuranta
+          </Link>
+          <Link
             to="/announcer"
             className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
           >

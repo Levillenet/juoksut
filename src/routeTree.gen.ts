@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WatchRouteImport } from './routes/watch'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as PrintRouteImport } from './routes/print'
 import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
 
+const WatchRoute = WatchRouteImport.update({
+  id: '/watch',
+  path: '/watch',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/announcer': typeof AnnouncerRoute
   '/print': typeof PrintRoute
   '/search': typeof SearchRoute
+  '/watch': typeof WatchRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/announcer': typeof AnnouncerRoute
   '/print': typeof PrintRoute
   '/search': typeof SearchRoute
+  '/watch': typeof WatchRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
 }
 export interface FileRoutesById {
@@ -61,6 +69,7 @@ export interface FileRoutesById {
   '/announcer': typeof AnnouncerRoute
   '/print': typeof PrintRoute
   '/search': typeof SearchRoute
+  '/watch': typeof WatchRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
 }
 export interface FileRouteTypes {
@@ -70,15 +79,23 @@ export interface FileRouteTypes {
     | '/announcer'
     | '/print'
     | '/search'
+    | '/watch'
     | '/round/$eventId/$roundId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/announcer' | '/print' | '/search' | '/round/$eventId/$roundId'
+  to:
+    | '/'
+    | '/announcer'
+    | '/print'
+    | '/search'
+    | '/watch'
+    | '/round/$eventId/$roundId'
   id:
     | '__root__'
     | '/'
     | '/announcer'
     | '/print'
     | '/search'
+    | '/watch'
     | '/round/$eventId/$roundId'
   fileRoutesById: FileRoutesById
 }
@@ -87,11 +104,19 @@ export interface RootRouteChildren {
   AnnouncerRoute: typeof AnnouncerRoute
   PrintRoute: typeof PrintRoute
   SearchRoute: typeof SearchRoute
+  WatchRoute: typeof WatchRoute
   RoundEventIdRoundIdRoute: typeof RoundEventIdRoundIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/watch': {
+      id: '/watch'
+      path: '/watch'
+      fullPath: '/watch'
+      preLoaderRoute: typeof WatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/search': {
       id: '/search'
       path: '/search'
@@ -135,6 +160,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnnouncerRoute: AnnouncerRoute,
   PrintRoute: PrintRoute,
   SearchRoute: SearchRoute,
+  WatchRoute: WatchRoute,
   RoundEventIdRoundIdRoute: RoundEventIdRoundIdRoute,
 }
 export const routeTree = rootRouteImport
