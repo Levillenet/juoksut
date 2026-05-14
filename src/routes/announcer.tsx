@@ -679,7 +679,7 @@ function EventCard({
             return (
               <li
                 key={a.AllocId}
-                className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 sm:gap-3"
+                className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-2 rounded-lg bg-muted/40 px-3 py-2 sm:gap-x-3"
               >
                 <span
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-black tabular-nums ${
@@ -705,22 +705,11 @@ function EventCard({
                 ) : (
                   <span className="h-4 w-4 shrink-0" aria-hidden />
                 )}
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0">
                   <p className="truncate text-sm font-semibold leading-tight">{a.Name}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
                   </p>
-                  {recordKind && eff && a.Result && (
-                    <div className="mt-1 flex min-w-0 items-center overflow-hidden">
-                      <RecordBadge
-                        category={round.Category}
-                        result={a.Result}
-                        pb={eff.pb}
-                        sb={eff.sb}
-                        size="sm"
-                      />
-                    </div>
-                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {a.Result ? (
@@ -732,6 +721,17 @@ function EventCard({
                     </span>
                   )}
                 </div>
+                {recordKind && eff && a.Result && (
+                  <div className="col-start-3 col-end-5 mt-1 min-w-0 overflow-hidden">
+                    <RecordBadge
+                      category={round.Category}
+                      result={a.Result}
+                      pb={eff.pb}
+                      sb={eff.sb}
+                      size="sm"
+                    />
+                  </div>
+                )}
               </li>
             );
           })}
