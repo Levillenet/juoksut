@@ -149,7 +149,7 @@ function AnnouncerPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
-        <div className="mx-auto flex max-w-[1600px] items-center gap-3 px-6 py-3">
+        <div className="relative mx-auto flex max-w-[1600px] items-center gap-3 px-6 py-3">
           <Button variant="ghost" size="icon" asChild aria-label="Takaisin">
             <Link to="/">
               <ArrowLeft className="h-5 w-5" />
@@ -161,17 +161,17 @@ function AnnouncerPage() {
             className="h-14 w-14 shrink-0 rounded-lg object-contain"
           />
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">
-              Kuuluttajan näkymä
-            </p>
             <h1 className="truncate text-lg font-bold leading-tight">
               {name || `Kisa #${competitionId}`}
             </h1>
             <p className="truncate text-xs text-muted-foreground">
-              Kuuluttajan dashboard · {todayKey}
+              {todayKey}
               {updatedAt && now && ` · päivitetty ${pad(updatedAt.getHours())}:${pad(updatedAt.getMinutes())}:${pad(updatedAt.getSeconds())}`}
             </p>
           </div>
+          <h2 className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-3xl font-black uppercase tracking-widest text-primary lg:block">
+            Kuuluttajan näkymä
+          </h2>
           <div className="text-right" suppressHydrationWarning>
             <div className="text-3xl font-black tabular-nums leading-none">
               {now ? `${pad(now.getHours())}:${pad(now.getMinutes())}` : "--:--"}
