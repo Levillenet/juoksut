@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, LayoutGrid, Activity, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
