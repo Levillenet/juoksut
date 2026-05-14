@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      athlete_results: {
+        Row: {
+          athlete_key: string
+          captured_at: string
+          competition_date: string | null
+          competition_id: number
+          competition_name: string
+          event_category: string
+          event_id: number
+          event_name: string
+          firstname: string
+          id: string
+          location: string
+          organization: string
+          organization_id: number | null
+          result_numeric: number | null
+          result_rank: number | null
+          result_text: string
+          sub_category: string
+          surname: string
+          wind: number | null
+        }
+        Insert: {
+          athlete_key: string
+          captured_at?: string
+          competition_date?: string | null
+          competition_id: number
+          competition_name?: string
+          event_category?: string
+          event_id: number
+          event_name?: string
+          firstname: string
+          id?: string
+          location?: string
+          organization?: string
+          organization_id?: number | null
+          result_numeric?: number | null
+          result_rank?: number | null
+          result_text?: string
+          sub_category?: string
+          surname: string
+          wind?: number | null
+        }
+        Update: {
+          athlete_key?: string
+          captured_at?: string
+          competition_date?: string | null
+          competition_id?: number
+          competition_name?: string
+          event_category?: string
+          event_id?: number
+          event_name?: string
+          firstname?: string
+          id?: string
+          location?: string
+          organization?: string
+          organization_id?: number | null
+          result_numeric?: number | null
+          result_rank?: number | null
+          result_text?: string
+          sub_category?: string
+          surname?: string
+          wind?: number | null
+        }
+        Relationships: []
+      }
       record_baseline: {
         Row: {
           athlete_id: number

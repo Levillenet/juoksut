@@ -22,8 +22,10 @@ import {
 } from "@/lib/tuloslista-queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 import { RequireRole } from "@/components/RequireRole";
+import { RecordsPanel } from "@/components/RecordsPanel";
 
 export const Route = createFileRoute("/watch")({
   head: () => ({
@@ -239,6 +241,14 @@ function WatchPage() {
             {error}
           </div>
         )}
+
+        <Tabs defaultValue="lajit" className="w-full">
+          <TabsList className="mb-4 grid w-full grid-cols-2">
+            <TabsTrigger value="lajit">Lajit</TabsTrigger>
+            <TabsTrigger value="ennatykset">Ennätykset</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="lajit" className="mt-0">
 
         {/* Search results */}
         {query.trim().length >= 2 && (
@@ -559,6 +569,12 @@ function WatchPage() {
             </ul>
           )}
         </section>
+          </TabsContent>
+
+          <TabsContent value="ennatykset" className="mt-0">
+            <RecordsPanel clubs={clubs.map((c) => ({ id: c.id, name: c.name }))} />
+          </TabsContent>
+        </Tabs>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
           Lähde: live.tuloslista.com · päivittyy automaattisesti minuutin välein
