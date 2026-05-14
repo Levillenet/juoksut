@@ -83,6 +83,8 @@ export interface SeasonStatsRow {
   meters: number;
   pbs: number;
   wins: number;
+  seconds: number;
+  thirds: number;
   km: number | null;
 }
 
