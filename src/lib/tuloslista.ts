@@ -98,11 +98,31 @@ export function isRunningEvent(r: Pick<Round, "Category">): boolean {
   return r.Category === "Track";
 }
 
+const HELSINKI_TIME = new Intl.DateTimeFormat("fi-FI", {
+  timeZone: "Europe/Helsinki",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
 export function formatTime(iso: string): string {
-  // The API returns timestamps already shifted to local (e.g. "2026-05-14T06:20:00.0000000+00:00"
-  // really means 06:20 local). Use UTC parts to avoid double-shifting.
-  const d = new Date(iso);
-  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+  return HELSINKI_TIME.format(new Date(iso));
+}
+
+const HELSINKI_DATE_PARTS = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Helsinki",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** Returns the Helsinki-local "D.M.YYYY" key matching the schedule grouping. */
+export function helsinkiDateKey(iso: string): string {
+  const parts = HELSINKI_DATE_PARTS.formatToParts(new Date(iso));
+  const y = parts.find((p) => p.type === "year")!.value;
+  const m = parts.find((p) => p.type === "month")!.value;
+  const d = parts.find((p) => p.type === "day")!.value;
+  return `${parseInt(d, 10)}.${parseInt(m, 10)}.${y}`;
 }
 
 export const STATUS_LABEL: Record<Round["Status"], string> = {
