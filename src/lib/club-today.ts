@@ -88,19 +88,26 @@ export async function fetchClubTodayResults(
 
 export type ClubPbMap = Record<string, { text: string; numeric: number }>;
 
-/** Best historical result per (athlete_key, event_name) across athlete_results. */
+/** Strip leading age-class prefix (e.g. "T11 60m" -> "60m", "M 60m" -> "60m"). */
+export function normalizeEventName(name: string): string {
+  return name.replace(/^(?:[MNT]\d*|P\d+)\s+/i, "").trim();
+}
+
+/** Best historical result per (athlete_key, normalized event_name). */
 export async function fetchClubPbs(
   athleteKeys: string[],
   eventNames: string[],
 ): Promise<ClubPbMap> {
   if (athleteKeys.length === 0 || eventNames.length === 0) return {};
+  // Don't filter by event_name in SQL — names contain age-class prefixes that
+  // change year over year. Pull all numeric results for these athletes and
+  // group by normalized name in memory.
   const { data, error } = await supabase
     .from("athlete_results")
     .select("athlete_key, event_name, event_category, result_text, result_numeric")
     .in("athlete_key", athleteKeys)
-    .in("event_name", eventNames)
     .not("result_numeric", "is", null)
-    .limit(5000);
+    .limit(10000);
   if (error) throw error;
   const map: ClubPbMap = {};
   for (const r of (data ?? []) as Array<{
@@ -111,7 +118,7 @@ export async function fetchClubPbs(
     result_numeric: number;
   }>) {
     if (r.result_numeric == null) continue;
-    const key = `${r.athlete_key}|${r.event_name}`;
+    const key = `${r.athlete_key}|${normalizeEventName(r.event_name)}`;
     const lower = r.event_category === "Track";
     const cur = map[key];
     if (
