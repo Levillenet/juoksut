@@ -43,6 +43,7 @@ function AnnouncerPage() {
   const [showRunning, setShowRunning] = useState(false);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [showPastUpcoming, setShowPastUpcoming] = useState(false);
 
   const loadSchedule = async (silent = true) => {
     if (!silent) setManualLoading(true);
