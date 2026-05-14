@@ -72,7 +72,7 @@ function RoundView() {
                 : "Ladataan…"}
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={load} disabled={loading} aria-label="Päivitä">
+          <Button variant="ghost" size="icon" onClick={reload} disabled={loading} aria-label="Päivitä">
             <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
