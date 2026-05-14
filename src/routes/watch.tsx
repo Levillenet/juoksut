@@ -242,6 +242,14 @@ function WatchPage() {
           </div>
         )}
 
+        <Tabs defaultValue="lajit" className="w-full">
+          <TabsList className="mb-4 grid w-full grid-cols-2">
+            <TabsTrigger value="lajit">Lajit</TabsTrigger>
+            <TabsTrigger value="ennatykset">Ennätykset</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="lajit" className="mt-0">
+
         {/* Search results */}
         {query.trim().length >= 2 && (
           <section className="mb-6">
