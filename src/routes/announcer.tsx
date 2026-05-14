@@ -191,6 +191,7 @@ function AnnouncerPage() {
   const finishedProgressRoundIds = useMemo(() => {
     const s = new Set<number>();
     for (const r of inProgressAll) {
+      if (r.Category !== "Track") continue;
       const ev = details[r.EventId];
       if (!ev) continue;
       const round = ev.Rounds.find((rr) => rr.Id === r.Id);

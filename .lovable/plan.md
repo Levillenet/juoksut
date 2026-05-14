@@ -1,36 +1,27 @@
-## Tavoite
+# Korjaus: kenttälajit katoavat Käynnissä-paneelista
 
-Käynnissä-paneelin kenttälaji-korteissa näkyy jokaisen kilpailijan rivillä kuinka monta suoritusta hän on jo tehnyt (esim. pituus 3/6). Näin kuuluttaja näkee yhdellä silmäyksellä, kuka on ehtinyt mihinkin kierrokseen.
+## Syy
 
-## Muutokset
+`src/routes/announcer.tsx` (rivit 191–202) lisää kierroksen `finishedProgressRoundIds`-settiin heti kun event-detail-endpointin `round.Status === "Official"`, ja `inProgressVisible` suodattaa sen pois Käynnissä-listasta. Tuloslistan API raportoi kenttälajeissa (etenkin korkeus/seiväs) detail-endpointin `Round.Status` arvon `Official` jo silloin kun kilpailu on käytännössä loppumassa mutta vielä käynnissä — tai eri tahdissa kuin kisalistaus. Lopputulos: kenttälaji katoaa ennen aikojaan, eikä päädy Lopputuloksiin, koska samanaikaisesti `completedAll` ei vielä sisällä sitä ja merge-haara käyttää samaa flagia.
 
-### 1. Tyyppi: `src/lib/tuloslista.ts`
+Alkuperäinen ongelma, jota tämä logiikka ratkaisi, koski juoksulajeja (Track), joissa kisalistauksen status päivittyy hitaasti. Sama promotointi ei ole tarpeen kenttälajeille — kenttälajit pysyvät kisalistan mukaan `Progress`-tilassa luotettavasti, ja kuuluttaja haluaa nähdä ne käynnissä-paneelissa kunnes ne oikeasti virallistuvat.
 
-Lisätään API-vastauksen mukainen kenttä `Allocation`-tyyppiin:
+## Muutos
+
+`src/routes/announcer.tsx`, `finishedProgressRoundIds`-useMemo:
+
+Lisää ehto, että kierros promotoidaan vain jos sen `Category === "Track"`. Kenttälajeja ei koskaan oteta tästä lyhytsulusta vaan ne seuraavat kisalistauksen statusta.
 
 ```ts
-Attempts?: { Line1: string | null }[];
+for (const r of inProgressAll) {
+  if (r.Category !== "Track") continue; // älä promotoi kenttälajeja
+  const ev = details[r.EventId];
+  ...
+}
 ```
 
-(API palauttaa Attempts-taulukon kenttälajeille; muut tiedot jätetään koskematta.)
-
-### 2. UI: `src/routes/announcer.tsx` → `EventCard`
-
-Vain kun `round.Category === "Field"`:
-
-- Lasketaan `attemptsDone = a.Attempts?.length ?? 0`.
-- Näytetään tulos-/SB-arvon vieressä pieni tunnus, esim.:
-  - normaali kenttä (pituus, kuula, keihäs, kiekko, moukari, kolmiloikka): `3/6` (kun `attemptsDone < 6`) tai pelkkä numero kun lopussa
-  - korkeus & seiväs (`SubCategory === "HighJump" | "PoleVault"`): pelkkä `3 yrit.` (yritysten kokonaismäärä vaihtelee, ei kiinteää maksimia)
-- Tunnus näytetään `text-xs text-muted-foreground tabular-nums` -tyylillä, jotta ei kilpaile itse tuloksen kanssa.
-- Näkyy sekä suljetussa top3-näkymässä että avatussa täydessä listassa.
-- Ei muutoksia juoksulajeihin (Track) eikä Lopputulokset-/Seuraavaksi-paneeleihin.
-
-### Mitä ei muuteta
-
-- Datalähteet, queryt, statuslogiikka, ennätyslogiikka, `UpcomingItem`.
-- API-kutsut: `Attempts` tulee jo nykyisellä `fetchEvent`-kutsulla; vain TS-tyyppi laajenee.
+Ei muita muutoksia. Kenttälajien näyttölogiikka, attempts-merkki ja juoksulajien promotointi pysyvät ennallaan.
 
 ## Lopputulos
 
-Käynnissä-paneelin kenttälajikortissa jokaisen rivin oikeassa laidassa näkyy esim. `5,42  3/6` tai korkeudessa `175  4 yrit.`, joten kuuluttaja näkee suoraan kuinka pitkällä kukin kilpailija on.
+Kenttälajit näkyvät Käynnissä-paneelissa niin kauan kuin kisalistaus raportoi ne `Progress`-tilassa, ja siirtyvät Lopputuloksiin vasta kun listaus saa `Official`-statuksen. Juoksulajit saavat edelleen nopean promotoinnin detail-endpointin kautta.
