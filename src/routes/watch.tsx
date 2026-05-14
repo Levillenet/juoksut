@@ -138,23 +138,25 @@ function WatchPage() {
 
   // Club selector state + derived data
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
+  // Separate club selector for the "lisää urheilijoita seurantaan" bulk flow
+  const [selectedBulkOrgId, setSelectedBulkOrgId] = useState<number | null>(null);
   const [selectedAgeClasses, setSelectedAgeClasses] = useState<Set<string>>(new Set());
 
-  // Reset age-class selection when club changes
-  const onSelectClub = (id: number | null) => {
-    setSelectedOrgId(id);
+  // Reset age-class selection when bulk club changes
+  const onSelectBulkClub = (id: number | null) => {
+    setSelectedBulkOrgId(id);
     setSelectedAgeClasses(new Set());
   };
 
-  // Age classes available for the selected club, with athlete counts
+  // Age classes available for the selected bulk-add club, with athlete counts
   const clubAgeClasses = useMemo(() => {
-    if (!index || selectedOrgId == null) return [] as Array<{
+    if (!index || selectedBulkOrgId == null) return [] as Array<{
       group: string;
       athletes: Array<{ key: string; surname: string; firstname: string; organization: string; organizationId: number | null }>;
     }>;
     const map = new Map<string, Map<string, { key: string; surname: string; firstname: string; organization: string; organizationId: number | null }>>();
     for (const e of index) {
-      if ((e.alloc.Organization?.Id ?? -1) !== selectedOrgId) continue;
+      if ((e.alloc.Organization?.Id ?? -1) !== selectedBulkOrgId) continue;
       const group = e.round.GroupName || "(Muu)";
       const orgId = e.alloc.Organization?.Id ?? null;
       const k = athleteKey(e.alloc.Surname, e.alloc.Firstname, orgId);
