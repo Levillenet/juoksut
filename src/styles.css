@@ -143,3 +143,9 @@
     color: var(--color-foreground);
   }
 }
+
+@media print {
+  body { background: white !important; color: black !important; }
+  .print\:hidden { display: none !important; }
+  a { color: inherit !important; text-decoration: none !important; }
+}
