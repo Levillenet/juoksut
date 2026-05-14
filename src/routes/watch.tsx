@@ -397,7 +397,7 @@ function WatchPage() {
                 <select
                   value={selectedOrgId ?? ""}
                   onChange={(e) =>
-                    setSelectedOrgId(e.target.value ? parseInt(e.target.value, 10) : null)
+                    onSelectClub(e.target.value ? parseInt(e.target.value, 10) : null)
                   }
                   className="h-10 w-full appearance-none rounded-md border border-input bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   aria-label="Valitse seura"
