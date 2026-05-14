@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Search as SearchIcon, RefreshCw, Pin, X, UserPlus, Printer, Building2 } from "lucide-react";
+import { ArrowLeft, Search as SearchIcon, RefreshCw, Pin, X, UserPlus, Printer, Building2, Trophy } from "lucide-react";
 import logo from "@/assets/lahden-ahkera-logo.png";
 
 import {
@@ -22,6 +22,8 @@ import {
 } from "@/lib/tuloslista-queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { fetchDailyBestForAthletes } from "@/lib/daily-best";
+
 import { RequireRole } from "@/components/RequireRole";
 
 export const Route = createFileRoute("/watch")({
@@ -124,6 +126,15 @@ function WatchPage() {
       return { athlete: w, entries };
     });
   }, [index, watched]);
+
+  // Today's-best comparable result (same event + age class) for each watched athlete
+  const watchedKeysList = useMemo(() => watched.map((w) => w.key), [watched]);
+  const dailyBestQuery = useQuery({
+    queryKey: ["daily-best-for-athletes", watchedKeysList.slice().sort().join(",")],
+    queryFn: () => fetchDailyBestForAthletes(watchedKeysList),
+    enabled: watchedKeysList.length > 0,
+    staleTime: 60_000,
+  });
 
   // Club selector state + derived data
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
@@ -485,6 +496,31 @@ function WatchPage() {
                       </Button>
                     </div>
                   </div>
+
+                  {(() => {
+                    const bests = dailyBestQuery.data?.[athlete.key] ?? [];
+                    if (bests.length === 0) return null;
+                    return (
+                      <ul className="mb-3 space-y-1 rounded-md border border-dashed bg-background/40 px-2 py-1.5">
+                        {bests.map((b) => (
+                          <li
+                            key={`${b.event_name}|${b.age_class}|${b.competition_id}`}
+                            className="flex items-baseline gap-2 text-[11px]"
+                          >
+                            <Trophy className="h-3 w-3 shrink-0 text-primary" />
+                            <span className="font-semibold">
+                              {b.event_name} {b.age_class}:
+                            </span>
+                            <span className="font-bold tabular-nums">{b.result_text}</span>
+                            <span className="min-w-0 truncate text-muted-foreground">
+                              — {b.surname} {b.firstname} ({b.organization}) ·{" "}
+                              {b.competition_name}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  })()}
 
                   {entries.length === 0 ? (
                     <p className="text-xs text-muted-foreground">

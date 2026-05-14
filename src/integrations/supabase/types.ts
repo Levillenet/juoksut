@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       athlete_results: {
         Row: {
+          age_class: string
           athlete_key: string
           captured_at: string
           competition_date: string | null
@@ -37,6 +38,7 @@ export type Database = {
           wind: number | null
         }
         Insert: {
+          age_class?: string
           athlete_key: string
           captured_at?: string
           competition_date?: string | null
@@ -58,6 +60,7 @@ export type Database = {
           wind?: number | null
         }
         Update: {
+          age_class?: string
           athlete_key?: string
           captured_at?: string
           competition_date?: string | null

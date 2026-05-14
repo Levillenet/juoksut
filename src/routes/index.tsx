@@ -16,6 +16,7 @@ import {
 import { useCompetitionId } from "@/lib/competition-store";
 import { useAuth } from "@/lib/auth";
 import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
+import { DailyBestSection } from "@/components/DailyBestSection";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
@@ -232,6 +233,8 @@ function Index() {
             {error}
           </div>
         )}
+
+        <DailyBestSection />
 
         {loading && !data && (
           <div className="py-12 text-center text-sm text-muted-foreground">Ladataan…</div>
