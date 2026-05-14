@@ -32,6 +32,10 @@ export interface Allocation {
   NotInCompetition: boolean;
   PB: string;
   SB: string;
+  Result: string | null;
+  ResultRank: number | null;
+  HeatRank: number | null;
+  Wind: number | null;
   Organization: { Name: string; NameShort: string; Id: number };
 }
 
