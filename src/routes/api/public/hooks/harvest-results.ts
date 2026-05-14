@@ -103,6 +103,7 @@ type Row = {
   result_numeric: number | null;
   result_rank: number | null;
   wind: number | null;
+  age_class: string;
 };
 
 async function processCompetition(
@@ -115,14 +116,20 @@ async function processCompetition(
   if (!props?.Competition?.Id) return { existed: false };
   const byDate = await fetchJson<RoundsByDateShape>(`${API}/competition/${id}`);
   if (!byDate) return { existed: true };
-  const eventIds = Array.from(
-    new Set(Object.values(byDate).flat().map((r) => r.EventId)),
-  );
+  // Map EventId → GroupName (age class) from the schedule
+  const ageByEvent = new Map<number, string>();
+  for (const list of Object.values(byDate)) {
+    for (const r of list) {
+      if (!ageByEvent.has(r.EventId)) ageByEvent.set(r.EventId, r.GroupName ?? "");
+    }
+  }
+  const eventIds = Array.from(ageByEvent.keys());
   for (const eid of eventIds) {
     const ev = await fetchJson<EventShape>(`${API}/results/${id}/${eid}`);
     if (!ev) continue;
     const category = ev.EventCategory ?? "";
     const subCategory = ev.EventSubCategory ?? "";
+    const ageClass = ageByEvent.get(eid) ?? "";
     for (const r of ev.Rounds ?? []) {
       for (const h of r.Heats ?? []) {
         for (const a of h.Allocations ?? []) {
@@ -147,7 +154,9 @@ async function processCompetition(
             result_numeric: parseResultNumeric(a.Result, category),
             result_rank: a.ResultRank ?? null,
             wind: a.Wind ?? null,
+            age_class: ageClass,
           });
+
         }
       }
     }
