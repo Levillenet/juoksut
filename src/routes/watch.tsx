@@ -392,14 +392,26 @@ function WatchPage() {
                                   {STATUS_LABEL[e.round.Status]}
                                 </span>
                                 {e.alloc.Result && (
-                                  <p className="mt-1 text-sm font-bold tabular-nums">
-                                    {e.alloc.Result}
-                                    {e.alloc.ResultRank != null && (
-                                      <span className="ml-1 text-xs font-normal text-muted-foreground">
-                                        ({e.alloc.ResultRank}.)
-                                      </span>
-                                    )}
-                                  </p>
+                                  <>
+                                    <p className="mt-1 text-sm font-bold tabular-nums">
+                                      {e.alloc.Result}
+                                      {e.alloc.ResultRank != null && (
+                                        <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                          ({e.alloc.ResultRank}.)
+                                        </span>
+                                      )}
+                                    </p>
+                                    <div className="mt-1 flex justify-end">
+                                      <RecordBadge
+                                        category={e.round.Category}
+                                        result={e.alloc.Result}
+                                        pb={e.alloc.PB}
+                                        sb={e.alloc.SB}
+                                        size="sm"
+                                        layout="row"
+                                      />
+                                    </div>
+                                  </>
                                 )}
                               </div>
                             </Link>
