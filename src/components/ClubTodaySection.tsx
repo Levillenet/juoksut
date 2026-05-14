@@ -54,6 +54,27 @@ export function ClubTodaySection({
 
   useEffect(() => saveOrgId(orgId), [orgId]);
 
+  const pbInputs = useMemo(() => {
+    const rows = resultsQuery.data ?? [];
+    const athletes = Array.from(new Set(rows.map((r) => r.athlete_key)));
+    const events = Array.from(new Set(rows.map((r) => r.event_name)));
+    return { athletes, events };
+  }, [resultsQuery.data]);
+
+  const pbsQuery = useQuery({
+    queryKey: [
+      "club-today",
+      "pbs",
+      orgId ?? 0,
+      pbInputs.athletes.join(","),
+      pbInputs.events.join(","),
+    ],
+    queryFn: () => fetchClubPbs(pbInputs.athletes, pbInputs.events),
+    enabled: pbInputs.athletes.length > 0 && pbInputs.events.length > 0,
+    staleTime: 5 * 60_000,
+  });
+  const pbs = pbsQuery.data ?? {};
+
   const clubs = clubsQuery.data ?? [];
 
   // Group rows by competition, then sort athletes within each event-row.
