@@ -192,13 +192,6 @@ export function ClubTodaySection({
                     <ul className="divide-y divide-border rounded-lg border bg-background/50">
                       {g.rows.map((r, idx) => {
                         const pb = pbs[`${r.athlete_key}|${normalizeEventName(r.event_name)}`];
-                        const lower = r.event_category === "Track";
-                        const isNewPb =
-                          pb &&
-                          r.result_numeric != null &&
-                          (lower
-                            ? r.result_numeric <= pb.numeric
-                            : r.result_numeric >= pb.numeric);
                         return (
                           <li
                             key={`${r.athlete_key}-${r.event_name}-${idx}`}
@@ -215,9 +208,17 @@ export function ClubTodaySection({
                                 {pb && ` · PB ${pb.text}`}
                               </p>
                             </div>
+                            {r.was_pb && (
+                              <span
+                                title="Henkilökohtainen ennätys"
+                                className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary"
+                              >
+                                🏆 PB
+                              </span>
+                            )}
                             <span
                               className={`shrink-0 text-base font-bold tabular-nums ${
-                                isNewPb ? "text-primary" : ""
+                                r.was_pb ? "text-primary" : ""
                               }`}
                             >
                               {r.result_text}
