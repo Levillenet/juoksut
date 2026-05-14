@@ -1,21 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Trophy, Activity, Clock, ChevronDown, Star } from "lucide-react";
 import { detectRecord, formatImprovement, RecordBadge, RecordStar } from "@/lib/records";
-import { captureBaselines, loadBaselines, effectiveRecord } from "@/lib/record-baseline";
+import { effectiveRecord } from "@/lib/record-baseline";
 
 import {
-  fetchRounds,
-  fetchEvent,
-  fetchProperties,
   formatTime,
   helsinkiDateKey,
   translateSub,
   type Round,
-  type RoundsByDate,
-  type Allocation,
   type EventResults,
 } from "@/lib/tuloslista";
+import {
+  competitionScheduleQueryOptions,
+  competitionScheduleKey,
+  eventDetailsQueryOptions,
+  eventDetailsKey,
+} from "@/lib/tuloslista-queries";
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/lahden-ahkera-logo.png";
