@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, RefreshCw, Trophy, Activity, Clock, ChevronDown } from "lucide-react";
+import { ArrowLeft, RefreshCw, Trophy, Activity, Clock, ChevronDown, Star } from "lucide-react";
 
 import {
   fetchRounds,
@@ -371,6 +371,26 @@ function detectRecord(category: string, result: string | null, pb: string, sb: s
   return null;
 }
 
+function RecordStar({ kind, size = "lg" }: { kind: "PB" | "SB"; size?: "lg" | "sm" }) {
+  const px = size === "lg" ? 36 : 26;
+  const fontClass = size === "lg" ? "text-[10px]" : "text-[8px]";
+  return (
+    <span
+      className="relative inline-flex shrink-0 items-center justify-center"
+      style={{ width: px, height: px }}
+      title={kind === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
+      aria-label={kind === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
+    >
+      <Star
+        className="fill-yellow-400 text-yellow-500 drop-shadow-sm"
+        size={px}
+        strokeWidth={1.5}
+      />
+      <span className={`absolute font-black text-black ${fontClass}`}>{kind}</span>
+    </span>
+  );
+}
+
 function EventCard({
   round,
   detail,
@@ -465,18 +485,7 @@ function EventCard({
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  {rec && (
-                    <span
-                      className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
-                        rec === "PB"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-accent text-accent-foreground"
-                      }`}
-                      title={rec === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
-                    >
-                      {rec === "PB" ? "Uusi PB" : "Uusi SB"}
-                    </span>
-                  )}
+                  {rec && <RecordStar kind={rec} size="lg" />}
                   {a.Result ? (
                     <span className="text-base font-bold tabular-nums">{a.Result}</span>
                   ) : (
@@ -576,18 +585,7 @@ function UpcomingItem({
                     </span>
                     {a.Result ? (
                       <span className="flex shrink-0 items-center gap-1">
-                        {rec && (
-                          <span
-                            className={`rounded px-1 py-0.5 text-[9px] font-bold uppercase ${
-                              rec === "PB"
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-accent text-accent-foreground"
-                            }`}
-                            title={rec === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
-                          >
-                            {rec === "PB" ? "Uusi PB" : "Uusi SB"}
-                          </span>
-                        )}
+                        {rec && <RecordStar kind={rec} size="sm" />}
                         <span className="font-bold tabular-nums">{a.Result}</span>
                       </span>
                     ) : (
