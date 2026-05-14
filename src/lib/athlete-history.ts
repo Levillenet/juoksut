@@ -88,13 +88,21 @@ export interface EventGroup {
   pb: AthleteResultRow | null;
 }
 
+/** Strip age-class prefix ("M17 100m" → "100m", "P9 60m" → "60m") so the
+ * same event across age classes groups together in the dashboard chart. */
+export function normalizeEventName(name: string): string {
+  if (!name) return "";
+  return name.replace(/^(?:[MNTmnt][0-9]*|[Pp][0-9]+)\s+/, "").trim();
+}
+
 export function groupByEvent(rows: AthleteResultRow[]): EventGroup[] {
   const map = new Map<string, EventGroup>();
   for (const r of rows) {
-    const key = `${r.event_name}|${r.sub_category}|${r.event_category}`;
+    const normName = normalizeEventName(r.event_name);
+    const key = `${normName}|${r.sub_category}|${r.event_category}`;
     if (!map.has(key)) {
       map.set(key, {
-        eventName: r.event_name,
+        eventName: normName,
         category: r.event_category,
         subCategory: r.sub_category,
         lowerBetter: isLowerBetter(r.event_category),
