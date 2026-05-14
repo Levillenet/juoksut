@@ -757,6 +757,26 @@ function EventCard({
                       {a.PB && <span title="Oma ennätys">PB {a.PB}</span>}
                     </span>
                   )}
+                  {round.Category === "Field" && !a.NotInCompetition && (() => {
+                    const done = a.Attempts?.length ?? 0;
+                    if (done === 0) return null;
+                    const isVertical =
+                      round.SubCategory === "HighJump" ||
+                      round.SubCategory === "PoleVault";
+                    const label = isVertical
+                      ? `${done} yrit.`
+                      : done >= 6
+                        ? `${done}`
+                        : `${done}/6`;
+                    return (
+                      <span
+                        className="rounded bg-secondary px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-muted-foreground"
+                        title="Tehdyt suoritukset"
+                      >
+                        {label}
+                      </span>
+                    );
+                  })()}
                 </div>
                 {recordKind && eff && a.Result && (
                   <div className="col-start-3 col-end-4 mt-1 min-w-0 overflow-hidden sm:col-end-5">
