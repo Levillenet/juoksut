@@ -86,7 +86,7 @@ function AnnouncerPage() {
   const inProgress = showRunning
     ? inProgressAll
     : inProgressAll.filter((r) => r.Category !== "Track");
-  const completed = todayRounds.filter((r) => r.Status === "Official").reverse().slice(0, 8);
+  const completed = todayRounds.filter((r) => r.Status === "Official").reverse();
   const nowMs = (now ?? new Date()).getTime();
   const upcomingAll = todayRounds.filter(
     (r) => r.Status !== "Official" && r.Status !== "Progress",
