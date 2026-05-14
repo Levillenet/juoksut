@@ -9,9 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
 
+const AnnouncerRoute = AnnouncerRouteImport.update({
+  id: '/announcer',
+  path: '/announcer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -25,32 +31,43 @@ const RoundEventIdRoundIdRoute = RoundEventIdRoundIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/announcer': typeof AnnouncerRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/announcer': typeof AnnouncerRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/announcer': typeof AnnouncerRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/round/$eventId/$roundId'
+  fullPaths: '/' | '/announcer' | '/round/$eventId/$roundId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/round/$eventId/$roundId'
-  id: '__root__' | '/' | '/round/$eventId/$roundId'
+  to: '/' | '/announcer' | '/round/$eventId/$roundId'
+  id: '__root__' | '/' | '/announcer' | '/round/$eventId/$roundId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnnouncerRoute: typeof AnnouncerRoute
   RoundEventIdRoundIdRoute: typeof RoundEventIdRoundIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/announcer': {
+      id: '/announcer'
+      path: '/announcer'
+      fullPath: '/announcer'
+      preLoaderRoute: typeof AnnouncerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -70,8 +87,19 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnnouncerRoute: AnnouncerRoute,
   RoundEventIdRoundIdRoute: RoundEventIdRoundIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
