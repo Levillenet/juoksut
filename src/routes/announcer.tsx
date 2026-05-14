@@ -883,6 +883,16 @@ function UpcomingItem({
               ))}
             </ol>
           )}
+          {onDismiss && (
+            <div className="mt-3 flex justify-end">
+              <button
+                onClick={onDismiss}
+                className="rounded-full border border-emerald-500/60 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300"
+              >
+                Merkitse luetuksi
+              </button>
+            </div>
+          )}
         </div>
       )}
     </li>
