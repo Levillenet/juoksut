@@ -319,7 +319,6 @@ function Index() {
                   <p className="truncate font-semibold leading-tight">{r.EventName}</p>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
                     {r.Name}
-                    {r.SubCategory && ` · ${translateSub(r.SubCategory)}`}
                   </p>
                 </div>
                 <span
