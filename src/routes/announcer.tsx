@@ -389,6 +389,7 @@ function RecordStar({ kind, size = "lg" }: { kind: "PB" | "SB"; size?: "lg" | "s
       <span className={`absolute font-black text-black ${fontClass}`}>{kind}</span>
     </span>
   );
+}
 
 function EventCard({
   round,
