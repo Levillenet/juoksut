@@ -1,26 +1,283 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { Settings2, RefreshCw, Timer, ChevronRight } from "lucide-react";
+
+import {
+  fetchRounds,
+  fetchProperties,
+  isRunningEvent,
+  formatTime,
+  parseCompetitionId,
+  STATUS_LABEL,
+  type Round,
+  type RoundsByDate,
+} from "@/lib/tuloslista";
+import { useCompetitionId } from "@/lib/competition-store";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Juoksulajien lähtöjärjestys – toimitsijanäkymä" },
+      {
+        name: "description",
+        content:
+          "Mobiilioptimoitu toimitsijanäkymä juoksulajien eräjakoihin. Tiedot live.tuloslista.com:sta.",
+      },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
+const STATUS_STYLE: Record<Round["Status"], string> = {
+  Unallocated: "bg-muted text-muted-foreground",
+  Allocated: "bg-accent text-accent-foreground",
+  Progress: "bg-primary text-primary-foreground",
+  Official: "bg-foreground text-background",
+};
+
+function Index() {
+  const [competitionId, setCompetitionId] = useCompetitionId();
+  const [data, setData] = useState<RoundsByDate | null>(null);
+  const [name, setName] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [activeDate, setActiveDate] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [linkInput, setLinkInput] = useState("");
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [rounds, props] = await Promise.all([
+        fetchRounds(competitionId),
+        fetchProperties(competitionId).catch(() => null),
+      ]);
+      setData(rounds);
+      setName(props?.Competition?.Name ?? "");
+      setUpdatedAt(new Date());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Tuntematon virhe");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 30_000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [competitionId]);
+
+  const dates = useMemo(() => {
+    if (!data) return [];
+    return Object.keys(data).sort((a, b) => {
+      const [da, ma, ya] = a.split(".").map(Number);
+      const [db, mb, yb] = b.split(".").map(Number);
+      return new Date(ya, ma - 1, da).getTime() - new Date(yb, mb - 1, db).getTime();
+    });
+  }, [data]);
+
+  useEffect(() => {
+    if (!activeDate && dates.length) {
+      const today = new Date();
+      const todayKey = `${today.getDate()}.${today.getMonth() + 1}.${today.getFullYear()}`;
+      setActiveDate(dates.includes(todayKey) ? todayKey : dates[0]);
+    }
+  }, [dates, activeDate]);
+
+  const runs = useMemo<Round[]>(() => {
+    if (!data || !activeDate) return [];
+    return (data[activeDate] ?? [])
+      .filter(isRunningEvent)
+      .sort((a, b) => a.BeginDateTimeWithTZ.localeCompare(b.BeginDateTimeWithTZ));
+  }, [data, activeDate]);
+
+  const saveLink = () => {
+    const id = parseCompetitionId(linkInput);
+    if (!id) {
+      setError("Anna kelvollinen kisalinkki tai kisanumero.");
+      return;
+    }
+    setCompetitionId(id);
+    setShowSettings(false);
+    setLinkInput("");
+    setData(null);
+    setActiveDate(null);
+  };
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
+        <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+          <Timer className="h-5 w-5 text-primary" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-base font-semibold leading-tight">
+              {name || "Juoksulajit"}
+            </h1>
+            <p className="truncate text-xs text-muted-foreground">
+              Kisa #{competitionId}
+              {updatedAt && ` · päivitetty ${formatClock(updatedAt)}`}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={load}
+            disabled={loading}
+            aria-label="Päivitä"
+          >
+            <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setLinkInput(String(competitionId));
+              setShowSettings(true);
+            }}
+            aria-label="Asetukset"
+          >
+            <Settings2 className="h-5 w-5" />
+          </Button>
+        </div>
+
+        {dates.length > 1 && (
+          <div className="mx-auto flex max-w-2xl gap-2 overflow-x-auto px-4 pb-3">
+            {dates.map((d) => (
+              <button
+                key={d}
+                onClick={() => setActiveDate(d)}
+                className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+                  d === activeDate
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        )}
+      </header>
+
+      <main className="mx-auto max-w-2xl px-4 py-4">
+        {error && (
+          <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+
+        {loading && !data && (
+          <div className="py-12 text-center text-sm text-muted-foreground">Ladataan…</div>
+        )}
+
+        {!loading && data && runs.length === 0 && (
+          <div className="py-12 text-center text-sm text-muted-foreground">
+            Ei juoksulajeja valitulle päivälle.
+          </div>
+        )}
+
+        <ul className="space-y-2">
+          {runs.map((r) => (
+            <li key={r.Id}>
+              <Link
+                to="/round/$eventId/$roundId"
+                params={{ eventId: String(r.EventId), roundId: String(r.Id) }}
+                className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm transition-colors hover:bg-secondary active:bg-secondary"
+              >
+                <div className="flex w-14 shrink-0 flex-col items-center">
+                  <span className="text-lg font-bold tabular-nums tracking-tight text-foreground">
+                    {formatTime(r.BeginDateTimeWithTZ)}
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold leading-tight">{r.EventName}</p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {r.Name}
+                    {r.SubCategory && ` · ${translateSub(r.SubCategory)}`}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_STYLE[r.Status]}`}
+                >
+                  {STATUS_LABEL[r.Status]}
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          Lähde: live.tuloslista.com · automaattinen päivitys 30&nbsp;s välein
+        </p>
+      </main>
+
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Vaihda kisa</DialogTitle>
+            <DialogDescription>
+              Liitä kisan osoite tai pelkkä kisanumero (esim. https://live.tuloslista.com/19219).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="link">Kisalinkki tai numero</Label>
+            <Input
+              id="link"
+              autoFocus
+              inputMode="url"
+              value={linkInput}
+              onChange={(e) => setLinkInput(e.target.value)}
+              placeholder="https://live.tuloslista.com/19219"
+              onKeyDown={(e) => e.key === "Enter" && saveLink()}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowSettings(false)}>
+              Peruuta
+            </Button>
+            <Button onClick={saveLink}>Tallenna</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function Index() {
-  return <PlaceholderIndex />;
+function translateSub(sub: string): string {
+  switch (sub) {
+    case "Sprint":
+      return "Pikajuoksu";
+    case "Run":
+      return "Juoksu";
+    case "Hurdles":
+      return "Aidat";
+    case "Steeple":
+      return "Estejuoksu";
+    case "Relay":
+      return "Viesti";
+    case "Walk":
+      return "Kävely";
+    default:
+      return sub;
+  }
+}
+
+function formatClock(d: Date): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }

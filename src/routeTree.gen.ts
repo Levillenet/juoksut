@@ -10,33 +10,43 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RoundEventIdRoundIdRoute = RoundEventIdRoundIdRouteImport.update({
+  id: '/round/$eventId/$roundId',
+  path: '/round/$eventId/$roundId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/round/$eventId/$roundId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/round/$eventId/$roundId'
+  id: '__root__' | '/' | '/round/$eventId/$roundId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  RoundEventIdRoundIdRoute: typeof RoundEventIdRoundIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,22 +58,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/round/$eventId/$roundId': {
+      id: '/round/$eventId/$roundId'
+      path: '/round/$eventId/$roundId'
+      fullPath: '/round/$eventId/$roundId'
+      preLoaderRoute: typeof RoundEventIdRoundIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  RoundEventIdRoundIdRoute: RoundEventIdRoundIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
