@@ -16,6 +16,7 @@ import {
 } from "@/lib/tuloslista";
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
+import logo from "@/assets/lahden-ahkera-logo.png";
 
 export const Route = createFileRoute("/announcer")({
   head: () => ({
@@ -154,6 +155,11 @@ function AnnouncerPage() {
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
+          <img
+            src={logo}
+            alt="Lahden Ahkera"
+            className="h-14 w-14 shrink-0 rounded-lg object-contain"
+          />
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-lg font-bold leading-tight">
               {name || `Kisa #${competitionId}`}
