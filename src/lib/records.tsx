@@ -60,12 +60,12 @@ export function formatImprovement(
   if (isTrack) {
     if (diff >= 60) {
       const m = Math.floor(diff / 60);
-      const s = (diff - m * 60).toFixed(2);
-      return `−${m}:${s.padStart(5, "0")}`;
+      const s = (diff - m * 60).toFixed(2).replace(".", ",");
+      return `−${m}.${s.padStart(5, "0")}`;
     }
-    return `−${diff.toFixed(2)} s`;
+    return `−${diff.toFixed(2).replace(".", ",")} s`;
   }
-  return `+${diff.toFixed(2)} m`;
+  return `+${diff.toFixed(2).replace(".", ",")} m`;
 }
 
 export function RecordStar({
