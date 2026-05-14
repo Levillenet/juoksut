@@ -171,7 +171,7 @@ async function processCompetition(
             result_text: a.Result,
             result_numeric: parseResultNumeric(a.Result, category),
             result_rank: a.ResultRank ?? null,
-            wind: a.Wind ?? null,
+            wind: parseWind(a.Wind),
             age_class: ageClass,
           });
           rowsAdded++;
