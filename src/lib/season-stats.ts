@@ -83,6 +83,8 @@ export interface SeasonStatsRow {
   meters: number;
   pbs: number;
   wins: number;
+  seconds: number;
+  thirds: number;
   km: number | null;
 }
 
@@ -238,6 +240,8 @@ export async function fetchSeasonStats(
         meters: 0,
         pbs: 0,
         wins: 0,
+        seconds: 0,
+        thirds: 0,
         km: 0,
         eventsByDay: new Map(),
         compSet: new Set(),
@@ -249,6 +253,8 @@ export async function fetchSeasonStats(
     acc.compSet.add(r.competition_id);
     if (r.was_pb) acc.pbs += 1;
     if (r.result_rank === 1) acc.wins += 1;
+    else if (r.result_rank === 2) acc.seconds += 1;
+    else if (r.result_rank === 3) acc.thirds += 1;
     if (r.event_category === "Track") {
       const m = parseTrackDistanceMeters(r.event_name);
       if (m != null) acc.meters += m;
@@ -298,6 +304,8 @@ export async function fetchSeasonStats(
       meters: a.meters,
       pbs: a.pbs,
       wins: a.wins,
+      seconds: a.seconds,
+      thirds: a.thirds,
       km: a.km,
     }))
     .sort((a, b) =>

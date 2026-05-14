@@ -50,7 +50,7 @@ export function SeasonStatsSection() {
   const ageClasses = query.data?.ageClasses ?? [];
 
   const totals = useMemo<Omit<SeasonStatsRow, "athleteKey" | "surname" | "firstname" | "organization" | "organizationId" | "ageClass">>(() => {
-    const t = { events: 0, competitions: 0, hours: 0, meters: 0, pbs: 0, wins: 0, km: 0 };
+    const t = { events: 0, competitions: 0, hours: 0, meters: 0, pbs: 0, wins: 0, seconds: 0, thirds: 0, km: 0 };
     let kmKnown = false;
     for (const r of rows) {
       t.events += r.events;
@@ -59,6 +59,8 @@ export function SeasonStatsSection() {
       t.meters += r.meters;
       t.pbs += r.pbs;
       t.wins += r.wins;
+      t.seconds += r.seconds;
+      t.thirds += r.thirds;
       if (r.km != null) {
         kmKnown = true;
         t.km += r.km;
@@ -136,6 +138,8 @@ export function SeasonStatsSection() {
                       <th className="px-1 py-1 text-right">Kisat</th>
                       <th className="px-1 py-1 text-right">PB</th>
                       <th className="px-1 py-1 text-right">1.</th>
+                      <th className="px-1 py-1 text-right">2.</th>
+                      <th className="px-1 py-1 text-right">3.</th>
                       <th className="px-1 py-1 text-right">Tunnit</th>
                       <th className="px-1 py-1 text-right">Juostu</th>
                       <th className="px-1 py-1 text-right">Matka</th>
@@ -156,6 +160,8 @@ export function SeasonStatsSection() {
                         <td className="px-1 py-1.5 text-right tabular-nums">{r.competitions}</td>
                         <td className="px-1 py-1.5 text-right tabular-nums">{r.pbs || "–"}</td>
                         <td className="px-1 py-1.5 text-right tabular-nums">{r.wins || "–"}</td>
+                        <td className="px-1 py-1.5 text-right tabular-nums">{r.seconds || "–"}</td>
+                        <td className="px-1 py-1.5 text-right tabular-nums">{r.thirds || "–"}</td>
                         <td className="px-1 py-1.5 text-right tabular-nums">{fmtHours(r.hours)}</td>
                         <td className="px-1 py-1.5 text-right tabular-nums">{fmtMeters(r.meters)}</td>
                         <td className="px-1 py-1.5 text-right tabular-nums">{fmtKm(r.km)}</td>
@@ -169,6 +175,8 @@ export function SeasonStatsSection() {
                       <td className="px-1 py-1.5 text-right tabular-nums">{totals.competitions}</td>
                       <td className="px-1 py-1.5 text-right tabular-nums">{totals.pbs || "–"}</td>
                       <td className="px-1 py-1.5 text-right tabular-nums">{totals.wins || "–"}</td>
+                      <td className="px-1 py-1.5 text-right tabular-nums">{totals.seconds || "–"}</td>
+                      <td className="px-1 py-1.5 text-right tabular-nums">{totals.thirds || "–"}</td>
                       <td className="px-1 py-1.5 text-right tabular-nums">{fmtHours(totals.hours)}</td>
                       <td className="px-1 py-1.5 text-right tabular-nums">{fmtMeters(totals.meters)}</td>
                       <td className="px-1 py-1.5 text-right tabular-nums">{fmtKm(totals.km)}</td>
