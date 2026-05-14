@@ -180,6 +180,21 @@ function Index() {
           </Button>
         </div>
 
+        <div className="mx-auto flex max-w-2xl gap-2 px-4 pb-3">
+          <Link
+            to="/announcer"
+            className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+          >
+            Kuuluttaja
+          </Link>
+          <Link
+            to="/print"
+            className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+          >
+            Tulostettava aikataulu
+          </Link>
+        </div>
+
         {dates.length > 1 && (
           <div className="mx-auto flex max-w-2xl gap-2 overflow-x-auto px-4 pb-3">
             {dates.map((d) => (
