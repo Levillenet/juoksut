@@ -138,6 +138,78 @@ function WatchPage() {
 
   // Club selector state + derived data
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
+  const [selectedAgeClasses, setSelectedAgeClasses] = useState<Set<string>>(new Set());
+
+  // Reset age-class selection when club changes
+  const onSelectClub = (id: number | null) => {
+    setSelectedOrgId(id);
+    setSelectedAgeClasses(new Set());
+  };
+
+  // Age classes available for the selected club, with athlete counts
+  const clubAgeClasses = useMemo(() => {
+    if (!index || selectedOrgId == null) return [] as Array<{
+      group: string;
+      athletes: Array<{ key: string; surname: string; firstname: string; organization: string; organizationId: number | null }>;
+    }>;
+    const map = new Map<string, Map<string, { key: string; surname: string; firstname: string; organization: string; organizationId: number | null }>>();
+    for (const e of index) {
+      if ((e.alloc.Organization?.Id ?? -1) !== selectedOrgId) continue;
+      const group = e.round.GroupName || "(Muu)";
+      const orgId = e.alloc.Organization?.Id ?? null;
+      const k = athleteKey(e.alloc.Surname, e.alloc.Firstname, orgId);
+      if (!map.has(group)) map.set(group, new Map());
+      const inner = map.get(group)!;
+      if (!inner.has(k)) {
+        inner.set(k, {
+          key: k,
+          surname: e.alloc.Surname,
+          firstname: e.alloc.Firstname,
+          organization: e.alloc.Organization?.Name ?? "",
+          organizationId: orgId,
+        });
+      }
+    }
+    return Array.from(map.entries())
+      .map(([group, ath]) => ({ group, athletes: Array.from(ath.values()) }))
+      .sort((a, b) => a.group.localeCompare(b.group, "fi"));
+  }, [index, selectedOrgId]);
+
+  const toggleAgeClass = (group: string) => {
+    setSelectedAgeClasses((prev) => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return next;
+    });
+  };
+
+  const bulkAddSelection = useMemo(() => {
+    const seen = new Map<string, { key: string; surname: string; firstname: string; organization: string; organizationId: number | null }>();
+    for (const g of clubAgeClasses) {
+      if (!selectedAgeClasses.has(g.group)) continue;
+      for (const a of g.athletes) {
+        if (!seen.has(a.key)) seen.set(a.key, a);
+      }
+    }
+    return Array.from(seen.values());
+  }, [clubAgeClasses, selectedAgeClasses]);
+
+  const bulkAddNewCount = bulkAddSelection.filter((a) => !watchedKeys.has(a.key)).length;
+
+  const addSelectedToWatch = async () => {
+    for (const a of bulkAddSelection) {
+      if (watchedKeys.has(a.key)) continue;
+      await add({
+        key: a.key,
+        surname: a.surname,
+        firstname: a.firstname,
+        organization: a.organization,
+        organizationId: a.organizationId,
+      } satisfies WatchedAthlete);
+    }
+    setSelectedAgeClasses(new Set());
+  };
 
   const clubs = useMemo(() => {
     if (!index) return [] as Array<{ id: number; name: string; athletes: number; entries: number }>;
@@ -325,7 +397,7 @@ function WatchPage() {
                 <select
                   value={selectedOrgId ?? ""}
                   onChange={(e) =>
-                    setSelectedOrgId(e.target.value ? parseInt(e.target.value, 10) : null)
+                    onSelectClub(e.target.value ? parseInt(e.target.value, 10) : null)
                   }
                   className="h-10 w-full appearance-none rounded-md border border-input bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   aria-label="Valitse seura"
@@ -365,6 +437,48 @@ function WatchPage() {
                 {selectedClub.entries}{" "}
                 {selectedClub.entries === 1 ? "lähtö" : "lähtöä"}
               </p>
+            )}
+
+            {selectedClub && clubAgeClasses.length > 0 && (
+              <div className="mt-4 rounded-md border border-dashed bg-background/40 p-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Lisää seurantaan ikäluokittain
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {clubAgeClasses.map((g) => {
+                    const active = selectedAgeClasses.has(g.group);
+                    return (
+                      <button
+                        key={g.group}
+                        type="button"
+                        onClick={() => toggleAgeClass(g.group)}
+                        className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-input bg-background hover:bg-accent"
+                        }`}
+                      >
+                        {g.group} ({g.athletes.length})
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    {selectedAgeClasses.size === 0
+                      ? "Valitse yksi tai useampi ikäluokka."
+                      : `${bulkAddSelection.length} urheilijaa valittu · ${bulkAddNewCount} uutta`}
+                  </p>
+                  <Button
+                    size="sm"
+                    disabled={bulkAddNewCount === 0}
+                    onClick={addSelectedToWatch}
+                    className="gap-2"
+                  >
+                    <UserPlus className="h-4 w-4" /> Lisää seurantaan
+                  </Button>
+                </div>
+              </div>
             )}
 
             {selectedClub && clubProgram.length > 0 && (
