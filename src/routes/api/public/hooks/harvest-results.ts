@@ -325,6 +325,22 @@ async function run(request: Request): Promise<Response> {
       mode = "tail";
     }
 
+    // Lisää uudelleenkäyntiin kisat, jotka olivat aiemmin tuloksettomia
+    // mutta saattavat nyt olla valmiina (esim. tämän päivän kisa). Vain
+    // backfill/tail-moodissa, ei manuaalisessa toistossa.
+    if (mode !== "manual") {
+      const { data: revisitRows } = await supabaseAdmin
+        .from("harvest_competitions")
+        .select("competition_id")
+        .eq("done", false)
+        .order("last_scanned_at", { ascending: true })
+        .limit(REVISIT_LIMIT);
+      const existing = new Set(ids);
+      for (const r of (revisitRows ?? []) as Array<{ competition_id: number }>) {
+        if (!existing.has(r.competition_id)) ids.push(r.competition_id);
+      }
+    }
+
     const result = await harvestRange(ids);
 
     // Advance cursor only as far as we actually attempted (so a rate-limit
