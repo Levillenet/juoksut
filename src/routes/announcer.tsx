@@ -40,6 +40,7 @@ interface RecordAlert {
   athleteName: string;
   organization: string;
   eventName: string;
+  category: string;
   result: string;
   previous: string;
   shownAt: number;
@@ -47,7 +48,8 @@ interface RecordAlert {
   roundId: number;
 }
 
-const ALERT_TTL_MS = 60_000;
+const MAX_RECORDS = 50;
+const VISIBLE_RECORDS = 3;
 
 function AnnouncerPage() {
   const [competitionId] = useCompetitionId();
