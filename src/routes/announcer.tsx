@@ -184,6 +184,46 @@ function AnnouncerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailQueries.map((q) => q.dataUpdatedAt).join(","), wantedIds]);
 
+  // A "Progress" round whose every competing allocation has a Result is
+  // effectively finished — promote it from Käynnissä to Lopputulokset even
+  // before the official confirms it.
+  const finishedProgressRoundIds = useMemo(() => {
+    const s = new Set<number>();
+    for (const r of inProgressAll) {
+      const ev = details[r.EventId];
+      if (!ev) continue;
+      const round = ev.Rounds.find((rr) => rr.Id === r.Id);
+      if (!round) continue;
+      const allocs = round.Heats.flatMap((h) => h.Allocations).filter(
+        (a) => !a.NotInCompetition,
+      );
+      if (allocs.length === 0) continue;
+      if (allocs.every((a) => a.Result)) s.add(r.Id);
+    }
+    return s;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [details, JSON.stringify(inProgressAll.map((r) => r.Id))]);
+
+  const inProgressVisible = inProgress.filter(
+    (r) => !finishedProgressRoundIds.has(r.Id),
+  );
+  const completedAllMerged = useMemo(() => {
+    const extra = inProgressAll.filter((r) => finishedProgressRoundIds.has(r.Id));
+    const seen = new Set<number>();
+    const all = [...completedAll, ...extra].filter((r) => {
+      if (seen.has(r.Id)) return false;
+      seen.add(r.Id);
+      return true;
+    });
+    return all.sort((a, b) =>
+      b.BeginDateTimeWithTZ.localeCompare(a.BeginDateTimeWithTZ),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completedAll, inProgressAll, finishedProgressRoundIds]);
+  const completedVisible = completedAllMerged.filter(
+    (r) => !dismissedCompletedIds.has(r.Id),
+  );
+
   // Detect new PB/SB results when details update; show alert banner for ~1 min
   useEffect(() => {
     const seen = seenResultsRef.current;
@@ -275,7 +315,7 @@ function AnnouncerPage() {
               {now ? `${pad(now.getHours())}:${pad(now.getMinutes())}` : "--:--"}
             </div>
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              {inProgressAll.length} käynnissä · {completed.length} valmis
+              {inProgressVisible.length} käynnissä · {completedVisible.length} valmis
             </div>
           </div>
           <Button variant="ghost" size="icon" onClick={reload} aria-label="Päivitä">
@@ -402,7 +442,7 @@ function AnnouncerPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           <section className="lg:col-span-2">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <SectionTitle icon={<Activity className="h-4 w-4" />} title="Käynnissä" count={inProgress.length} />
+              <SectionTitle icon={<Activity className="h-4 w-4" />} title="Käynnissä" count={inProgressVisible.length} />
               <div className="flex gap-1 rounded-full border border-border bg-card p-1 text-xs font-medium">
                 <button
                   onClick={() => setShowRunning(false)}
@@ -422,11 +462,11 @@ function AnnouncerPage() {
                 </button>
               </div>
             </div>
-            {inProgress.length === 0 ? (
+            {inProgressVisible.length === 0 ? (
               <EmptyCard text={showRunning ? "Ei käynnissä olevia lajeja." : "Ei käynnissä olevia kenttälajeja."} />
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
-                {inProgress.map((r) => (
+                {inProgressVisible.map((r) => (
                   <EventCard
                     key={r.Id}
                     round={r}
@@ -444,7 +484,7 @@ function AnnouncerPage() {
                 <SectionTitle
                   icon={<Trophy className="h-4 w-4" />}
                   title="Lopputulokset"
-                  count={completedAll.length}
+                  count={completedAllMerged.length}
                 />
                 {dismissedCompletedIds.size > 0 && (
                   <button
@@ -455,13 +495,13 @@ function AnnouncerPage() {
                   </button>
                 )}
               </div>
-              {completedAll.length === 0 ? (
+              {completedAllMerged.length === 0 ? (
                 <EmptyCard text="Ei julkaistuja lopputuloksia vielä." />
-              ) : completed.length === 0 ? (
+              ) : completedVisible.length === 0 ? (
                 <EmptyCard text="Kaikki lopputulokset merkitty luetuiksi." />
               ) : (
                 <ul className="grid gap-2 md:grid-cols-2">
-                  {completed.map((r) => (
+                  {completedVisible.map((r) => (
                     <UpcomingItem
                       key={r.Id}
                       round={r}
