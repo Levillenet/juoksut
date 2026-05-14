@@ -51,7 +51,7 @@ interface EventShape {
 }
 
 interface RoundsByDateShape {
-  [date: string]: { EventId: number }[];
+  [date: string]: { EventId: number; GroupName?: string }[];
 }
 
 function parseResultNumeric(text: string, category: string): number | null {
