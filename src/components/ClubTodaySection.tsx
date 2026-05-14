@@ -189,26 +189,41 @@ export function ClubTodaySection({
                       {g.competitionName || `Kisa #${g.competitionId}`}
                     </h3>
                     <ul className="divide-y divide-border rounded-lg border bg-background/50">
-                      {g.rows.map((r, idx) => (
-                        <li
-                          key={`${r.athlete_key}-${r.event_name}-${idx}`}
-                          className="flex items-baseline gap-3 px-3 py-2"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold">
-                              {r.surname} {r.firstname}
-                            </p>
-                            <p className="truncate text-[11px] text-muted-foreground">
-                              {r.event_name}
-                              {r.age_class && ` · ${r.age_class}`}
-                              {r.result_rank != null && ` · sija ${r.result_rank}`}
-                            </p>
-                          </div>
-                          <span className="shrink-0 text-base font-bold tabular-nums">
-                            {r.result_text}
-                          </span>
-                        </li>
-                      ))}
+                      {g.rows.map((r, idx) => {
+                        const pb = pbs[`${r.athlete_key}|${r.event_name}`];
+                        const lower = r.event_category === "Track";
+                        const isNewPb =
+                          pb &&
+                          r.result_numeric != null &&
+                          (lower
+                            ? r.result_numeric <= pb.numeric
+                            : r.result_numeric >= pb.numeric);
+                        return (
+                          <li
+                            key={`${r.athlete_key}-${r.event_name}-${idx}`}
+                            className="flex items-baseline gap-3 px-3 py-2"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold">
+                                {r.surname} {r.firstname}
+                              </p>
+                              <p className="truncate text-[11px] text-muted-foreground">
+                                {r.event_name}
+                                {r.age_class && ` · ${r.age_class}`}
+                                {r.result_rank != null && ` · sija ${r.result_rank}`}
+                                {pb && ` · PB ${pb.text}`}
+                              </p>
+                            </div>
+                            <span
+                              className={`shrink-0 text-base font-bold tabular-nums ${
+                                isNewPb ? "text-primary" : ""
+                              }`}
+                            >
+                              {r.result_text}
+                            </span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 ))}
