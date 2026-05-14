@@ -138,23 +138,25 @@ function WatchPage() {
 
   // Club selector state + derived data
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
+  // Separate club selector for the "lisää urheilijoita seurantaan" bulk flow
+  const [selectedBulkOrgId, setSelectedBulkOrgId] = useState<number | null>(null);
   const [selectedAgeClasses, setSelectedAgeClasses] = useState<Set<string>>(new Set());
 
-  // Reset age-class selection when club changes
-  const onSelectClub = (id: number | null) => {
-    setSelectedOrgId(id);
+  // Reset age-class selection when bulk club changes
+  const onSelectBulkClub = (id: number | null) => {
+    setSelectedBulkOrgId(id);
     setSelectedAgeClasses(new Set());
   };
 
-  // Age classes available for the selected club, with athlete counts
+  // Age classes available for the selected bulk-add club, with athlete counts
   const clubAgeClasses = useMemo(() => {
-    if (!index || selectedOrgId == null) return [] as Array<{
+    if (!index || selectedBulkOrgId == null) return [] as Array<{
       group: string;
       athletes: Array<{ key: string; surname: string; firstname: string; organization: string; organizationId: number | null }>;
     }>;
     const map = new Map<string, Map<string, { key: string; surname: string; firstname: string; organization: string; organizationId: number | null }>>();
     for (const e of index) {
-      if ((e.alloc.Organization?.Id ?? -1) !== selectedOrgId) continue;
+      if ((e.alloc.Organization?.Id ?? -1) !== selectedBulkOrgId) continue;
       const group = e.round.GroupName || "(Muu)";
       const orgId = e.alloc.Organization?.Id ?? null;
       const k = athleteKey(e.alloc.Surname, e.alloc.Firstname, orgId);
@@ -173,7 +175,7 @@ function WatchPage() {
     return Array.from(map.entries())
       .map(([group, ath]) => ({ group, athletes: Array.from(ath.values()) }))
       .sort((a, b) => a.group.localeCompare(b.group, "fi"));
-  }, [index, selectedOrgId]);
+  }, [index, selectedBulkOrgId]);
 
   const toggleAgeClass = (group: string) => {
     setSelectedAgeClasses((prev) => {
@@ -385,6 +387,113 @@ function WatchPage() {
           </section>
         )}
 
+        {/* Bulk add: club + age classes → seurantaan */}
+        <section className="mb-6">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Lisää seuran urheilijat seurantaan
+          </h3>
+          <div className="rounded-xl border bg-card p-4 shadow-sm">
+            <div className="relative">
+              <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <select
+                value={selectedBulkOrgId ?? ""}
+                onChange={(e) =>
+                  onSelectBulkClub(e.target.value ? parseInt(e.target.value, 10) : null)
+                }
+                className="h-10 w-full appearance-none rounded-md border border-input bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                aria-label="Valitse seura, jonka urheilijoita haluat seurata"
+                disabled={clubs.length === 0}
+              >
+                <option value="">
+                  {clubs.length === 0
+                    ? "Ladataan seuroja…"
+                    : `1) Valitse seura (${clubs.length})`}
+                </option>
+                {clubs.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.athletes})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedBulkOrgId != null && clubAgeClasses.length === 0 && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Ei ikäluokkia tälle seuralle.
+              </p>
+            )}
+
+            {selectedBulkOrgId != null && clubAgeClasses.length > 0 && (
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    2) Valitse ikäluokat
+                  </p>
+                  <div className="flex gap-3 text-xs">
+                    <button
+                      type="button"
+                      className="text-primary hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
+                      onClick={() =>
+                        setSelectedAgeClasses(
+                          new Set(clubAgeClasses.map((g) => g.group)),
+                        )
+                      }
+                      disabled={selectedAgeClasses.size === clubAgeClasses.length}
+                    >
+                      Valitse kaikki
+                    </button>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:underline disabled:cursor-not-allowed disabled:no-underline"
+                      onClick={() => setSelectedAgeClasses(new Set())}
+                      disabled={selectedAgeClasses.size === 0}
+                    >
+                      Tyhjennä
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {clubAgeClasses.map((g) => {
+                    const active = selectedAgeClasses.has(g.group);
+                    return (
+                      <button
+                        key={g.group}
+                        type="button"
+                        onClick={() => toggleAgeClass(g.group)}
+                        className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-input bg-background hover:bg-accent"
+                        }`}
+                      >
+                        {g.group} ({g.athletes.length})
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    {selectedAgeClasses.size === 0
+                      ? "Valitse yksi tai useampi ikäluokka."
+                      : `${bulkAddSelection.length} valittu · ${bulkAddNewCount} uutta (jo seurattavia ei lisätä uudestaan)`}
+                  </p>
+                  <Button
+                    size="sm"
+                    disabled={bulkAddNewCount === 0}
+                    onClick={addSelectedToWatch}
+                    className="gap-2"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    {bulkAddNewCount > 0
+                      ? `Lisää ${bulkAddNewCount} seurantaan`
+                      : "Lisää seurantaan"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* Club program */}
         <section className="mb-6">
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -397,7 +506,7 @@ function WatchPage() {
                 <select
                   value={selectedOrgId ?? ""}
                   onChange={(e) =>
-                    onSelectClub(e.target.value ? parseInt(e.target.value, 10) : null)
+                    setSelectedOrgId(e.target.value ? parseInt(e.target.value, 10) : null)
                   }
                   className="h-10 w-full appearance-none rounded-md border border-input bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   aria-label="Valitse seura"
@@ -437,48 +546,6 @@ function WatchPage() {
                 {selectedClub.entries}{" "}
                 {selectedClub.entries === 1 ? "lähtö" : "lähtöä"}
               </p>
-            )}
-
-            {selectedClub && clubAgeClasses.length > 0 && (
-              <div className="mt-4 rounded-md border border-dashed bg-background/40 p-3">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Lisää seurantaan ikäluokittain
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {clubAgeClasses.map((g) => {
-                    const active = selectedAgeClasses.has(g.group);
-                    return (
-                      <button
-                        key={g.group}
-                        type="button"
-                        onClick={() => toggleAgeClass(g.group)}
-                        className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
-                          active
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-input bg-background hover:bg-accent"
-                        }`}
-                      >
-                        {g.group} ({g.athletes.length})
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <p className="text-xs text-muted-foreground">
-                    {selectedAgeClasses.size === 0
-                      ? "Valitse yksi tai useampi ikäluokka."
-                      : `${bulkAddSelection.length} urheilijaa valittu · ${bulkAddNewCount} uutta`}
-                  </p>
-                  <Button
-                    size="sm"
-                    disabled={bulkAddNewCount === 0}
-                    onClick={addSelectedToWatch}
-                    className="gap-2"
-                  >
-                    <UserPlus className="h-4 w-4" /> Lisää seurantaan
-                  </Button>
-                </div>
-              </div>
             )}
 
             {selectedClub && clubProgram.length > 0 && (
