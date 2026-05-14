@@ -18,6 +18,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PrintIndexRouteImport } from './routes/print.index'
+import { Route as PrintWatchedRouteImport } from './routes/print.watched'
 import { Route as PrintClubRouteImport } from './routes/print.club'
 import { Route as AthleteKeyRouteImport } from './routes/athlete.$key'
 import { Route as AdminClubLocationsRouteImport } from './routes/admin.club-locations'
@@ -69,6 +70,11 @@ const PrintIndexRoute = PrintIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PrintRoute,
 } as any)
+const PrintWatchedRoute = PrintWatchedRouteImport.update({
+  id: '/watched',
+  path: '/watched',
+  getParentRoute: () => PrintRoute,
+} as any)
 const PrintClubRoute = PrintClubRouteImport.update({
   id: '/club',
   path: '/club',
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
+  '/print/watched': typeof PrintWatchedRoute
   '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
+  '/print/watched': typeof PrintWatchedRoute
   '/print': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
+  '/print/watched': typeof PrintWatchedRoute
   '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/admin/club-locations'
     | '/athlete/$key'
     | '/print/club'
+    | '/print/watched'
     | '/print/'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-results'
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
     | '/admin/club-locations'
     | '/athlete/$key'
     | '/print/club'
+    | '/print/watched'
     | '/print'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-results'
@@ -189,6 +200,7 @@ export interface FileRouteTypes {
     | '/admin/club-locations'
     | '/athlete/$key'
     | '/print/club'
+    | '/print/watched'
     | '/print/'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-results'
@@ -274,6 +286,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrintIndexRouteImport
       parentRoute: typeof PrintRoute
     }
+    '/print/watched': {
+      id: '/print/watched'
+      path: '/watched'
+      fullPath: '/print/watched'
+      preLoaderRoute: typeof PrintWatchedRouteImport
+      parentRoute: typeof PrintRoute
+    }
     '/print/club': {
       id: '/print/club'
       path: '/club'
@@ -314,11 +333,13 @@ declare module '@tanstack/react-router' {
 
 interface PrintRouteChildren {
   PrintClubRoute: typeof PrintClubRoute
+  PrintWatchedRoute: typeof PrintWatchedRoute
   PrintIndexRoute: typeof PrintIndexRoute
 }
 
 const PrintRouteChildren: PrintRouteChildren = {
   PrintClubRoute: PrintClubRoute,
+  PrintWatchedRoute: PrintWatchedRoute,
   PrintIndexRoute: PrintIndexRoute,
 }
 
@@ -341,3 +362,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
