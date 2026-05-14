@@ -22,6 +22,7 @@ import { Route as AnnouncerIndexRouteImport } from './routes/announcer.index'
 import { Route as PrintWatchedRouteImport } from './routes/print.watched'
 import { Route as PrintClubRouteImport } from './routes/print.club'
 import { Route as AthleteKeyRouteImport } from './routes/athlete.$key'
+import { Route as AnnouncerPlanningRouteImport } from './routes/announcer.planning'
 import { Route as AnnouncerLiveRouteImport } from './routes/announcer.live'
 import { Route as AnnouncerCombinedRouteImport } from './routes/announcer.combined'
 import { Route as AdminClubLocationsRouteImport } from './routes/admin.club-locations'
@@ -93,6 +94,11 @@ const AthleteKeyRoute = AthleteKeyRouteImport.update({
   path: '/athlete/$key',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnnouncerPlanningRoute = AnnouncerPlanningRouteImport.update({
+  id: '/planning',
+  path: '/planning',
+  getParentRoute: () => AnnouncerRoute,
+} as any)
 const AnnouncerLiveRoute = AnnouncerLiveRouteImport.update({
   id: '/live',
   path: '/live',
@@ -132,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/announcer/combined': typeof AnnouncerCombinedRoute
   '/announcer/live': typeof AnnouncerLiveRoute
+  '/announcer/planning': typeof AnnouncerPlanningRoute
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/announcer/combined': typeof AnnouncerCombinedRoute
   '/announcer/live': typeof AnnouncerLiveRoute
+  '/announcer/planning': typeof AnnouncerPlanningRoute
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
@@ -171,6 +179,7 @@ export interface FileRoutesById {
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/announcer/combined': typeof AnnouncerCombinedRoute
   '/announcer/live': typeof AnnouncerLiveRoute
+  '/announcer/planning': typeof AnnouncerPlanningRoute
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/admin/club-locations'
     | '/announcer/combined'
     | '/announcer/live'
+    | '/announcer/planning'
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
@@ -211,6 +221,7 @@ export interface FileRouteTypes {
     | '/admin/club-locations'
     | '/announcer/combined'
     | '/announcer/live'
+    | '/announcer/planning'
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
@@ -231,6 +242,7 @@ export interface FileRouteTypes {
     | '/admin/club-locations'
     | '/announcer/combined'
     | '/announcer/live'
+    | '/announcer/planning'
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
@@ -348,6 +360,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AthleteKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/announcer/planning': {
+      id: '/announcer/planning'
+      path: '/planning'
+      fullPath: '/announcer/planning'
+      preLoaderRoute: typeof AnnouncerPlanningRouteImport
+      parentRoute: typeof AnnouncerRoute
+    }
     '/announcer/live': {
       id: '/announcer/live'
       path: '/live'
@@ -389,12 +408,14 @@ declare module '@tanstack/react-router' {
 interface AnnouncerRouteChildren {
   AnnouncerCombinedRoute: typeof AnnouncerCombinedRoute
   AnnouncerLiveRoute: typeof AnnouncerLiveRoute
+  AnnouncerPlanningRoute: typeof AnnouncerPlanningRoute
   AnnouncerIndexRoute: typeof AnnouncerIndexRoute
 }
 
 const AnnouncerRouteChildren: AnnouncerRouteChildren = {
   AnnouncerCombinedRoute: AnnouncerCombinedRoute,
   AnnouncerLiveRoute: AnnouncerLiveRoute,
+  AnnouncerPlanningRoute: AnnouncerPlanningRoute,
   AnnouncerIndexRoute: AnnouncerIndexRoute,
 }
 
