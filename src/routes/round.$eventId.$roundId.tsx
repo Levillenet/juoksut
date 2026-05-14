@@ -9,6 +9,7 @@ import {
   type EventResults,
   type Heat,
 } from "@/lib/tuloslista";
+import { RecordBadge } from "@/lib/records";
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 
