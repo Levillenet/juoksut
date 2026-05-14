@@ -569,6 +569,12 @@ function WatchPage() {
             </ul>
           )}
         </section>
+          </TabsContent>
+
+          <TabsContent value="ennatykset" className="mt-0">
+            <RecordsPanel clubs={clubs.map((c) => ({ id: c.id, name: c.name }))} />
+          </TabsContent>
+        </Tabs>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
           Lähde: live.tuloslista.com · päivittyy automaattisesti minuutin välein
