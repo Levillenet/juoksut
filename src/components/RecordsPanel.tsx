@@ -7,6 +7,7 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  LabelList,
 } from "recharts";
 
 import { formatSeconds, type EventGroup } from "@/lib/athlete-history";
@@ -19,6 +20,12 @@ const HELSINKI_DATE = new Intl.DateTimeFormat("fi-FI", {
   year: "numeric",
 });
 
+const HELSINKI_SHORT = new Intl.DateTimeFormat("fi-FI", {
+  timeZone: "Europe/Helsinki",
+  day: "numeric",
+  month: "numeric",
+});
+
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   try {
@@ -28,31 +35,40 @@ function formatDate(iso: string | null): string {
   }
 }
 
+function formatDateShort(ts: number): string {
+  try {
+    return HELSINKI_SHORT.format(new Date(ts));
+  } catch {
+    return "";
+  }
+}
+
 export function EventGroupView({ group }: { group: EventGroup }) {
   const points = useMemo(
     () =>
       group.rows
         .filter((r) => r.result_numeric != null && r.competition_date)
         .map((r) => ({
-          date: r.competition_date!,
+          id: r.id,
           ts: new Date(r.competition_date!).getTime(),
           value: r.result_numeric!,
           text: r.result_text,
           competition: r.competition_name,
-        })),
+        }))
+        .sort((a, b) => a.ts - b.ts),
     [group.rows],
   );
 
   const formatY = (v: number) =>
     group.category === "Track" ? formatSeconds(v) : v.toFixed(2);
 
-  const pbLine = useMemo(() => {
+  const enriched = useMemo(() => {
     let best: number | null = null;
     return points.map((p) => {
-      if (best == null || (group.lowerBetter ? p.value < best : p.value > best)) {
-        best = p.value;
-      }
-      return { ...p, pb: best };
+      const isPb =
+        best == null || (group.lowerBetter ? p.value < best : p.value > best);
+      if (isPb) best = p.value;
+      return { ...p, pb: best!, isPb };
     });
   }, [points, group.lowerBetter]);
 
@@ -72,16 +88,19 @@ export function EventGroupView({ group }: { group: EventGroup }) {
         </p>
       </div>
 
-      {pbLine.length >= 2 ? (
-        <div className="h-44 w-full">
+      {enriched.length >= 2 ? (
+        <div className="h-56 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={pbLine} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
+            <LineChart
+              data={enriched}
+              margin={{ top: 22, right: 16, left: 0, bottom: 4 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis
                 dataKey="ts"
                 type="number"
                 domain={["dataMin", "dataMax"]}
-                tickFormatter={(t) => formatDate(new Date(t).toISOString())}
+                tickFormatter={formatDateShort}
                 stroke="hsl(var(--muted-foreground))"
                 fontSize={10}
               />
@@ -91,7 +110,7 @@ export function EventGroupView({ group }: { group: EventGroup }) {
                 tickFormatter={formatY}
                 stroke="hsl(var(--muted-foreground))"
                 fontSize={10}
-                width={50}
+                width={52}
               />
               <Tooltip
                 contentStyle={{
@@ -99,34 +118,72 @@ export function EventGroupView({ group }: { group: EventGroup }) {
                   border: "1px solid hsl(var(--border))",
                   fontSize: 12,
                 }}
-                labelFormatter={(t) => formatDate(new Date(Number(t)).toISOString())}
-                formatter={(value: number, name: string) => [
-                  group.category === "Track" ? formatSeconds(value) : value.toFixed(2),
-                  name === "pb" ? "PB-kehitys" : "Tulos",
+                labelFormatter={(t) =>
+                  formatDate(new Date(Number(t)).toISOString())
+                }
+                formatter={(_v: number, _n: string, p: { payload: { text: string; competition: string } }) => [
+                  p.payload.text,
+                  p.payload.competition,
                 ]}
               />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="hsl(var(--muted-foreground))"
-                strokeWidth={1}
-                dot={{ r: 2 }}
-              />
+              {/* PB-kehitys korostuksena (askelviiva) */}
               <Line
                 type="stepAfter"
                 dataKey="pb"
-                stroke="hsl(var(--primary))"
+                stroke="hsl(var(--primary) / 0.4)"
                 strokeWidth={2}
+                strokeDasharray="4 4"
                 dot={false}
+                activeDot={false}
+                isAnimationActive={false}
               />
+              {/* Tulosviiva: PB-pisteet isompina ja primary-värisinä */}
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke="hsl(var(--foreground))"
+                strokeWidth={1.5}
+                isAnimationActive={false}
+                dot={(props: {
+                  cx?: number;
+                  cy?: number;
+                  index?: number;
+                  payload?: { isPb?: boolean };
+                }) => {
+                  const { cx, cy, payload, index } = props;
+                  const pb = !!payload?.isPb;
+                  return (
+                    <circle
+                      key={`d-${index}`}
+                      cx={cx}
+                      cy={cy}
+                      r={pb ? 5 : 3}
+                      fill={pb ? "hsl(var(--primary))" : "hsl(var(--background))"}
+                      stroke={pb ? "hsl(var(--primary))" : "hsl(var(--foreground))"}
+                      strokeWidth={pb ? 2 : 1.5}
+                    />
+                  );
+                }}
+              >
+                <LabelList
+                  dataKey="text"
+                  position="top"
+                  offset={8}
+                  style={{
+                    fontSize: 10,
+                    fill: "hsl(var(--foreground))",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                />
+              </Line>
             </LineChart>
           </ResponsiveContainer>
         </div>
-      ) : (
+      ) : enriched.length === 1 ? (
         <p className="text-[11px] text-muted-foreground">
-          Vain {pbLine.length} tulos — graafiin tarvitaan vähintään 2.
+          Vain yksi tulos — graafiin tarvitaan vähintään kaksi.
         </p>
-      )}
+      ) : null}
 
       <ul className="mt-3 divide-y divide-border text-xs">
         {group.rows
