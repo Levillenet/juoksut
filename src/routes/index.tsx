@@ -202,6 +202,14 @@ function Index() {
               Kuuluttaja
             </Link>
           )}
+          {role === "official" && (
+            <Link
+              to="/admin/club-locations"
+              className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+            >
+              Seurojen sijainnit
+            </Link>
+          )}
           <Link
             to="/print"
             className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
