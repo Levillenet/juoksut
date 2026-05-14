@@ -814,7 +814,7 @@ function UpcomingItem({
   return (
     <li className="overflow-hidden rounded-xl border border-border bg-card">
       <button
-        onClick={onToggle}
+        onClick={handleToggle}
         className="flex w-full items-center gap-3 p-3 text-left hover:bg-secondary/50"
       >
         <div className="w-14 shrink-0 text-xl font-bold tabular-nums">
