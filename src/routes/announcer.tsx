@@ -674,10 +674,12 @@ function EventCard({
           {list.map((a) => {
             const rank = a.ResultRank ?? a.Position;
             const change = rankChanges.get(a.AllocId);
+            const eff = a.Result ? effectiveRecord(round.EventId, a) : null;
+            const recordKind = a.Result && eff ? detectRecord(round.Category, a.Result, eff.pb, eff.sb) : null;
             return (
               <li
                 key={a.AllocId}
-                className="flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2"
+                className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 sm:gap-3"
               >
                 <span
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-black tabular-nums ${
@@ -708,24 +710,21 @@ function EventCard({
                   <p className="truncate text-xs text-muted-foreground">
                     {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
                   </p>
+                  {recordKind && eff && a.Result && (
+                    <div className="mt-1 flex min-w-0 items-center overflow-hidden">
+                      <RecordBadge
+                        category={round.Category}
+                        result={a.Result}
+                        pb={eff.pb}
+                        sb={eff.sb}
+                        size="sm"
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {a.Result ? (
-                    <>
-                      {(() => {
-                        const eff = effectiveRecord(round.EventId, a);
-                        return (
-                          <RecordBadge
-                            category={round.Category}
-                            result={a.Result}
-                            pb={eff.pb}
-                            sb={eff.sb}
-                            size="lg"
-                          />
-                        );
-                      })()}
-                      <span className="text-base font-bold tabular-nums">{a.Result}</span>
-                    </>
+                    <span className="text-base font-bold tabular-nums">{a.Result}</span>
                   ) : (
                     <span className="flex gap-2 text-xs text-muted-foreground">
                       {a.SB && <span title="Kauden ennätys">SB {a.SB}</span>}
