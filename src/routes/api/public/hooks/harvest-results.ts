@@ -18,10 +18,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const API = "https://cached-public-api.tuloslista.com/live/v1";
-const BATCH_SIZE = 40;       // competition IDs scanned per invocation
+const BATCH_SIZE = 100;      // competition IDs scanned per invocation
 const TAIL_RESCAN = 30;      // IDs to re-scan when caught up
-const CONCURRENCY = 6;
+const CONCURRENCY = 5;       // parallel competitions per chunk
 const HARD_MAX_ID = 30000;   // safety ceiling
+
+// Soft rate-limit signal shared across the run. If tuloslista.com starts
+// returning 429/503 we stop advancing so the cursor can retry these IDs
+// on a later run instead of skipping them.
+let rateLimited = false;
 
 interface Allocation {
   Surname?: string;
@@ -73,12 +78,22 @@ function parseResultNumeric(text: string, category: string): number | null {
 
 async function fetchJson<T>(url: string): Promise<T | null> {
   try {
-    const r = await fetch(url);
+    const r = await fetch(url, {
+      headers: { "User-Agent": "juoksut-harvester/1.0" },
+    });
+    if (r.status === 429 || r.status === 503) {
+      rateLimited = true;
+      return null;
+    }
     if (!r.ok) return null;
     return (await r.json()) as T;
   } catch {
     return null;
   }
+}
+
+function jitter() {
+  return new Promise((res) => setTimeout(res, 50 + Math.random() * 100));
 }
 
 function athleteKey(surname: string, firstname: string, orgId: number | null) {
@@ -181,104 +196,118 @@ async function flush(rows: Row[]) {
 }
 
 async function harvestRange(ids: number[]) {
-  let cursor = 0;
   let scanned = 0;
   let existed = 0;
+  let lastScannedId = ids.length > 0 ? ids[0] - 1 : -1;
   const pending: Row[] = [];
 
-  const worker = async () => {
-    while (cursor < ids.length) {
-      const id = ids[cursor++];
-      try {
-        const r = await processCompetition(id, pending);
-        if (r.existed) existed++;
-      } catch (e) {
-        console.error("comp", id, e);
-      }
+  // Process IDs in chunks of CONCURRENCY in source order, so that if we
+  // bail out on rate-limit we know exactly which IDs were attempted.
+  for (let i = 0; i < ids.length; i += CONCURRENCY) {
+    if (rateLimited) break;
+    const chunk = ids.slice(i, i + CONCURRENCY);
+    const results = await Promise.allSettled(
+      chunk.map(async (id) => {
+        await jitter();
+        return processCompetition(id, pending);
+      }),
+    );
+    for (let j = 0; j < results.length; j++) {
+      const r = results[j];
       scanned++;
-      if (pending.length >= 400) await flush(pending.splice(0));
+      lastScannedId = chunk[j];
+      if (r.status === "fulfilled" && r.value.existed) existed++;
+      if (r.status === "rejected") console.error("comp", chunk[j], r.reason);
     }
-  };
-
-  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+    if (pending.length >= 400) await flush(pending.splice(0));
+  }
   await flush(pending);
-  return { scanned, existed, found: 0 };
+  return { scanned, existed, lastScannedId };
 }
 
 async function run(request: Request): Promise<Response> {
+  rateLimited = false;
   const url = new URL(request.url);
-  // Manual override (admin debug only)
-  const fromOverride = Number(url.searchParams.get("fromId"));
-  const toOverride = Number(url.searchParams.get("toId"));
 
-  // Read cursor
-  const { data: stateRow } = await supabaseAdmin
-    .from("harvest_state")
-    .select("next_id, latest_id")
-    .eq("id", "singleton")
-    .maybeSingle();
-  let nextId = stateRow?.next_id ?? 17000;
-  let latestId = stateRow?.latest_id ?? 17000;
-
-  let ids: number[];
-  let mode: "manual" | "backfill" | "tail";
-
-  if (fromOverride && toOverride) {
-    ids = [];
-    for (let i = fromOverride; i <= Math.min(toOverride, HARD_MAX_ID); i++) ids.push(i);
-    mode = "manual";
-  } else if (nextId <= latestId + BATCH_SIZE) {
-    // Backfill phase: walk forward in batches.
-    const start = nextId;
-    const end = Math.min(start + BATCH_SIZE - 1, HARD_MAX_ID);
-    ids = [];
-    for (let i = start; i <= end; i++) ids.push(i);
-    mode = "backfill";
-  } else {
-    // Caught up: re-scan tail for late results, plus probe a few new IDs.
-    const tailStart = Math.max(17000, latestId - TAIL_RESCAN);
-    const probeEnd = Math.min(latestId + BATCH_SIZE, HARD_MAX_ID);
-    ids = [];
-    for (let i = tailStart; i <= probeEnd; i++) ids.push(i);
-    mode = "tail";
+  // Acquire advisory lock so overlapping cron runs don't double-process.
+  const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock");
+  if (lockData !== true) {
+    return Response.json({ ok: true, skipped: "locked" });
   }
 
-  const result = await harvestRange(ids);
+  try {
+    const fromOverride = Number(url.searchParams.get("fromId"));
+    const toOverride = Number(url.searchParams.get("toId"));
 
-  // Update cursor
-  const maxScanned = ids.length > 0 ? ids[ids.length - 1] : nextId;
-  if (mode === "backfill") {
-    nextId = maxScanned + 1;
-    if (result.existed > 0) {
-      latestId = Math.max(latestId, maxScanned);
+    const { data: stateRow } = await supabaseAdmin
+      .from("harvest_state")
+      .select("next_id, latest_id")
+      .eq("id", "singleton")
+      .maybeSingle();
+    let nextId = stateRow?.next_id ?? 17000;
+    let latestId = stateRow?.latest_id ?? 17000;
+
+    let ids: number[];
+    let mode: "manual" | "backfill" | "tail";
+
+    if (fromOverride && toOverride) {
+      ids = [];
+      for (let i = fromOverride; i <= Math.min(toOverride, HARD_MAX_ID); i++) ids.push(i);
+      mode = "manual";
+    } else if (nextId <= latestId + BATCH_SIZE) {
+      const start = nextId;
+      const end = Math.min(start + BATCH_SIZE - 1, HARD_MAX_ID);
+      ids = [];
+      for (let i = start; i <= end; i++) ids.push(i);
+      mode = "backfill";
+    } else {
+      const tailStart = Math.max(17000, latestId - TAIL_RESCAN);
+      const probeEnd = Math.min(latestId + BATCH_SIZE, HARD_MAX_ID);
+      ids = [];
+      for (let i = tailStart; i <= probeEnd; i++) ids.push(i);
+      mode = "tail";
     }
-  } else if (mode === "tail") {
-    if (result.existed > 0) {
-      latestId = Math.max(latestId, maxScanned);
-      nextId = Math.max(nextId, latestId + 1);
+
+    const result = await harvestRange(ids);
+
+    // Advance cursor only as far as we actually attempted (so a rate-limit
+    // bailout retries the unprocessed IDs on the next run).
+    const advancedTo = result.lastScannedId;
+    if (mode === "backfill" && advancedTo >= nextId) {
+      nextId = advancedTo + 1;
+      if (result.existed > 0) latestId = Math.max(latestId, advancedTo);
+    } else if (mode === "tail") {
+      if (result.existed > 0) {
+        latestId = Math.max(latestId, advancedTo);
+        nextId = Math.max(nextId, latestId + 1);
+      }
     }
+
+    await supabaseAdmin
+      .from("harvest_state")
+      .update({
+        next_id: nextId,
+        latest_id: latestId,
+        last_run_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", "singleton");
+
+    return Response.json({
+      ok: true,
+      mode,
+      scanned: result.scanned,
+      existed: result.existed,
+      rateLimited,
+      fromId: ids[0] ?? null,
+      toId: ids[ids.length - 1] ?? null,
+      advancedTo,
+      nextId,
+      latestId,
+    });
+  } finally {
+    await supabaseAdmin.rpc("harvest_unlock");
   }
-
-  await supabaseAdmin
-    .from("harvest_state")
-    .update({
-      next_id: nextId,
-      latest_id: latestId,
-      last_run_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", "singleton");
-
-  return Response.json({
-    ok: true,
-    mode,
-    scanned: result.scanned,
-    existed: result.existed,
-    fromId: ids[0] ?? null,
-    toId: ids[ids.length - 1] ?? null,
-    nextId,
-    latestId,
-  });
 }
 
 export const Route = createFileRoute("/api/public/hooks/harvest-results")({
