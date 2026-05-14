@@ -126,13 +126,14 @@ type Row = {
 async function processCompetition(
   id: number,
   pending: Row[],
-): Promise<{ existed: boolean }> {
+): Promise<{ existed: boolean; rowsAdded: number; competitionDate: string | null }> {
   const props = await fetchJson<PropertiesShape>(
     `${API}/competition/${id}/properties`,
   );
-  if (!props?.Competition?.Id) return { existed: false };
+  if (!props?.Competition?.Id) return { existed: false, rowsAdded: 0, competitionDate: null };
+  const competitionDate = props.Competition?.BeginDate ?? null;
   const byDate = await fetchJson<RoundsByDateShape>(`${API}/competition/${id}`);
-  if (!byDate) return { existed: true };
+  if (!byDate) return { existed: true, rowsAdded: 0, competitionDate };
   // Map EventId → GroupName (age class) from the schedule
   const ageByEvent = new Map<number, string>();
   for (const list of Object.values(byDate)) {
@@ -141,6 +142,7 @@ async function processCompetition(
     }
   }
   const eventIds = Array.from(ageByEvent.keys());
+  let rowsAdded = 0;
   for (const eid of eventIds) {
     const ev = await fetchJson<EventShape>(`${API}/results/${id}/${eid}`);
     if (!ev) continue;
@@ -160,8 +162,7 @@ async function processCompetition(
             organization_id: orgId,
             competition_id: id,
             competition_name: props.Competition?.Name ?? "",
-            competition_date:
-              props.Competition?.BeginDate ?? ev.BeginDateTimeWithTZ ?? null,
+            competition_date: competitionDate ?? ev.BeginDateTimeWithTZ ?? null,
             location: "",
             event_id: ev.Id,
             event_name: ev.Name,
@@ -173,12 +174,12 @@ async function processCompetition(
             wind: a.Wind ?? null,
             age_class: ageClass,
           });
-
+          rowsAdded++;
         }
       }
     }
   }
-  return { existed: true };
+  return { existed: true, rowsAdded, competitionDate };
 }
 
 async function flush(rows: Row[]) {
