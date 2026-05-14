@@ -90,6 +90,11 @@ function WatchPage() {
           const eid = eventIds[i];
           try {
             const ev = await fetchEvent(competitionId, eid);
+            const allAllocs = ev.Rounds.flatMap((r) =>
+              r.Heats.flatMap((h) => h.Allocations),
+            );
+            await captureBaselines(competitionId, eid, allAllocs);
+            await loadBaselines(competitionId, eid);
             for (const round of ev.Rounds) {
               const matchingRound = allRounds.find((r) => r.Id === round.Id) ?? {
                 ...allRounds.find((r) => r.EventId === eid)!,
