@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Search as SearchIcon, RefreshCw, Pin, X, UserPlus, Printer, Building2, Trophy } from "lucide-react";
+import { ArrowLeft, Search as SearchIcon, RefreshCw, Pin, X, UserPlus, Building2, Trophy } from "lucide-react";
 import logo from "@/assets/lahden-ahkera-logo.png";
 
 import {
