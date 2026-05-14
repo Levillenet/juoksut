@@ -1,48 +1,38 @@
-## Ongelma
+## Tavoite
 
-Bulk-add-toiminto on jo olemassa `/watch`-sivulla, mutta se on piilotettu pienenä katkoviivakorttina **"Seuran ohjelma" -osion sisälle** ja tulee näkyviin vasta kun käyttäjä on valinnut seuran sieltä. Käyttäjän mielikuvassa kyse on omasta toiminnosta ("valitse seura → valitse ikäluokat → lisää seurantaan"), eikä hän yhdistä sitä "Tulosta ohjelma" -korttiin. Siksi näyttää siltä, ettei toimintoa ole olemassa.
+Kun urheilijan tulos rikkoo henkilökohtaisen ennätyksen, se merkitään pysyvästi siihen riviin. Vaikka sama urheilija myöhemmin tekisi vielä paremman tuloksen, alkuperäinen rivi näyttää historiassa edelleen "🏆 PB" -merkin.
 
-## Korjauksen idea
+## Mitä rakennetaan
 
-Tehdään tästä oma, erillinen osio `/watch`-sivulle, jossa flow on selkeästi kaksivaiheinen:
+### 1. Tietokanta: lippu `athlete_results`-tauluun
 
-1. **Vaihe 1 — Valitse seura**: oma seuravalitsin (sama lista kuin nykyinenkin), otsikolla "Lisää seuran urheilijat seurantaan".
-2. **Vaihe 2 — Valitse ikäluokat**: kun seura on valittu, näytetään ikäluokkachipit (esim. `T8 (5)`, `T10 (3)`), joista voi valita yhden tai useamman. Mukana "Valitse kaikki" -pikalinkki.
-3. **Toiminto**: "Lisää N urheilijaa seurantaan" -nappi, joka kertoo paljonko **uusia** lisätään (jo seurattavat eivät kasvata lukua). Onnistumisen jälkeen toast + chip-valinnat tyhjenevät.
+Lisätään uusi sarake:
+- `was_pb` (boolean, default false) — `true` jos tulos oli urheilijan PB siinä lajissa sillä hetkellä, kun se kirjattiin.
 
-"Seuran ohjelma" -osio jää ennalleen tulostusta varten, mutta nykyinen sisäinen bulk-add-kortti poistetaan sieltä, jotta toiminto ei ole kahdessa paikassa.
+Lisäksi täytetään takautuvasti olemassa oleva data: jokaiselle (athlete_key, normalisoitu event_name) -parille merkitään `was_pb = true` niihin riveihin, joissa kyseinen tulos oli kronologisesti uusi paras siihen mennessä. Track-lajeissa pienin aika voittaa, Field-lajeissa suurin tulos.
 
-## Sijoittelu sivulla
+### 2. Harvest-hookin päivitys
 
-```text
-[Hakukenttä sukunimellä]      ← jo olemassa
-[Hakutulokset]                 ← jo olemassa, näkyy haettaessa
+`src/routes/api/public/hooks/harvest-results.ts` — kun uusi tulos tallennetaan, verrataan urheilijan aiempiin tuloksiin samasta lajista (normalisoitu nimi). Jos uusi tulos on parempi (tai ensimmäinen koskaan), asetetaan `was_pb = true`.
 
-▸ Lisää seuran urheilijat seurantaan   ← UUSI oma osio (näkyvä heti)
-   1) Seuravalitsin
-   2) Ikäluokkachipit (kun seura valittu)
-   3) "Lisää N seurantaan" -nappi
+### 3. Käyttöliittymä
 
-▸ Seuran ohjelma                       ← ennallaan, vain tulostusta varten
-   Seuravalitsin + "Tulosta ohjelma"
+`ClubTodaySection`:
+- Korvataan nykyinen "korosta jos tulos ≤ PB" -logiikka tarkistuksella `was_pb === true`.
+- Näytetään pieni 🏆-merkki tai "PB!" -tagi tuloksen perässä, kun lippu on päällä.
+- PB-aika suluissa (nykyinen "PB 7.85") säilyy ennallaan vertailun vuoksi.
 
-▸ Seurannassa olevat urheilijat        ← ennallaan
-```
+Sama merkintä viedään myös:
+- `round.$eventId.$roundId.tsx` (lopputulokset & erien rivit) — jos rivin athlete_keylle löytyy `was_pb`-merkintä tästä päivästä/lajista.
+- `athlete.$key.tsx` (urheilijan historia) — PB-merkki näkyy historiarivillä.
 
-Uusi osio sijoitetaan **ennen** "Seuran ohjelma" -osiota, jotta se on löydettävissä.
+## Tekninen huomio
 
-## Tekniset muutokset
+- Normalisointi (T9 60m ↔ T11 60m ↔ M 60m) tehdään jo `normalizeEventName`-funktiolla. Sama logiikka käytetään takautuvassa täyttämisessä.
+- `was_pb` ei muutu jälkikäteen — se on snapshot tallennushetkestä. Tämä on tarkoitus: historiarivit pysyvät rehellisinä siitä, mikä oli ennätys silloin.
+- Ei rakenneta erillistä `personal_bests`-taulua, koska tieto on luonnollinen attribuutti tulosrivissä ja yksi sarake riittää.
 
-Kaikki muutokset `src/routes/watch.tsx`:ssä — ei backend- tai datamuutoksia (data `clubAgeClasses`, `bulkAddSelection`, `addSelectedToWatch`, `toggleAgeClass` on jo olemassa).
+## Mitä ei muutu
 
-- Eriytä bulk-add omaan `<section>`:iin omalla `selectedBulkOrgId`-tilalla (erillinen seuran ohjelma -valitsimesta, jotta käyttäjän ei tarvitse vaihtaa kontekstia).
-- `clubAgeClasses`-memo viittaamaan `selectedBulkOrgId`:hen.
-- Lisää "Valitse kaikki / Tyhjennä" -pikatoiminto chippien yläpuolelle.
-- Napin teksti muotoon `"Lisää N urheilijaa seurantaan"` (tai disabloitu kun N=0). Tooltip/aputeksti: "Jo seurattavia ei lisätä uudestaan."
-- Poista nykyinen katkoviivakortti `Seuran ohjelma` -osion sisältä (rivit ~442–...).
-- Mobiili: chipit `flex-wrap`, samanlainen tyyli kuin nykyiset.
-
-## Mitä EI tehdä
-
-- Ei muuteta tietokantaa, watch-storea eikä index-sivun "Päivän parhaat" -osiota.
-- Ei kosketa `harvest-results.ts`:ään.
+- `result_numeric`, `result_text` ja muut nykyiset kentät pysyvät ennallaan.
+- "Nykyinen PB" -aika sulkujen sisällä lasketaan edelleen lennossa kuten nyt — vain sen rinnalle tulee pysyvä historiamerkki.
