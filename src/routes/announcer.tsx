@@ -601,6 +601,31 @@ function EventCard({
   );
   const list = open ? allRanked : top3;
 
+  // Track rank changes between detail updates so we can show ↑ / ↓ next to
+  // athletes whose position improved or dropped during the live event.
+  const prevRanksRef = useRef<Map<number, number>>(new Map());
+  const rankChanges = useMemo(() => {
+    const changes = new Map<number, "up" | "down">();
+    const prev = prevRanksRef.current;
+    for (const a of allRanked) {
+      const cur = a.ResultRank ?? a.Position;
+      if (cur == null) continue;
+      const before = prev.get(a.AllocId);
+      if (before != null && before !== cur) {
+        changes.set(a.AllocId, cur < before ? "up" : "down");
+      }
+    }
+    return changes;
+  }, [allRanked]);
+  useEffect(() => {
+    const next = new Map<number, number>();
+    for (const a of allRanked) {
+      const cur = a.ResultRank ?? a.Position;
+      if (cur != null) next.set(a.AllocId, cur);
+    }
+    prevRanksRef.current = next;
+  }, [allRanked]);
+
   return (
     <div
       className={`overflow-hidden rounded-2xl border bg-card ${
