@@ -123,7 +123,26 @@ async function harvest(fromId: number, toId: number, concurrency = 6) {
   let cursor = 0;
   let scanned = 0;
   let found = 0;
-  const pending: Record<string, unknown>[] = [];
+  type Row = {
+    athlete_key: string;
+    surname: string;
+    firstname: string;
+    organization: string;
+    organization_id: number | null;
+    competition_id: number;
+    competition_name: string;
+    competition_date: string | null;
+    location: string;
+    event_id: number;
+    event_name: string;
+    sub_category: string;
+    event_category: string;
+    result_text: string;
+    result_numeric: number | null;
+    result_rank: number | null;
+    wind: number | null;
+  };
+  const pending: Row[] = [];
 
   const flush = async () => {
     if (pending.length === 0) return;
