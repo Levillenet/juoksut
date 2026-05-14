@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WatchRouteImport } from './routes/watch'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as PrintRouteImport } from './routes/print'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
@@ -29,6 +30,11 @@ const SearchRoute = SearchRouteImport.update({
 const PrintRoute = PrintRouteImport.update({
   id: '/print',
   path: '/print',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnnouncerRoute = AnnouncerRouteImport.update({
@@ -50,6 +56,7 @@ const RoundEventIdRoundIdRoute = RoundEventIdRoundIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRoute
+  '/login': typeof LoginRoute
   '/print': typeof PrintRoute
   '/search': typeof SearchRoute
   '/watch': typeof WatchRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRoute
+  '/login': typeof LoginRoute
   '/print': typeof PrintRoute
   '/search': typeof SearchRoute
   '/watch': typeof WatchRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRoute
+  '/login': typeof LoginRoute
   '/print': typeof PrintRoute
   '/search': typeof SearchRoute
   '/watch': typeof WatchRoute
@@ -77,6 +86,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/announcer'
+    | '/login'
     | '/print'
     | '/search'
     | '/watch'
@@ -85,6 +95,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/announcer'
+    | '/login'
     | '/print'
     | '/search'
     | '/watch'
@@ -93,6 +104,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/announcer'
+    | '/login'
     | '/print'
     | '/search'
     | '/watch'
@@ -102,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnnouncerRoute: typeof AnnouncerRoute
+  LoginRoute: typeof LoginRoute
   PrintRoute: typeof PrintRoute
   SearchRoute: typeof SearchRoute
   WatchRoute: typeof WatchRoute
@@ -131,6 +144,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrintRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/announcer': {
       id: '/announcer'
       path: '/announcer'
@@ -158,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnnouncerRoute: AnnouncerRoute,
+  LoginRoute: LoginRoute,
   PrintRoute: PrintRoute,
   SearchRoute: SearchRoute,
   WatchRoute: WatchRoute,
