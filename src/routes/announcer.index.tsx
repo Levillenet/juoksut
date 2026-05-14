@@ -21,7 +21,7 @@ const MODES: {
   badge: string;
   badgeTone: string;
   description: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }[] = [
   {
     id: "combined",
