@@ -439,6 +439,48 @@ function WatchPage() {
               </p>
             )}
 
+            {selectedClub && clubAgeClasses.length > 0 && (
+              <div className="mt-4 rounded-md border border-dashed bg-background/40 p-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Lisää seurantaan ikäluokittain
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {clubAgeClasses.map((g) => {
+                    const active = selectedAgeClasses.has(g.group);
+                    return (
+                      <button
+                        key={g.group}
+                        type="button"
+                        onClick={() => toggleAgeClass(g.group)}
+                        className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-input bg-background hover:bg-accent"
+                        }`}
+                      >
+                        {g.group} ({g.athletes.length})
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    {selectedAgeClasses.size === 0
+                      ? "Valitse yksi tai useampi ikäluokka."
+                      : `${bulkAddSelection.length} urheilijaa valittu · ${bulkAddNewCount} uutta`}
+                  </p>
+                  <Button
+                    size="sm"
+                    disabled={bulkAddNewCount === 0}
+                    onClick={addSelectedToWatch}
+                    className="gap-2"
+                  >
+                    <UserPlus className="h-4 w-4" /> Lisää seurantaan
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {selectedClub && clubProgram.length > 0 && (
               <div className="mt-4 space-y-4">
                 {clubProgram.map((g) => (
