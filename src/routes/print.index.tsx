@@ -127,7 +127,6 @@ function PrintPage() {
                       <div className="font-semibold leading-tight">{r.EventName}</div>
                       <div className="text-xs text-muted-foreground">
                         {r.Name}
-                        {r.SubCategory && ` · ${translateSub(r.SubCategory)}`}
                       </div>
                     </td>
                   </tr>

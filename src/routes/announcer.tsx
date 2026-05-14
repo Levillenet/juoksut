@@ -682,7 +682,6 @@ function EventCard({
           <p className="truncate text-xl font-bold leading-tight">{round.EventName}</p>
           <p className="truncate text-xs text-muted-foreground">
             {round.Name}
-            {round.SubCategory && ` · ${translateSub(round.SubCategory)}`}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">

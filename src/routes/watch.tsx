@@ -568,9 +568,8 @@ function WatchPage() {
                                   {e.round.EventName}
                                 </p>
                                 <p className="truncate text-xs text-muted-foreground">
-                                  {e.round.SubCategory && translateSub(e.round.SubCategory)}
-                                  {e.round.Name && ` · ${e.round.Name}`}
-                                  {isRun && ` · Erä ${e.heatIndex}`}
+                                  {e.round.Name}
+                                  {isRun && `${e.round.Name ? " · " : ""}Erä ${e.heatIndex}`}
                                   {e.alloc.Position != null &&
                                     (isRun ? ` · Rata ${e.alloc.Position}` : ` · Järj. ${e.alloc.Position}`)}
                                 </p>

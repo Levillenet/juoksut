@@ -260,10 +260,11 @@ function SearchPage() {
                           <p className="truncate text-sm font-semibold">
                             {e.round.EventName}
                           </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {e.round.SubCategory && translateSub(e.round.SubCategory)}
-                            {e.round.Name && ` · ${e.round.Name}`}
-                          </p>
+                          {e.round.Name && (
+                            <p className="truncate text-xs text-muted-foreground">
+                              {e.round.Name}
+                            </p>
+                          )}
                         </div>
                         <div className="shrink-0 text-right text-xs">
                           {isRun ? (
