@@ -50,7 +50,7 @@ export function SeasonStatsSection() {
   const ageClasses = query.data?.ageClasses ?? [];
 
   const totals = useMemo<Omit<SeasonStatsRow, "athleteKey" | "surname" | "firstname" | "organization" | "organizationId" | "ageClass">>(() => {
-    const t = { events: 0, competitions: 0, hours: 0, meters: 0, pbs: 0, wins: 0, km: 0 };
+    const t = { events: 0, competitions: 0, hours: 0, meters: 0, pbs: 0, wins: 0, seconds: 0, thirds: 0, km: 0 };
     let kmKnown = false;
     for (const r of rows) {
       t.events += r.events;
@@ -59,6 +59,8 @@ export function SeasonStatsSection() {
       t.meters += r.meters;
       t.pbs += r.pbs;
       t.wins += r.wins;
+      t.seconds += r.seconds;
+      t.thirds += r.thirds;
       if (r.km != null) {
         kmKnown = true;
         t.km += r.km;
