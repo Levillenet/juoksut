@@ -1,27 +1,19 @@
-# Korjaus: kenttälajit katoavat Käynnissä-paneelista
+## Tavoite
 
-## Syy
-
-`src/routes/announcer.tsx` (rivit 191–202) lisää kierroksen `finishedProgressRoundIds`-settiin heti kun event-detail-endpointin `round.Status === "Official"`, ja `inProgressVisible` suodattaa sen pois Käynnissä-listasta. Tuloslistan API raportoi kenttälajeissa (etenkin korkeus/seiväs) detail-endpointin `Round.Status` arvon `Official` jo silloin kun kilpailu on käytännössä loppumassa mutta vielä käynnissä — tai eri tahdissa kuin kisalistaus. Lopputulos: kenttälaji katoaa ennen aikojaan, eikä päädy Lopputuloksiin, koska samanaikaisesti `completedAll` ei vielä sisällä sitä ja merge-haara käyttää samaa flagia.
-
-Alkuperäinen ongelma, jota tämä logiikka ratkaisi, koski juoksulajeja (Track), joissa kisalistauksen status päivittyy hitaasti. Sama promotointi ei ole tarpeen kenttälajeille — kenttälajit pysyvät kisalistan mukaan `Progress`-tilassa luotettavasti, ja kuuluttaja haluaa nähdä ne käynnissä-paneelissa kunnes ne oikeasti virallistuvat.
+Juoksulajien (Track) Käynnissä-paneelin korteissa näkyy nyt vain sijoitus/lähtörata yhdessä ympyrässä ja kilpailijan numero ei lainkaan. Tehdään radasta ja rintanumerosta selkeästi luettavia.
 
 ## Muutos
 
-`src/routes/announcer.tsx`, `finishedProgressRoundIds`-useMemo:
+`src/routes/announcer.tsx` – `EventCard`-listakohta (rivit ~717–751), kun `round.Category === "Track"`:
 
-Lisää ehto, että kierros promotoidaan vain jos sen `Category === "Track"`. Kenttälajeja ei koskaan oteta tästä lyhytsulusta vaan ne seuraavat kisalistauksen statusta.
+- Vasemmassa pyöreässä merkissä näytetään aina **rata** (`a.Position`) selkeästi labelin "Rata" kanssa, riippumatta siitä onko tulos jo virallinen. Sijoitus (rank) siirretään tulospalkin viereen pieneksi `1.` / `2.` -merkinnäksi.
+- Nimen viereen lisätään **rintanumero**-lätkä (`#a.Number`) tabular-nums fontilla, hieman korostettuna (esim. `bg-primary/10 text-primary`), jotta kuuluttaja löytää sen nopeasti.
+- Kenttälajeissa (`Field`) ulkoasu pysyy ennallaan – sija edelleen ympyrässä, ei rata-/numerolätkää.
 
-```ts
-for (const r of inProgressAll) {
-  if (r.Category !== "Track") continue; // älä promotoi kenttälajeja
-  const ev = details[r.EventId];
-  ...
-}
-```
+Lopputulos juoksuissa: jokaisessa rivissä rata ympyrässä vasemmalla, rintanumero nimen vieressä, ja tulos + sija oikealla.
 
-Ei muita muutoksia. Kenttälajien näyttölogiikka, attempts-merkki ja juoksulajien promotointi pysyvät ennallaan.
+## Tekniset huomiot
 
-## Lopputulos
-
-Kenttälajit näkyvät Käynnissä-paneelissa niin kauan kuin kisalistaus raportoi ne `Progress`-tilassa, ja siirtyvät Lopputuloksiin vasta kun listaus saa `Official`-statuksen. Juoksulajit saavat edelleen nopean promotoinnin detail-endpointin kautta.
+- `Allocation.Number` voi olla `null` (esim. viestit) → renderöi numerolätkä vain jos arvo on olemassa.
+- `Position` on aina olemassa Track-erissä, joten ratalukua voi näyttää suoraan.
+- Ei muutoksia dataan, queryihin tai kenttälajien logiikkaan.

@@ -710,7 +710,9 @@ function EventCard({
       ) : (
         <ol className="space-y-1.5">
           {list.map((a) => {
-            const rank = a.ResultRank ?? a.Position;
+            const isTrack = round.Category === "Track";
+            const rank = a.ResultRank ?? (isTrack ? null : a.Position);
+            const badgeValue = isTrack ? a.Position : rank;
             const change = rankChanges.get(a.AllocId);
             const eff = a.Result ? effectiveRecord(round.EventId, a) : null;
             const recordKind = a.Result && eff ? detectRecord(round.Category, a.Result, eff.pb, eff.sb) : null;
@@ -720,15 +722,21 @@ function EventCard({
                 className="grid grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-x-2 rounded-lg bg-muted/40 px-3 py-2 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto] sm:gap-x-3"
               >
                 <span
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-black tabular-nums ${
+                  className={`flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full font-black tabular-nums leading-none ${
                     rank === 1
                       ? "bg-primary text-primary-foreground"
                       : rank === 2
                         ? "bg-accent text-accent-foreground"
                         : "bg-secondary text-secondary-foreground"
                   }`}
+                  title={isTrack ? `Rata ${a.Position}` : undefined}
                 >
-                  {rank ?? "–"}
+                  {isTrack && (
+                    <span className="text-[8px] font-semibold uppercase tracking-wide opacity-70">
+                      Rata
+                    </span>
+                  )}
+                  <span className="text-sm">{badgeValue ?? "–"}</span>
                 </span>
                 {change === "up" ? (
                   <ArrowUp
