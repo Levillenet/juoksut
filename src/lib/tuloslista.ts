@@ -141,10 +141,33 @@ export function translateSub(sub: string): string {
   switch (sub) {
     case "Sprint": return "Pikajuoksu";
     case "Run": return "Juoksu";
+    case "MiddleDistance": return "Keskimatkat";
+    case "LongDistance": return "Pitkät matkat";
     case "Hurdles": return "Aidat";
     case "Steeple": return "Estejuoksu";
     case "Relay": return "Viesti";
     case "Walk": return "Kävely";
+    case "Throw":
+    case "Throws": return "Heitto";
+    case "Jump":
+    case "Jumps": return "Hyppy";
+    case "HorizontalJump":
+    case "Horizontal": return "Vaakahyppy";
+    case "VerticalJump":
+    case "Vertical": return "Pystyhyppy";
+    case "HighJump": return "Korkeushyppy";
+    case "PoleVault": return "Seiväshyppy";
+    case "LongJump": return "Pituushyppy";
+    case "TripleJump": return "Kolmiloikka";
+    case "ShotPut": return "Kuulantyöntö";
+    case "Discus": return "Kiekonheitto";
+    case "Hammer": return "Moukarinheitto";
+    case "Javelin": return "Keihäänheitto";
+    case "Combined":
+    case "Multi":
+    case "MultiEvents": return "Moniottelu";
+    case "RoadRun": return "Maantiejuoksu";
+    case "CrossCountry": return "Maastojuoksu";
     default: return sub;
   }
 }
