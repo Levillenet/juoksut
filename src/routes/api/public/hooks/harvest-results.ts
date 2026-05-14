@@ -78,12 +78,22 @@ function parseResultNumeric(text: string, category: string): number | null {
 
 async function fetchJson<T>(url: string): Promise<T | null> {
   try {
-    const r = await fetch(url);
+    const r = await fetch(url, {
+      headers: { "User-Agent": "juoksut-harvester/1.0" },
+    });
+    if (r.status === 429 || r.status === 503) {
+      rateLimited = true;
+      return null;
+    }
     if (!r.ok) return null;
     return (await r.json()) as T;
   } catch {
     return null;
   }
+}
+
+function jitter() {
+  return new Promise((res) => setTimeout(res, 50 + Math.random() * 100));
 }
 
 function athleteKey(surname: string, firstname: string, orgId: number | null) {
