@@ -218,9 +218,30 @@ function Index() {
           <div className="py-12 text-center text-sm text-muted-foreground">Ladataan…</div>
         )}
 
+        {data && allRuns.length > 0 && (
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              {runs.length} lajia
+              {!showPast && hiddenPastCount > 0 && ` · ${hiddenPastCount} mennyttä piilotettu`}
+            </p>
+            <button
+              onClick={() => setShowPast((v) => !v)}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                showPast
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:bg-secondary"
+              }`}
+            >
+              {showPast ? "Piilota menneet" : "Näytä menneet"}
+            </button>
+          </div>
+        )}
+
         {!loading && data && runs.length === 0 && (
           <div className="py-12 text-center text-sm text-muted-foreground">
-            Ei juoksulajeja valitulle päivälle.
+            {hiddenPastCount > 0
+              ? "Päivän juoksulajit on jo juostu. Paina ”Näytä menneet”."
+              : "Ei juoksulajeja valitulle päivälle."}
           </div>
         )}
 
