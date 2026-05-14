@@ -153,7 +153,7 @@ function Index() {
             </p>
           </div>
           <h2 className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-lg font-black uppercase tracking-widest text-primary xl:block">
-            Juoksujen näkymä
+            Päivän lajit
           </h2>
           <Button
             variant="ghost"
