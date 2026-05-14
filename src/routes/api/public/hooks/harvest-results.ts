@@ -226,79 +226,88 @@ async function harvestRange(ids: number[]) {
 }
 
 async function run(request: Request): Promise<Response> {
+  rateLimited = false;
   const url = new URL(request.url);
-  // Manual override (admin debug only)
-  const fromOverride = Number(url.searchParams.get("fromId"));
-  const toOverride = Number(url.searchParams.get("toId"));
 
-  // Read cursor
-  const { data: stateRow } = await supabaseAdmin
-    .from("harvest_state")
-    .select("next_id, latest_id")
-    .eq("id", "singleton")
-    .maybeSingle();
-  let nextId = stateRow?.next_id ?? 17000;
-  let latestId = stateRow?.latest_id ?? 17000;
-
-  let ids: number[];
-  let mode: "manual" | "backfill" | "tail";
-
-  if (fromOverride && toOverride) {
-    ids = [];
-    for (let i = fromOverride; i <= Math.min(toOverride, HARD_MAX_ID); i++) ids.push(i);
-    mode = "manual";
-  } else if (nextId <= latestId + BATCH_SIZE) {
-    // Backfill phase: walk forward in batches.
-    const start = nextId;
-    const end = Math.min(start + BATCH_SIZE - 1, HARD_MAX_ID);
-    ids = [];
-    for (let i = start; i <= end; i++) ids.push(i);
-    mode = "backfill";
-  } else {
-    // Caught up: re-scan tail for late results, plus probe a few new IDs.
-    const tailStart = Math.max(17000, latestId - TAIL_RESCAN);
-    const probeEnd = Math.min(latestId + BATCH_SIZE, HARD_MAX_ID);
-    ids = [];
-    for (let i = tailStart; i <= probeEnd; i++) ids.push(i);
-    mode = "tail";
+  // Acquire advisory lock so overlapping cron runs don't double-process.
+  const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock");
+  if (lockData !== true) {
+    return Response.json({ ok: true, skipped: "locked" });
   }
 
-  const result = await harvestRange(ids);
+  try {
+    const fromOverride = Number(url.searchParams.get("fromId"));
+    const toOverride = Number(url.searchParams.get("toId"));
 
-  // Update cursor
-  const maxScanned = ids.length > 0 ? ids[ids.length - 1] : nextId;
-  if (mode === "backfill") {
-    nextId = maxScanned + 1;
-    if (result.existed > 0) {
-      latestId = Math.max(latestId, maxScanned);
+    const { data: stateRow } = await supabaseAdmin
+      .from("harvest_state")
+      .select("next_id, latest_id")
+      .eq("id", "singleton")
+      .maybeSingle();
+    let nextId = stateRow?.next_id ?? 17000;
+    let latestId = stateRow?.latest_id ?? 17000;
+
+    let ids: number[];
+    let mode: "manual" | "backfill" | "tail";
+
+    if (fromOverride && toOverride) {
+      ids = [];
+      for (let i = fromOverride; i <= Math.min(toOverride, HARD_MAX_ID); i++) ids.push(i);
+      mode = "manual";
+    } else if (nextId <= latestId + BATCH_SIZE) {
+      const start = nextId;
+      const end = Math.min(start + BATCH_SIZE - 1, HARD_MAX_ID);
+      ids = [];
+      for (let i = start; i <= end; i++) ids.push(i);
+      mode = "backfill";
+    } else {
+      const tailStart = Math.max(17000, latestId - TAIL_RESCAN);
+      const probeEnd = Math.min(latestId + BATCH_SIZE, HARD_MAX_ID);
+      ids = [];
+      for (let i = tailStart; i <= probeEnd; i++) ids.push(i);
+      mode = "tail";
     }
-  } else if (mode === "tail") {
-    if (result.existed > 0) {
-      latestId = Math.max(latestId, maxScanned);
-      nextId = Math.max(nextId, latestId + 1);
+
+    const result = await harvestRange(ids);
+
+    // Advance cursor only as far as we actually attempted (so a rate-limit
+    // bailout retries the unprocessed IDs on the next run).
+    const advancedTo = result.lastScannedId;
+    if (mode === "backfill" && advancedTo >= nextId) {
+      nextId = advancedTo + 1;
+      if (result.existed > 0) latestId = Math.max(latestId, advancedTo);
+    } else if (mode === "tail") {
+      if (result.existed > 0) {
+        latestId = Math.max(latestId, advancedTo);
+        nextId = Math.max(nextId, latestId + 1);
+      }
     }
+
+    await supabaseAdmin
+      .from("harvest_state")
+      .update({
+        next_id: nextId,
+        latest_id: latestId,
+        last_run_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", "singleton");
+
+    return Response.json({
+      ok: true,
+      mode,
+      scanned: result.scanned,
+      existed: result.existed,
+      rateLimited,
+      fromId: ids[0] ?? null,
+      toId: ids[ids.length - 1] ?? null,
+      advancedTo,
+      nextId,
+      latestId,
+    });
+  } finally {
+    await supabaseAdmin.rpc("harvest_unlock");
   }
-
-  await supabaseAdmin
-    .from("harvest_state")
-    .update({
-      next_id: nextId,
-      latest_id: latestId,
-      last_run_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", "singleton");
-
-  return Response.json({
-    ok: true,
-    mode,
-    scanned: result.scanned,
-    existed: result.existed,
-    fromId: ids[0] ?? null,
-    toId: ids[ids.length - 1] ?? null,
-    nextId,
-    latestId,
-  });
 }
 
 export const Route = createFileRoute("/api/public/hooks/harvest-results")({
