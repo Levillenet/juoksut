@@ -1,16 +1,7 @@
 import { useMemo } from "react";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  LabelList,
-} from "recharts";
+import { Trophy } from "lucide-react";
 
-import { formatSeconds, type EventGroup } from "@/lib/athlete-history";
+import { type EventGroup } from "@/lib/athlete-history";
 import { translateSub } from "@/lib/tuloslista";
 
 const HELSINKI_DATE = new Intl.DateTimeFormat("fi-FI", {
@@ -18,12 +9,6 @@ const HELSINKI_DATE = new Intl.DateTimeFormat("fi-FI", {
   day: "numeric",
   month: "numeric",
   year: "numeric",
-});
-
-const HELSINKI_SHORT = new Intl.DateTimeFormat("fi-FI", {
-  timeZone: "Europe/Helsinki",
-  day: "numeric",
-  month: "numeric",
 });
 
 function formatDate(iso: string | null): string {
@@ -35,181 +20,127 @@ function formatDate(iso: string | null): string {
   }
 }
 
-function formatDateShort(ts: number): string {
-  try {
-    return HELSINKI_SHORT.format(new Date(ts));
-  } catch {
-    return "";
-  }
-}
-
 export function EventGroupView({ group }: { group: EventGroup }) {
-  const points = useMemo(
-    () =>
-      group.rows
-        .filter((r) => r.result_numeric != null && r.competition_date)
-        .map((r) => ({
-          id: r.id,
-          ts: new Date(r.competition_date!).getTime(),
-          value: r.result_numeric!,
-          text: r.result_text,
-          competition: r.competition_name,
-        }))
-        .sort((a, b) => a.ts - b.ts),
-    [group.rows],
-  );
-
-  const formatY = (v: number) =>
-    group.category === "Track" ? formatSeconds(v) : v.toFixed(2);
-
-  const enriched = useMemo(() => {
+  // Tulokset uusin ensin, PB-tieto rivikohtaisesti laskettuna oikein
+  // (ei luoteta was_pb-kenttään, koska se voi olla ikäluokkakohtainen).
+  const rows = useMemo(() => {
+    const sortedAsc = [...group.rows].sort((a, b) =>
+      (a.competition_date ?? "").localeCompare(b.competition_date ?? ""),
+    );
     let best: number | null = null;
-    return points.map((p) => {
-      const isPb =
-        best == null || (group.lowerBetter ? p.value < best : p.value > best);
-      if (isPb) best = p.value;
-      return { ...p, pb: best!, isPb };
+    const withPb = sortedAsc.map((r) => {
+      let isPb = false;
+      if (r.result_numeric != null) {
+        if (
+          best == null ||
+          (group.lowerBetter ? r.result_numeric < best : r.result_numeric > best)
+        ) {
+          best = r.result_numeric;
+          isPb = true;
+        }
+      }
+      return { row: r, isPb };
     });
-  }, [points, group.lowerBetter]);
+    return withPb.reverse(); // uusin ensin näyttöön
+  }, [group.rows, group.lowerBetter]);
+
+  const pbValueText = group.pb?.result_text ?? "—";
 
   return (
-    <li className="rounded-lg border bg-background/50 p-3">
-      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <p className="text-sm font-semibold">{group.eventName}</p>
+    <li className="overflow-hidden rounded-lg border bg-card">
+      {/* Otsikko + PB-rivi */}
+      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b bg-muted/40 px-3 py-2">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{group.eventName}</p>
           {group.subCategory && (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="truncate text-[11px] text-muted-foreground">
               {translateSub(group.subCategory)}
             </p>
           )}
         </div>
-        <p className="text-[11px] text-muted-foreground">
-          {group.rows.length} tulosta
-        </p>
+        <div className="flex items-center gap-1.5">
+          <Trophy className="h-3.5 w-3.5 text-primary" />
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            PB
+          </span>
+          <span className="text-sm font-bold tabular-nums">{pbValueText}</span>
+          <span className="text-[10px] text-muted-foreground">
+            · {rows.length} tulosta
+          </span>
+        </div>
       </div>
 
-      {enriched.length >= 2 ? (
-        <div className="h-56 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={enriched}
-              margin={{ top: 22, right: 16, left: 0, bottom: 4 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis
-                dataKey="ts"
-                type="number"
-                domain={["dataMin", "dataMax"]}
-                tickFormatter={formatDateShort}
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={10}
-              />
-              <YAxis
-                domain={["auto", "auto"]}
-                reversed={group.lowerBetter}
-                tickFormatter={formatY}
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={10}
-                width={52}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  fontSize: 12,
-                }}
-                labelFormatter={(t) =>
-                  formatDate(new Date(Number(t)).toISOString())
-                }
-                formatter={(_v, _n, item) => {
-                  const pl = (item as { payload?: { text?: string; competition?: string } }).payload;
-                  return [pl?.text ?? "", pl?.competition ?? ""];
-                }}
-              />
-              {/* PB-kehitys korostuksena (askelviiva) */}
-              <Line
-                type="stepAfter"
-                dataKey="pb"
-                stroke="hsl(var(--primary) / 0.4)"
-                strokeWidth={2}
-                strokeDasharray="4 4"
-                dot={false}
-                activeDot={false}
-                isAnimationActive={false}
-              />
-              {/* Tulosviiva: PB-pisteet isompina ja primary-värisinä */}
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="hsl(var(--foreground))"
-                strokeWidth={1.5}
-                isAnimationActive={false}
-                dot={(props: {
-                  cx?: number;
-                  cy?: number;
-                  index?: number;
-                  payload?: { isPb?: boolean };
-                }) => {
-                  const { cx, cy, payload, index } = props;
-                  const pb = !!payload?.isPb;
-                  return (
-                    <circle
-                      key={`d-${index}`}
-                      cx={cx}
-                      cy={cy}
-                      r={pb ? 5 : 3}
-                      fill={pb ? "hsl(var(--primary))" : "hsl(var(--background))"}
-                      stroke={pb ? "hsl(var(--primary))" : "hsl(var(--foreground))"}
-                      strokeWidth={pb ? 2 : 1.5}
-                    />
-                  );
-                }}
+      {/* Taulukko */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="bg-background/60 text-[10px] uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th className="px-3 py-1.5 text-left font-medium">Pvm</th>
+              <th className="px-3 py-1.5 text-left font-medium">Kilpailu</th>
+              <th className="px-3 py-1.5 text-right font-medium">Tulos</th>
+              <th className="px-3 py-1.5 text-right font-medium">Sija</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ row, isPb }) => (
+              <tr
+                key={row.id}
+                className={`border-t border-border/60 ${
+                  isPb ? "bg-primary/5" : ""
+                }`}
               >
-                <LabelList
-                  dataKey="text"
-                  position="top"
-                  offset={8}
-                  style={{
-                    fontSize: 10,
-                    fill: "hsl(var(--foreground))",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                />
-              </Line>
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      ) : enriched.length === 1 ? (
-        <p className="text-[11px] text-muted-foreground">
-          Vain yksi tulos — graafiin tarvitaan vähintään kaksi.
-        </p>
-      ) : null}
-
-      <ul className="mt-3 divide-y divide-border text-xs">
-        {group.rows
-          .slice()
-          .sort((a, b) =>
-            (b.competition_date ?? "").localeCompare(a.competition_date ?? ""),
-          )
-          .map((r) => (
-            <li
-              key={r.id}
-              className="flex items-baseline justify-between gap-2 py-1"
-            >
-              <span className="min-w-0 truncate text-muted-foreground">
-                {r.competition_name} · {formatDate(r.competition_date)}
-              </span>
-              <span className="shrink-0 tabular-nums font-medium">
-                {r.result_text}
-                {r.result_rank != null && (
-                  <span className="ml-1 font-normal text-muted-foreground">
-                    ({r.result_rank}.)
+                <td className="whitespace-nowrap px-3 py-1.5 tabular-nums text-muted-foreground">
+                  {formatDate(row.competition_date)}
+                </td>
+                <td className="px-3 py-1.5">
+                  <span className="block truncate">{row.competition_name}</span>
+                  {row.location && (
+                    <span className="block truncate text-[10px] text-muted-foreground">
+                      {row.location}
+                    </span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">
+                  <span
+                    className={`font-semibold ${
+                      isPb ? "text-primary" : "text-foreground"
+                    }`}
+                  >
+                    {row.result_text}
                   </span>
-                )}
-              </span>
-            </li>
-          ))}
-      </ul>
+                  {isPb && (
+                    <span
+                      title="Henkilökohtainen ennätys (kaikki ikäluokat)"
+                      className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary"
+                    >
+                      <Trophy className="h-2.5 w-2.5" />
+                      PB
+                    </span>
+                  )}
+                  {row.wind != null && (
+                    <span className="ml-1 text-[10px] text-muted-foreground">
+                      {row.wind > 0 ? `+${row.wind.toFixed(1)}` : row.wind.toFixed(1)} m/s
+                    </span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                  {row.result_rank != null ? `${row.result_rank}.` : "—"}
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td
+                  colSpan={4}
+                  className="px-3 py-6 text-center text-muted-foreground"
+                >
+                  Ei tuloksia
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </li>
   );
 }
