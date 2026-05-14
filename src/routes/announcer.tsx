@@ -34,6 +34,21 @@ export const Route = createFileRoute("/announcer")({
 
 type DetailCache = { [k: number]: EventResults };
 
+interface RecordAlert {
+  id: string;
+  kind: "PB" | "SB";
+  athleteName: string;
+  organization: string;
+  eventName: string;
+  result: string;
+  previous: string;
+  shownAt: number;
+  eventId: number;
+  roundId: number;
+}
+
+const ALERT_TTL_MS = 60_000;
+
 function AnnouncerPage() {
   const [competitionId] = useCompetitionId();
   const [data, setData] = useState<RoundsByDate | null>(null);
