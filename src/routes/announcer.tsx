@@ -184,6 +184,46 @@ function AnnouncerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailQueries.map((q) => q.dataUpdatedAt).join(","), wantedIds]);
 
+  // A "Progress" round whose every competing allocation has a Result is
+  // effectively finished — promote it from Käynnissä to Lopputulokset even
+  // before the official confirms it.
+  const finishedProgressRoundIds = useMemo(() => {
+    const s = new Set<number>();
+    for (const r of inProgressAll) {
+      const ev = details[r.EventId];
+      if (!ev) continue;
+      const round = ev.Rounds.find((rr) => rr.Id === r.Id);
+      if (!round) continue;
+      const allocs = round.Heats.flatMap((h) => h.Allocations).filter(
+        (a) => !a.NotInCompetition,
+      );
+      if (allocs.length === 0) continue;
+      if (allocs.every((a) => a.Result)) s.add(r.Id);
+    }
+    return s;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [details, JSON.stringify(inProgressAll.map((r) => r.Id))]);
+
+  const inProgressVisible = inProgress.filter(
+    (r) => !finishedProgressRoundIds.has(r.Id),
+  );
+  const completedAllMerged = useMemo(() => {
+    const extra = inProgressAll.filter((r) => finishedProgressRoundIds.has(r.Id));
+    const seen = new Set<number>();
+    const all = [...completedAll, ...extra].filter((r) => {
+      if (seen.has(r.Id)) return false;
+      seen.add(r.Id);
+      return true;
+    });
+    return all.sort((a, b) =>
+      b.BeginDateTimeWithTZ.localeCompare(a.BeginDateTimeWithTZ),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completedAll, inProgressAll, finishedProgressRoundIds]);
+  const completedVisible = completedAllMerged.filter(
+    (r) => !dismissedCompletedIds.has(r.Id),
+  );
+
   // Detect new PB/SB results when details update; show alert banner for ~1 min
   useEffect(() => {
     const seen = seenResultsRef.current;
