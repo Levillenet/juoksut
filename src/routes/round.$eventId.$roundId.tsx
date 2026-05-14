@@ -50,6 +50,15 @@ function RoundView() {
     return [...hs].sort((a, b) => a.Index - b.Index);
   }, [round]);
 
+  const overall = useMemo(() => {
+    const all = heats.flatMap((h) =>
+      h.Allocations.map((a) => ({ ...a, _heatIndex: h.Index })),
+    );
+    const ranked = all.filter((a) => a.Result && a.ResultRank != null);
+    if (ranked.length === 0) return [];
+    return ranked.sort((a, b) => (a.ResultRank ?? 0) - (b.ResultRank ?? 0));
+  }, [heats]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
@@ -185,6 +194,57 @@ function RoundView() {
             );
           })}
         </div>
+
+        {overall.length > 0 && (
+          <section className="mt-6 overflow-hidden rounded-xl border bg-card shadow-sm">
+            <div className="border-b bg-secondary px-4 py-2">
+              <h2 className="text-sm font-semibold">
+                Lopputulokset{" "}
+                <span className="font-normal text-muted-foreground">
+                  ({overall.length} kilpailijaa)
+                </span>
+              </h2>
+            </div>
+            <ol className="divide-y">
+              {overall.map((a) => (
+                <li
+                  key={a.AllocId}
+                  className="flex items-center gap-3 px-4 py-3"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-base font-bold tabular-nums text-primary-foreground">
+                    {a.ResultRank}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium leading-tight">
+                      {a.Name}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
+                      {" · "}Erä {a._heatIndex}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs tabular-nums">
+                    <span className="text-base font-bold text-foreground">
+                      {a.Result}
+                    </span>
+                    {(() => {
+                      const eff = effectiveRecord(parseInt(eventId, 10), a);
+                      return (
+                        <RecordBadge
+                          category={data?.EventCategory ?? ""}
+                          result={a.Result!}
+                          pb={eff.pb}
+                          sb={eff.sb}
+                          size="sm"
+                        />
+                      );
+                    })()}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
       </main>
     </div>
   );
