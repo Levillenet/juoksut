@@ -19,6 +19,7 @@ export interface ClubTodayRow {
   result_text: string;
   result_numeric: number | null;
   result_rank: number | null;
+  was_pb: boolean;
 }
 
 export interface ClubOption {
