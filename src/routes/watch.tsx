@@ -127,6 +127,15 @@ function WatchPage() {
     });
   }, [index, watched]);
 
+  // Today's-best comparable result (same event + age class) for each watched athlete
+  const watchedKeysList = useMemo(() => watched.map((w) => w.key), [watched]);
+  const dailyBestQuery = useQuery({
+    queryKey: ["daily-best-for-athletes", watchedKeysList.slice().sort().join(",")],
+    queryFn: () => fetchDailyBestForAthletes(watchedKeysList),
+    enabled: watchedKeysList.length > 0,
+    staleTime: 60_000,
+  });
+
   // Club selector state + derived data
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
 
