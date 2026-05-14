@@ -88,12 +88,15 @@ function AnnouncerPage() {
     : inProgressAll.filter((r) => r.Category !== "Track");
   const completed = todayRounds.filter((r) => r.Status === "Official").reverse().slice(0, 8);
   const nowMs = (now ?? new Date()).getTime();
-  const upcoming = todayRounds
-    .filter((r) => {
-      if (r.Status === "Official" || r.Status === "Progress") return false;
-      return new Date(r.BeginDateTimeWithTZ).getTime() > nowMs - 5 * 60_000;
-    })
-    .slice(0, 12);
+  const upcomingAll = todayRounds.filter(
+    (r) => r.Status !== "Official" && r.Status !== "Progress",
+  );
+  const upcoming = (
+    showPastUpcoming
+      ? upcomingAll
+      : upcomingAll.filter((r) => new Date(r.BeginDateTimeWithTZ).getTime() > nowMs - 5 * 60_000)
+  ).slice(0, 20);
+  const pastUpcomingCount = upcomingAll.length - upcoming.length;
 
   // Auto-fetch details for in-progress, completed, and any expanded upcoming events
   const wantedIds = useMemo(() => {
