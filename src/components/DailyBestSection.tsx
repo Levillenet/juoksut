@@ -74,7 +74,7 @@ export function DailyBestSection() {
         className="flex w-full items-center gap-2 px-4 py-3 text-left"
       >
         <Trophy className="h-4 w-4 text-primary" />
-        <h2 className="flex-1 text-sm font-bold">Päivän parhaat</h2>
+        <h2 className="flex-1 text-sm font-bold">Päivän parhaat tulokset ympäri Suomen</h2>
         {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
 
