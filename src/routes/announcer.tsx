@@ -650,13 +650,18 @@ function EventCard({
                 <div className="flex shrink-0 items-center gap-2">
                   {a.Result ? (
                     <>
-                      <RecordBadge
-                        category={round.Category}
-                        result={a.Result}
-                        pb={a.PB}
-                        sb={a.SB}
-                        size="lg"
-                      />
+                      {(() => {
+                        const eff = effectiveRecord(round.EventId, a);
+                        return (
+                          <RecordBadge
+                            category={round.Category}
+                            result={a.Result}
+                            pb={eff.pb}
+                            sb={eff.sb}
+                            size="lg"
+                          />
+                        );
+                      })()}
                       <span className="text-base font-bold tabular-nums">{a.Result}</span>
                     </>
                   ) : (
