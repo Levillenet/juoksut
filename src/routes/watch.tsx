@@ -136,9 +136,7 @@ function WatchPage() {
     staleTime: 60_000,
   });
 
-  // Club selector state + derived data
-  const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
-  // Separate club selector for the "lisää urheilijoita seurantaan" bulk flow
+  // Club selector state for bulk add
   const [selectedBulkOrgId, setSelectedBulkOrgId] = useState<number | null>(null);
   const [selectedAgeClasses, setSelectedAgeClasses] = useState<Set<string>>(new Set());
 
