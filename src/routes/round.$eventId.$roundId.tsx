@@ -170,13 +170,18 @@ function RoundView() {
                                 </span>
                               )}
                             </div>
-                            <RecordBadge
-                              category={data?.EventCategory ?? ""}
-                              result={a.Result}
-                              pb={a.PB}
-                              sb={a.SB}
-                              size="sm"
-                            />
+                            {(() => {
+                              const eff = effectiveRecord(parseInt(eventId, 10), a);
+                              return (
+                                <RecordBadge
+                                  category={data?.EventCategory ?? ""}
+                                  result={a.Result}
+                                  pb={eff.pb}
+                                  sb={eff.sb}
+                                  size="sm"
+                                />
+                              );
+                            })()}
                           </>
                         ) : (
                           <>
