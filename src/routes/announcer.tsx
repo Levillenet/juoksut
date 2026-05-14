@@ -760,13 +760,18 @@ function UpcomingItem({
                     </span>
                     {a.Result ? (
                       <span className="flex shrink-0 items-center gap-1">
-                        <RecordBadge
-                          category={round.Category}
-                          result={a.Result}
-                          pb={a.PB}
-                          sb={a.SB}
-                          size="sm"
-                        />
+                        {(() => {
+                          const eff = effectiveRecord(round.EventId, a);
+                          return (
+                            <RecordBadge
+                              category={round.Category}
+                              result={a.Result}
+                              pb={eff.pb}
+                              sb={eff.sb}
+                              size="sm"
+                            />
+                          );
+                        })()}
                         <span className="font-bold tabular-nums">{a.Result}</span>
                       </span>
                     ) : (
