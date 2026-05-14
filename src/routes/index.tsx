@@ -234,6 +234,8 @@ function Index() {
           </div>
         )}
 
+        <DailyBestSection />
+
         {loading && !data && (
           <div className="py-12 text-center text-sm text-muted-foreground">Ladataan…</div>
         )}
