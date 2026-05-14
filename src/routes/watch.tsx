@@ -1,24 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Search as SearchIcon, RefreshCw, Pin, X, UserPlus } from "lucide-react";
 import logo from "@/assets/lahden-ahkera-logo.png";
 
 import {
-  fetchRounds,
-  fetchEvent,
-  fetchProperties,
   formatTime,
   helsinkiDateKey,
   isRunningEvent,
   translateSub,
   STATUS_LABEL,
-  type Round,
-  type Allocation,
 } from "@/lib/tuloslista";
 import { useCompetitionId } from "@/lib/competition-store";
 import { useWatchedAthletes, athleteKey, type WatchedAthlete } from "@/lib/watch-store";
 import { RecordBadge } from "@/lib/records";
-import { captureBaselines, loadBaselines, effectiveRecord } from "@/lib/record-baseline";
+import { effectiveRecord } from "@/lib/record-baseline";
+import {
+  competitionIndexQueryOptions,
+  competitionIndexKey,
+  type IndexedEntry,
+} from "@/lib/tuloslista-queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -41,14 +42,7 @@ export const Route = createFileRoute("/watch")({
   ),
 });
 
-interface IndexedEntry {
-  round: Round;
-  alloc: Allocation;
-  heatIndex: number;
-  heatBegin: string;
-}
-
-const STATUS_STYLE: Record<Round["Status"], string> = {
+const STATUS_STYLE: Record<"Unallocated" | "Allocated" | "Progress" | "Official", string> = {
   Unallocated: "bg-muted text-muted-foreground",
   Allocated: "bg-accent text-accent-foreground",
   Progress: "bg-primary text-primary-foreground",
@@ -57,93 +51,32 @@ const STATUS_STYLE: Record<Round["Status"], string> = {
 
 function WatchPage() {
   const [competitionId] = useCompetitionId();
+  const queryClient = useQueryClient();
   const { list: watched, add, remove } = useWatchedAthletes();
-  const [name, setName] = useState<string>("");
   const [query, setQuery] = useState<string>("");
-  const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
-  const [error, setError] = useState<string | null>(null);
-  const [index, setIndex] = useState<IndexedEntry[] | null>(null);
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
-  const buildIndex = async () => {
-    setLoading(true);
-    setError(null);
-    setProgress({ done: 0, total: 0 });
-    try {
-      const [byDate, props] = await Promise.all([
-        fetchRounds(competitionId),
-        fetchProperties(competitionId).catch(() => null),
-      ]);
-      setName(props?.Competition?.Name ?? "");
+  const indexQuery = useQuery(
+    competitionIndexQueryOptions(competitionId, (done, total) =>
+      setProgress({ done, total }),
+    ),
+  );
 
-      const allRounds: Round[] = Object.values(byDate).flat();
-      const eventIds = Array.from(new Set(allRounds.map((r) => r.EventId)));
-      setProgress({ done: 0, total: eventIds.length });
+  const index: IndexedEntry[] | null = indexQuery.data?.entries ?? null;
+  const name = indexQuery.data?.name ?? "";
+  const loading = indexQuery.isFetching;
+  const error = indexQuery.error
+    ? indexQuery.error instanceof Error
+      ? indexQuery.error.message
+      : "Tuntematon virhe"
+    : null;
+  const updatedAt = indexQuery.dataUpdatedAt
+    ? new Date(indexQuery.dataUpdatedAt)
+    : null;
 
-      const collected: IndexedEntry[] = [];
-      const CONCURRENCY = 6;
-      let cursor = 0;
-      const worker = async () => {
-        while (cursor < eventIds.length) {
-          const i = cursor++;
-          const eid = eventIds[i];
-          try {
-            const ev = await fetchEvent(competitionId, eid);
-            const allAllocs = ev.Rounds.flatMap((r) =>
-              r.Heats.flatMap((h) => h.Allocations),
-            );
-            await captureBaselines(competitionId, eid, allAllocs);
-            await loadBaselines(competitionId, eid);
-            for (const round of ev.Rounds) {
-              const matchingRound = allRounds.find((r) => r.Id === round.Id) ?? {
-                ...allRounds.find((r) => r.EventId === eid)!,
-                Id: round.Id,
-                BeginDateTimeWithTZ: round.BeginDateTimeWithTZ,
-                Name: round.Name,
-                Status: round.Status,
-              };
-              for (const heat of round.Heats) {
-                for (const alloc of heat.Allocations) {
-                  collected.push({
-                    round: matchingRound,
-                    alloc,
-                    heatIndex: heat.Index,
-                    heatBegin: round.BeginDateTimeWithTZ,
-                  });
-                }
-              }
-            }
-          } catch {
-            /* skip */
-          } finally {
-            setProgress((p) => ({ done: p.done + 1, total: p.total }));
-          }
-        }
-      };
-      await Promise.all(Array.from({ length: CONCURRENCY }, worker));
-      setIndex(collected);
-      setUpdatedAt(new Date());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Tuntematon virhe");
-    } finally {
-      setLoading(false);
-    }
+  const reload = () => {
+    queryClient.invalidateQueries({ queryKey: competitionIndexKey(competitionId) });
   };
-
-  useEffect(() => {
-    buildIndex();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competitionId]);
-
-  // Auto-refresh every 60s to pick up status / result updates
-  useEffect(() => {
-    const t = setInterval(() => {
-      if (!loading) buildIndex();
-    }, 60_000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competitionId, loading]);
 
   // Search results (grouped by athlete) — only when 2+ chars typed
   const searchGroups = useMemo(() => {
@@ -222,7 +155,7 @@ function WatchPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={buildIndex}
+            onClick={reload}
             disabled={loading}
             aria-label="Päivitä"
           >

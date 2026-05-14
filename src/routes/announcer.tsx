@@ -1,21 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Trophy, Activity, Clock, ChevronDown, Star } from "lucide-react";
 import { detectRecord, formatImprovement, RecordBadge, RecordStar } from "@/lib/records";
-import { captureBaselines, loadBaselines, effectiveRecord } from "@/lib/record-baseline";
+import { effectiveRecord } from "@/lib/record-baseline";
 
 import {
-  fetchRounds,
-  fetchEvent,
-  fetchProperties,
   formatTime,
   helsinkiDateKey,
   translateSub,
   type Round,
-  type RoundsByDate,
   type Allocation,
   type EventResults,
 } from "@/lib/tuloslista";
+import {
+  competitionScheduleQueryOptions,
+  competitionScheduleKey,
+  eventDetailsQueryOptions,
+  eventDetailsKey,
+} from "@/lib/tuloslista-queries";
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/lahden-ahkera-logo.png";
@@ -61,14 +64,10 @@ const VISIBLE_RECORDS = 3;
 
 function AnnouncerPage() {
   const [competitionId] = useCompetitionId();
-  const [data, setData] = useState<RoundsByDate | null>(null);
-  const [name, setName] = useState("");
-  const [details, setDetails] = useState<DetailCache>({});
+  const queryClient = useQueryClient();
   const [now, setNow] = useState<Date | null>(null);
-  const [manualLoading, setManualLoading] = useState(false);
   const [showRunning, setShowRunning] = useState(false);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [showPastUpcoming, setShowPastUpcoming] = useState(false);
   const [recordAlerts, setRecordAlerts] = useState<RecordAlert[]>([]);
   const [recordsCollapsed, setRecordsCollapsed] = useState(false);
@@ -77,27 +76,24 @@ function AnnouncerPage() {
   const seenResultsRef = useRef<Map<number, string>>(new Map());
   const initializedRef = useRef(false);
 
-  const loadSchedule = async (silent = true) => {
-    if (!silent) setManualLoading(true);
-    try {
-      const [r, p] = await Promise.all([
-        fetchRounds(competitionId),
-        fetchProperties(competitionId).catch(() => null),
-      ]);
-      setData(r);
-      setName(p?.Competition?.Name ?? "");
-      setUpdatedAt(new Date());
-    } finally {
-      if (!silent) setManualLoading(false);
-    }
-  };
+  const scheduleQuery = useQuery(competitionScheduleQueryOptions(competitionId));
+  const data = scheduleQuery.data?.rounds ?? null;
+  const name = scheduleQuery.data?.name ?? "";
+  const updatedAt = scheduleQuery.dataUpdatedAt
+    ? new Date(scheduleQuery.dataUpdatedAt)
+    : null;
+  const manualLoading = scheduleQuery.isFetching;
 
-  useEffect(() => {
-    loadSchedule(false);
-    const t = setInterval(() => loadSchedule(true), 15_000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competitionId]);
+  const reload = () => {
+    queryClient.invalidateQueries({ queryKey: competitionScheduleKey(competitionId) });
+    // Also invalidate any cached event details for this competition
+    queryClient.invalidateQueries({
+      predicate: (q) =>
+        Array.isArray(q.queryKey) &&
+        q.queryKey[0] === "event-details" &&
+        q.queryKey[1] === competitionId,
+    });
+  };
 
   // Client-only clock to avoid SSR hydration mismatch
   useEffect(() => {
@@ -144,43 +140,18 @@ function AnnouncerPage() {
     expanded,
   ]);
 
-  useEffect(() => {
-    if (wantedIds.length === 0) return;
-    let cancelled = false;
-    const tick = async () => {
-      const results = await Promise.allSettled(
-        wantedIds.map((id) => fetchEvent(competitionId, id)),
-      );
-      if (cancelled) return;
-      // Capture + load PB/SB baselines for each event before updating details,
-      // so the first render after fetch can already use baseline values.
-      await Promise.allSettled(
-        results.map(async (res, i) => {
-          if (res.status !== "fulfilled") return;
-          const ev = res.value;
-          const allocs = ev.Rounds.flatMap((r) =>
-            r.Heats.flatMap((h) => h.Allocations),
-          );
-          await captureBaselines(competitionId, ev.Id, allocs);
-          await loadBaselines(competitionId, ev.Id);
-        }),
-      );
-      if (cancelled) return;
-      setDetails((prev) => {
-        const next = { ...prev };
-        results.forEach((res, i) => {
-          if (res.status === "fulfilled") next[wantedIds[i]] = res.value;
-        });
-        return next;
-      });
-    };
-    tick();
-    const t = setInterval(tick, 15_000);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, [competitionId, wantedIds]);
+  const detailQueries = useQueries({
+    queries: wantedIds.map((id) => eventDetailsQueryOptions(competitionId, id)),
+  });
+
+  const details: DetailCache = useMemo(() => {
+    const out: DetailCache = {};
+    detailQueries.forEach((q, i) => {
+      if (q.data) out[wantedIds[i]] = q.data;
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailQueries.map((q) => q.dataUpdatedAt).join(","), wantedIds]);
 
   // Detect new PB/SB results when details update; show alert banner for ~1 min
   useEffect(() => {
@@ -276,7 +247,7 @@ function AnnouncerPage() {
               {inProgressAll.length} käynnissä · {completed.length} valmis
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => loadSchedule(false)} aria-label="Päivitä">
+          <Button variant="ghost" size="icon" onClick={reload} aria-label="Päivitä">
             <RefreshCw className={`h-5 w-5 ${manualLoading ? "animate-spin" : ""}`} />
           </Button>
         </div>
