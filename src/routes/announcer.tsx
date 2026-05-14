@@ -663,6 +663,57 @@ function EventCard({
   );
 }
 
+function AllocationRow({
+  a,
+  round,
+  showRank,
+}: {
+  a: Allocation;
+  round: Round;
+  showRank: "result" | "position";
+}) {
+  const rank = showRank === "result" ? a.ResultRank : a.Position;
+  return (
+    <li
+      className={`flex items-center gap-2 rounded px-2 py-1 text-sm ${
+        a.NotInCompetition ? "text-muted-foreground" : ""
+      }`}
+    >
+      <span className="w-6 shrink-0 text-xs font-bold tabular-nums text-muted-foreground">
+        {rank ?? "–"}
+      </span>
+      <span className="min-w-0 flex-1 truncate">
+        {a.Name}
+        <span className="ml-1 text-xs text-muted-foreground">
+          {a.Organization?.Name ?? ""}
+        </span>
+      </span>
+      {a.Result ? (
+        <span className="flex shrink-0 items-center gap-1">
+          {(() => {
+            const eff = effectiveRecord(round.EventId, a);
+            return (
+              <RecordBadge
+                category={round.Category}
+                result={a.Result}
+                pb={eff.pb}
+                sb={eff.sb}
+                size="sm"
+              />
+            );
+          })()}
+          <span className="font-bold tabular-nums">{a.Result}</span>
+        </span>
+      ) : (
+        <span className="flex shrink-0 gap-2 text-xs text-muted-foreground">
+          {a.SB && <span title="Kauden ennätys">SB {a.SB}</span>}
+          {a.PB && <span title="Oma ennätys">PB {a.PB}</span>}
+        </span>
+      )}
+    </li>
+  );
+}
+
 function UpcomingItem({
   round,
   detail,
@@ -674,14 +725,30 @@ function UpcomingItem({
   open: boolean;
   onToggle: () => void;
 }) {
-  const allocations = useMemo(() => flattenAllocations(detail), [detail]);
+  // Find the matching round inside the event detail (an event can contain
+  // qualifications + final, etc.).
+  const matchingRound = useMemo(
+    () => detail?.Rounds.find((r) => r.Id === round.Id) ?? detail?.Rounds[0],
+    [detail, round.Id],
+  );
+  const heats = matchingRound?.Heats ?? [];
+  const allocations = useMemo(
+    () => heats.flatMap((h) => h.Allocations),
+    [heats],
+  );
   const hasResults = allocations.some((a) => a.Result);
-  const sorted = useMemo(() => {
+  const isTrackHeats = round.Category === "Track" && heats.length > 1;
+
+  const sortAllocs = (list: Allocation[]) => {
     if (hasResults) {
-      return [...allocations].sort((a, b) => (a.ResultRank ?? 999) - (b.ResultRank ?? 999));
+      return [...list].sort(
+        (a, b) => (a.ResultRank ?? 999) - (b.ResultRank ?? 999),
+      );
     }
-    return [...allocations].sort((a, b) => (a.Position ?? 999) - (b.Position ?? 999));
-  }, [allocations, hasResults]);
+    return [...list].sort((a, b) => (a.Position ?? 999) - (b.Position ?? 999));
+  };
+
+  const flatSorted = useMemo(() => sortAllocs(allocations), [allocations, hasResults]);
 
   return (
     <li className="overflow-hidden rounded-xl border border-border bg-card">
@@ -706,54 +773,53 @@ function UpcomingItem({
         <div className="border-t border-border bg-background/40 p-3">
           {!detail ? (
             <p className="py-3 text-center text-xs text-muted-foreground">Ladataan…</p>
-          ) : sorted.length === 0 ? (
+          ) : allocations.length === 0 ? (
             <p className="py-3 text-center text-xs text-muted-foreground">
               Osallistujia ei vielä julkaistu.
             </p>
+          ) : isTrackHeats ? (
+            <div className="space-y-3">
+              {[...heats]
+                .sort((a, b) => a.Index - b.Index)
+                .map((heat) => {
+                  const heatAllocs = sortAllocs(heat.Allocations);
+                  const heatHasResults = heat.Allocations.some((a) => a.Result);
+                  return (
+                    <div key={heat.Index}>
+                      <div className="mb-1 flex items-center justify-between px-1">
+                        <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                          Erä {heat.Index}
+                        </p>
+                        {heatHasResults && (
+                          <span className="text-[10px] font-semibold uppercase text-emerald-600 dark:text-emerald-400">
+                            Tulokset
+                          </span>
+                        )}
+                      </div>
+                      <ol className="space-y-1">
+                        {heatAllocs.map((a) => (
+                          <AllocationRow
+                            key={a.AllocId}
+                            a={a}
+                            round={round}
+                            showRank={heatHasResults ? "result" : "position"}
+                          />
+                        ))}
+                      </ol>
+                    </div>
+                  );
+                })}
+            </div>
           ) : (
             <ol className="space-y-1">
-              {sorted.map((a) => {
-                return (
-                  <li
-                    key={a.AllocId}
-                    className={`flex items-center gap-2 rounded px-2 py-1 text-sm ${
-                      a.NotInCompetition ? "text-muted-foreground" : ""
-                    }`}
-                  >
-                    <span className="w-6 shrink-0 text-xs font-bold tabular-nums text-muted-foreground">
-                      {hasResults ? (a.ResultRank ?? "–") : (a.Position ?? "–")}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">
-                      {a.Name}
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        {a.Organization?.Name ?? ""}
-                      </span>
-                    </span>
-                    {a.Result ? (
-                      <span className="flex shrink-0 items-center gap-1">
-                        {(() => {
-                          const eff = effectiveRecord(round.EventId, a);
-                          return (
-                            <RecordBadge
-                              category={round.Category}
-                              result={a.Result}
-                              pb={eff.pb}
-                              sb={eff.sb}
-                              size="sm"
-                            />
-                          );
-                        })()}
-                        <span className="font-bold tabular-nums">{a.Result}</span>
-                      </span>
-                    ) : (
-                      <span className="flex shrink-0 gap-2 text-xs text-muted-foreground">
-                        {a.SB && <span title="Kauden ennätys">SB {a.SB}</span>}
-                        {a.PB && <span title="Oma ennätys">PB {a.PB}</span>}
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
+              {flatSorted.map((a) => (
+                <AllocationRow
+                  key={a.AllocId}
+                  a={a}
+                  round={round}
+                  showRank={hasResults ? "result" : "position"}
+                />
+              ))}
             </ol>
           )}
         </div>
