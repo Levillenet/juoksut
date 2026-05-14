@@ -10,6 +10,7 @@ import {
   helsinkiDateKey,
   translateSub,
   type Round,
+  type Allocation,
   type EventResults,
 } from "@/lib/tuloslista";
 import {
