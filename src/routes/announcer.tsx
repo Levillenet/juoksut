@@ -406,7 +406,7 @@ function EventCard({
                       }`}
                       title={rec === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
                     >
-                      {rec === "PB" ? "Uusi OE" : "Uusi KE"}
+                      {rec === "PB" ? "Uusi PB" : "Uusi SB"}
                     </span>
                   )}
                   <span className="text-base font-bold tabular-nums">{a.Result ?? "–"}</span>
@@ -498,14 +498,14 @@ function UpcomingItem({
                             }`}
                             title={rec === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
                           >
-                            {rec === "PB" ? "Uusi OE" : "Uusi KE"}
+                            {rec === "PB" ? "Uusi PB" : "Uusi SB"}
                           </span>
                         )}
                         <span className="font-bold tabular-nums">{a.Result}</span>
                       </span>
                     ) : (
                       <span className="shrink-0 text-xs text-muted-foreground" title={a.SB ? "Kauden ennätys" : "Oma ennätys"}>
-                        {a.SB ? `KE ${a.SB}` : a.PB ? `OE ${a.PB}` : ""}
+                        {a.SB ? `SB ${a.SB}` : a.PB ? `PB ${a.PB}` : ""}
                       </span>
                     )}
                   </li>
