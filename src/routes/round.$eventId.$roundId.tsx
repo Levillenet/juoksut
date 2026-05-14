@@ -1,16 +1,15 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Wind } from "lucide-react";
 
-import {
-  fetchEvent,
-  formatTime,
-  STATUS_LABEL,
-  type EventResults,
-  type Heat,
-} from "@/lib/tuloslista";
+import { formatTime, STATUS_LABEL, type Heat } from "@/lib/tuloslista";
 import { RecordBadge } from "@/lib/records";
-import { captureBaselines, loadBaselines, effectiveRecord } from "@/lib/record-baseline";
+import { effectiveRecord } from "@/lib/record-baseline";
+import {
+  eventDetailsQueryOptions,
+  eventDetailsKey,
+} from "@/lib/tuloslista-queries";
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 
@@ -25,33 +24,21 @@ function RoundView() {
   const { eventId, roundId } = Route.useParams();
   const router = useRouter();
   const [competitionId] = useCompetitionId();
-  const [data, setData] = useState<EventResults | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const eid = parseInt(eventId, 10);
-      const r = await fetchEvent(competitionId, eid);
-      const allocs = r.Rounds.flatMap((rd) => rd.Heats.flatMap((h) => h.Allocations));
-      await captureBaselines(competitionId, eid, allocs);
-      await loadBaselines(competitionId, eid);
-      setData(r);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Tuntematon virhe");
-    } finally {
-      setLoading(false);
-    }
+  const eid = parseInt(eventId, 10);
+  const detailQuery = useQuery(eventDetailsQueryOptions(competitionId, eid));
+  const data = detailQuery.data ?? null;
+  const loading = detailQuery.isFetching;
+  const error = detailQuery.error
+    ? detailQuery.error instanceof Error
+      ? detailQuery.error.message
+      : "Tuntematon virhe"
+    : null;
+
+  const reload = () => {
+    queryClient.invalidateQueries({ queryKey: eventDetailsKey(competitionId, eid) });
   };
-
-  useEffect(() => {
-    load();
-    const t = setInterval(load, 30_000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competitionId, eventId]);
 
   const round = useMemo(
     () => data?.Rounds.find((r) => r.Id === parseInt(roundId, 10)) ?? data?.Rounds[0],
