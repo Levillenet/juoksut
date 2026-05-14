@@ -121,10 +121,10 @@ export function EventGroupView({ group }: { group: EventGroup }) {
                 labelFormatter={(t) =>
                   formatDate(new Date(Number(t)).toISOString())
                 }
-                formatter={(_v: number, _n: string, p: { payload: { text: string; competition: string } }) => [
-                  p.payload.text,
-                  p.payload.competition,
-                ]}
+                formatter={(_v, _n, item) => {
+                  const pl = (item as { payload?: { text?: string; competition?: string } }).payload;
+                  return [pl?.text ?? "", pl?.competition ?? ""];
+                }}
               />
               {/* PB-kehitys korostuksena (askelviiva) */}
               <Line
