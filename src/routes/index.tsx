@@ -246,12 +246,14 @@ function Index() {
         )}
 
         <ul className="space-y-2">
-          {runs.map((r) => (
+          {runs.map((r) => {
+            const past = isPast(r.BeginDateTimeWithTZ);
+            return (
             <li key={r.Id}>
               <Link
                 to="/round/$eventId/$roundId"
                 params={{ eventId: String(r.EventId), roundId: String(r.Id) }}
-                className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm transition-colors hover:bg-secondary active:bg-secondary"
+                className={`flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm transition-colors hover:bg-secondary active:bg-secondary ${past ? "opacity-50" : ""}`}
               >
                 <div className="flex w-14 shrink-0 flex-col items-center">
                   <span className="text-lg font-bold tabular-nums tracking-tight text-foreground">
