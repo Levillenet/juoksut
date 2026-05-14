@@ -18,6 +18,7 @@ import {
 import { useCompetitionId } from "@/lib/competition-store";
 import { useWatchedAthletes, athleteKey, type WatchedAthlete } from "@/lib/watch-store";
 import { RecordBadge } from "@/lib/records";
+import { captureBaselines, loadBaselines, effectiveRecord } from "@/lib/record-baseline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
