@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, RefreshCw, Trophy, Activity, Clock, ChevronDown, Star } from "lucide-react";
+import { ArrowLeft, RefreshCw, Trophy, Activity, Clock, ChevronDown, Star, ArrowUp, ArrowDown } from "lucide-react";
 import { detectRecord, formatImprovement, RecordBadge, RecordStar } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
 
@@ -601,6 +601,31 @@ function EventCard({
   );
   const list = open ? allRanked : top3;
 
+  // Track rank changes between detail updates so we can show ↑ / ↓ next to
+  // athletes whose position improved or dropped during the live event.
+  const prevRanksRef = useRef<Map<number, number>>(new Map());
+  const rankChanges = useMemo(() => {
+    const changes = new Map<number, "up" | "down">();
+    const prev = prevRanksRef.current;
+    for (const a of allRanked) {
+      const cur = a.ResultRank ?? a.Position;
+      if (cur == null) continue;
+      const before = prev.get(a.AllocId);
+      if (before != null && before !== cur) {
+        changes.set(a.AllocId, cur < before ? "up" : "down");
+      }
+    }
+    return changes;
+  }, [allRanked]);
+  useEffect(() => {
+    const next = new Map<number, number>();
+    for (const a of allRanked) {
+      const cur = a.ResultRank ?? a.Position;
+      if (cur != null) next.set(a.AllocId, cur);
+    }
+    prevRanksRef.current = next;
+  }, [allRanked]);
+
   return (
     <div
       className={`overflow-hidden rounded-2xl border bg-card ${
@@ -644,6 +669,7 @@ function EventCard({
         <ol className="space-y-1.5">
           {list.map((a) => {
             const rank = a.ResultRank ?? a.Position;
+            const change = rankChanges.get(a.AllocId);
             return (
               <li
                 key={a.AllocId}
@@ -660,6 +686,19 @@ function EventCard({
                 >
                   {rank ?? "–"}
                 </span>
+                {change === "up" ? (
+                  <ArrowUp
+                    className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                    aria-label="Sijoitus parani"
+                  />
+                ) : change === "down" ? (
+                  <ArrowDown
+                    className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400"
+                    aria-label="Sijoitus putosi"
+                  />
+                ) : (
+                  <span className="h-4 w-4 shrink-0" aria-hidden />
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold leading-tight">{a.Name}</p>
                   <p className="truncate text-xs text-muted-foreground">
