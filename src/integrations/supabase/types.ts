@@ -172,7 +172,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      harvest_try_lock: { Args: never; Returns: boolean }
+      harvest_unlock: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
