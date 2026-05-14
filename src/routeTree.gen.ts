@@ -16,6 +16,7 @@ import { Route as PrintRouteImport } from './routes/print'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PrintClubRouteImport } from './routes/print.club'
 import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
 
 const WatchRoute = WatchRouteImport.update({
@@ -53,6 +54,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrintClubRoute = PrintClubRouteImport.update({
+  id: '/club',
+  path: '/club',
+  getParentRoute: () => PrintRoute,
+} as any)
 const RoundEventIdRoundIdRoute = RoundEventIdRoundIdRouteImport.update({
   id: '/round/$eventId/$roundId',
   path: '/round/$eventId/$roundId',
@@ -63,20 +69,22 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRoute
   '/login': typeof LoginRoute
-  '/print': typeof PrintRoute
+  '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/watch': typeof WatchRoute
+  '/print/club': typeof PrintClubRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRoute
   '/login': typeof LoginRoute
-  '/print': typeof PrintRoute
+  '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/watch': typeof WatchRoute
+  '/print/club': typeof PrintClubRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
 }
 export interface FileRoutesById {
@@ -84,10 +92,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRoute
   '/login': typeof LoginRoute
-  '/print': typeof PrintRoute
+  '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/watch': typeof WatchRoute
+  '/print/club': typeof PrintClubRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/search'
     | '/watch'
+    | '/print/club'
     | '/round/$eventId/$roundId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/search'
     | '/watch'
+    | '/print/club'
     | '/round/$eventId/$roundId'
   id:
     | '__root__'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/search'
     | '/watch'
+    | '/print/club'
     | '/round/$eventId/$roundId'
   fileRoutesById: FileRoutesById
 }
@@ -127,7 +139,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnnouncerRoute: typeof AnnouncerRoute
   LoginRoute: typeof LoginRoute
-  PrintRoute: typeof PrintRoute
+  PrintRoute: typeof PrintRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   SearchRoute: typeof SearchRoute
   WatchRoute: typeof WatchRoute
@@ -185,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/print/club': {
+      id: '/print/club'
+      path: '/club'
+      fullPath: '/print/club'
+      preLoaderRoute: typeof PrintClubRouteImport
+      parentRoute: typeof PrintRoute
+    }
     '/round/$eventId/$roundId': {
       id: '/round/$eventId/$roundId'
       path: '/round/$eventId/$roundId'
@@ -195,11 +214,21 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface PrintRouteChildren {
+  PrintClubRoute: typeof PrintClubRoute
+}
+
+const PrintRouteChildren: PrintRouteChildren = {
+  PrintClubRoute: PrintClubRoute,
+}
+
+const PrintRouteWithChildren = PrintRoute._addFileChildren(PrintRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnnouncerRoute: AnnouncerRoute,
   LoginRoute: LoginRoute,
-  PrintRoute: PrintRoute,
+  PrintRoute: PrintRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   SearchRoute: SearchRoute,
   WatchRoute: WatchRoute,
@@ -208,3 +237,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
