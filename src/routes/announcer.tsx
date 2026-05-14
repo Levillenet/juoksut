@@ -485,18 +485,7 @@ function EventCard({
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  {rec && (
-                    <span
-                      className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
-                        rec === "PB"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-accent text-accent-foreground"
-                      }`}
-                      title={rec === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
-                    >
-                      {rec === "PB" ? "Uusi PB" : "Uusi SB"}
-                    </span>
-                  )}
+                  {rec && <RecordStar kind={rec} size="lg" />}
                   {a.Result ? (
                     <span className="text-base font-bold tabular-nums">{a.Result}</span>
                   ) : (
