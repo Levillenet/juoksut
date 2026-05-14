@@ -181,6 +181,7 @@ function AnnouncerPage() {
               athleteName: a.Name,
               organization: a.Organization?.Name ?? "",
               eventName: ev.Name,
+              category: ev.EventCategory,
               result: a.Result,
               previous: rec === "PB" ? a.PB : a.SB,
               shownAt: Date.now(),
@@ -195,23 +196,13 @@ function AnnouncerPage() {
     if (fresh.length > 0) {
       setRecordAlerts((prev) => {
         const existingIds = new Set(prev.map((p) => p.id));
-        const merged = [...prev, ...fresh.filter((f) => !existingIds.has(f.id))];
-        return merged.slice(-5); // cap at 5 visible
+        const merged = [...fresh.filter((f) => !existingIds.has(f.id)), ...prev];
+        return merged.slice(0, MAX_RECORDS);
       });
     }
   }, [details]);
 
-  // Auto-expire alerts after TTL
-  useEffect(() => {
-    if (recordAlerts.length === 0) return;
-    const t = setInterval(() => {
-      setRecordAlerts((prev) => prev.filter((a) => Date.now() - a.shownAt < ALERT_TTL_MS));
-    }, 5_000);
-    return () => clearInterval(t);
-  }, [recordAlerts.length]);
-
-  const dismissAlert = (id: string) =>
-    setRecordAlerts((prev) => prev.filter((a) => a.id !== id));
+  const clearRecords = () => setRecordAlerts([]);
 
   const toggleExpand = (eventId: number) => {
     setExpanded((prev) => {
