@@ -65,6 +65,7 @@ function AnnouncerPage() {
   const [recordAlerts, setRecordAlerts] = useState<RecordAlert[]>([]);
   const [recordsCollapsed, setRecordsCollapsed] = useState(false);
   const [recordsExpanded, setRecordsExpanded] = useState(false);
+  const [includeSB, setIncludeSB] = useState(false);
   const seenResultsRef = useRef<Map<number, string>>(new Map());
   const initializedRef = useRef(false);
 
@@ -204,6 +205,11 @@ function AnnouncerPage() {
 
   const clearRecords = () => setRecordAlerts([]);
 
+  const filteredRecords = useMemo(
+    () => (includeSB ? recordAlerts : recordAlerts.filter((a) => a.kind === "PB")),
+    [recordAlerts, includeSB],
+  );
+
   const toggleExpand = (eventId: number) => {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -262,16 +268,36 @@ function AnnouncerPage() {
                 Uudet ennätykset
               </h2>
               <span className="rounded-full bg-yellow-400/30 px-2 py-0.5 text-xs font-semibold">
-                {recordAlerts.length}
+                {filteredRecords.length}
               </span>
             </div>
             <div className="flex items-center gap-1">
-              {recordAlerts.length > VISIBLE_RECORDS && !recordsCollapsed && (
+              {!recordsCollapsed && (
+                <div className="mr-1 flex gap-1 rounded-full border border-border bg-card p-1 text-xs font-medium">
+                  <button
+                    onClick={() => setIncludeSB(false)}
+                    className={`rounded-full px-3 py-0.5 transition-colors ${
+                      !includeSB ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    Vain PB
+                  </button>
+                  <button
+                    onClick={() => setIncludeSB(true)}
+                    className={`rounded-full px-3 py-0.5 transition-colors ${
+                      includeSB ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    PB + SB
+                  </button>
+                </div>
+              )}
+              {filteredRecords.length > VISIBLE_RECORDS && !recordsCollapsed && (
                 <button
                   onClick={() => setRecordsExpanded((v) => !v)}
                   className="rounded-full border border-yellow-400/60 bg-card px-3 py-1 text-xs font-medium hover:bg-secondary"
                 >
-                  {recordsExpanded ? "Näytä vain 3" : `Näytä kaikki (${recordAlerts.length})`}
+                  {recordsExpanded ? "Näytä vain 3" : `Näytä kaikki (${filteredRecords.length})`}
                 </button>
               )}
               {recordAlerts.length > 0 && !recordsCollapsed && (
@@ -294,12 +320,12 @@ function AnnouncerPage() {
 
           {!recordsCollapsed && (
             <div className="mt-2 space-y-2">
-              {recordAlerts.length === 0 ? (
+              {filteredRecords.length === 0 ? (
                 <p className="rounded-lg border border-dashed border-yellow-400/40 bg-card/60 px-4 py-3 text-center text-xs text-muted-foreground">
-                  Ei vielä uusia ennätyksiä tänään. Uudet PB- ja SB-ennätykset näkyvät tässä heti syntyessään.
+                  Ei vielä uusia {includeSB ? "PB- tai SB-" : "PB-"}ennätyksiä tänään.
                 </p>
               ) : (
-                (recordsExpanded ? recordAlerts : recordAlerts.slice(0, VISIBLE_RECORDS)).map((a) => {
+                (recordsExpanded ? filteredRecords : filteredRecords.slice(0, VISIBLE_RECORDS)).map((a) => {
                   const imp = formatImprovement(a.category, a.result, a.previous);
                   return (
                     <div
