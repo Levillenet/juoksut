@@ -181,41 +181,56 @@ function Index() {
           <CompetitionSwitcher className="w-full" confirmOnChange={role === "official"} />
         </div>
 
-        <div className="mx-auto flex max-w-2xl flex-wrap gap-2 px-4 pb-3">
+        <div className="mx-auto grid max-w-2xl gap-2 px-4 pb-3 sm:grid-cols-2">
           <Link
             to="/search"
-            className="flex-1 rounded-full border-2 border-primary/30 bg-card px-4 py-2.5 text-center text-sm font-semibold hover:bg-secondary"
+            className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
           >
-            Hae sukunimellä
+            <div className="text-sm font-semibold leading-tight">Hae sukunimellä</div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">
+              Etsi urheilijaa nimellä kisan osallistujista
+            </div>
           </Link>
           {role === "user" && (
             <Link
               to="/watch"
-              className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+              className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
             >
-              Kilpailijaseuranta
+              <div className="text-sm font-semibold leading-tight">Kilpailijaseuranta</div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                Lisää haluamiasi urheilijoita helppoon tulosseurantaan
+              </div>
             </Link>
           )}
           {role === "official" && (
             <Link
               to="/announcer"
-              className="flex-1 rounded-full border-2 border-primary/30 bg-card px-4 py-2.5 text-center text-sm font-semibold hover:bg-secondary"
+              className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
             >
-              Kuuluttaja
+              <div className="text-sm font-semibold leading-tight">Kuuluttaja</div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                Erä kerrallaan etenevä kuuluttajanäkymä
+              </div>
             </Link>
           )}
           <Link
             to="/print"
-            className="flex-1 rounded-full border-2 border-primary/30 bg-card px-4 py-2.5 text-center text-sm font-semibold hover:bg-secondary"
+            className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
           >
-            Tulostettava aikataulu
+            <div className="text-sm font-semibold leading-tight">Tulostettava aikataulu</div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">
+              Kisan lajit, seuran urheilijat tai omien lasten aikataulu PDF:ksi
+            </div>
           </Link>
           {role === "official" && (
             <Link
               to="/settings"
-              className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+              className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
             >
-              Asetukset
+              <div className="text-sm font-semibold leading-tight">Asetukset</div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                Päivitystiheys, seurojen sijainnit ja muut asetukset
+              </div>
             </Link>
           )}
         </div>
