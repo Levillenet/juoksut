@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, RefreshCw, Trophy, Activity, Clock, ChevronDown, Star } from "lucide-react";
 import { detectRecord, formatImprovement, RecordBadge, RecordStar } from "@/lib/records";
+import { captureBaselines, loadBaselines, effectiveRecord } from "@/lib/record-baseline";
 
 import {
   fetchRounds,
@@ -151,6 +152,20 @@ function AnnouncerPage() {
         wantedIds.map((id) => fetchEvent(competitionId, id)),
       );
       if (cancelled) return;
+      // Capture + load PB/SB baselines for each event before updating details,
+      // so the first render after fetch can already use baseline values.
+      await Promise.allSettled(
+        results.map(async (res, i) => {
+          if (res.status !== "fulfilled") return;
+          const ev = res.value;
+          const allocs = ev.Rounds.flatMap((r) =>
+            r.Heats.flatMap((h) => h.Allocations),
+          );
+          await captureBaselines(competitionId, ev.Id, allocs);
+          await loadBaselines(competitionId, ev.Id);
+        }),
+      );
+      if (cancelled) return;
       setDetails((prev) => {
         const next = { ...prev };
         results.forEach((res, i) => {
@@ -181,7 +196,8 @@ function AnnouncerPage() {
             seen.set(a.AllocId, a.Result);
             if (isFirstRun) return; // skip alerts on first load (avoid flooding)
             if (prevResult === a.Result) return; // no change
-            const rec = detectRecord(ev.EventCategory, a.Result, a.PB, a.SB);
+            const eff = effectiveRecord(ev.Id, a);
+            const rec = detectRecord(ev.EventCategory, a.Result, eff.pb, eff.sb);
             if (!rec) return;
             fresh.push({
               id: `${a.AllocId}-${a.Result}`,
@@ -191,7 +207,7 @@ function AnnouncerPage() {
               eventName: ev.Name,
               category: ev.EventCategory,
               result: a.Result,
-              previous: rec === "PB" ? a.PB : a.SB,
+              previous: rec === "PB" ? eff.pb : eff.sb,
               shownAt: Date.now(),
               eventId: ev.Id,
               roundId: round.Id,
@@ -634,13 +650,18 @@ function EventCard({
                 <div className="flex shrink-0 items-center gap-2">
                   {a.Result ? (
                     <>
-                      <RecordBadge
-                        category={round.Category}
-                        result={a.Result}
-                        pb={a.PB}
-                        sb={a.SB}
-                        size="lg"
-                      />
+                      {(() => {
+                        const eff = effectiveRecord(round.EventId, a);
+                        return (
+                          <RecordBadge
+                            category={round.Category}
+                            result={a.Result}
+                            pb={eff.pb}
+                            sb={eff.sb}
+                            size="lg"
+                          />
+                        );
+                      })()}
                       <span className="text-base font-bold tabular-nums">{a.Result}</span>
                     </>
                   ) : (
@@ -739,13 +760,18 @@ function UpcomingItem({
                     </span>
                     {a.Result ? (
                       <span className="flex shrink-0 items-center gap-1">
-                        <RecordBadge
-                          category={round.Category}
-                          result={a.Result}
-                          pb={a.PB}
-                          sb={a.SB}
-                          size="sm"
-                        />
+                        {(() => {
+                          const eff = effectiveRecord(round.EventId, a);
+                          return (
+                            <RecordBadge
+                              category={round.Category}
+                              result={a.Result}
+                              pb={eff.pb}
+                              sb={eff.sb}
+                              size="sm"
+                            />
+                          );
+                        })()}
                         <span className="font-bold tabular-nums">{a.Result}</span>
                       </span>
                     ) : (

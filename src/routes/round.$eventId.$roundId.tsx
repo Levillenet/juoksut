@@ -10,6 +10,7 @@ import {
   type Heat,
 } from "@/lib/tuloslista";
 import { RecordBadge } from "@/lib/records";
+import { captureBaselines, loadBaselines, effectiveRecord } from "@/lib/record-baseline";
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 
@@ -32,7 +33,11 @@ function RoundView() {
     setLoading(true);
     setError(null);
     try {
-      const r = await fetchEvent(competitionId, parseInt(eventId, 10));
+      const eid = parseInt(eventId, 10);
+      const r = await fetchEvent(competitionId, eid);
+      const allocs = r.Rounds.flatMap((rd) => rd.Heats.flatMap((h) => h.Allocations));
+      await captureBaselines(competitionId, eid, allocs);
+      await loadBaselines(competitionId, eid);
       setData(r);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Tuntematon virhe");
@@ -165,13 +170,18 @@ function RoundView() {
                                 </span>
                               )}
                             </div>
-                            <RecordBadge
-                              category={data?.EventCategory ?? ""}
-                              result={a.Result}
-                              pb={a.PB}
-                              sb={a.SB}
-                              size="sm"
-                            />
+                            {(() => {
+                              const eff = effectiveRecord(parseInt(eventId, 10), a);
+                              return (
+                                <RecordBadge
+                                  category={data?.EventCategory ?? ""}
+                                  result={a.Result}
+                                  pb={eff.pb}
+                                  sb={eff.sb}
+                                  size="sm"
+                                />
+                              );
+                            })()}
                           </>
                         ) : (
                           <>

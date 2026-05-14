@@ -18,6 +18,7 @@ import {
 import { useCompetitionId } from "@/lib/competition-store";
 import { useWatchedAthletes, athleteKey, type WatchedAthlete } from "@/lib/watch-store";
 import { RecordBadge } from "@/lib/records";
+import { captureBaselines, loadBaselines, effectiveRecord } from "@/lib/record-baseline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -89,6 +90,11 @@ function WatchPage() {
           const eid = eventIds[i];
           try {
             const ev = await fetchEvent(competitionId, eid);
+            const allAllocs = ev.Rounds.flatMap((r) =>
+              r.Heats.flatMap((h) => h.Allocations),
+            );
+            await captureBaselines(competitionId, eid, allAllocs);
+            await loadBaselines(competitionId, eid);
             for (const round of ev.Rounds) {
               const matchingRound = allRounds.find((r) => r.Id === round.Id) ?? {
                 ...allRounds.find((r) => r.EventId === eid)!,
@@ -402,14 +408,19 @@ function WatchPage() {
                                       )}
                                     </p>
                                     <div className="mt-1 flex justify-end">
-                                      <RecordBadge
-                                        category={e.round.Category}
-                                        result={e.alloc.Result}
-                                        pb={e.alloc.PB}
-                                        sb={e.alloc.SB}
-                                        size="sm"
-                                        layout="row"
-                                      />
+                                      {(() => {
+                                        const eff = effectiveRecord(e.round.EventId, e.alloc);
+                                        return (
+                                          <RecordBadge
+                                            category={e.round.Category}
+                                            result={e.alloc.Result}
+                                            pb={eff.pb}
+                                            sb={eff.sb}
+                                            size="sm"
+                                            layout="row"
+                                          />
+                                        );
+                                      })()}
                                     </div>
                                   </>
                                 )}

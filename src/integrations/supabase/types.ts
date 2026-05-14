@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      record_baseline: {
+        Row: {
+          athlete_id: number
+          captured_at: string
+          competition_id: number
+          event_id: number
+          pb: string
+          sb: string
+        }
+        Insert: {
+          athlete_id: number
+          captured_at?: string
+          competition_id: number
+          event_id: number
+          pb?: string
+          sb?: string
+        }
+        Update: {
+          athlete_id?: number
+          captured_at?: string
+          competition_id?: number
+          event_id?: number
+          pb?: string
+          sb?: string
+        }
+        Relationships: []
+      }
       watched_athletes: {
         Row: {
           athlete_key: string
