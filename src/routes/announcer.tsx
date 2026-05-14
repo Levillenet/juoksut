@@ -679,7 +679,7 @@ function EventCard({
             return (
               <li
                 key={a.AllocId}
-                className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-2 rounded-lg bg-muted/40 px-3 py-2 sm:gap-x-3"
+                className="grid grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-x-2 rounded-lg bg-muted/40 px-3 py-2 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto] sm:gap-x-3"
               >
                 <span
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-black tabular-nums ${
@@ -711,7 +711,7 @@ function EventCard({
                     {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
                   </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="col-start-3 col-end-4 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 sm:col-start-4 sm:col-end-5 sm:mt-0 sm:shrink-0 sm:justify-end">
                   {a.Result ? (
                     <span className="text-base font-bold tabular-nums">{a.Result}</span>
                   ) : (
@@ -722,7 +722,7 @@ function EventCard({
                   )}
                 </div>
                 {recordKind && eff && a.Result && (
-                  <div className="col-start-3 col-end-5 mt-1 min-w-0 overflow-hidden">
+                  <div className="col-start-3 col-end-4 mt-1 min-w-0 overflow-hidden sm:col-end-5">
                     <RecordBadge
                       category={round.Category}
                       result={a.Result}
