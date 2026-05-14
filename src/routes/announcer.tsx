@@ -393,7 +393,7 @@ function EventCard({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold leading-tight">{a.Name}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {a.Organization?.NameShort ?? a.Organization?.Name ?? ""}
+                    {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -404,9 +404,9 @@ function EventCard({
                           ? "bg-primary text-primary-foreground"
                           : "bg-accent text-accent-foreground"
                       }`}
-                      title={rec === "PB" ? "Uusi henkilökohtainen ennätys" : "Uusi kauden ennätys"}
+                      title={rec === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
                     >
-                      {rec}
+                      {rec === "PB" ? "Uusi OE" : "Uusi KE"}
                     </span>
                   )}
                   <span className="text-base font-bold tabular-nums">{a.Result ?? "–"}</span>
@@ -487,7 +487,7 @@ function UpcomingItem({
                     <span className="min-w-0 flex-1 truncate">
                       {a.Name}
                       <span className="ml-1 text-xs text-muted-foreground">
-                        {a.Organization?.NameShort ?? ""}
+                        {a.Organization?.Name ?? ""}
                       </span>
                     </span>
                     {a.Result ? (
@@ -499,15 +499,16 @@ function UpcomingItem({
                                 ? "bg-primary text-primary-foreground"
                                 : "bg-accent text-accent-foreground"
                             }`}
+                            title={rec === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
                           >
-                            {rec}
+                            {rec === "PB" ? "Uusi OE" : "Uusi KE"}
                           </span>
                         )}
                         <span className="font-bold tabular-nums">{a.Result}</span>
                       </span>
                     ) : (
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {a.SB || a.PB || ""}
+                      <span className="shrink-0 text-xs text-muted-foreground" title={a.SB ? "Kauden ennätys" : "Oma ennätys"}>
+                        {a.SB ? `KE ${a.SB}` : a.PB ? `OE ${a.PB}` : ""}
                       </span>
                     )}
                   </li>
