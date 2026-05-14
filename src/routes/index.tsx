@@ -158,7 +158,7 @@ function Index() {
               {updatedAt && ` · päivitetty ${formatClock(updatedAt)}`}
             </p>
           </div>
-          <h2 className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-3xl font-black uppercase tracking-widest text-primary lg:block">
+          <h2 className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-lg font-black uppercase tracking-widest text-primary xl:block">
             Juoksujen näkymä
           </h2>
           <Button
