@@ -209,6 +209,7 @@ function AnnouncerPage() {
   const dismissAlert = (id: string) =>
     setRecordAlerts((prev) => prev.filter((a) => a.id !== id));
 
+  const toggleExpand = (eventId: number) => {
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(eventId)) next.delete(eventId);
