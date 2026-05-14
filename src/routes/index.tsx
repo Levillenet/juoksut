@@ -275,7 +275,8 @@ function Index() {
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </Link>
             </li>
-          ))}
+            );
+          })}
         </ul>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
