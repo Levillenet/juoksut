@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Settings2, RefreshCw, Timer, ChevronRight } from "lucide-react";
+import logo from "@/assets/lahden-ahkera-logo.png";
 
 import {
   fetchRounds,
