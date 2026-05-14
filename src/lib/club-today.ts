@@ -27,15 +27,21 @@ export interface ClubOption {
   athletes: number;
 }
 
-/** Distinct organizations that have at least one result today. */
-export async function fetchTodayClubs(): Promise<ClubOption[]> {
+/** Distinct organizations that have at least one result today, optionally excluding a competition. */
+export async function fetchTodayClubs(
+  excludeCompetitionId?: number | null,
+): Promise<ClubOption[]> {
   const { startISO, endISO } = helsinkiDayBounds(new Date());
-  const { data, error } = await supabase
+  let query = supabase
     .from("athlete_results")
     .select("organization, organization_id, athlete_key")
     .gte("competition_date", startISO)
     .lt("competition_date", endISO)
     .not("organization_id", "is", null);
+  if (excludeCompetitionId != null) {
+    query = query.neq("competition_id", excludeCompetitionId);
+  }
+  const { data, error } = await query;
   if (error) throw error;
   const map = new Map<number, { id: number; name: string; athletes: Set<string> }>();
   for (const r of (data ?? []) as Array<{
@@ -58,12 +64,13 @@ export async function fetchTodayClubs(): Promise<ClubOption[]> {
     .sort((a, b) => a.name.localeCompare(b.name, "fi"));
 }
 
-/** All of today's results for athletes from the given organization. */
+/** All of today's results for athletes from the given organization, optionally excluding a competition. */
 export async function fetchClubTodayResults(
   organizationId: number,
+  excludeCompetitionId?: number | null,
 ): Promise<ClubTodayRow[]> {
   const { startISO, endISO } = helsinkiDayBounds(new Date());
-  const { data, error } = await supabase
+  let query = supabase
     .from("athlete_results")
     .select(
       "athlete_key, surname, firstname, organization, organization_id, competition_id, competition_name, event_name, age_class, sub_category, event_category, result_text, result_numeric, result_rank",
@@ -71,6 +78,10 @@ export async function fetchClubTodayResults(
     .eq("organization_id", organizationId)
     .gte("competition_date", startISO)
     .lt("competition_date", endISO);
+  if (excludeCompetitionId != null) {
+    query = query.neq("competition_id", excludeCompetitionId);
+  }
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as ClubTodayRow[];
 }

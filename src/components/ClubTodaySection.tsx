@@ -30,19 +30,23 @@ function saveOrgId(id: number | null) {
   }
 }
 
-export function ClubTodaySection() {
+export function ClubTodaySection({
+  excludeCompetitionId,
+}: {
+  excludeCompetitionId?: number | null;
+} = {}) {
   const [orgId, setOrgId] = useState<number | null>(() => loadOrgId());
   const [open, setOpen] = useState(true);
 
   const clubsQuery = useQuery({
-    queryKey: ["club-today", "clubs"],
-    queryFn: fetchTodayClubs,
+    queryKey: ["club-today", "clubs", excludeCompetitionId ?? 0],
+    queryFn: () => fetchTodayClubs(excludeCompetitionId),
     staleTime: 5 * 60_000,
   });
 
   const resultsQuery = useQuery({
-    queryKey: ["club-today", "results", orgId ?? 0],
-    queryFn: () => fetchClubTodayResults(orgId!),
+    queryKey: ["club-today", "results", orgId ?? 0, excludeCompetitionId ?? 0],
+    queryFn: () => fetchClubTodayResults(orgId!, excludeCompetitionId),
     enabled: orgId != null,
     staleTime: 60_000,
   });
@@ -100,7 +104,9 @@ export function ClubTodaySection() {
         className="flex w-full items-center gap-2 px-4 py-3 text-left"
       >
         <Building2 className="h-4 w-4 text-primary" />
-        <h2 className="flex-1 text-sm font-bold">Seuran urheilijat tänään</h2>
+        <h2 className="flex-1 text-sm font-bold">
+          Seuran urheilijat tänään{excludeCompetitionId != null ? " muissa kisoissa" : ""}
+        </h2>
         {open ? (
           <ChevronUp className="h-4 w-4" />
         ) : (
