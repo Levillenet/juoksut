@@ -71,7 +71,7 @@ export async function fetchClubHistory(
   const { data, error } = await supabase
     .from("athlete_results")
     .select(
-      "id, athlete_key, surname, firstname, organization, organization_id, competition_id, competition_name, competition_date, location, event_id, event_name, sub_category, event_category, result_text, result_numeric, result_rank, wind",
+      "id, athlete_key, surname, firstname, organization, organization_id, competition_id, competition_name, competition_date, location, event_id, event_name, sub_category, event_category, result_text, result_numeric, result_rank, wind, was_pb",
     )
     .eq("organization_id", organizationId)
     .order("competition_date", { ascending: true });
