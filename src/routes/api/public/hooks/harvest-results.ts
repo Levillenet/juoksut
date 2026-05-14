@@ -20,6 +20,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 const API = "https://cached-public-api.tuloslista.com/live/v1";
 const BATCH_SIZE = 100;      // competition IDs scanned per invocation
 const TAIL_RESCAN = 30;      // IDs to re-scan when caught up
+const REVISIT_LIMIT = 40;    // tuloksettomien kisojen uudelleentarkistus per ajo
+const REVISIT_MAX_AGE_DAYS = 14; // kuinka kauan palataan tyhjiin kisoihin
 const CONCURRENCY = 5;       // parallel competitions per chunk
 const HARD_MAX_ID = 30000;   // safety ceiling
 
