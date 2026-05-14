@@ -53,16 +53,15 @@ const STATUS_STYLE: Record<Round["Status"], string> = {
 };
 
 function Index() {
-  const [competitionId, setCompetitionId] = useCompetitionId();
+  const { role, signOut } = useAuth();
+  const [competitionId] = useCompetitionId();
   const [data, setData] = useState<RoundsByDate | null>(null);
   const [name, setName] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeDate, setActiveDate] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
   const [showPast, setShowPast] = useState(false);
   const [now, setNow] = useState(() => new Date());
-  const [linkInput, setLinkInput] = useState("");
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
   const load = async () => {
@@ -130,19 +129,6 @@ function Index() {
   );
 
   const hiddenPastCount = allRuns.length - runs.length;
-
-  const saveLink = () => {
-    const id = parseCompetitionId(linkInput);
-    if (!id) {
-      setError("Anna kelvollinen kisalinkki tai kisanumero.");
-      return;
-    }
-    setCompetitionId(id);
-    setShowSettings(false);
-    setLinkInput("");
-    setData(null);
-    setActiveDate(null);
-  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
