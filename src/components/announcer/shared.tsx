@@ -19,7 +19,7 @@ export function SectionTitle({
   title,
   count,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
   count: number;
 }) {
