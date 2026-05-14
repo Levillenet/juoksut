@@ -145,7 +145,7 @@ function Index() {
           />
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-semibold leading-tight">
-              {name || "Juoksulajit"}
+              {name || "Lajit"}
             </h1>
             <p className="truncate text-xs text-muted-foreground">
               Kisa #{competitionId}
