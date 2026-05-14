@@ -206,7 +206,14 @@ function AnnouncerPage() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {inProgress.map((r) => (
-                  <EventCard key={r.Id} round={r} detail={details[r.EventId]} live />
+                  <EventCard
+                    key={r.Id}
+                    round={r}
+                    detail={details[r.EventId]}
+                    live
+                    open={expanded.has(r.EventId)}
+                    onToggle={() => toggleExpand(r.EventId)}
+                  />
                 ))}
               </div>
             )}
