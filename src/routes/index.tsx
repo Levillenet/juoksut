@@ -6,7 +6,7 @@ import logo from "@/assets/lahden-ahkera-logo.png";
 import {
   fetchRounds,
   fetchProperties,
-  isRunningEvent,
+  // isRunningEvent removed: show all events
   formatTime,
   helsinkiDateKey,
   STATUS_LABEL,
