@@ -155,7 +155,60 @@ function AnnouncerPage() {
     };
   }, [competitionId, wantedIds]);
 
-  const toggleExpand = (eventId: number) => {
+  // Detect new PB/SB results when details update; show alert banner for ~1 min
+  useEffect(() => {
+    const seen = seenResultsRef.current;
+    const fresh: RecordAlert[] = [];
+    const isFirstRun = !initializedRef.current;
+    Object.values(details).forEach((ev) => {
+      ev.Rounds.forEach((round) => {
+        round.Heats.forEach((heat) => {
+          heat.Allocations.forEach((a) => {
+            if (!a.Result || a.NotInCompetition) return;
+            const prevResult = seen.get(a.AllocId);
+            seen.set(a.AllocId, a.Result);
+            if (isFirstRun) return; // skip alerts on first load (avoid flooding)
+            if (prevResult === a.Result) return; // no change
+            const rec = detectRecord(ev.EventCategory, a.Result, a.PB, a.SB);
+            if (!rec) return;
+            fresh.push({
+              id: `${a.AllocId}-${a.Result}`,
+              kind: rec,
+              athleteName: a.Name,
+              organization: a.Organization?.Name ?? "",
+              eventName: ev.Name,
+              result: a.Result,
+              previous: rec === "PB" ? a.PB : a.SB,
+              shownAt: Date.now(),
+              eventId: ev.Id,
+              roundId: round.Id,
+            });
+          });
+        });
+      });
+    });
+    initializedRef.current = true;
+    if (fresh.length > 0) {
+      setRecordAlerts((prev) => {
+        const existingIds = new Set(prev.map((p) => p.id));
+        const merged = [...prev, ...fresh.filter((f) => !existingIds.has(f.id))];
+        return merged.slice(-5); // cap at 5 visible
+      });
+    }
+  }, [details]);
+
+  // Auto-expire alerts after TTL
+  useEffect(() => {
+    if (recordAlerts.length === 0) return;
+    const t = setInterval(() => {
+      setRecordAlerts((prev) => prev.filter((a) => Date.now() - a.shownAt < ALERT_TTL_MS));
+    }, 5_000);
+    return () => clearInterval(t);
+  }, [recordAlerts.length]);
+
+  const dismissAlert = (id: string) =>
+    setRecordAlerts((prev) => prev.filter((a) => a.id !== id));
+
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(eventId)) next.delete(eventId);
