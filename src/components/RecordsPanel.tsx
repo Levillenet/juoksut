@@ -52,11 +52,6 @@ export function EventGroupView({ group }: { group: EventGroup }) {
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b bg-muted/40 px-3 py-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{group.eventName}</p>
-          {group.subCategory && (
-            <p className="truncate text-[11px] text-muted-foreground">
-              {translateSub(group.subCategory)}
-            </p>
-          )}
         </div>
         <div className="flex items-center gap-1.5">
           <Trophy className="h-3.5 w-3.5 text-primary" />
