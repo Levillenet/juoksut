@@ -765,16 +765,27 @@ function AllocationRow({
 function UpcomingItem({
   round,
   detail,
-  open,
+  open: openProp,
   onToggle,
   groupHeats = true,
+  defaultOpen = false,
+  onDismiss,
 }: {
   round: Round;
   detail?: EventResults;
-  open: boolean;
-  onToggle: () => void;
+  open?: boolean;
+  onToggle?: () => void;
   groupHeats?: boolean;
+  defaultOpen?: boolean;
+  onDismiss?: () => void;
 }) {
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : internalOpen;
+  const handleToggle = () => {
+    if (isControlled) onToggle?.();
+    else setInternalOpen((v) => !v);
+  };
   // Find the matching round inside the event detail (an event can contain
   // qualifications + final, etc.).
   const matchingRound = useMemo(
