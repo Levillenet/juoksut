@@ -518,6 +518,24 @@ function parsePerf(s: string | null | undefined): number | null {
   return isNaN(v) ? null : v;
 }
 
+function formatImprovement(category: string, result: string, previous: string): string | null {
+  const r = parsePerf(result);
+  const p = parsePerf(previous);
+  if (r == null || p == null) return null;
+  const isTrack = category === "Track";
+  const diff = isTrack ? p - r : r - p;
+  if (diff <= 0) return null;
+  if (isTrack) {
+    if (diff >= 60) {
+      const m = Math.floor(diff / 60);
+      const s = (diff - m * 60).toFixed(2);
+      return `−${m}:${s.padStart(5, "0")}`;
+    }
+    return `−${diff.toFixed(2)} s`;
+  }
+  return `+${diff.toFixed(2)} m`;
+}
+
 type RecordKind = "PB" | "SB" | null;
 
 function detectRecord(category: string, result: string | null, pb: string, sb: string): RecordKind {
