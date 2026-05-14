@@ -1,7 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, Building2 } from "lucide-react";
 
 import {
   formatTime,
@@ -15,10 +15,14 @@ import {
   type IndexedEntry,
 } from "@/lib/tuloslista-queries";
 import { Button } from "@/components/ui/button";
+import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
 
 export const Route = createFileRoute("/print/club")({
   validateSearch: (search: Record<string, unknown>) => ({
-    org: typeof search.org === "string" ? parseInt(search.org, 10) : Number(search.org) || 0,
+    org:
+      typeof search.org === "string"
+        ? parseInt(search.org, 10)
+        : Number(search.org) || 0,
     auto: search.auto === "1" || search.auto === 1 || search.auto === true,
   }),
   head: () => ({
@@ -36,10 +40,26 @@ export const Route = createFileRoute("/print/club")({
 function PrintClubPage() {
   const [competitionId] = useCompetitionId();
   const { org, auto } = Route.useSearch();
+  const navigate = useNavigate();
   const indexQuery = useQuery(competitionIndexQueryOptions(competitionId));
 
   const entries: IndexedEntry[] = indexQuery.data?.entries ?? [];
   const compName = indexQuery.data?.name ?? "";
+
+  // All clubs that appear in the current competition (id + name + athlete count)
+  const clubs = useMemo(() => {
+    const map = new Map<number, { id: number; name: string; athletes: Set<string> }>();
+    for (const e of entries) {
+      const id = e.alloc.Organization?.Id;
+      if (id == null) continue;
+      const nm = e.alloc.Organization?.Name ?? "";
+      if (!map.has(id)) map.set(id, { id, name: nm, athletes: new Set() });
+      map.get(id)!.athletes.add(`${e.alloc.Surname}|${e.alloc.Firstname}`);
+    }
+    return Array.from(map.values())
+      .map((c) => ({ id: c.id, name: c.name, athletes: c.athletes.size }))
+      .sort((a, b) => a.name.localeCompare(b.name, "fi"));
+  }, [entries]);
 
   const orgName = useMemo(() => {
     const e = entries.find((x) => (x.alloc.Organization?.Id ?? -1) === org);
@@ -47,13 +67,20 @@ function PrintClubPage() {
   }, [entries, org]);
 
   const grouped = useMemo(() => {
+    if (!org) return [] as Array<{
+      date: string;
+      rounds: Array<{ round: IndexedEntry["round"]; allocs: IndexedEntry[] }>;
+    }>;
     // Filter to allocations of selected club
     const filtered = entries.filter(
       (e) => (e.alloc.Organization?.Id ?? -1) === org,
     );
 
-    // Group by date -> round -> entries
-    const byDate = new Map<string, Map<number, { round: IndexedEntry["round"]; allocs: IndexedEntry[] }>>();
+    // Group by date -> round (= event round) -> entries
+    const byDate = new Map<
+      string,
+      Map<number, { round: IndexedEntry["round"]; allocs: IndexedEntry[] }>
+    >();
     for (const e of filtered) {
       const dk = helsinkiDateKey(e.heatBegin);
       if (!byDate.has(dk)) byDate.set(dk, new Map());
@@ -86,13 +113,21 @@ function PrintClubPage() {
       }));
   }, [entries, org]);
 
-  // Auto-trigger print when ready
+  // Auto-trigger print when ready (only when org is preselected via URL)
   useEffect(() => {
-    if (auto && !indexQuery.isLoading && grouped.length > 0) {
+    if (auto && org && !indexQuery.isLoading && grouped.length > 0) {
       const t = setTimeout(() => window.print(), 400);
       return () => clearTimeout(t);
     }
-  }, [auto, indexQuery.isLoading, grouped.length]);
+  }, [auto, org, indexQuery.isLoading, grouped.length]);
+
+  const setOrg = (id: number) => {
+    navigate({
+      to: "/print/club",
+      search: { org: id, auto: false },
+      replace: true,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -108,13 +143,47 @@ function PrintClubPage() {
               Seuran ohjelma
             </h1>
             <p className="truncate text-xs text-muted-foreground">
-              {orgName || "Seura"} · {compName || `Kisa #${competitionId}`}
+              {orgName || "Valitse seura"} ·{" "}
+              {compName || `Kisa #${competitionId}`}
             </p>
           </div>
-          <Button onClick={() => window.print()} size="sm" className="gap-2">
+          <Button
+            onClick={() => window.print()}
+            size="sm"
+            className="gap-2"
+            disabled={!org || grouped.length === 0}
+          >
             <Printer className="h-4 w-4" />
             Tulosta / PDF
           </Button>
+        </div>
+
+        {/* Competition + club selectors */}
+        <div className="mx-auto flex max-w-3xl flex-col gap-2 px-4 pb-3 sm:flex-row">
+          <CompetitionSwitcher className="flex-1" />
+          <div className="relative flex-1">
+            <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <select
+              value={org || ""}
+              onChange={(e) => setOrg(parseInt(e.target.value, 10) || 0)}
+              className="h-10 w-full appearance-none rounded-md border border-input bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label="Valitse seura"
+              disabled={clubs.length === 0}
+            >
+              <option value="">
+                {clubs.length === 0
+                  ? indexQuery.isLoading
+                    ? "Ladataan seuroja…"
+                    : "Ei seuroja"
+                  : `Valitse seura (${clubs.length})`}
+              </option>
+              {clubs.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.athletes})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </header>
 
@@ -124,17 +193,23 @@ function PrintClubPage() {
             {compName || `Kisa #${competitionId}`}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Päiväkohtainen ohjelma — {orgName || "Seura"}
+            Ohjelma lajeittain — {orgName || "Seura"}
           </p>
         </div>
 
-        {indexQuery.isLoading && entries.length === 0 && (
+        {!org && (
+          <p className="py-12 text-center text-sm text-muted-foreground print:hidden">
+            Valitse kisa ja seura yltä, niin ohjelma näkyy lajeittain.
+          </p>
+        )}
+
+        {org && indexQuery.isLoading && entries.length === 0 && (
           <p className="py-12 text-center text-sm text-muted-foreground">
             Ladataan…
           </p>
         )}
 
-        {!indexQuery.isLoading && grouped.length === 0 && (
+        {org && !indexQuery.isLoading && grouped.length === 0 && (
           <p className="py-12 text-center text-sm text-muted-foreground">
             Ei lähtöjä valitulla seuralla.
           </p>
