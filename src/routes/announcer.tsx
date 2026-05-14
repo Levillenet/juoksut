@@ -63,14 +63,10 @@ const VISIBLE_RECORDS = 3;
 
 function AnnouncerPage() {
   const [competitionId] = useCompetitionId();
-  const [data, setData] = useState<RoundsByDate | null>(null);
-  const [name, setName] = useState("");
-  const [details, setDetails] = useState<DetailCache>({});
+  const queryClient = useQueryClient();
   const [now, setNow] = useState<Date | null>(null);
-  const [manualLoading, setManualLoading] = useState(false);
   const [showRunning, setShowRunning] = useState(false);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [showPastUpcoming, setShowPastUpcoming] = useState(false);
   const [recordAlerts, setRecordAlerts] = useState<RecordAlert[]>([]);
   const [recordsCollapsed, setRecordsCollapsed] = useState(false);
@@ -79,27 +75,24 @@ function AnnouncerPage() {
   const seenResultsRef = useRef<Map<number, string>>(new Map());
   const initializedRef = useRef(false);
 
-  const loadSchedule = async (silent = true) => {
-    if (!silent) setManualLoading(true);
-    try {
-      const [r, p] = await Promise.all([
-        fetchRounds(competitionId),
-        fetchProperties(competitionId).catch(() => null),
-      ]);
-      setData(r);
-      setName(p?.Competition?.Name ?? "");
-      setUpdatedAt(new Date());
-    } finally {
-      if (!silent) setManualLoading(false);
-    }
-  };
+  const scheduleQuery = useQuery(competitionScheduleQueryOptions(competitionId));
+  const data = scheduleQuery.data?.rounds ?? null;
+  const name = scheduleQuery.data?.name ?? "";
+  const updatedAt = scheduleQuery.dataUpdatedAt
+    ? new Date(scheduleQuery.dataUpdatedAt)
+    : null;
+  const manualLoading = scheduleQuery.isFetching;
 
-  useEffect(() => {
-    loadSchedule(false);
-    const t = setInterval(() => loadSchedule(true), 15_000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competitionId]);
+  const reload = () => {
+    queryClient.invalidateQueries({ queryKey: competitionScheduleKey(competitionId) });
+    // Also invalidate any cached event details for this competition
+    queryClient.invalidateQueries({
+      predicate: (q) =>
+        Array.isArray(q.queryKey) &&
+        q.queryKey[0] === "event-details" &&
+        q.queryKey[1] === competitionId,
+    });
+  };
 
   // Client-only clock to avoid SSR hydration mismatch
   useEffect(() => {
