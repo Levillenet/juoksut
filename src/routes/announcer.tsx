@@ -504,8 +504,9 @@ function UpcomingItem({
                         <span className="font-bold tabular-nums">{a.Result}</span>
                       </span>
                     ) : (
-                      <span className="shrink-0 text-xs text-muted-foreground" title={a.SB ? "Kauden ennätys" : "Oma ennätys"}>
-                        {a.SB ? `SB ${a.SB}` : a.PB ? `PB ${a.PB}` : ""}
+                      <span className="flex shrink-0 gap-2 text-xs text-muted-foreground">
+                        {a.SB && <span title="Kauden ennätys">SB {a.SB}</span>}
+                        {a.PB && <span title="Oma ennätys">PB {a.PB}</span>}
                       </span>
                     )}
                   </li>
