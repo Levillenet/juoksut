@@ -764,43 +764,46 @@ function AllocationRow({
   showRank: "result" | "position";
 }) {
   const rank = showRank === "result" ? a.ResultRank : a.Position;
+  const eff = a.Result ? effectiveRecord(round.EventId, a) : null;
+  const recordKind = a.Result && eff ? detectRecord(round.Category, a.Result, eff.pb, eff.sb) : null;
   return (
     <li
-      className={`flex items-center gap-2 rounded px-2 py-1 text-sm ${
+      className={`flex items-start gap-2 rounded px-2 py-1 text-sm ${
         a.NotInCompetition ? "text-muted-foreground" : ""
       }`}
     >
-      <span className="w-6 shrink-0 text-xs font-bold tabular-nums text-muted-foreground">
+      <span className="mt-0.5 w-6 shrink-0 text-xs font-bold tabular-nums text-muted-foreground">
         {rank ?? "–"}
       </span>
-      <span className="min-w-0 flex-1 truncate">
-        {a.Name}
-        <span className="ml-1 text-xs text-muted-foreground">
-          {a.Organization?.Name ?? ""}
-        </span>
-      </span>
-      {a.Result ? (
-        <span className="flex shrink-0 items-center gap-1">
-          {(() => {
-            const eff = effectiveRecord(round.EventId, a);
-            return (
-              <RecordBadge
-                category={round.Category}
-                result={a.Result}
-                pb={eff.pb}
-                sb={eff.sb}
-                size="sm"
-              />
-            );
-          })()}
-          <span className="font-bold tabular-nums">{a.Result}</span>
-        </span>
-      ) : (
-        <span className="flex shrink-0 gap-2 text-xs text-muted-foreground">
-          {a.SB && <span title="Kauden ennätys">SB {a.SB}</span>}
-          {a.PB && <span title="Oma ennätys">PB {a.PB}</span>}
-        </span>
-      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="min-w-0 flex-1 truncate">
+            {a.Name}
+            <span className="ml-1 text-xs text-muted-foreground">
+              {a.Organization?.Name ?? ""}
+            </span>
+          </span>
+          {a.Result ? (
+            <span className="shrink-0 font-bold tabular-nums">{a.Result}</span>
+          ) : (
+            <span className="flex shrink-0 gap-2 text-xs text-muted-foreground">
+              {a.SB && <span title="Kauden ennätys">SB {a.SB}</span>}
+              {a.PB && <span title="Oma ennätys">PB {a.PB}</span>}
+            </span>
+          )}
+        </div>
+        {recordKind && eff && a.Result && (
+          <div className="mt-1 flex items-center gap-1.5">
+            <RecordBadge
+              category={round.Category}
+              result={a.Result}
+              pb={eff.pb}
+              sb={eff.sb}
+              size="sm"
+            />
+          </div>
+        )}
+      </div>
     </li>
   );
 }
