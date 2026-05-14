@@ -315,7 +315,7 @@ function AnnouncerPage() {
               {now ? `${pad(now.getHours())}:${pad(now.getMinutes())}` : "--:--"}
             </div>
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              {inProgressAll.length} käynnissä · {completed.length} valmis
+              {inProgressVisible.length} käynnissä · {completedVisible.length} valmis
             </div>
           </div>
           <Button variant="ghost" size="icon" onClick={reload} aria-label="Päivitä">
