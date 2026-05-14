@@ -196,28 +196,33 @@ async function flush(rows: Row[]) {
 }
 
 async function harvestRange(ids: number[]) {
-  let cursor = 0;
   let scanned = 0;
   let existed = 0;
+  let lastScannedId = ids.length > 0 ? ids[0] - 1 : -1;
   const pending: Row[] = [];
 
-  const worker = async () => {
-    while (cursor < ids.length) {
-      const id = ids[cursor++];
-      try {
-        const r = await processCompetition(id, pending);
-        if (r.existed) existed++;
-      } catch (e) {
-        console.error("comp", id, e);
-      }
+  // Process IDs in chunks of CONCURRENCY in source order, so that if we
+  // bail out on rate-limit we know exactly which IDs were attempted.
+  for (let i = 0; i < ids.length; i += CONCURRENCY) {
+    if (rateLimited) break;
+    const chunk = ids.slice(i, i + CONCURRENCY);
+    const results = await Promise.allSettled(
+      chunk.map(async (id) => {
+        await jitter();
+        return processCompetition(id, pending);
+      }),
+    );
+    for (let j = 0; j < results.length; j++) {
+      const r = results[j];
       scanned++;
-      if (pending.length >= 400) await flush(pending.splice(0));
+      lastScannedId = chunk[j];
+      if (r.status === "fulfilled" && r.value.existed) existed++;
+      if (r.status === "rejected") console.error("comp", chunk[j], r.reason);
     }
-  };
-
-  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+    if (pending.length >= 400) await flush(pending.splice(0));
+  }
   await flush(pending);
-  return { scanned, existed, found: 0 };
+  return { scanned, existed, lastScannedId };
 }
 
 async function run(request: Request): Promise<Response> {
