@@ -20,6 +20,7 @@ import { DailyBestSection } from "@/components/DailyBestSection";
 import { ClubTodaySection } from "@/components/ClubTodaySection";
 import { SeasonStatsSection } from "@/components/SeasonStatsSection";
 import { Button } from "@/components/ui/button";
+import { useRefreshIntervalSec } from "@/lib/settings-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -66,6 +67,7 @@ function Index() {
   const [showPast, setShowPast] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [refreshSec] = useRefreshIntervalSec();
 
   const load = async () => {
     setLoading(true);
@@ -87,10 +89,10 @@ function Index() {
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 30_000);
+    const t = setInterval(load, Math.max(5, refreshSec) * 1000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competitionId]);
+  }, [competitionId, refreshSec]);
 
   const dates = useMemo(() => {
     if (!data) return [];
@@ -182,7 +184,7 @@ function Index() {
         <div className="mx-auto flex max-w-2xl flex-wrap gap-2 px-4 pb-3">
           <Link
             to="/search"
-            className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+            className="flex-1 rounded-full border-2 border-primary/30 bg-card px-4 py-2.5 text-center text-sm font-semibold hover:bg-secondary"
           >
             Hae sukunimellä
           </Link>
@@ -197,25 +199,25 @@ function Index() {
           {role === "official" && (
             <Link
               to="/announcer"
-              className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+              className="flex-1 rounded-full border-2 border-primary/30 bg-card px-4 py-2.5 text-center text-sm font-semibold hover:bg-secondary"
             >
               Kuuluttaja
             </Link>
           )}
-          {role === "official" && (
-            <Link
-              to="/admin/club-locations"
-              className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
-            >
-              Seurojen sijainnit
-            </Link>
-          )}
           <Link
             to="/print"
-            className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+            className="flex-1 rounded-full border-2 border-primary/30 bg-card px-4 py-2.5 text-center text-sm font-semibold hover:bg-secondary"
           >
             Tulostettava aikataulu
           </Link>
+          {role === "official" && (
+            <Link
+              to="/settings"
+              className="flex-1 rounded-full border border-border bg-card px-3 py-1.5 text-center text-xs font-medium hover:bg-secondary"
+            >
+              Asetukset
+            </Link>
+          )}
         </div>
 
         {dates.length > 1 && (
@@ -244,9 +246,13 @@ function Index() {
           </div>
         )}
 
-        <DailyBestSection />
-        <ClubTodaySection excludeCompetitionId={competitionId} />
-        <SeasonStatsSection />
+        {role !== "official" && (
+          <>
+            <DailyBestSection />
+            <ClubTodaySection excludeCompetitionId={competitionId} />
+            <SeasonStatsSection />
+          </>
+        )}
 
         {loading && !data && (
           <div className="py-12 text-center text-sm text-muted-foreground">Ladataan…</div>
