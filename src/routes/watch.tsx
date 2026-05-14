@@ -230,37 +230,6 @@ function WatchPage() {
       .sort((a, b) => a.name.localeCompare(b.name, "fi"));
   }, [index]);
 
-  const clubProgram = useMemo(() => {
-    if (!index || selectedOrgId == null) return [] as Array<{
-      date: string;
-      rounds: Array<{ round: IndexedEntry["round"]; allocs: IndexedEntry[] }>;
-    }>;
-    const filtered = index.filter(
-      (e) => (e.alloc.Organization?.Id ?? -1) === selectedOrgId,
-    );
-    const byDate = new Map<string, Map<number, { round: IndexedEntry["round"]; allocs: IndexedEntry[] }>>();
-    for (const e of filtered) {
-      const dk = helsinkiDateKey(e.heatBegin);
-      if (!byDate.has(dk)) byDate.set(dk, new Map());
-      const rounds = byDate.get(dk)!;
-      if (!rounds.has(e.round.Id)) rounds.set(e.round.Id, { round: e.round, allocs: [] });
-      rounds.get(e.round.Id)!.allocs.push(e);
-    }
-    return Array.from(byDate.entries())
-      .sort((a, b) => {
-        const [da, ma, ya] = a[0].split(".").map(Number);
-        const [db, mb, yb] = b[0].split(".").map(Number);
-        return new Date(ya, ma - 1, da).getTime() - new Date(yb, mb - 1, db).getTime();
-      })
-      .map(([date, rounds]) => ({
-        date,
-        rounds: Array.from(rounds.values()).sort((a, b) =>
-          a.round.BeginDateTimeWithTZ.localeCompare(b.round.BeginDateTimeWithTZ),
-        ),
-      }));
-  }, [index, selectedOrgId]);
-
-  const selectedClub = clubs.find((c) => c.id === selectedOrgId) ?? null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
