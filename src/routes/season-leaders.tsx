@@ -248,8 +248,15 @@ function LeaderItem({
           {row.organization}
           {row.ageClass ? ` · ${row.ageClass}` : ""}
           {row.competitionName ? ` · ${row.competitionName}` : ""}
+          {row.competitionDate ? ` · ${formatDate(row.competitionDate)}` : ""}
         </div>
       </div>
     </li>
   );
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("fi-FI", { day: "numeric", month: "numeric", year: "2-digit" });
 }
