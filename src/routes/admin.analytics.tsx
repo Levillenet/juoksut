@@ -60,6 +60,8 @@ function Page() {
     const byPath = new Map<string, number>();
     const byDay = new Map<string, number>();
     const byRole = new Map<string, number>();
+    const byAthlete = new Map<string, { count: number; name: string | null }>();
+    const byCompetition = new Map<string, { count: number; name: string | null }>();
     const uniqueUsers = new Set<string>();
     const last24h = Date.now() - 24 * 3600 * 1000;
     let last24hCount = 0;
@@ -71,9 +73,37 @@ function Page() {
       byRole.set(r.role ?? "anon", (byRole.get(r.role ?? "anon") ?? 0) + 1);
       if (r.user_id) uniqueUsers.add(r.user_id);
       if (new Date(r.created_at).getTime() >= last24h) last24hCount++;
+
+      const md = (r.metadata ?? {}) as Record<string, unknown>;
+      if (r.event_name === "athlete_view") {
+        const key = typeof md.athlete_key === "string" ? md.athlete_key : null;
+        if (key) {
+          const prev = byAthlete.get(key);
+          const name = typeof md.athlete_name === "string" ? md.athlete_name : null;
+          byAthlete.set(key, {
+            count: (prev?.count ?? 0) + 1,
+            name: prev?.name ?? name,
+          });
+        }
+      }
+      if (r.event_name === "scoreboard_view" || r.event_name === "round_view") {
+        const cid = md.competition_id;
+        const key = cid != null ? String(cid) : null;
+        if (key) {
+          const prev = byCompetition.get(key);
+          const name =
+            typeof md.competition_name === "string" ? md.competition_name : null;
+          byCompetition.set(key, {
+            count: (prev?.count ?? 0) + 1,
+            name: prev?.name ?? name,
+          });
+        }
+      }
     }
     const sortDesc = (m: Map<string, number>) =>
       Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
+    const sortDescObj = <T extends { count: number }>(m: Map<string, T>) =>
+      Array.from(m.entries()).sort((a, b) => b[1].count - a[1].count);
     return {
       total: rows.length,
       last24h: last24hCount,
@@ -82,6 +112,8 @@ function Page() {
       byPath: sortDesc(byPath),
       byDay: Array.from(byDay.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1)),
       byRole: sortDesc(byRole),
+      byAthlete: sortDescObj(byAthlete),
+      byCompetition: sortDescObj(byCompetition),
     };
   }, [rows]);
 
