@@ -177,6 +177,27 @@ function SeasonLeadersPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Seura
+            </label>
+            <Select
+              value={organization ?? "__all"}
+              onValueChange={(v) => setOrganization(v === "__all" ? null : v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Kaikki seurat" />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="__all">Kaikki seurat</SelectItem>
+                {(data?.clubs ?? []).map((c) => (
+                  <SelectItem key={`${c.id ?? "x"}|${c.name}`} value={c.name}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <label className="flex items-center gap-2 text-sm">
