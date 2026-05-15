@@ -1,74 +1,43 @@
+## Tilanne
 
-## Mitä rakennetaan
+Tarkistin kilpailudatan kahdelta tasolta:
 
-Etusivulle (`/`) uusi laajennettava **"Kauden tilastot"** -osio, joka näyttää seuratut urheilijat (`watched_athletes`) valitulta kaudelta ja ikäluokalta. Erillinen toimitsijapuolen hallintanäkymä seurojen kotipaikoille km-laskentaa varten.
+**Mitä tietokannassa on nyt** (75 kisaa):
+- 06/2025: 3, 07/2025: 15, 08/2025: 9, 09/2025: 7, 10/2025: 9, 11/2025: 1, 12/2025: 1
+- 01–02/2026: 5, 04/2026: 3, 05/2026: 22
+- Aikaisin: 25.6.2025
 
-## Käyttäjän valinnat
+**Mitä rajapinnasta oikeasti löytyy** (skannasin ID:t 10000–17000):
+- ID 16456 (5.1.2025) on kaikkein vanhin saatavilla oleva kisa — sitä vanhempaa ei API:sta saa
+- Välillä 16456–16999 on 290 kisaa (tammi–touko 2025), joista yksikään ei ole vielä tietokannassa
+- Live.tuloslista.com:n etusivun lista palauttaa vain 70 lähikisaa, mutta yksittäiset `/competition/{id}/properties` -kutsut toimivat huomattavasti vanhemmillekin
 
-- **Kausi**: pudotusvalikko – Kuluva vuosi (1.1.–31.12.) / Kesäkausi (1.5.–30.9.) / Talvikausi (1.10.–30.4.)
-- **Ikäluokka**: pudotusvalikko, vaihtoehdot haetaan `athlete_results.age_class`-arvoista, jotka esiintyvät seurattujen urheilijoiden tuloksissa valitulla kaudella
-- Oletus: kuluva vuosi, "kaikki ikäluokat"
+**Miksi data puuttuu:** harvester (`src/routes/api/public/hooks/harvest-results.ts`) aloittaa kovakoodatusti ID:stä 17000 (`harvest_state.next_id` default = 17000, samoin `Math.max(17000, latestId - TAIL_RESCAN)` tail-moodissa). Koko alkuvuoden 2025 kausi (~290 kisaa) jäi siten skannaamatta.
 
-## Mittarit per urheilija (taulukko)
+24 kuukauden takautuva haku ei ole mahdollinen — API:n vanhin kisa on tammikuusta 2025. Käytännössä saamme noin 17 kuukautta, mikä kattaa kaksi täyttä kilpailukautta (2025 ja 2026).
 
-| Mittari | Laskenta |
-|---|---|
-| Lajien määrä | uniikit `normalize_event_name(event_name)` |
-| Kisojen määrä | uniikit `competition_id` |
-| Tunnit kisapaikalla | per kisapäivä: 1 h ennen + 0,5 h jälkeen + 0,5 h × (lajien_määrä − 1) arvio (ks. tekninen huom.) |
-| Juostut metrit yhteensä | summa `event_name`-merkkijonosta parsituista metreistä (`Track`-kategoria, esim. "60m" → 60, "1500m" → 1500). Aidat lasketaan myös. |
-| PB:t | `was_pb = true` rivien määrä |
-| Voitot | `result_rank = 1` rivien määrä |
-| Matkustetut km | per kisa: 2 × Haversine(seuran kotipaikka, kilpailupaikka), summattuna |
+## Suunnitelma
 
-Yhteenveto-rivi alas (kaikkien urheilijoiden summat). Sarakkeet järjestettäviä.
+**1. Lasketaan harvesterin alaraja 17000 → 16456**
 
-## Seurojen kotipaikkojen hallinta (toimitsijapuoli)
+Tiedostossa `src/routes/api/public/hooks/harvest-results.ts`:
+- Lisää vakio `const FLOOR_ID = 16456;` (kommentti: "API:n vanhin kisa, tammikuu 2025").
+- Korvaa kovakoodatut `17000`-arvot:
+  - Default-arvo `nextId = stateRow?.next_id ?? 17000` → `?? FLOOR_ID`
+  - Default-arvo `latestId = stateRow?.latest_id ?? 17000` → `?? FLOOR_ID`
+  - `Math.max(17000, latestId - TAIL_RESCAN)` → `Math.max(FLOOR_ID, latestId - TAIL_RESCAN)`
+- Päivitä myös tietokannan `harvest_state` -taulun sarakkeiden defaultit `17000` → `16456` migraationa, jotta jos taulu joskus tyhjennetään, alaraja säilyy oikeana.
 
-Uusi sivu **`/admin/club-locations`** (vain kirjautuneille).
-- Lista kaikista `organization`-arvoista, joita esiintyy `athlete_results`-taulussa
-- Per seura: nimi + lat/lng + paikkakunta-tekstikenttä
-- "Ehdota koordinaatteja" -nappi käyttää OpenStreetMap Nominatim -ilmaisrajapintaa (server-fn) paikkakunnan nimellä
-- Tallennus uuteen tauluun `organization_locations`
+**2. Resetoidaan kursori takaisin 16456:een, jotta puuttuvat 290 kisaa noudetaan**
 
-## Tekniset muutokset
+Migraationa: `UPDATE harvest_state SET next_id = 16456 WHERE id = 'singleton' AND next_id > 16456;`
 
-**Tietokanta (1 migraatio)**
-- `organization_locations`-taulu: `organization_id` (PK), `organization_name`, `city`, `lat`, `lng`, `updated_at`. RLS: kaikki autentikoidut voivat lukea + insertoida (samaa mallia kuin nykyiset taulut). Update sallitaan autentikoiduille.
-- `competition_locations`-taulu: `competition_id` (PK), `location` (text), `lat`, `lng`. Täytetään lazy: kun km-laskenta tarvitsee kilpailun koordinaatit ja niitä ei ole, server-fn geokoodaa `athlete_results.location`-kentästä Nominatimilla ja tallentaa.
+`latest_id` (19299) jätetään ennalleen, jolloin harvester tunnistaa olevansa "backfill"-moodissa ja etenee 100 ID:n erissä eteenpäin (16456 → 16555 → … → 17000 → …) kunnes saavuttaa nykyisen latest_id:n. Cron ajaa harvesteria automaattisesti, joten täydennys etenee taustalla ilman käyttäjän toimia.
 
-**Server functions** (`src/lib/season-stats.functions.ts`)
-- `getSeasonStats({ season, ageClass })` – vaatii authin, hakee watched_athletes ∩ athlete_results suodatettuna kaudella ja ikäluokalla, palauttaa per-urheilija-rivit (kaikki mittarit valmiiksi laskettuna palvelimella). Käyttää `supabase` (RLS) watched-listalle ja `supabaseAdmin` athlete_results-aggregointiin tehokkuuden vuoksi.
-- `geocodeOrganization({ name, city })` ja `geocodeCompetition({ competitionId })` – Nominatim-kutsut, server-only.
-- `upsertOrganizationLocation({...})` – auth, manuaalinen tallennus.
+**3. Ei muutoksia frontendiin**
 
-**Client/UI**
-- `src/components/SeasonStatsSection.tsx` – uusi laajennettava paneeli `ClubTodaySection`-tyylillä, käyttää `useQuery` + `useServerFn`.
-- `src/routes/index.tsx` – lisätään `<SeasonStatsSection />` `<ClubTodaySection />`-osion alle.
-- `src/routes/admin.club-locations.tsx` – uusi reitti, taulukko + edit-rivi per seura.
-- Linkki "Seurojen sijainnit" toimitsijapuolen valikkoon (etsitään olemassa olevasta navigaatiosta).
+Sivut (`src/components/RecordsPanel.tsx`, urheilijoiden historia jne.) lukevat `athlete_results`-taulua sellaisenaan, joten uudet rivit näkyvät automaattisesti tuloskehityksessä ja kilpailijaseurannassa heti kun harvester on ehtinyt täydentää ne.
 
-**Apufunktiot** (`src/lib/season-stats.ts`)
-- `parseTrackDistanceMeters(eventName: string): number | null` – regex `(\d+)\s*m\b`, palauttaa metrit tai null.
-- `seasonRange(season): { from: Date, to: Date }`.
-- `haversineKm(a, b)`.
-- `estimateHoursAtVenue(eventsCount: number): number` – `1 + 0.5 + 0.5 * (eventsCount - 1)` per kisapäivä, vähintään 1.5 h.
+## Miten käyttäjä huomaa muutoksen
 
-## Avoin oletus (vahvistus suotavaa, ei estä toteutusta)
-
-**Tunnit kisapaikalla** – `athlete_results.captured_at` on harvesterin ajastus, ei urheilijan oikea aikaleima. Käytetään arviota: 1.5 h pohjaksi per kisapäivä + 0.5 h × (urheilijan lajit kisassa − 1). Tämä on lähellä todellisuutta tyypillisessä kisassa, mutta ei tunne lajien välistä taukoa. Voidaan myöhemmin vaihtaa kisaohjelman aikaleimoihin, jos sellainen data tulee saataville.
-
----
-
-## Kuuluttajan moodit (toteutettu)
-
-`/announcer` jaettu kolmeen valittavaan moodiin:
-- `/announcer/combined` – nykyinen yhden laitteen näkymä
-- `/announcer/live` – aktiivinen kuulutus: PB/SB-banneri full-tilassa + käynnissä olevat lajit yhden palstan kortteina (oletuksena auki)
-- `/announcer/planning` – seuraavat lajit ilman 20-rajaa + lopputulokset dismiss-toiminnolla
-
-Yhteinen tilanhallinta `useAnnouncerData`-hookissa (Tanstack Query -cache jaetaan eri reittien välillä). Valintasivu `/announcer` muistaa moodin laitekohtaisesti localStoragessa avaimella `announcer.preferredMode`.
-
-### Avoin: dismissalit eri laitteiden välillä
-
-`dismissedCompletedIds` on edelleen per-laite (localStorage). Kun kuuluttaja merkitsee Live- tai Planning-tabletilla lopputuloksen luetuksi, toinen laite ei tiedä siitä. Synkronointi Supabaseen (esim. taulu `announcer_dismissed`) tehdään seuraavassa vaiheessa – vasta sen jälkeen kun käytännön käyttö varmistaa että dismiss on hyödyllinen tila kahdella laitteella.
+Kursori käy 290 puuttuvaa ID:tä läpi 100:n erissä, käytännössä parin–muutaman ajon aikana cronista riippuen. Sen jälkeen kahden kilpailukauden (2025 + 2026 alkuvuosi) kaikki tulokset ovat haettavissa. Vanhempaa dataa kuin tammikuu 2025 ei valitettavasti tuloslistan rajapinnasta saa missään tapauksessa.
