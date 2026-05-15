@@ -637,3 +637,128 @@ function WatchPage() {
 function formatClock(d: Date): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
+
+function ShareWatchButton({ competitionId }: { competitionId: number }) {
+  const { share, createShare, revokeShare } = useWatchShare(competitionId);
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const url = share
+    ? `${window.location.origin}/seuraa/${share.token}`
+    : "";
+
+  const handleOpen = async (next: boolean) => {
+    setOpen(next);
+    setCopied(false);
+    if (next && !share) {
+      setBusy(true);
+      const created = await createShare();
+      setBusy(false);
+      if (!created) {
+        toast.error("Linkin luonti epäonnistui");
+      }
+    }
+  };
+
+  const copy = async () => {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.success("Linkki kopioitu leikepöydälle");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Kopiointi epäonnistui");
+    }
+  };
+
+  const nativeShare = async () => {
+    if (!url) return;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          title: "Kilpailijaseuranta",
+          text: "Seuraa kilpailupäivän etenemistä",
+          url,
+        });
+      } catch {
+        /* user cancelled */
+      }
+    } else {
+      void copy();
+    }
+  };
+
+  const revoke = async () => {
+    setBusy(true);
+    await revokeShare();
+    setBusy(false);
+    toast.success("Jakolinkki poistettu");
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={handleOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Jaa seuranta"
+          title="Jaa seuranta"
+        >
+          <Share2 className="h-5 w-5" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80">
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-semibold">Jaa seurantalinkki</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Linkin avaaja näkee samat kiinnitetyt urheilijat ilman kirjautumista.
+              Voit jakaa saman linkin usealle henkilölle.
+            </p>
+          </div>
+          {busy && !share ? (
+            <p className="text-xs text-muted-foreground">Luodaan linkkiä…</p>
+          ) : url ? (
+            <>
+              <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-2 py-1.5">
+                <code className="flex-1 truncate text-[11px]">{url}</code>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 shrink-0"
+                  onClick={copy}
+                  aria-label="Kopioi linkki"
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={nativeShare} className="gap-1.5">
+                  <Share2 className="h-4 w-4" /> Jaa…
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={revoke}
+                  disabled={busy}
+                  className="gap-1.5 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" /> Poista jako
+                </Button>
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">Linkkiä ei voitu luoda.</p>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
