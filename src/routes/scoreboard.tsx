@@ -324,6 +324,12 @@ function ScoreboardLive() {
   );
 }
 
+function splitName(full: string): { first: string; last: string } {
+  const parts = full.trim().split(/\s+/);
+  if (parts.length <= 1) return { first: "", last: full };
+  return { first: parts[0], last: parts.slice(1).join(" ") };
+}
+
 function ScoreRow({
   row,
   displayRank,
@@ -337,6 +343,8 @@ function ScoreRow({
   const heightStyle = { flex: "1 1 0", minHeight: 0 };
   const isLeader = displayRank === 1 && row.best;
   const rankNum = row.ResultRank ?? displayRank;
+  const stackName = count <= 5;
+  const { first, last } = splitName(row.Name ?? "");
 
   return (
     <li
@@ -348,23 +356,46 @@ function ScoreRow({
       }`}
     >
       <div
-        className={`flex aspect-square h-full shrink-0 items-center justify-center rounded-lg font-black tabular-nums ${
+        className={`flex h-full shrink-0 items-center justify-center rounded-lg font-black tabular-nums ${
           isLeader
             ? "bg-primary text-primary-foreground"
             : "bg-secondary text-secondary-foreground"
         }`}
-        style={{ fontSize: rankFontSize(count) }}
+        style={{
+          fontSize: rankFontSize(count),
+          minWidth: rankBoxWidth(count),
+          maxWidth: rankBoxMaxWidth(count),
+          paddingLeft: "0.5rem",
+          paddingRight: "0.5rem",
+        }}
       >
         {rankNum}.
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col justify-center">
-        <p
-          className="truncate font-black leading-none"
-          style={{ fontSize: nameFontSize(count) }}
-        >
-          {row.Name}
-        </p>
+        {stackName && first ? (
+          <>
+            <p
+              className="break-words font-semibold leading-tight text-muted-foreground"
+              style={{ fontSize: firstNameFontSize(count) }}
+            >
+              {first}
+            </p>
+            <p
+              className="break-words font-black leading-tight"
+              style={{ fontSize: nameFontSize(count) }}
+            >
+              {last}
+            </p>
+          </>
+        ) : (
+          <p
+            className={`font-black leading-tight ${stackName ? "break-words" : "truncate"}`}
+            style={{ fontSize: nameFontSize(count) }}
+          >
+            {row.Name}
+          </p>
+        )}
         <p
           className="mt-1 truncate text-muted-foreground"
           style={{ fontSize: clubFontSize(count) }}
@@ -381,7 +412,7 @@ function ScoreRow({
           return (
             <li
               key={i}
-              className={`flex aspect-[4/3] flex-col items-center justify-center rounded-md border px-2 ${
+              className={`flex flex-col items-center justify-center rounded-md border px-2 ${
                 isBest
                   ? "border-primary bg-primary text-primary-foreground"
                   : isFoul
@@ -390,7 +421,11 @@ function ScoreRow({
                       ? "border-border bg-secondary"
                       : "border-dashed border-border bg-background text-muted-foreground/40"
               }`}
-              style={{ minWidth: attemptMinWidth(count) }}
+              style={{
+                minWidth: attemptMinWidth(count),
+                maxWidth: attemptMaxWidth(count),
+                width: attemptMaxWidth(count),
+              }}
             >
               <span
                 className="font-medium opacity-70"
@@ -410,8 +445,12 @@ function ScoreRow({
       </ol>
 
       <div
-        className="flex h-full w-[18%] max-w-[10rem] shrink-0 flex-col items-end justify-center rounded-lg bg-foreground/95 px-3 text-background"
-        style={{ minWidth: "5rem" }}
+        className="flex h-full shrink-0 flex-col items-end justify-center rounded-lg bg-foreground/95 px-3 text-background"
+        style={{
+          minWidth: "5rem",
+          width: resultBoxWidth(count),
+          maxWidth: resultBoxWidth(count),
+        }}
       >
         <span
           className="opacity-70"

@@ -1,41 +1,23 @@
-## Toimitsijan etusivun siivous + uusi "Juoksulajien operointi" -sivu
+## Ongelma
 
-### Mitä muuttuu
+`src/routes/scoreboard.tsx` käyttää `aspect-square`/`aspect-[4/3]` -laatikoita sijoitukselle ja kuudelle yritykselle, ja niiden korkeus on `h-full`. Kun rivejä on vähän (esim. 4 osallistujaa), rivit ovat hyvin korkeita, jolloin neliö-/4:3-laatikot levenevät valtavasti ja syövät nimisarakkeen tilan. Loppu-tulos-laatikko vie lisäksi `w-[18%]`. Nimikenttään jää niin vähän leveyttä, että vain etunimi mahtuu ja sukunimi katkeaa `truncate`lla pois.
 
-**Toimitsijan (`role === "official"`) etusivu `/`** sisältää jatkossa vain nämä kortit:
-- Tulostettava aikataulu
-- Kuuluttaja
-- Asetukset
-- **Juoksulajien operointi** (uusi)
+## Korjaus
 
-Etusivulta poistetaan toimitsijalta:
-- "Hae sukunimellä" -kortti → siirtyy uudelle sivulle
-- "Kauden kärki" -kortti → poistetaan kokonaan toimitsijan näkymästä
-- Päivän lajit -lista (juoksu + kenttä), päivämäärävälilehdet ja "Näytä menneet" -painike → siirtyy uudelle sivulle (vain juoksulajit)
+Muokkaa vain `src/routes/scoreboard.tsx` `ScoreRow`-komponenttia (ei muuta logiikkaa):
 
-Tavalliselle käyttäjälle (`role === "user"`) etusivu pysyy ennallaan (kaikki kortit ja koko päivän lajien lista näkyvät kuten nyt).
+1. **Rajoita sijoitus- ja yrityslaatikoiden leveys.** Korvaa `aspect-square` / `aspect-[4/3]` `max-width`-rajalla, joka skaalautuu osallistujamäärän mukaan (esim. sijoitus ≤ 6rem ja yrityslaatikko ≤ 7rem kun count ≤ 5). Säilytä `min-width` luettavuuden vuoksi. Näin korkeat rivit eivät enää venytä laatikoita vaakasuunnassa, ja vapautunut tila menee nimisarakkeelle.
 
-### Uusi sivu `/running-ops` ("Juoksulajien operointi")
+2. **Pienennä tulos-laatikon prosenttileveyttä** pienillä count-arvoilla (esim. ≤ 5 → kiinteä `w-32`/`max-w-[10rem]`).
 
-Uusi route `src/routes/running-ops.tsx`, suojattu `RequireRole allow={["official"]}`. Sivulla:
+3. **Kaksirivinen nimi.** Jaa `row.Name` etunimeen ja sukunimeen ja renderöi ne kahdelle riville (heading-tyyliin: etunimi pienemmällä `font-semibold`, sukunimi isolla `font-black`) kun `count <= 5`. Suuremmilla count-arvoilla säilytä yksirivinen nimi. Jakologiikka: ensimmäinen sana = etunimi, loput = sukunimi; jos sanoja on vain yksi, näytä se isolla yksirivisenä. Poista `truncate` nimirivien tilalta `break-words` + `leading-tight`, jotta pitkät sukunimet katkeavat sanasta eivätkä häviä.
 
-- Otsikkopalkki samaan tyyliin kuin etusivulla (logo, kisan nimi, päivitysnappi, takaisin-nappi `/`).
-- Kompakti **Hae sukunimellä** -hakupalkki sivun ylälaidassa (sama UX kuin `/search`-sivulla — input + osumalista, jossa linkit erään). Toteutetaan poimimalla nykyisen `src/routes/search.tsx`:n hakulogiikka jaettavaksi komponentiksi `src/components/AthleteSearch.tsx`, jota molemmat sivut käyttävät. Näin `/search` säilyy tavallisille käyttäjille ennallaan.
-- Päivämäärävälilehdet (jos useita kisapäiviä).
-- Päivän lajien lista, **suodatettuna vain juoksulajeihin** käyttäen olemassa olevaa `isRunningEvent`-funktiota.
-- Sama "5 min alkamisajan jälkeen automaattisesti piilossa" -logiikka ja "Näytä menneet / Piilota menneet" -painike kuin nykyisellä etusivulla.
-- Rivit linkittävät edelleen `/round/$eventId/$roundId` -sivulle.
+4. **Säädä `nameFontSize` pienille count-arvoille** niin että kaksirivinen versio mahtuu (etunimirivi ~60–70 % sukunimen koosta).
 
-### Tekniset muutokset
+Tämä pitää erottelevuus (sijoitus + 6 yritystä + lopputulos) entisellään mutta varmistaa, että nimi on aina luettavissa kokonaan.
 
-1. `src/routes/index.tsx`: jaetaan render kahtia roolin mukaan. Toimitsijalle näytetään vain neljä korttia (mukaan lukien uusi "Juoksulajien operointi") eikä lainkaan päivän lajien listaa, päivämäärävälilehtiä tai siihen liittyvää data-fetchaystä. Tavallisen käyttäjän reitti säilyy nykyisellään (mukaan lukien `DailyBestSection`, `ClubTodaySection`, `SeasonStatsSection` ja koko lajilista).
-2. Uusi `src/components/AthleteSearch.tsx` kapseloi sukunimihaun (indeksin rakennus, input, tuloslista). Käyttää nykyisiä `fetchRounds` / `fetchEvent` -funktioita.
-3. `src/routes/search.tsx`: refaktoroidaan käyttämään uutta `AthleteSearch`-komponenttia (toiminnallisuus pysyy samana).
-4. Uusi `src/routes/running-ops.tsx`: yhdistää `AthleteSearch` + juoksulajeihin suodatetun päivän listan, päivämäärävälilehdet ja "Näytä menneet" -painikkeen.
-5. `head()`-metat uudelle reitille (title "Juoksulajien operointi – Lahden Ahkera" + suomenkielinen description).
+## Mitä ei muuteta
 
-### Mitä ei muutu
-
-- `/search`, `/season-leaders`, `/print`, `/announcer`, `/settings`, `/watch` ja `/round/...` toimivat ennallaan.
-- Tavallisen käyttäjän etusivu, mukaan lukien kenttälajien näkyminen päivän listassa, ei muutu.
-- Backend tai tietomalli ei muutu.
+- Picker-näkymä, päivitys, top-valitsin, värit ja korostus säilyvät.
+- Ranking-/parsinta-/datalogiikka (`rows`, `bestIdx`, sorttaus) ei muutu.
+- Muita reittejä tai komponentteja ei kosketa.
