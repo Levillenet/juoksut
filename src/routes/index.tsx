@@ -37,7 +37,7 @@ export const Route = createFileRoute("/")({
 });
 
 function IndexGate() {
-  const { role, loading } = useAuth();
+  const { role, user, loading } = useAuth();
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
@@ -46,7 +46,8 @@ function IndexGate() {
     );
   }
   if (!role) return <Navigate to="/login" />;
-  return <Index role={role} />;
+  const isAdmin = (user?.email ?? "").toLowerCase() === "samiaavikko@gmail.com";
+  return <Index role={role} isAdmin={isAdmin} />;
 }
 
 const STATUS_STYLE: Record<Round["Status"], string> = {
@@ -56,10 +57,21 @@ const STATUS_STYLE: Record<Round["Status"], string> = {
   Official: "bg-foreground text-background",
 };
 
-function NavCards({ role }: { role: Role }) {
-  const isOfficial = role === "official";
+function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
+  const isOfficial = role === "official" || isAdmin;
   return (
     <div className="mx-auto grid max-w-2xl gap-2 px-4 pb-3 sm:grid-cols-2">
+      {isAdmin && (
+        <Link
+          to="/admin/analytics"
+          className="rounded-xl border-2 border-amber-500/60 bg-amber-50 px-4 py-2.5 text-center hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950/60 sm:col-span-2"
+        >
+          <div className="text-sm font-semibold leading-tight">Admin · Käyttöanalytiikka</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            Sivuston käyttötilastot ja CSV-vienti (vain sinulle)
+          </div>
+        </Link>
+      )}
       {!isOfficial && (
         <Link
           to="/search"
