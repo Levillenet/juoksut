@@ -69,7 +69,6 @@ function RoundView() {
     trackEvent("round_view", {
       metadata: {
         competition_id: competitionId,
-        competition_name: data?.CompetitionName ?? null,
         event_id: eid,
         event_name: data?.Name ?? null,
         round_id: parseInt(roundId, 10),
