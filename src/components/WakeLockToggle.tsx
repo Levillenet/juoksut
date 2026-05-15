@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Sun, Moon } from "lucide-react";
+import { Monitor, MonitorOff } from "lucide-react";
 
+import { Switch } from "@/components/ui/switch";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { cn } from "@/lib/utils";
 
@@ -11,9 +12,9 @@ interface Props {
 }
 
 /**
- * Pieni toggle-painike "Pidä näyttö päällä" -toiminnolle.
+ * Liukukytkin "Pidä näyttö päällä" -toiminnolle.
  * Selain saattaa vaatia käyttäjän eleen ennen kuin lukko myönnetään,
- * joten painikkeen klikkaaminen toimii myös tarvittavana eleenä.
+ * joten kytkimen klikkaaminen toimii myös tarvittavana eleenä.
  */
 export function WakeLockToggle({ className, defaultEnabled = true }: Props) {
   const [enabled, setEnabled] = useState(defaultEnabled);
@@ -28,42 +29,49 @@ export function WakeLockToggle({ className, defaultEnabled = true }: Props) {
         )}
         title="Selain ei tue Screen Wake Lock -rajapintaa"
       >
-        <Moon className="h-3 w-3" />
+        <MonitorOff className="h-3 w-3" />
         Näyttö voi sammua
       </span>
     );
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => setEnabled((v) => !v)}
+    <div
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 transition-colors",
+        active
+          ? "border-amber-400/40 bg-amber-400/15"
+          : "border-border bg-background",
+        className,
+      )}
       title={
         error
           ? `Virhe: ${error}`
           : active
-            ? "Näyttö pysyy päällä – klikkaa salliaksesi sammuminen"
-            : "Klikkaa pitääksesi näytön päällä"
+            ? "Näyttö pysyy päällä"
+            : "Näyttö voi sammua"
       }
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-        active
-          ? "border-amber-400/40 bg-amber-400/15 text-amber-600 dark:text-amber-300"
-          : "border-border bg-background text-muted-foreground hover:bg-secondary",
-        className,
-      )}
     >
       {active ? (
-        <>
-          <Sun className="h-3 w-3" />
-          Näyttö päällä
-        </>
+        <Monitor className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-300" />
       ) : (
-        <>
-          <Moon className="h-3 w-3" />
-          Näyttö voi sammua
-        </>
+        <MonitorOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       )}
-    </button>
+      <span
+        className={cn(
+          "text-[11px] font-medium",
+          active
+            ? "text-amber-700 dark:text-amber-300"
+            : "text-muted-foreground",
+        )}
+      >
+        {active ? "Päällä" : "Pois"}
+      </span>
+      <Switch
+        checked={enabled}
+        onCheckedChange={setEnabled}
+        aria-label="Pidä näyttö päällä"
+      />
+    </div>
   );
 }
