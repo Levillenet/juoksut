@@ -327,7 +327,7 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
             className="flex w-full items-center justify-center rounded-lg border-2 border-red-500/60 bg-card px-3 py-2 text-lg font-bold tracking-widest text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
             aria-expanded={!navCollapsed}
           >
-            VALIKKO
+            {navCollapsed ? "AVAA VALIKKO" : "PIILOTA VALIKKO"}
           </button>
         </div>
         {!navCollapsed && <NavCards role={role} isAdmin={isAdmin} />}
