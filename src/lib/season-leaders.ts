@@ -1,0 +1,220 @@
+import { supabase } from "@/integrations/supabase/client";
+import { seasonRange, type SeasonKind } from "@/lib/season-stats";
+
+/** Strip leading age-class prefix like "M14 ", "N ", "P11 " for grouping. */
+export function normalizeEventName(name: string): string {
+  return (name ?? "")
+    .replace(/^(?:[MNTmnt][0-9]*|[Pp][0-9]+)\s+/, "")
+    .trim();
+}
+
+export function eventKey(name: string): string {
+  return normalizeEventName(name).toLowerCase();
+}
+
+export interface LeaderRow {
+  athleteKey: string;
+  surname: string;
+  firstname: string;
+  organization: string;
+  organizationId: number | null;
+  ageClass: string;
+  eventName: string;
+  eventCategory: string;
+  resultText: string;
+  resultNumeric: number;
+  wind: number | null;
+  competitionId: number;
+  competitionName: string;
+  competitionDate: string | null;
+}
+
+export interface LeaderEventOption {
+  key: string;            // normalized lowercase
+  label: string;          // normalized display
+  category: string;       // Track/Field/etc (most common)
+}
+
+export interface LeadersData {
+  range: { from: Date; to: Date; label: string };
+  ageClasses: string[];
+  events: LeaderEventOption[];
+  leaders: LeaderRow[];           // top-N for selected event
+  watchedBests: LeaderRow[];      // best-per-watched-athlete for selected event
+}
+
+interface RawRow {
+  athlete_key: string;
+  surname: string;
+  firstname: string;
+  organization: string;
+  organization_id: number | null;
+  age_class: string;
+  event_name: string;
+  event_category: string;
+  result_text: string;
+  result_numeric: number | null;
+  wind: number | null;
+  competition_id: number;
+  competition_name: string;
+  competition_date: string | null;
+}
+
+interface WatchedRow {
+  athlete_key: string;
+}
+
+const PAGE_SIZE = 1000;
+
+/** Fetch ALL rows for a season + age-class filter (paginated). */
+async function fetchSeasonRows(
+  season: SeasonKind,
+  ageClass: string | null,
+): Promise<RawRow[]> {
+  const range = seasonRange(season);
+  const out: RawRow[] = [];
+  let offset = 0;
+  // Hard cap to avoid runaway: 50k rows max
+  const HARD_CAP = 50_000;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    let q = supabase
+      .from("athlete_results")
+      .select(
+        "athlete_key, surname, firstname, organization, organization_id, age_class, event_name, event_category, result_text, result_numeric, wind, competition_id, competition_name, competition_date",
+      )
+      .gte("competition_date", range.from.toISOString())
+      .lt("competition_date", range.to.toISOString())
+      .not("result_numeric", "is", null)
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (ageClass) q = q.eq("age_class", ageClass);
+    const { data, error } = await q;
+    if (error) throw error;
+    const rows = (data ?? []) as RawRow[];
+    out.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+    if (out.length >= HARD_CAP) break;
+  }
+  return out;
+}
+
+function isTrackBetter(category: string, a: number, b: number) {
+  if (category === "Track") return a < b;
+  return a > b;
+}
+
+function bestPerAthlete(rows: RawRow[], evKey: string): LeaderRow[] {
+  const best = new Map<string, RawRow>();
+  for (const r of rows) {
+    if (eventKey(r.event_name) !== evKey) continue;
+    if (r.result_numeric == null) continue;
+    const cur = best.get(r.athlete_key);
+    if (!cur || isTrackBetter(r.event_category, r.result_numeric, cur.result_numeric!)) {
+      best.set(r.athlete_key, r);
+    }
+  }
+  return Array.from(best.values()).map((r) => ({
+    athleteKey: r.athlete_key,
+    surname: r.surname,
+    firstname: r.firstname,
+    organization: r.organization,
+    organizationId: r.organization_id,
+    ageClass: r.age_class,
+    eventName: normalizeEventName(r.event_name),
+    eventCategory: r.event_category,
+    resultText: r.result_text,
+    resultNumeric: r.result_numeric!,
+    wind: r.wind,
+    competitionId: r.competition_id,
+    competitionName: r.competition_name,
+    competitionDate: r.competition_date,
+  }));
+}
+
+export interface LoadLeadersInput {
+  season: SeasonKind;
+  ageClass: string | null;
+  eventKey: string | null;
+  limit?: number;
+}
+
+export async function loadSeasonLeaders(
+  input: LoadLeadersInput,
+): Promise<LeadersData> {
+  const { season, ageClass } = input;
+  const limit = input.limit ?? 50;
+  const range = seasonRange(season);
+
+  const rows = await fetchSeasonRows(season, ageClass);
+
+  // Build event option list (per normalized key)
+  const evMap = new Map<string, { label: string; cats: Map<string, number> }>();
+  const ageSet = new Set<string>();
+  for (const r of rows) {
+    if (r.age_class) ageSet.add(r.age_class);
+    const k = eventKey(r.event_name);
+    if (!k) continue;
+    let entry = evMap.get(k);
+    if (!entry) {
+      entry = { label: normalizeEventName(r.event_name), cats: new Map() };
+      evMap.set(k, entry);
+    }
+    entry.cats.set(r.event_category, (entry.cats.get(r.event_category) ?? 0) + 1);
+  }
+  const events: LeaderEventOption[] = Array.from(evMap.entries())
+    .map(([k, v]) => {
+      let topCat = "";
+      let topN = -1;
+      for (const [c, n] of v.cats) if (n > topN) { topCat = c; topN = n; }
+      return { key: k, label: v.label, category: topCat };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label, "fi"));
+
+  const ageClasses = Array.from(ageSet).sort((a, b) => a.localeCompare(b, "fi"));
+
+  // Pick selected event
+  const evK = input.eventKey && evMap.has(input.eventKey)
+    ? input.eventKey
+    : events[0]?.key ?? null;
+
+  let leaders: LeaderRow[] = [];
+  let watchedBests: LeaderRow[] = [];
+
+  if (evK) {
+    const all = bestPerAthlete(rows, evK);
+    const cat = evMap.get(evK)?.cats ?? new Map();
+    let topCat = "";
+    let topN = -1;
+    for (const [c, n] of cat) if (n > topN) { topCat = c; topN = n; }
+    all.sort((a, b) =>
+      isTrackBetter(topCat, a.resultNumeric, b.resultNumeric) ? -1 : 1,
+    );
+    leaders = all.slice(0, limit);
+
+    // Watched athletes
+    const { data: watched } = await supabase
+      .from("watched_athletes")
+      .select("athlete_key");
+    const watchedKeys = new Set(
+      ((watched ?? []) as WatchedRow[]).map((w) => w.athlete_key),
+    );
+    watchedBests = all.filter((r) => watchedKeys.has(r.athleteKey));
+  }
+
+  return {
+    range: { from: range.from, to: range.to, label: range.label },
+    ageClasses,
+    events,
+    leaders,
+    watchedBests,
+  };
+}
+
+export function isWatched(set: Set<string>, key: string) {
+  return set.has(key);
+}
+
+export function formatLeaderResult(row: LeaderRow): string {
+  return row.resultText || String(row.resultNumeric);
+}

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WatchRouteImport } from './routes/watch'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SeasonLeadersRouteImport } from './routes/season-leaders'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrintRouteImport } from './routes/print'
@@ -37,6 +38,11 @@ const WatchRoute = WatchRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeasonLeadersRoute = SeasonLeadersRouteImport.update({
+  id: '/season-leaders',
+  path: '/season-leaders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchRoute = SearchRouteImport.update({
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
+  '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRoute
   '/watch': typeof WatchRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
@@ -152,6 +159,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
+  '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRoute
   '/watch': typeof WatchRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
@@ -174,6 +182,7 @@ export interface FileRoutesById {
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
+  '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRoute
   '/watch': typeof WatchRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/print'
     | '/reset-password'
     | '/search'
+    | '/season-leaders'
     | '/settings'
     | '/watch'
     | '/admin/club-locations'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/search'
+    | '/season-leaders'
     | '/settings'
     | '/watch'
     | '/admin/club-locations'
@@ -237,6 +248,7 @@ export interface FileRouteTypes {
     | '/print'
     | '/reset-password'
     | '/search'
+    | '/season-leaders'
     | '/settings'
     | '/watch'
     | '/admin/club-locations'
@@ -259,6 +271,7 @@ export interface RootRouteChildren {
   PrintRoute: typeof PrintRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   SearchRoute: typeof SearchRoute
+  SeasonLeadersRoute: typeof SeasonLeadersRoute
   SettingsRoute: typeof SettingsRoute
   WatchRoute: typeof WatchRoute
   AdminClubLocationsRoute: typeof AdminClubLocationsRoute
@@ -281,6 +294,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/season-leaders': {
+      id: '/season-leaders'
+      path: '/season-leaders'
+      fullPath: '/season-leaders'
+      preLoaderRoute: typeof SeasonLeadersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search': {
@@ -444,6 +464,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrintRoute: PrintRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   SearchRoute: SearchRoute,
+  SeasonLeadersRoute: SeasonLeadersRoute,
   SettingsRoute: SettingsRoute,
   WatchRoute: WatchRoute,
   AdminClubLocationsRoute: AdminClubLocationsRoute,

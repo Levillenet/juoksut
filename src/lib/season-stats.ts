@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type SeasonKind = "year" | "summer" | "winter";
+export type SeasonKind = "year" | "summer" | "winter" | "outdoor" | "indoor";
 
 export interface SeasonRange {
   from: Date;
@@ -17,21 +17,25 @@ export function seasonRange(kind: SeasonKind, ref: Date = new Date()): SeasonRan
       label: `${y}`,
     };
   }
-  if (kind === "summer") {
-    // Kesäkausi 1.5.–30.9.
+  if (kind === "summer" || kind === "outdoor") {
+    // Ulkokausi 1.5.–30.9.
     return {
       from: new Date(y, 4, 1),
       to: new Date(y, 9, 1),
-      label: `Kesä ${y}`,
+      label: kind === "outdoor" ? `Ulkokausi ${y}` : `Kesä ${y}`,
     };
   }
-  // Talvikausi 1.10.(prevYear) – 30.4.(thisYear). Jos kuukausi >= 10, käytä alkavaa kautta.
+  // Talvi/halli: 1.10.(prevYear) – 30.4.(thisYear). Jos kuukausi >= 10, käytä alkavaa kautta.
   const month = ref.getMonth();
   const startYear = month >= 9 ? y : y - 1;
+  const endYear = startYear + 1;
   return {
     from: new Date(startYear, 9, 1),
-    to: new Date(startYear + 1, 4, 1),
-    label: `Talvi ${startYear}–${startYear + 1}`,
+    to: new Date(endYear, 4, 1),
+    label:
+      kind === "indoor"
+        ? `Hallikausi ${String(startYear).slice(-2)}–${String(endYear).slice(-2)}`
+        : `Talvi ${startYear}–${endYear}`,
   };
 }
 
