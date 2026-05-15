@@ -58,7 +58,8 @@ const STATUS_STYLE: Record<Round["Status"], string> = {
 };
 
 function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
-  const isOfficial = role === "official" || isAdmin;
+  const isOfficial = role === "official" && !isAdmin;
+  const showOfficialLinks = role === "official" || isAdmin;
   return (
     <div className="mx-auto grid max-w-2xl gap-2 px-4 pb-3 sm:grid-cols-2">
       {isAdmin && (
