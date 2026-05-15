@@ -17,6 +17,7 @@ import { useAuth, type Role } from "@/lib/auth";
 import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
 import { DailyBestSection } from "@/components/DailyBestSection";
 import { ClubTodaySection } from "@/components/ClubTodaySection";
+import { LiveCompetitionsSection } from "@/components/LiveCompetitionsSection";
 import { SeasonStatsSection } from "@/components/SeasonStatsSection";
 import { Button } from "@/components/ui/button";
 import { useRefreshIntervalSec } from "@/lib/settings-store";
@@ -322,6 +323,7 @@ function Index({ role }: { role: Role }) {
           <>
             <DailyBestSection />
             <ClubTodaySection excludeCompetitionId={competitionId} />
+            <LiveCompetitionsSection />
             <SeasonStatsSection />
 
             {loading && !data && (
