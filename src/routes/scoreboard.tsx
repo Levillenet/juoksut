@@ -376,6 +376,32 @@ function splitName(full: string): { first: string; last: string } {
   return { first: parts[0], last: parts.slice(1).join(" ") };
 }
 
+function useClock(): string {
+  const [t, setT] = useState<string>(() => formatHelsinkiClock(new Date()));
+  useEffect(() => {
+    const tick = () => setT(formatHelsinkiClock(new Date()));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return t;
+}
+
+function formatHelsinkiClock(d: Date): string {
+  return new Intl.DateTimeFormat("fi-FI", {
+    timeZone: "Europe/Helsinki",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(d);
+}
+
+function formatWind(w: number): string {
+  const sign = w > 0 ? "+" : w < 0 ? "−" : "";
+  return `${sign}${Math.abs(w).toFixed(1)}`;
+}
+
 function useViewportWidth(): number {
   const [w, setW] = useState<number>(() =>
     typeof window === "undefined" ? 1024 : window.innerWidth,
