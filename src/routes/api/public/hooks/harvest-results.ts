@@ -231,7 +231,7 @@ async function flush(rows: Row[]) {
       .from("athlete_results")
       .upsert(slice, {
         onConflict: "athlete_key,competition_id,event_id",
-        ignoreDuplicates: true,
+        ignoreDuplicates: false,
       });
     if (error) console.error("upsert error:", error.message);
   }
