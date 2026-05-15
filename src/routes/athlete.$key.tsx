@@ -11,7 +11,8 @@ import {
   Loader2,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 import { RequireRole } from "@/components/RequireRole";
 import { EventGroupView } from "@/components/RecordsPanel";
