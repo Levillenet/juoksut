@@ -1,87 +1,41 @@
-## Tavoite
+## Toimitsijan etusivun siivous + uusi "Juoksulajien operointi" -sivu
 
-Lisätään kisaseuraajien puolelle uusi sivu **/season-leaders** ("Kauden kärki"), jolla voi katsoa kaikkien kantaan tallennettujen urheilijoiden kauden parhaita tuloksia ikäluokittain ja lajeittain. Omassa seurannassa olevien urheilijoiden tulokset korostetaan listalla, ja jos he eivät mahdu top-N:ään, heidän paras tuloksensa näytetään erikseen.
+### Mitä muuttuu
 
-## Kausijako
+**Toimitsijan (`role === "official"`) etusivu `/`** sisältää jatkossa vain nämä kortit:
+- Tulostettava aikataulu
+- Kuuluttaja
+- Asetukset
+- **Juoksulajien operointi** (uusi)
 
-Lisätään `season-stats.ts`:n `seasonRange()`-funktioon kaksi uutta arvoa:
-- `outdoor` → 1.5.–30.9. (vuosi valitaan referenssipäivämäärän mukaan)
-- `indoor` → 1.10.(prevYear) – 30.4.(thisYear)
+Etusivulta poistetaan toimitsijalta:
+- "Hae sukunimellä" -kortti → siirtyy uudelle sivulle
+- "Kauden kärki" -kortti → poistetaan kokonaan toimitsijan näkymästä
+- Päivän lajit -lista (juoksu + kenttä), päivämäärävälilehdet ja "Näytä menneet" -painike → siirtyy uudelle sivulle (vain juoksulajit)
 
-Vanhat `summer`/`winter` säilytetään taaksepäin yhteensopivuuden vuoksi (käytössä `SeasonStatsSection.tsx`:ssä), mutta uusilla aliaksilla `outdoor`/`indoor` on käyttäjälle näkyvät otsikot **"Ulkokausi"** ja **"Hallikausi"**. Käytännössä toteutus jakaa logiikan jaetuksi util-funktioksi.
+Tavalliselle käyttäjälle (`role === "user"`) etusivu pysyy ennallaan (kaikki kortit ja koko päivän lajien lista näkyvät kuten nyt).
 
-## Datan haku
+### Uusi sivu `/running-ops` ("Juoksulajien operointi")
 
-Uusi tiedosto `src/lib/season-leaders.ts`:
+Uusi route `src/routes/running-ops.tsx`, suojattu `RequireRole allow={["official"]}`. Sivulla:
 
-- `fetchSeasonLeaders({ season, ageClass, eventName, limit })` lukee `athlete_results`-taulusta:
-  - rajaa `competition_date` valittuun kauteen
-  - rajaa `age_class` (jos valittu)
-  - rajaa lajilla käyttäen olemassa olevaa `normalize_event_name`-RPC:tä tai client-side normalisointia (sama logiikka kuin `season-stats.ts`:n `norm()`)
-  - vaatii `result_numeric IS NOT NULL`
-  - hallikaudella suodatetaan vain hallilajeihin sopivat tulokset (oletuksena käytetään kaikkia kauden aikana tehtyjä tuloksia, koska kausijako jo rajaa)
-- Palauttaa rivit järjestettynä:
-  - `event_category = 'Track'` → nouseva (pienin aika voittaa)
-  - muut → laskeva (suurin pituus/heitto voittaa)
-- Jokaiselle urheilijalle pidetään vain **paras tulos** ko. lajissa (deduplikointi `athlete_key`)
-- Top-N (oletus 50) palautetaan
-- Erillinen `fetchWatchedBests` palauttaa kirjautuneen käyttäjän seurattujen urheilijoiden parhaat tulokset samassa lajissa/kaudessa/ikäluokassa, jotta voidaan näyttää myös ne, jotka eivät ole top-N:ssä
+- Otsikkopalkki samaan tyyliin kuin etusivulla (logo, kisan nimi, päivitysnappi, takaisin-nappi `/`).
+- Kompakti **Hae sukunimellä** -hakupalkki sivun ylälaidassa (sama UX kuin `/search`-sivulla — input + osumalista, jossa linkit erään). Toteutetaan poimimalla nykyisen `src/routes/search.tsx`:n hakulogiikka jaettavaksi komponentiksi `src/components/AthleteSearch.tsx`, jota molemmat sivut käyttävät. Näin `/search` säilyy tavallisille käyttäjille ennallaan.
+- Päivämäärävälilehdet (jos useita kisapäiviä).
+- Päivän lajien lista, **suodatettuna vain juoksulajeihin** käyttäen olemassa olevaa `isRunningEvent`-funktiota.
+- Sama "5 min alkamisajan jälkeen automaattisesti piilossa" -logiikka ja "Näytä menneet / Piilota menneet" -painike kuin nykyisellä etusivulla.
+- Rivit linkittävät edelleen `/round/$eventId/$roundId` -sivulle.
 
-Lajilistan ja ikäluokkalistan haku:
-- Erillinen kevyt query `athlete_results` → distinct `event_name` + `age_class` valitulla kaudella. Lajit ryhmitellään normalisoidulla nimellä (esim. "60 m" ja "60 m aj." pysyvät erillisinä, mutta "M14 60 m" ja "60 m" yhdistyvät).
+### Tekniset muutokset
 
-## UI: `src/routes/season-leaders.tsx`
+1. `src/routes/index.tsx`: jaetaan render kahtia roolin mukaan. Toimitsijalle näytetään vain neljä korttia (mukaan lukien uusi "Juoksulajien operointi") eikä lainkaan päivän lajien listaa, päivämäärävälilehtiä tai siihen liittyvää data-fetchaystä. Tavallisen käyttäjän reitti säilyy nykyisellään (mukaan lukien `DailyBestSection`, `ClubTodaySection`, `SeasonStatsSection` ja koko lajilista).
+2. Uusi `src/components/AthleteSearch.tsx` kapseloi sukunimihaun (indeksin rakennus, input, tuloslista). Käyttää nykyisiä `fetchRounds` / `fetchEvent` -funktioita.
+3. `src/routes/search.tsx`: refaktoroidaan käyttämään uutta `AthleteSearch`-komponenttia (toiminnallisuus pysyy samana).
+4. Uusi `src/routes/running-ops.tsx`: yhdistää `AthleteSearch` + juoksulajeihin suodatetun päivän listan, päivämäärävälilehdet ja "Näytä menneet" -painikkeen.
+5. `head()`-metat uudelle reitille (title "Juoksulajien operointi – Lahden Ahkera" + suomenkielinen description).
 
-Sivu kirjautuneille käyttäjille (rooli `user` tai `official`):
+### Mitä ei muutu
 
-```text
-┌─ Kauden kärki ────────────────────────┐
-│ [Ulkokausi 2026] [Hallikausi 25–26]   │  ← kausivalitsin (Tabs)
-│                                        │
-│ Ikäluokka: [Yleinen ▾]  Laji: [100m ▾]│  ← Select + Combobox
-│                                        │
-│ Omat seurattavat tässä lajissa:        │
-│ • #12 Matti Meikäläinen 11.85 (LA)    │  ← korostettu, jos top-N:ssä → linkki
-│ • Liisa Esimerkki   12.40 (LA)         │  ← jos ei top-N:ssä, näkyy silti
-│                                        │
-│ Top 50:                                │
-│ 1.  10.85 Pekka P.  (Helsinki)        │
-│ 2.  10.92 Antti A.  (Turku)           │
-│ ...                                    │
-│ 12. 11.85 Matti M.  (LA) ⭐            │  ← seurattu = highlight + tähti
-└────────────────────────────────────────┘
-```
-
-Komponentit:
-- Käytetään olemassa olevaa `Tabs`/`Select`/`Combobox`-shadcn-komponentteja
-- Tulos formatoidaan: track → mm:ss,xx tai s,xx; muut → m yksiköllä
-- Nimirivi linkki `/athlete/$key`-sivulle (olemassa)
-- Tila kysytään `useQuery`-hookilla, key sisältää `[season, ageClass, eventName]` → automaattinen cache
-- Sivulla refresh-painike, ei automaattista kyselyä (data vaihtuu hitaasti)
-
-## Etusivun linkki
-
-Lisätään `src/routes/index.tsx`-tiedoston nav-grid-osioon uusi kortti **"Kauden kärki"** kaikille rooleille (näkyy myös `official`-roolille). Kortti renderöityy `Hae sukunimellä` ja `Kilpailijaseuranta` -korttien rinnalle.
-
-## Tekninen yhteenveto
-
-| Tiedosto | Muutos |
-|---|---|
-| `src/lib/season-stats.ts` | Lisää `outdoor`/`indoor` arvot `SeasonKind`iin, päivitä `seasonRange()` |
-| `src/lib/season-leaders.ts` | UUSI: top-tulosten haku + watched-tulosten haku |
-| `src/routes/season-leaders.tsx` | UUSI: sivu, käyttää useQuery + RequireRole |
-| `src/routes/index.tsx` | UUSI nav-kortti `/season-leaders` |
-| `src/components/SeasonStatsSection.tsx` | Säilytä taaksepäin yhteensopivuus (käyttää edelleen `summer`/`winter`) |
-
-Ei muutoksia kantaan eikä RLS-policiesseihin – `athlete_results` on jo luettavissa kaikille kirjautuneille.
-
-## Hyväksymiskriteerit
-
-- /season-leaders näkyy kirjautuneille käyttäjille, etusivun nav-kortti vie sinne
-- Kausivalinta (Ulko/Halli) toimii ja vaikuttaa lajilistaan ja tuloksiin
-- Ikäluokka- ja lajisuodatin toimivat
-- Top-lista näyttää oikeassa järjestyksessä (track nouseva, muut laskeva)
-- Yksi rivi per urheilija (paras tulos)
-- Omassa seurannassa olevat urheilijat näkyvät korostettuina ja erillisessä "omat seurattavat" -osiossa, vaikka eivät olisi top-N:ssä
-- Linkki urheilijasivulle toimii
-- TS- ja ESLint-tarkistukset menevät läpi
+- `/search`, `/season-leaders`, `/print`, `/announcer`, `/settings`, `/watch` ja `/round/...` toimivat ennallaan.
+- Tavallisen käyttäjän etusivu, mukaan lukien kenttälajien näkyminen päivän listassa, ei muutu.
+- Backend tai tietomalli ei muutu.
