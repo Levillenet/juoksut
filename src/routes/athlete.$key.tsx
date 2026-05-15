@@ -1,16 +1,36 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Award, Calendar, MapPin, Trophy, Activity } from "lucide-react";
-import { useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ArrowLeft,
+  Award,
+  Calendar,
+  MapPin,
+  Trophy,
+  Activity,
+  StickyNote,
+  Loader2,
+  X,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { RequireRole } from "@/components/RequireRole";
 import { EventGroupView } from "@/components/RecordsPanel";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import {
   fetchStoredHistory,
   groupByEvent,
   isLowerBetter,
   type AthleteResultRow,
 } from "@/lib/athlete-history";
+import {
+  fetchNotesForAthlete,
+  noteKey,
+  placeholderForEvent,
+  upsertNote,
+  type AthleteNote,
+} from "@/lib/athlete-notes";
 
 export const Route = createFileRoute("/athlete/$key")({
   head: ({ params }) => ({
