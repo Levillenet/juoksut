@@ -192,7 +192,6 @@ function LoginForm() {
                   id="password"
                   type="password"
                   required
-                  minLength={6}
                   className="pl-9"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -206,11 +205,10 @@ function LoginForm() {
                 <div className="relative">
                   <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    id="password2"
-                    type="password"
-                    required
-                    minLength={6}
-                    className="pl-9"
+                  id="password2"
+                  type="password"
+                  required
+                  className="pl-9"
                     value={password2}
                     onChange={(e) => setPassword2(e.target.value)}
                     autoComplete="new-password"
