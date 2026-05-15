@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import logo from "@/assets/lahden-ahkera-logo.png";
 import { pad } from "./shared";
 import type { AnnouncerData } from "@/hooks/useAnnouncerData";
+import { WakeLockToggle } from "@/components/WakeLockToggle";
 
 export type AnnouncerMode = "combined" | "live" | "planning";
 
@@ -80,6 +81,7 @@ export function AnnouncerHeader({
             {inProgressVisible.length} käynnissä · {completedVisible.length} valmis
           </div>
         </div>
+        <WakeLockToggle className="hidden sm:inline-flex" />
         <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
           <Link to="/announcer" search={{ pick: 1 }}>
             <LayoutGrid className="h-4 w-4" />
