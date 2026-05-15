@@ -172,6 +172,9 @@ export async function loadSeasonLeaders(
   const range = seasonRange(season);
 
   const rows = await fetchSeasonRows(season, ageClass);
+  // Age class list comes from full season range, independent of selected ageClass,
+  // so the dropdown stays usable when an age class is already selected.
+  const ageClasses = await fetchSeasonAgeClasses(season);
 
   // Build event option list (per normalized key)
   const evMap = new Map<string, { label: string; cats: Map<string, number> }>();
