@@ -14,13 +14,15 @@ import {
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 
+type Filter = "running" | "all";
+
 export const Route = createFileRoute("/print/")({
   head: () => ({
     meta: [
-      { title: "Tulostettava aikataulu – juoksulajit" },
+      { title: "Tulostettava aikataulu" },
       {
         name: "description",
-        content: "Tulostettava ja mobiilioptimoitu juoksulajien aikataulu.",
+        content: "Tulostettava ja mobiilioptimoitu kilpailun aikataulu.",
       },
     ],
   }),
