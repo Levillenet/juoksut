@@ -18,6 +18,7 @@ import { Route as RunningOpsRouteImport } from './routes/running-ops'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrintRouteImport } from './routes/print'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as KilpailukalenteriRouteImport } from './routes/kilpailukalenteri'
 import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PrintIndexRouteImport } from './routes/print.index'
@@ -31,6 +32,7 @@ import { Route as AnnouncerCombinedRouteImport } from './routes/announcer.combin
 import { Route as AdminClubLocationsRouteImport } from './routes/admin.club-locations'
 import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
 import { Route as ApiPublicHooksHarvestResultsRouteImport } from './routes/api/public/hooks/harvest-results'
+import { Route as ApiPublicHooksHarvestKilpailukalenteriRouteImport } from './routes/api/public/hooks/harvest-kilpailukalenteri'
 
 const WatchRoute = WatchRouteImport.update({
   id: '/watch',
@@ -75,6 +77,11 @@ const PrintRoute = PrintRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KilpailukalenteriRoute = KilpailukalenteriRouteImport.update({
+  id: '/kilpailukalenteri',
+  path: '/kilpailukalenteri',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnnouncerRoute = AnnouncerRouteImport.update({
@@ -143,10 +150,17 @@ const ApiPublicHooksHarvestResultsRoute =
     path: '/api/public/hooks/harvest-results',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksHarvestKilpailukalenteriRoute =
+  ApiPublicHooksHarvestKilpailukalenteriRouteImport.update({
+    id: '/api/public/hooks/harvest-kilpailukalenteri',
+    path: '/api/public/hooks/harvest-kilpailukalenteri',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRouteWithChildren
+  '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
@@ -166,10 +180,12 @@ export interface FileRoutesByFullPath {
   '/announcer/': typeof AnnouncerIndexRoute
   '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
+  '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/running-ops': typeof RunningOpsRoute
@@ -188,12 +204,14 @@ export interface FileRoutesByTo {
   '/announcer': typeof AnnouncerIndexRoute
   '/print': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
+  '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRouteWithChildren
+  '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
@@ -213,6 +231,7 @@ export interface FileRoutesById {
   '/announcer/': typeof AnnouncerIndexRoute
   '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
+  '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
 }
 export interface FileRouteTypes {
@@ -220,6 +239,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/announcer'
+    | '/kilpailukalenteri'
     | '/login'
     | '/print'
     | '/reset-password'
@@ -239,10 +259,12 @@ export interface FileRouteTypes {
     | '/announcer/'
     | '/print/'
     | '/round/$eventId/$roundId'
+    | '/api/public/hooks/harvest-kilpailukalenteri'
     | '/api/public/hooks/harvest-results'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/kilpailukalenteri'
     | '/login'
     | '/reset-password'
     | '/running-ops'
@@ -261,11 +283,13 @@ export interface FileRouteTypes {
     | '/announcer'
     | '/print'
     | '/round/$eventId/$roundId'
+    | '/api/public/hooks/harvest-kilpailukalenteri'
     | '/api/public/hooks/harvest-results'
   id:
     | '__root__'
     | '/'
     | '/announcer'
+    | '/kilpailukalenteri'
     | '/login'
     | '/print'
     | '/reset-password'
@@ -285,12 +309,14 @@ export interface FileRouteTypes {
     | '/announcer/'
     | '/print/'
     | '/round/$eventId/$roundId'
+    | '/api/public/hooks/harvest-kilpailukalenteri'
     | '/api/public/hooks/harvest-results'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnnouncerRoute: typeof AnnouncerRouteWithChildren
+  KilpailukalenteriRoute: typeof KilpailukalenteriRoute
   LoginRoute: typeof LoginRoute
   PrintRoute: typeof PrintRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -303,6 +329,7 @@ export interface RootRouteChildren {
   AdminClubLocationsRoute: typeof AdminClubLocationsRoute
   AthleteKeyRoute: typeof AthleteKeyRoute
   RoundEventIdRoundIdRoute: typeof RoundEventIdRoundIdRoute
+  ApiPublicHooksHarvestKilpailukalenteriRoute: typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   ApiPublicHooksHarvestResultsRoute: typeof ApiPublicHooksHarvestResultsRoute
 }
 
@@ -369,6 +396,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kilpailukalenteri': {
+      id: '/kilpailukalenteri'
+      path: '/kilpailukalenteri'
+      fullPath: '/kilpailukalenteri'
+      preLoaderRoute: typeof KilpailukalenteriRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/announcer': {
@@ -462,6 +496,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksHarvestResultsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/harvest-kilpailukalenteri': {
+      id: '/api/public/hooks/harvest-kilpailukalenteri'
+      path: '/api/public/hooks/harvest-kilpailukalenteri'
+      fullPath: '/api/public/hooks/harvest-kilpailukalenteri'
+      preLoaderRoute: typeof ApiPublicHooksHarvestKilpailukalenteriRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -500,6 +541,7 @@ const PrintRouteWithChildren = PrintRoute._addFileChildren(PrintRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnnouncerRoute: AnnouncerRouteWithChildren,
+  KilpailukalenteriRoute: KilpailukalenteriRoute,
   LoginRoute: LoginRoute,
   PrintRoute: PrintRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
@@ -512,18 +554,10 @@ const rootRouteChildren: RootRouteChildren = {
   AdminClubLocationsRoute: AdminClubLocationsRoute,
   AthleteKeyRoute: AthleteKeyRoute,
   RoundEventIdRoundIdRoute: RoundEventIdRoundIdRoute,
+  ApiPublicHooksHarvestKilpailukalenteriRoute:
+    ApiPublicHooksHarvestKilpailukalenteriRoute,
   ApiPublicHooksHarvestResultsRoute: ApiPublicHooksHarvestResultsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

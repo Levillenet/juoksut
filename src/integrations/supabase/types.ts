@@ -146,6 +146,87 @@ export type Database = {
         }
         Relationships: []
       }
+      external_competitions: {
+        Row: {
+          classification: string
+          created_at: string
+          end_date: string | null
+          id: string
+          last_seen_at: string
+          location: string
+          name: string
+          organizer: string
+          raw: Json | null
+          registration_deadline: string
+          source: string
+          source_id: number
+          start_date: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          classification?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          last_seen_at?: string
+          location?: string
+          name?: string
+          organizer?: string
+          raw?: Json | null
+          registration_deadline?: string
+          source?: string
+          source_id: number
+          start_date: string
+          updated_at?: string
+          url?: string
+        }
+        Update: {
+          classification?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          last_seen_at?: string
+          location?: string
+          name?: string
+          organizer?: string
+          raw?: Json | null
+          registration_deadline?: string
+          source?: string
+          source_id?: number
+          start_date?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      external_harvest_state: {
+        Row: {
+          id: string
+          last_run_at: string | null
+          last_status: string
+          scanned_count: number
+          updated_at: string
+          upserted_count: number
+        }
+        Insert: {
+          id?: string
+          last_run_at?: string | null
+          last_status?: string
+          scanned_count?: number
+          updated_at?: string
+          upserted_count?: number
+        }
+        Update: {
+          id?: string
+          last_run_at?: string | null
+          last_status?: string
+          scanned_count?: number
+          updated_at?: string
+          upserted_count?: number
+        }
+        Relationships: []
+      }
       harvest_competitions: {
         Row: {
           competition_date: string | null

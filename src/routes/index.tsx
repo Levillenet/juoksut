@@ -92,6 +92,17 @@ function NavCards({ role }: { role: Role }) {
           </div>
         </Link>
       )}
+      {!isOfficial && (
+        <Link
+          to="/kilpailukalenteri"
+          className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
+        >
+          <div className="text-sm font-semibold leading-tight">Kilpailukalenteri</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            Tulevat yleisurheilukisat lähteestä kilpailukalenteri.fi
+          </div>
+        </Link>
+      )}
       {isOfficial && (
         <Link
           to="/running-ops"
