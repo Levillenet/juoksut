@@ -13,6 +13,7 @@ import { Route as WatchRouteImport } from './routes/watch'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SeasonLeadersRouteImport } from './routes/season-leaders'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as RunningOpsRouteImport } from './routes/running-ops'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrintRouteImport } from './routes/print'
 import { Route as LoginRouteImport } from './routes/login'
@@ -48,6 +49,11 @@ const SeasonLeadersRoute = SeasonLeadersRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RunningOpsRoute = RunningOpsRouteImport.update({
+  id: '/running-ops',
+  path: '/running-ops',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -138,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
+  '/running-ops': typeof RunningOpsRoute
   '/search': typeof SearchRoute
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/running-ops': typeof RunningOpsRoute
   '/search': typeof SearchRoute
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRoute
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
+  '/running-ops': typeof RunningOpsRoute
   '/search': typeof SearchRoute
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/print'
     | '/reset-password'
+    | '/running-ops'
     | '/search'
     | '/season-leaders'
     | '/settings'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/reset-password'
+    | '/running-ops'
     | '/search'
     | '/season-leaders'
     | '/settings'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/print'
     | '/reset-password'
+    | '/running-ops'
     | '/search'
     | '/season-leaders'
     | '/settings'
@@ -270,6 +282,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PrintRoute: typeof PrintRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
+  RunningOpsRoute: typeof RunningOpsRoute
   SearchRoute: typeof SearchRoute
   SeasonLeadersRoute: typeof SeasonLeadersRoute
   SettingsRoute: typeof SettingsRoute
@@ -308,6 +321,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/running-ops': {
+      id: '/running-ops'
+      path: '/running-ops'
+      fullPath: '/running-ops'
+      preLoaderRoute: typeof RunningOpsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -463,6 +483,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PrintRoute: PrintRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
+  RunningOpsRoute: RunningOpsRoute,
   SearchRoute: SearchRoute,
   SeasonLeadersRoute: SeasonLeadersRoute,
   SettingsRoute: SettingsRoute,
@@ -475,13 +496,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
