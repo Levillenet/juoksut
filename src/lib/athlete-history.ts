@@ -47,6 +47,28 @@ export function isLowerBetter(category: string): boolean {
   return category === "Track";
 }
 
+/**
+ * Karkea heuristiikka, onko tulos hallikaudelta vai ulkokaudelta.
+ * Käyttää ensin kilpailun/lajin nimessä ja paikassa olevia vihjeitä
+ * (halli, indoor, sisä), ja jos niitä ei ole, päättelee päivämäärän
+ * perusteella: hallikausi 1.10.–30.4. (vrt. seasonRange("indoor")).
+ *
+ * Palauttaa null jos päivämäärää ei ole eikä tekstivihjeitä löydy.
+ */
+export function isIndoorResult(
+  row: Pick<AthleteResultRow, "competition_name" | "location" | "event_name" | "competition_date">,
+): boolean | null {
+  const blob = `${row.competition_name ?? ""} ${row.location ?? ""} ${row.event_name ?? ""}`.toLowerCase();
+  if (/\bhalli|indoor|sisä/.test(blob)) return true;
+  if (/\bulko|outdoor/.test(blob)) return false;
+  if (!row.competition_date) return null;
+  const d = new Date(row.competition_date);
+  if (Number.isNaN(d.getTime())) return null;
+  const m = d.getMonth(); // 0=Jan
+  // Hallikausi: loka–huhtikuu (9,10,11,0,1,2,3). Touko–syyskuu = ulko.
+  return m >= 9 || m <= 3;
+}
+
 
 /** Fetch stored history rows for the given athlete keys, sorted by date asc. */
 export async function fetchStoredHistory(
