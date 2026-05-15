@@ -163,7 +163,7 @@ async function fetchSeasonEvents(season: SeasonKind): Promise<LeaderEventOption[
       for (const [c, n] of v.cats) if (n > topN) { topCat = c; topN = n; }
       return { key: k, label: v.label, category: topCat };
     })
-    .sort((a, b) => a.label.localeCompare(b, "fi"));
+    .sort((a, b) => a.label.localeCompare(b.label, "fi"));
 }
 
 function isTrackBetter(category: string, a: number, b: number) {
