@@ -299,7 +299,8 @@ function NamedTable({
               <td className="p-2">
                 {linkPrefix ? (
                   <Link
-                    to={`${linkPrefix}${encodeURIComponent(k)}` as string}
+                    to="/athlete/$key"
+                    params={{ key: k }}
                     className="text-primary hover:underline"
                   >
                     {v.name || "(nimetön)"}
