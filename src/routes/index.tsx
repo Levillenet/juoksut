@@ -261,8 +261,9 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
   const hiddenPastCount = allRuns.length - runs.length;
 
   const [navCollapsed, setNavCollapsed] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem(NAVCARDS_COLLAPSED_KEY) === "1";
+    if (typeof window === "undefined") return true;
+    const v = window.localStorage.getItem(NAVCARDS_COLLAPSED_KEY);
+    return v === null ? true : v === "1";
   });
   useEffect(() => {
     try {
