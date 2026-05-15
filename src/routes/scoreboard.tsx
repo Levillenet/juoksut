@@ -597,3 +597,41 @@ function firstNameFontSize(count: number): string {
   if (count <= 3) return "clamp(1rem, 2.6vh, 2rem)";
   return "clamp(0.875rem, 2vh, 1.5rem)";
 }
+
+/* Narrow viewport (<900px) sizing — name is on its own row, attempts share remaining width. */
+function narrowNameFontSize(count: number): string {
+  if (count <= 3) return "clamp(1.25rem, 4vh, 2.5rem)";
+  if (count <= 5) return "clamp(1.125rem, 3vh, 2rem)";
+  if (count <= 10) return "clamp(1rem, 2.4vh, 1.5rem)";
+  return "clamp(0.875rem, 1.8vh, 1.25rem)";
+}
+function narrowRankFontSize(count: number): string {
+  if (count <= 3) return "clamp(1.5rem, 4.5vh, 3rem)";
+  if (count <= 5) return "clamp(1.25rem, 3.5vh, 2.25rem)";
+  if (count <= 10) return "clamp(1rem, 2.8vh, 1.75rem)";
+  return "clamp(0.875rem, 2vh, 1.5rem)";
+}
+function narrowAttemptMinWidth(_count: number): string {
+  return "0";
+}
+function narrowAttemptMaxWidth(_count: number): string {
+  return "100%";
+}
+function narrowAttemptValueSize(count: number): string {
+  if (count <= 3) return "clamp(1.25rem, 3.5vh, 2.25rem)";
+  if (count <= 5) return "clamp(1rem, 2.8vh, 1.75rem)";
+  if (count <= 10) return "clamp(0.875rem, 2vh, 1.375rem)";
+  return "clamp(0.75rem, 1.6vh, 1.125rem)";
+}
+function narrowResultBoxWidth(count: number): string {
+  if (count <= 3) return "5.5rem";
+  if (count <= 5) return "5rem";
+  if (count <= 10) return "4.5rem";
+  return "4rem";
+}
+function narrowBestFontSize(count: number): string {
+  if (count <= 3) return "clamp(1.5rem, 4vh, 2.5rem)";
+  if (count <= 5) return "clamp(1.25rem, 3.2vh, 2rem)";
+  if (count <= 10) return "clamp(1.125rem, 2.6vh, 1.75rem)";
+  return "clamp(1rem, 2vh, 1.5rem)";
+}
