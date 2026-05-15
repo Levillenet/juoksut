@@ -193,48 +193,54 @@ function SharedWatchPage() {
                     {entries.map((e, idx) => {
                       const isRun = isRunningEvent(e.round);
                       return (
-                        <li
-                          key={`${e.round.Id}-${e.alloc.Id}-${idx}`}
-                          className="flex items-center gap-3 py-2"
-                        >
-                          <div className="flex w-16 shrink-0 flex-col items-start">
-                            <span className="text-sm font-bold tabular-nums">
-                              {formatTime(e.heatBegin)}
-                            </span>
-                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                              {helsinkiDateKey(e.heatBegin)}
-                            </span>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold">
-                              {e.round.EventName}
-                            </p>
-                            <p className="truncate text-xs text-muted-foreground">
-                              {e.round.Name}
-                              {isRun && `${e.round.Name ? " · " : ""}Erä ${e.heatIndex}`}
-                              {e.alloc.Position != null &&
-                                (isRun
-                                  ? ` · Rata ${e.alloc.Position}`
-                                  : ` · Järj. ${e.alloc.Position}`)}
-                            </p>
-                          </div>
-                          <div className="shrink-0 text-right">
-                            <span
-                              className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${STATUS_STYLE[e.round.Status]}`}
-                            >
-                              {STATUS_LABEL[e.round.Status]}
-                            </span>
-                            {e.alloc.Result && (
-                              <p className="mt-1 text-sm font-bold tabular-nums">
-                                {e.alloc.Result}
-                                {e.alloc.ResultRank != null && (
-                                  <span className="ml-1 text-xs font-normal text-muted-foreground">
-                                    ({e.alloc.ResultRank}.)
-                                  </span>
-                                )}
+                        <li key={`${e.round.Id}-${e.alloc.Id}-${idx}`} className="py-2">
+                          <Link
+                            to="/round/$eventId/$roundId"
+                            params={{
+                              eventId: String(e.round.EventId),
+                              roundId: String(e.round.Id),
+                            }}
+                            className="flex items-center gap-3 hover:opacity-80"
+                          >
+                            <div className="flex w-16 shrink-0 flex-col items-start">
+                              <span className="text-sm font-bold tabular-nums">
+                                {formatTime(e.heatBegin)}
+                              </span>
+                              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                {helsinkiDateKey(e.heatBegin)}
+                              </span>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold">
+                                {e.round.EventName}
                               </p>
-                            )}
-                          </div>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {e.round.Name}
+                                {isRun && `${e.round.Name ? " · " : ""}Erä ${e.heatIndex}`}
+                                {e.alloc.Position != null &&
+                                  (isRun
+                                    ? ` · Rata ${e.alloc.Position}`
+                                    : ` · Järj. ${e.alloc.Position}`)}
+                              </p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <span
+                                className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${STATUS_STYLE[e.round.Status]}`}
+                              >
+                                {STATUS_LABEL[e.round.Status]}
+                              </span>
+                              {e.alloc.Result && (
+                                <p className="mt-1 text-sm font-bold tabular-nums">
+                                  {e.alloc.Result}
+                                  {e.alloc.ResultRank != null && (
+                                    <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                      ({e.alloc.ResultRank}.)
+                                    </span>
+                                  )}
+                                </p>
+                              )}
+                            </div>
+                          </Link>
                         </li>
                       );
                     })}
