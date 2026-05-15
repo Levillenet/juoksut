@@ -51,10 +51,6 @@ function LoginForm() {
   const handleEmail = async (e: FormEvent) => {
     e.preventDefault();
     if (mode === "signup") {
-      if (password.length < 6) {
-        toast.error("Salasanan tulee olla vähintään 6 merkkiä");
-        return;
-      }
       if (password !== password2) {
         toast.error("Salasanat eivät täsmää");
         return;
