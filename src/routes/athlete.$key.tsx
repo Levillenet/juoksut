@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import {
   fetchStoredHistory,
   groupByEvent,
+  isIndoorResult,
   isLowerBetter,
   type AthleteResultRow,
 } from "@/lib/athlete-history";
@@ -141,8 +142,8 @@ function AthletePage() {
 
   // Determine top PBs by event (just the PB row from each group)
   const allPbs = groups
-    .map((g) => g.pb)
-    .filter((r): r is AthleteResultRow => r != null);
+    .map((g) => ({ pb: g.pb, pbIndoor: g.pbIndoor, pbOutdoor: g.pbOutdoor }))
+    .filter((g): g is { pb: AthleteResultRow; pbIndoor: AthleteResultRow | null; pbOutdoor: AthleteResultRow | null } => g.pb != null);
 
   return (
     <div className="min-h-screen bg-background">
@@ -212,21 +213,55 @@ function AthletePage() {
                   Henkilökohtaiset ennätykset
                 </h2>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {allPbs.map((pb) => (
-                    <div
-                      key={`${pb.event_name}-${pb.sub_category}`}
-                      className="rounded-lg border bg-card p-3"
-                    >
-                      <div className="flex items-baseline justify-between gap-2">
-                        <p className="truncate text-sm font-semibold">{pb.event_name}</p>
-                        <p className="text-base font-bold tabular-nums">{pb.result_text}</p>
+                  {allPbs.map(({ pb, pbIndoor, pbOutdoor }) => {
+                    const indoor = isIndoorResult(pb);
+                    return (
+                      <div
+                        key={`${pb.event_name}-${pb.sub_category}`}
+                        className="rounded-lg border bg-card p-3"
+                      >
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p className="truncate text-sm font-semibold">
+                            {pb.event_name}
+                          </p>
+                          <p className="flex items-center gap-1.5 text-base font-bold tabular-nums">
+                            {pb.result_text}
+                            {indoor != null && (
+                              <span
+                                className={`rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+                                  indoor
+                                    ? "bg-sky-500/15 text-sky-700 dark:text-sky-300"
+                                    : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                                }`}
+                              >
+                                {indoor ? "Halli" : "Ulko"}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <p className="truncate text-[11px] text-muted-foreground">
+                          {pb.competition_name} · {fmtDate(pb.competition_date)}
+                          {isLowerBetter(pb.event_category) ? " · aika" : " · tulos"}
+                        </p>
+                        {(pbIndoor || pbOutdoor) && (pbIndoor?.id !== pb.id || pbOutdoor?.id !== pb.id) && (
+                          <div className="mt-1 flex flex-wrap gap-1.5 text-[10px]">
+                            {pbIndoor && pbIndoor.id !== pb.id && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-1.5 py-0.5 text-sky-700 dark:text-sky-300">
+                                Halli-PB
+                                <span className="font-semibold tabular-nums">{pbIndoor.result_text}</span>
+                              </span>
+                            )}
+                            {pbOutdoor && pbOutdoor.id !== pb.id && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-emerald-700 dark:text-emerald-300">
+                                Ulko-PB
+                                <span className="font-semibold tabular-nums">{pbOutdoor.result_text}</span>
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <p className="truncate text-[11px] text-muted-foreground">
-                        {pb.competition_name} · {fmtDate(pb.competition_date)}
-                        {isLowerBetter(pb.event_category) ? " · aika" : " · tulos"}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
             )}
