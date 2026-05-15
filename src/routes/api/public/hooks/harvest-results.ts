@@ -24,6 +24,7 @@ const REVISIT_LIMIT = 40;    // tuloksettomien kisojen uudelleentarkistus per aj
 const REVISIT_MAX_AGE_DAYS = 14; // kuinka kauan palataan tyhjiin kisoihin
 const CONCURRENCY = 5;       // parallel competitions per chunk
 const HARD_MAX_ID = 30000;   // safety ceiling
+const FLOOR_ID = 16456;      // tuloslista API:n vanhin saatavilla oleva kisa (5.1.2025)
 
 // Soft rate-limit signal shared across the run. If tuloslista.com starts
 // returning 429/503 we stop advancing so the cursor can retry these IDs
