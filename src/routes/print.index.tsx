@@ -91,17 +91,34 @@ function PrintPage() {
             Tulosta / Tallenna PDF
           </Button>
         </div>
-        <p className="mx-auto max-w-3xl px-4 pb-3 text-xs text-muted-foreground">
-          Vinkki: tulostusikkunassa valitse kohde <strong>"Tallenna PDF-tiedostona"</strong>
-          (tai iPhonella jaa &rarr; <strong>Tallenna tiedostoihin</strong>) tallentaaksesi
-          aikataulun laitteelle.
-        </p>
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-2 px-4 pb-3">
+          <div className="flex gap-1 rounded-full border bg-background p-1 text-xs font-semibold">
+            {(["running", "all"] as Filter[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`rounded-full px-3 py-1 transition-colors ${
+                  filter === f
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {f === "running" ? "Vain juoksulajit" : "Kaikki lajit"}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Vinkki: tulostusikkunassa valitse <strong>"Tallenna PDF-tiedostona"</strong>.
+          </p>
+        </div>
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-6 print:py-2">
         <div className="mb-6 hidden print:block">
           <h1 className="text-xl font-bold">{name || `Kisa #${competitionId}`}</h1>
-          <p className="text-sm text-muted-foreground">Juoksulajien aikataulu</p>
+          <p className="text-sm text-muted-foreground">
+            {filter === "running" ? "Juoksulajien aikataulu" : "Kilpailun aikataulu"}
+          </p>
         </div>
 
         {loading && !data && (
@@ -110,7 +127,7 @@ function PrintPage() {
 
         {grouped.length === 0 && !loading && (
           <p className="py-12 text-center text-sm text-muted-foreground">
-            Ei juoksulajeja tässä kisassa.
+            {filter === "running" ? "Ei juoksulajeja tässä kisassa." : "Ei lajeja tässä kisassa."}
           </p>
         )}
 
