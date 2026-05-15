@@ -333,6 +333,7 @@ function AthletePage() {
                               noteKey(r.competition_id, r.event_name, r.sub_category ?? ""),
                             ) ?? null
                           }
+                          seasonTop={seasonTop.get(r.id) ?? null}
                         />
                       ))}
                     </ul>
@@ -351,10 +352,12 @@ function CompetitionResultRow({
   row,
   athleteKey,
   note,
+  seasonTop,
 }: {
   row: AthleteResultRow;
   athleteKey: string;
   note: AthleteNote | null;
+  seasonTop: SeasonTopFlag | null;
 }) {
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
