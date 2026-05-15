@@ -178,6 +178,9 @@ function Index() {
         </div>
 
         <div className="mx-auto px-4 pb-3 max-w-2xl">
+          <p className="mb-1 text-[11px] font-medium text-muted-foreground">
+            Valitse tästä seurattava kilpailu
+          </p>
           <CompetitionSwitcher className="w-full" confirmOnChange={role === "official"} />
         </div>
 
