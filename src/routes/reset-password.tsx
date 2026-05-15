@@ -76,7 +76,6 @@ function ResetPasswordPage() {
                   id="pw"
                   type="password"
                   required
-                  minLength={6}
                   className="pl-9"
                   value={pw}
                   onChange={(e) => setPw(e.target.value)}
@@ -92,7 +91,6 @@ function ResetPasswordPage() {
                   id="pw2"
                   type="password"
                   required
-                  minLength={6}
                   className="pl-9"
                   value={pw2}
                   onChange={(e) => setPw2(e.target.value)}
