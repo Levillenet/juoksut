@@ -324,15 +324,10 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
           <button
             type="button"
             onClick={() => setNavCollapsed((v) => !v)}
-            className="flex w-full items-center justify-between rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary"
+            className="flex w-full items-center justify-center rounded-lg border-2 border-red-500/60 bg-card px-3 py-2 text-lg font-bold tracking-widest text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
             aria-expanded={!navCollapsed}
           >
-            <span>{navCollapsed ? "Näytä pikavalikko" : "Piilota pikavalikko"}</span>
-            {navCollapsed ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronUp className="h-4 w-4" />
-            )}
+            VALIKKO
           </button>
         </div>
         {!navCollapsed && <NavCards role={role} isAdmin={isAdmin} />}
