@@ -172,7 +172,7 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
   );
 }
 
-function Index({ role }: { role: Role }) {
+function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
   const { signOut } = useAuth();
   const [competitionId] = useCompetitionId();
   const isOfficial = role === "official";
@@ -303,7 +303,7 @@ function Index({ role }: { role: Role }) {
           <CompetitionSwitcher className="w-full" confirmOnChange={isOfficial} />
         </div>
 
-        <NavCards role={role} />
+        <NavCards role={role} isAdmin={isAdmin} />
 
         {!isOfficial && dates.length > 1 && (
           <div className="mx-auto flex max-w-2xl gap-2 overflow-x-auto px-4 pb-3">
