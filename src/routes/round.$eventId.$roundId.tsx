@@ -75,7 +75,7 @@ function RoundView() {
         round_name: round?.Name ?? null,
       },
     });
-  }, [competitionId, eventId, roundId, eid, data?.Name, data?.CompetitionName, round?.Name]);
+  }, [competitionId, eventId, roundId, eid, data?.Name, round?.Name]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
