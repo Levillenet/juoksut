@@ -47,14 +47,21 @@ function SeasonLeadersPage() {
   const [season, setSeason] = useState<SeasonKind>("outdoor");
   const [ageClass, setAgeClass] = useState<string | null>(null);
   const [eventKey, setEventKey] = useState<string | null>(null);
+  const [organization, setOrganization] = useState<string | null>(null);
   const [showWatched, setShowWatched] = useState(true);
 
   const range = useMemo(() => seasonRange(season), [season]);
 
   const query = useQuery({
-    queryKey: ["season-leaders", season, ageClass, eventKey],
+    queryKey: ["season-leaders", season, ageClass, eventKey, organization],
     queryFn: () =>
-      loadSeasonLeaders({ season, ageClass, eventKey, limit: 10 }),
+      loadSeasonLeaders({
+        season,
+        ageClass,
+        eventKey,
+        organization,
+        limit: 10,
+      }),
     staleTime: 60_000,
   });
 
@@ -74,6 +81,13 @@ function SeasonLeadersPage() {
     const topKeys = new Set(data.leaders.map((r) => r.athleteKey));
     return data.watchedBests.filter((r) => !topKeys.has(r.athleteKey));
   }, [data]);
+
+  // Onko valitun seuran paras urheilija jo top-N listalla?
+  const clubBestInTop = useMemo(() => {
+    if (!data?.clubBest) return false;
+    return data.leaders.some((r) => r.athleteKey === data.clubBest!.athleteKey);
+  }, [data]);
+
 
   return (
     <div className="min-h-screen bg-background pb-12">
