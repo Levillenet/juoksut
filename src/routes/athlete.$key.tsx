@@ -503,3 +503,41 @@ function StatCard({
     </div>
   );
 }
+
+function SeasonTopBadge({ flag }: { flag: SeasonTopFlag }) {
+  if (flag.isCurrent) {
+    return (
+      <span
+        title={`Kauden voimassa oleva ykkönen (${flag.season === "indoor" ? "halli" : "ulko"})`}
+        className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
+      >
+        <Trophy className="h-2.5 w-2.5" />
+        Kauden 1.
+      </span>
+    );
+  }
+  if (flag.wasLeader) {
+    const cur = flag.current;
+    const curName = cur ? `${cur.firstname} ${cur.surname}`.trim() : "";
+    return (
+      <span
+        title={
+          cur
+            ? `Oli kauden ykkönen tuolloin. Nyt 1.: ${cur.resultText} – ${curName}`
+            : "Oli kauden ykkönen tuolloin"
+        }
+        className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300"
+      >
+        <Trophy className="h-2.5 w-2.5" />
+        Oli 1.
+        {cur && (
+          <span className="font-normal normal-case tracking-normal opacity-80">
+            · nyt {cur.resultText} {curName}
+          </span>
+        )}
+      </span>
+    );
+  }
+  return null;
+}
+
