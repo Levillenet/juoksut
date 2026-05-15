@@ -206,25 +206,56 @@ function bestPerAthlete(rows: RawRow[], evKey: string): LeaderRow[] {
   }));
 }
 
+/** Fetch all distinct organizations in season range (independent of filters). */
+async function fetchSeasonClubs(season: SeasonKind): Promise<ClubOption[]> {
+  const range = seasonRange(season);
+  const map = new Map<string, ClubOption>();
+  let offset = 0;
+  const HARD_CAP = 100_000;
+  while (true) {
+    const { data, error } = await supabase
+      .from("athlete_results")
+      .select("organization, organization_id")
+      .gte("competition_date", range.from.toISOString())
+      .lt("competition_date", range.to.toISOString())
+      .not("result_numeric", "is", null)
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as { organization: string | null; organization_id: number | null }[];
+    for (const r of rows) {
+      const name = (r.organization ?? "").trim();
+      if (!name) continue;
+      const key = `${r.organization_id ?? ""}|${name}`;
+      if (!map.has(key)) map.set(key, { id: r.organization_id, name });
+    }
+    if (rows.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+    if (offset >= HARD_CAP) break;
+  }
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "fi"));
+}
+
 export interface LoadLeadersInput {
   season: SeasonKind;
   ageClass: string | null;
   eventKey: string | null;
+  organization: string | null; // organization name; null = no club filter
   limit?: number;
 }
 
 export async function loadSeasonLeaders(
   input: LoadLeadersInput,
 ): Promise<LeadersData> {
-  const { season, ageClass } = input;
+  const { season, ageClass, organization } = input;
   const limit = input.limit ?? 50;
   const range = seasonRange(season);
 
   const rows = await fetchSeasonRows(season, ageClass);
   const ageClasses = await fetchSeasonAgeClasses(season);
-  // Event list is independent of age-class filter so the chosen event stays
-  // selectable when the user changes age class (and vice versa).
+  // Event/club lists are independent of age-class filter so dropdowns stay
+  // usable when other filters are already set.
   const events = await fetchSeasonEvents(season);
+  const clubs = await fetchSeasonClubs(season);
 
   // Per-category map from currently filtered rows (used for sort direction)
   const evMap = new Map<string, Map<string, number>>();
@@ -241,6 +272,7 @@ export async function loadSeasonLeaders(
 
   let leaders: LeaderRow[] = [];
   let watchedBests: LeaderRow[] = [];
+  let clubBest: LeaderRow | null = null;
 
   if (evK) {
     const all = bestPerAthlete(rows, evK);
@@ -266,14 +298,20 @@ export async function loadSeasonLeaders(
       ((watched ?? []) as WatchedRow[]).map((w) => w.athlete_key),
     );
     watchedBests = all.filter((r) => watchedKeys.has(r.athleteKey));
+
+    if (organization) {
+      clubBest = all.find((r) => r.organization === organization) ?? null;
+    }
   }
 
   return {
     range: { from: range.from, to: range.to, label: range.label },
     ageClasses,
     events,
+    clubs,
     leaders,
     watchedBests,
+    clubBest,
   };
 }
 
