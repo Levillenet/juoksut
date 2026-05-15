@@ -11,7 +11,8 @@ import {
   Loader2,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 import { RequireRole } from "@/components/RequireRole";
 import { EventGroupView } from "@/components/RecordsPanel";
@@ -93,6 +94,21 @@ function AthletePage() {
       organization: sorted[0].organization,
     };
   }, [rows]);
+
+  const trackedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (trackedRef.current === key) return;
+    trackedRef.current = key;
+    const name = meta ? `${meta.firstname} ${meta.surname}`.trim() : null;
+    trackEvent("athlete_view", {
+      metadata: {
+        athlete_key: key,
+        athlete_name: name,
+        organization: meta?.organization ?? null,
+      },
+    });
+  }, [key, meta]);
 
   const groups = useMemo(() => groupByEvent(rows), [rows]);
 

@@ -60,6 +60,8 @@ function Page() {
     const byPath = new Map<string, number>();
     const byDay = new Map<string, number>();
     const byRole = new Map<string, number>();
+    const byAthlete = new Map<string, { count: number; name: string | null }>();
+    const byCompetition = new Map<string, { count: number; name: string | null }>();
     const uniqueUsers = new Set<string>();
     const last24h = Date.now() - 24 * 3600 * 1000;
     let last24hCount = 0;
@@ -71,9 +73,37 @@ function Page() {
       byRole.set(r.role ?? "anon", (byRole.get(r.role ?? "anon") ?? 0) + 1);
       if (r.user_id) uniqueUsers.add(r.user_id);
       if (new Date(r.created_at).getTime() >= last24h) last24hCount++;
+
+      const md = (r.metadata ?? {}) as Record<string, unknown>;
+      if (r.event_name === "athlete_view") {
+        const key = typeof md.athlete_key === "string" ? md.athlete_key : null;
+        if (key) {
+          const prev = byAthlete.get(key);
+          const name = typeof md.athlete_name === "string" ? md.athlete_name : null;
+          byAthlete.set(key, {
+            count: (prev?.count ?? 0) + 1,
+            name: prev?.name ?? name,
+          });
+        }
+      }
+      if (r.event_name === "scoreboard_view" || r.event_name === "round_view") {
+        const cid = md.competition_id;
+        const key = cid != null ? String(cid) : null;
+        if (key) {
+          const prev = byCompetition.get(key);
+          const name =
+            typeof md.competition_name === "string" ? md.competition_name : null;
+          byCompetition.set(key, {
+            count: (prev?.count ?? 0) + 1,
+            name: prev?.name ?? name,
+          });
+        }
+      }
     }
     const sortDesc = (m: Map<string, number>) =>
       Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
+    const sortDescObj = <T extends { count: number }>(m: Map<string, T>) =>
+      Array.from(m.entries()).sort((a, b) => b[1].count - a[1].count);
     return {
       total: rows.length,
       last24h: last24hCount,
@@ -82,6 +112,8 @@ function Page() {
       byPath: sortDesc(byPath),
       byDay: Array.from(byDay.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1)),
       byRole: sortDesc(byRole),
+      byAthlete: sortDescObj(byAthlete),
+      byCompetition: sortDescObj(byCompetition),
     };
   }, [rows]);
 
@@ -171,6 +203,18 @@ function Page() {
           <Table data={stats.byRole} keyLabel="Rooli" />
         </Section>
 
+        <Section title="Katsotuimmat urheilijat">
+          <NamedTable
+            data={stats.byAthlete}
+            keyLabel="Urheilija"
+            linkPrefix="/athlete/"
+          />
+        </Section>
+
+        <Section title="Katsotuimmat kilpailut">
+          <NamedTable data={stats.byCompetition} keyLabel="Kilpailu" />
+        </Section>
+
         <Section title="Päivittäin">
           <Table data={stats.byDay} keyLabel="Päivä" />
         </Section>
@@ -223,6 +267,65 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">{title}</h2>
       {children}
     </section>
+  );
+}
+
+function NamedTable({
+  data,
+  keyLabel,
+  linkPrefix,
+}: {
+  data: [string, { count: number; name: string | null }][];
+  keyLabel: string;
+  linkPrefix?: string;
+}) {
+  if (data.length === 0)
+    return <p className="text-xs text-muted-foreground">Ei dataa.</p>;
+  const max = data[0][1].count;
+  return (
+    <div className="overflow-x-auto rounded-md border">
+      <table className="w-full text-xs">
+        <thead className="bg-muted/50 text-left">
+          <tr>
+            <th className="p-2">{keyLabel}</th>
+            <th className="p-2">Tunniste</th>
+            <th className="p-2 text-right">Määrä</th>
+            <th className="p-2 w-1/3">Osuus</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map(([k, v]) => (
+            <tr key={k} className="border-t">
+              <td className="p-2">
+                {linkPrefix ? (
+                  <Link
+                    to="/athlete/$key"
+                    params={{ key: k }}
+                    className="text-primary hover:underline"
+                  >
+                    {v.name || "(nimetön)"}
+                  </Link>
+                ) : (
+                  v.name || "(nimetön)"
+                )}
+              </td>
+              <td className="p-2 font-mono text-muted-foreground">{k}</td>
+              <td className="p-2 text-right tabular-nums">
+                {v.count.toLocaleString("fi-FI")}
+              </td>
+              <td className="p-2">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full bg-primary"
+                    style={{ width: `${(v.count / max) * 100}%` }}
+                  />
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

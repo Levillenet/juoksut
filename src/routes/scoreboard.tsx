@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Maximize2 } from "lucide-react";
 
@@ -72,6 +73,20 @@ function ScoreboardPicker() {
   const { top } = Route.useSearch();
   const navigate = useNavigate({ from: "/scoreboard" });
   const scheduleQ = useQuery(competitionScheduleQueryOptions(competitionId));
+
+  const trackedRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!competitionId) return;
+    if (trackedRef.current === competitionId) return;
+    trackedRef.current = competitionId;
+    trackEvent("scoreboard_view", {
+      metadata: {
+        competition_id: competitionId,
+        competition_name: scheduleQ.data?.name ?? null,
+      },
+    });
+  }, [competitionId, scheduleQ.data?.name]);
 
   const fieldByDate = useMemo(() => {
     const rounds = scheduleQ.data?.rounds ?? {};

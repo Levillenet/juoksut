@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { trackEvent } from "@/lib/analytics";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Wind } from "lucide-react";
 
@@ -58,6 +59,23 @@ function RoundView() {
     if (ranked.length === 0) return [];
     return ranked.sort((a, b) => (a.ResultRank ?? 0) - (b.ResultRank ?? 0));
   }, [heats]);
+
+  const trackedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sig = `${competitionId}:${eventId}:${roundId}`;
+    if (trackedRef.current === sig) return;
+    trackedRef.current = sig;
+    trackEvent("round_view", {
+      metadata: {
+        competition_id: competitionId,
+        event_id: eid,
+        event_name: data?.Name ?? null,
+        round_id: parseInt(roundId, 10),
+        round_name: round?.Name ?? null,
+      },
+    });
+  }, [competitionId, eventId, roundId, eid, data?.Name, round?.Name]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
