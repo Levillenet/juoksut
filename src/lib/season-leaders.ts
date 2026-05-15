@@ -178,7 +178,6 @@ export async function loadSeasonLeaders(
 
   // Build event option list (per normalized key)
   const evMap = new Map<string, { label: string; cats: Map<string, number> }>();
-  const ageSet = new Set<string>();
   for (const r of rows) {
     const k = eventKey(r.event_name);
     if (!k) continue;
