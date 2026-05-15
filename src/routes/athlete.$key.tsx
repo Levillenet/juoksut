@@ -170,6 +170,39 @@ function AthletePage() {
     .map((g) => ({ pb: g.pb, pbIndoor: g.pbIndoor, pbOutdoor: g.pbOutdoor }))
     .filter((g): g is { pb: AthleteResultRow; pbIndoor: AthleteResultRow | null; pbOutdoor: AthleteResultRow | null } => g.pb != null);
 
+  // Kauden kärkitulokset ryhmiteltynä lajeittain (uusin ensin per laji)
+  const seasonLeaderships = useMemo(() => {
+    interface Item {
+      row: AthleteResultRow;
+      flag: SeasonTopFlag;
+    }
+    const map = new Map<string, Item[]>();
+    for (const r of rows) {
+      const flag = seasonTop.get(r.id);
+      if (!flag || !flag.wasLeader) continue;
+      const k = `${r.event_name}|${r.age_class ?? ""}|${flag.season}`;
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push({ row: r, flag });
+    }
+    return Array.from(map.entries())
+      .map(([k, items]) => {
+        items.sort((a, b) =>
+          (b.row.competition_date ?? "").localeCompare(a.row.competition_date ?? ""),
+        );
+        return { key: k, items };
+      })
+      .sort((a, b) => {
+        const da = a.items[0]?.row.competition_date ?? "";
+        const db = b.items[0]?.row.competition_date ?? "";
+        return db.localeCompare(da);
+      });
+  }, [rows, seasonTop]);
+
+  const seasonLeadershipsCount = seasonLeaderships.reduce(
+    (n, g) => n + g.items.length,
+    0,
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
@@ -288,6 +321,93 @@ function AthletePage() {
                     );
                   })}
                 </div>
+              </section>
+            )}
+
+            {/* Kauden kärkitulokset */}
+            {seasonLeaderships.length > 0 && (
+              <section className="mb-6">
+                <h2 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <Trophy className="h-3.5 w-3.5 text-amber-500" />
+                  Kauden kärkitulokset
+                  <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+                    {seasonLeadershipsCount}
+                  </span>
+                </h2>
+                <p className="mb-2 text-[11px] text-muted-foreground">
+                  Kerrat, jolloin tulos on ollut Suomen kauden ykkönen
+                  lajissa+ikäluokassa. Vihreä = edelleen voimassa, keltainen
+                  = sittemmin ohitettu.
+                </p>
+                <ul className="space-y-2">
+                  {seasonLeaderships.map((g) => {
+                    const head = g.items[0];
+                    const stillCurrent = g.items.some((i) => i.flag.isCurrent);
+                    return (
+                      <li
+                        key={g.key}
+                        className={`rounded-lg border p-3 ${
+                          stillCurrent
+                            ? "border-emerald-500/40 bg-emerald-500/5"
+                            : "border-amber-500/40 bg-amber-500/5"
+                        }`}
+                      >
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p className="truncate text-sm font-semibold">
+                            {head.row.event_name}
+                            {head.row.age_class && (
+                              <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                · {head.row.age_class}
+                              </span>
+                            )}
+                          </p>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                              stillCurrent
+                                ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                                : "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                            }`}
+                          >
+                            {stillCurrent ? "Voimassa" : "Ohitettu"}
+                          </span>
+                        </div>
+                        <ul className="mt-2 space-y-1 text-xs">
+                          {g.items.map((it) => (
+                            <li
+                              key={it.row.id}
+                              className="flex items-baseline justify-between gap-2"
+                            >
+                              <span className="truncate text-muted-foreground">
+                                {it.row.competition_name} ·{" "}
+                                {fmtDate(it.row.competition_date)}
+                              </span>
+                              <span className="shrink-0 font-semibold tabular-nums">
+                                {it.row.result_text}
+                                {it.flag.isCurrent && (
+                                  <span className="ml-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                                    1.
+                                  </span>
+                                )}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                        {!stillCurrent && head.flag.current && (
+                          <p className="mt-2 border-t pt-2 text-[11px] text-muted-foreground">
+                            Voimassa oleva kauden 1.:{" "}
+                            <span className="font-semibold tabular-nums text-foreground">
+                              {head.flag.current.resultText}
+                            </span>{" "}
+                            – {head.flag.current.firstname}{" "}
+                            {head.flag.current.surname}
+                            {head.flag.current.competitionDate &&
+                              ` (${fmtDate(head.flag.current.competitionDate)})`}
+                          </p>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
               </section>
             )}
 
