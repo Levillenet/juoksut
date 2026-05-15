@@ -319,7 +319,22 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
           <CompetitionSwitcher className="w-full" confirmOnChange={isOfficial} />
         </div>
 
-        <NavCards role={role} isAdmin={isAdmin} />
+        <div className="mx-auto max-w-2xl px-4 pb-2">
+          <button
+            type="button"
+            onClick={() => setNavCollapsed((v) => !v)}
+            className="flex w-full items-center justify-between rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary"
+            aria-expanded={!navCollapsed}
+          >
+            <span>{navCollapsed ? "Näytä pikavalikko" : "Piilota pikavalikko"}</span>
+            {navCollapsed ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronUp className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+        {!navCollapsed && <NavCards role={role} isAdmin={isAdmin} />}
 
         {!isOfficial && dates.length > 1 && (
           <div className="mx-auto flex max-w-2xl gap-2 overflow-x-auto px-4 pb-3">
