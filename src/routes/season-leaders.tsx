@@ -109,11 +109,7 @@ function SeasonLeadersPage() {
       <div className="mx-auto max-w-3xl space-y-4 px-4 pt-4">
         <Tabs
           value={season}
-          onValueChange={(v) => {
-            setSeason(v as SeasonKind);
-            setEventKey(null);
-            setAgeClass(null);
-          }}
+          onValueChange={(v) => setSeason(v as SeasonKind)}
         >
           <TabsList className="grid w-full grid-cols-2">
             {SEASON_OPTIONS.map((o) => (
