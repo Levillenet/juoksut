@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Trophy } from "lucide-react";
 
-import { type EventGroup } from "@/lib/athlete-history";
+import { type EventGroup, isIndoorResult } from "@/lib/athlete-history";
 import { translateSub } from "@/lib/tuloslista";
 
 const HELSINKI_DATE = new Intl.DateTimeFormat("fi-FI", {
