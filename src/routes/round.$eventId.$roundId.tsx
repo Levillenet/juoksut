@@ -60,6 +60,24 @@ function RoundView() {
     return ranked.sort((a, b) => (a.ResultRank ?? 0) - (b.ResultRank ?? 0));
   }, [heats]);
 
+  const trackedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sig = `${competitionId}:${eventId}:${roundId}`;
+    if (trackedRef.current === sig) return;
+    trackedRef.current = sig;
+    trackEvent("round_view", {
+      metadata: {
+        competition_id: competitionId,
+        competition_name: data?.CompetitionName ?? null,
+        event_id: eid,
+        event_name: data?.Name ?? null,
+        round_id: parseInt(roundId, 10),
+        round_name: round?.Name ?? null,
+      },
+    });
+  }, [competitionId, eventId, roundId, eid, data?.Name, data?.CompetitionName, round?.Name]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
