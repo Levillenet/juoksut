@@ -150,13 +150,21 @@ async function processCompetition(
     const category = ev.EventCategory ?? "";
     const subCategory = ev.EventSubCategory ?? "";
     const ageClass = ageByEvent.get(eid) ?? "";
+    // Lajilla voi olla useita kierroksia (alkuerät + finaali) saman event_id:n
+    // alla. Pidetään vain paras tulos per urheilija (Track = pienin numeerinen,
+    // muut = suurin). Jos numeerista vertailua ei voi tehdä, otetaan
+    // myöhemmin nähty kierros (Rounds-järjestys = aikajärjestys), jolloin
+    // finaali korvaa alkuerän.
+    const bestForEvent = new Map<string, Row>();
+    const isTrack = category === "Track";
     for (const r of ev.Rounds ?? []) {
       for (const h of r.Heats ?? []) {
         for (const a of h.Allocations ?? []) {
           if (!a.Surname || !a.Firstname || !a.Result) continue;
           const orgId = a.Organization?.Id ?? null;
-          pending.push({
-            athlete_key: athleteKey(a.Surname, a.Firstname, orgId),
+          const key = athleteKey(a.Surname, a.Firstname, orgId);
+          const row: Row = {
+            athlete_key: key,
             surname: a.Surname,
             firstname: a.Firstname,
             organization: a.Organization?.Name ?? "",
@@ -174,10 +182,30 @@ async function processCompetition(
             result_rank: a.ResultRank ?? null,
             wind: parseWind(a.Wind),
             age_class: ageClass,
-          });
-          rowsAdded++;
+          };
+          const prev = bestForEvent.get(key);
+          if (!prev) {
+            bestForEvent.set(key, row);
+            continue;
+          }
+          const a1 = row.result_numeric;
+          const a0 = prev.result_numeric;
+          let replace = false;
+          if (a1 != null && a0 != null) {
+            replace = isTrack ? a1 < a0 : a1 > a0;
+          } else if (a1 != null && a0 == null) {
+            replace = true;
+          } else if (a1 == null && a0 == null) {
+            // molemmat ei-numeerisia (DNF, NM, ...): pidetään myöhempi kierros
+            replace = true;
+          }
+          if (replace) bestForEvent.set(key, row);
         }
       }
+    }
+    for (const row of bestForEvent.values()) {
+      pending.push(row);
+      rowsAdded++;
     }
   }
   return { existed: true, rowsAdded, competitionDate };
@@ -203,7 +231,7 @@ async function flush(rows: Row[]) {
       .from("athlete_results")
       .upsert(slice, {
         onConflict: "athlete_key,competition_id,event_id",
-        ignoreDuplicates: true,
+        ignoreDuplicates: false,
       });
     if (error) console.error("upsert error:", error.message);
   }
