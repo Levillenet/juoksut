@@ -47,14 +47,21 @@ function SeasonLeadersPage() {
   const [season, setSeason] = useState<SeasonKind>("outdoor");
   const [ageClass, setAgeClass] = useState<string | null>(null);
   const [eventKey, setEventKey] = useState<string | null>(null);
+  const [organization, setOrganization] = useState<string | null>(null);
   const [showWatched, setShowWatched] = useState(true);
 
   const range = useMemo(() => seasonRange(season), [season]);
 
   const query = useQuery({
-    queryKey: ["season-leaders", season, ageClass, eventKey],
+    queryKey: ["season-leaders", season, ageClass, eventKey, organization],
     queryFn: () =>
-      loadSeasonLeaders({ season, ageClass, eventKey, limit: 10 }),
+      loadSeasonLeaders({
+        season,
+        ageClass,
+        eventKey,
+        organization,
+        limit: 10,
+      }),
     staleTime: 60_000,
   });
 
@@ -74,6 +81,13 @@ function SeasonLeadersPage() {
     const topKeys = new Set(data.leaders.map((r) => r.athleteKey));
     return data.watchedBests.filter((r) => !topKeys.has(r.athleteKey));
   }, [data]);
+
+  // Onko valitun seuran paras urheilija jo top-N listalla?
+  const clubBestInTop = useMemo(() => {
+    if (!data?.clubBest) return false;
+    return data.leaders.some((r) => r.athleteKey === data.clubBest!.athleteKey);
+  }, [data]);
+
 
   return (
     <div className="min-h-screen bg-background pb-12">
@@ -163,6 +177,27 @@ function SeasonLeadersPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Seura
+            </label>
+            <Select
+              value={organization ?? "__all"}
+              onValueChange={(v) => setOrganization(v === "__all" ? null : v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Kaikki seurat" />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="__all">Kaikki seurat</SelectItem>
+                {(data?.clubs ?? []).map((c) => (
+                  <SelectItem key={`${c.id ?? "x"}|${c.name}`} value={c.name}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <label className="flex items-center gap-2 text-sm">
@@ -217,6 +252,9 @@ function SeasonLeadersPage() {
                   row={r}
                   rank={r.rank ?? i + 1}
                   watched={watchedKeySet.has(r.athleteKey)}
+                  clubMatch={
+                    !!organization && r.organization === organization
+                  }
                 />
               ))}
               {showWatched && watchedExtra.length > 0 && (
@@ -231,8 +269,30 @@ function SeasonLeadersPage() {
                     row={r}
                     rank={r.rank ?? null}
                     watched
+                    clubMatch={
+                      !!organization && r.organization === organization
+                    }
                   />
                 ))}
+              {organization && data.clubBest && !clubBestInTop && (
+                <>
+                  <li className="bg-muted/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Seuran paras ({organization})
+                  </li>
+                  <LeaderItem
+                    key={`c-${data.clubBest.athleteKey}`}
+                    row={data.clubBest}
+                    rank={data.clubBest.rank ?? null}
+                    watched={watchedKeySet.has(data.clubBest.athleteKey)}
+                    clubMatch
+                  />
+                </>
+              )}
+              {organization && !data.clubBest && (
+                <li className="bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
+                  Seuralta {organization} ei tuloksia tässä lajissa.
+                </li>
+              )}
             </ul>
           </section>
         )}
@@ -245,16 +305,19 @@ function LeaderItem({
   row,
   rank,
   watched,
+  clubMatch,
 }: {
   row: LeaderRow;
   rank: number | null;
   watched: boolean;
+  clubMatch?: boolean;
 }) {
   return (
     <li
       className={cn(
         "flex items-center gap-3 px-3 py-2",
         watched && "bg-primary/5",
+        clubMatch && "bg-amber-500/10",
       )}
     >
       <div className="w-7 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
