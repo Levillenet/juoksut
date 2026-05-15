@@ -14,13 +14,15 @@ import {
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 
+type Filter = "running" | "all";
+
 export const Route = createFileRoute("/print/")({
   head: () => ({
     meta: [
-      { title: "Tulostettava aikataulu – juoksulajit" },
+      { title: "Tulostettava aikataulu" },
       {
         name: "description",
-        content: "Tulostettava ja mobiilioptimoitu juoksulajien aikataulu.",
+        content: "Tulostettava ja mobiilioptimoitu kilpailun aikataulu.",
       },
     ],
   }),
@@ -32,6 +34,7 @@ function PrintPage() {
   const [data, setData] = useState<RoundsByDate | null>(null);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState<Filter>("running");
 
   useEffect(() => {
     (async () => {
@@ -55,7 +58,7 @@ function PrintPage() {
       .map(([date, rounds]) => ({
         date,
         runs: rounds
-          .filter(isRunningEvent)
+          .filter((r) => (filter === "running" ? isRunningEvent(r) : true))
           .sort((a, b) => a.BeginDateTimeWithTZ.localeCompare(b.BeginDateTimeWithTZ)),
       }))
       .filter((g) => g.runs.length > 0)
@@ -64,7 +67,7 @@ function PrintPage() {
         const [db, mb, yb] = b.date.split(".").map(Number);
         return new Date(ya, ma - 1, da).getTime() - new Date(yb, mb - 1, db).getTime();
       });
-  }, [data]);
+  }, [data, filter]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -88,17 +91,34 @@ function PrintPage() {
             Tulosta / Tallenna PDF
           </Button>
         </div>
-        <p className="mx-auto max-w-3xl px-4 pb-3 text-xs text-muted-foreground">
-          Vinkki: tulostusikkunassa valitse kohde <strong>"Tallenna PDF-tiedostona"</strong>
-          (tai iPhonella jaa &rarr; <strong>Tallenna tiedostoihin</strong>) tallentaaksesi
-          aikataulun laitteelle.
-        </p>
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-2 px-4 pb-3">
+          <div className="flex gap-1 rounded-full border bg-background p-1 text-xs font-semibold">
+            {(["running", "all"] as Filter[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`rounded-full px-3 py-1 transition-colors ${
+                  filter === f
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {f === "running" ? "Vain juoksulajit" : "Kaikki lajit"}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Vinkki: tulostusikkunassa valitse <strong>"Tallenna PDF-tiedostona"</strong>.
+          </p>
+        </div>
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-6 print:py-2">
         <div className="mb-6 hidden print:block">
           <h1 className="text-xl font-bold">{name || `Kisa #${competitionId}`}</h1>
-          <p className="text-sm text-muted-foreground">Juoksulajien aikataulu</p>
+          <p className="text-sm text-muted-foreground">
+            {filter === "running" ? "Juoksulajien aikataulu" : "Kilpailun aikataulu"}
+          </p>
         </div>
 
         {loading && !data && (
@@ -107,7 +127,7 @@ function PrintPage() {
 
         {grouped.length === 0 && !loading && (
           <p className="py-12 text-center text-sm text-muted-foreground">
-            Ei juoksulajeja tässä kisassa.
+            {filter === "running" ? "Ei juoksulajeja tässä kisassa." : "Ei lajeja tässä kisassa."}
           </p>
         )}
 
