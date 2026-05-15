@@ -18,6 +18,8 @@ import {
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 import { RequireRole } from "@/components/RequireRole";
+import { effectiveRecord } from "@/lib/record-baseline";
+import { detectRecord, RecordStar } from "@/lib/records";
 
 type TopSize = 3 | 5 | 10 | "all";
 
