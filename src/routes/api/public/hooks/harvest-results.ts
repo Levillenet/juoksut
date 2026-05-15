@@ -24,6 +24,7 @@ const REVISIT_LIMIT = 40;    // tuloksettomien kisojen uudelleentarkistus per aj
 const REVISIT_MAX_AGE_DAYS = 14; // kuinka kauan palataan tyhjiin kisoihin
 const CONCURRENCY = 5;       // parallel competitions per chunk
 const HARD_MAX_ID = 30000;   // safety ceiling
+const FLOOR_ID = 16456;      // tuloslista API:n vanhin saatavilla oleva kisa (5.1.2025)
 
 // Soft rate-limit signal shared across the run. If tuloslista.com starts
 // returning 429/503 we stop advancing so the cursor can retry these IDs
@@ -311,8 +312,8 @@ async function run(request: Request): Promise<Response> {
       .select("next_id, latest_id")
       .eq("id", "singleton")
       .maybeSingle();
-    let nextId = stateRow?.next_id ?? 17000;
-    let latestId = stateRow?.latest_id ?? 17000;
+    let nextId = stateRow?.next_id ?? FLOOR_ID;
+    let latestId = stateRow?.latest_id ?? FLOOR_ID;
 
     let ids: number[];
     let mode: "manual" | "backfill" | "tail";
@@ -328,7 +329,7 @@ async function run(request: Request): Promise<Response> {
       for (let i = start; i <= end; i++) ids.push(i);
       mode = "backfill";
     } else {
-      const tailStart = Math.max(17000, latestId - TAIL_RESCAN);
+      const tailStart = Math.max(FLOOR_ID, latestId - TAIL_RESCAN);
       const probeEnd = Math.min(latestId + BATCH_SIZE, HARD_MAX_ID);
       ids = [];
       for (let i = tailStart; i <= probeEnd; i++) ids.push(i);
