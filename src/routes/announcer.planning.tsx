@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useAnnouncerData } from "@/hooks/useAnnouncerData";
+import { useWakeLock } from "@/hooks/useWakeLock";
 import { AnnouncerHeader } from "@/components/announcer/AnnouncerHeader";
 import { UpcomingSection } from "@/components/announcer/UpcomingSection";
 import { CompletedSection } from "@/components/announcer/CompletedSection";
@@ -9,6 +10,7 @@ export const Route = createFileRoute("/announcer/planning")({
 });
 
 function AnnouncerPlanning() {
+  useWakeLock();
   const data = useAnnouncerData();
   return (
     <div className="min-h-screen bg-background text-foreground">

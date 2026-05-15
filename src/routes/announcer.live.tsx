@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useAnnouncerData } from "@/hooks/useAnnouncerData";
+import { useWakeLock } from "@/hooks/useWakeLock";
 import { AnnouncerHeader } from "@/components/announcer/AnnouncerHeader";
 import { RecordsBanner } from "@/components/announcer/RecordsBanner";
 import { InProgressSection } from "@/components/announcer/InProgressSection";
@@ -9,6 +10,7 @@ export const Route = createFileRoute("/announcer/live")({
 });
 
 function AnnouncerLive() {
+  useWakeLock();
   const data = useAnnouncerData();
   return (
     <div className="min-h-screen bg-background text-foreground">
