@@ -160,6 +160,10 @@ function RouteTracker() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (pathname.startsWith("/admin")) return; // do not log admin views
+    // Pages that emit their own enriched event (with metadata) handle tracking themselves
+    if (pathname.startsWith("/athlete/")) return;
+    if (pathname.startsWith("/round/")) return;
+    if (pathname.startsWith("/scoreboard")) return;
     trackEvent(eventForPath(pathname));
   }, [pathname]);
   return null;
