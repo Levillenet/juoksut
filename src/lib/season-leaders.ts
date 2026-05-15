@@ -100,6 +100,30 @@ async function fetchSeasonRows(
   return out;
 }
 
+/** Fetch all distinct age classes in season range (ignoring ageClass filter). */
+async function fetchSeasonAgeClasses(season: SeasonKind): Promise<string[]> {
+  const range = seasonRange(season);
+  const set = new Set<string>();
+  let offset = 0;
+  const HARD_CAP = 100_000;
+  while (true) {
+    const { data, error } = await supabase
+      .from("athlete_results")
+      .select("age_class")
+      .gte("competition_date", range.from.toISOString())
+      .lt("competition_date", range.to.toISOString())
+      .not("result_numeric", "is", null)
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as { age_class: string | null }[];
+    for (const r of rows) if (r.age_class) set.add(r.age_class);
+    if (rows.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+    if (offset >= HARD_CAP) break;
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, "fi"));
+}
+
 function isTrackBetter(category: string, a: number, b: number) {
   if (category === "Track") return a < b;
   return a > b;
