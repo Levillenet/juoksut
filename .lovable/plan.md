@@ -1,40 +1,37 @@
-## Mitä rakennetaan
+## Ongelma
 
-Urheilijan profiilisivulle (`/athlete/$key`) lisätään jokaisen kilpailutuloksen viereen pieni merkintä, joka kertoo:
+WhatsAppin linkkiesikatselu (`/seuraa/<token>`) näyttää nyt:
+- otsikkona: "Juoksulajien lähtöjärjestys"
+- kuvana: vanhan kilpailun lähtölista-screenshot
+- kuvauksena: "Race Day Assist provides a streamlined UI for race organizers…"
 
-- **Voimassa oleva kauden kärki** – vihreä "Kauden 1." merkki, jos tulos on edelleen kuluvan kauden paras Suomessa kyseisessä lajissa + ikäluokassa.
-- **Aiempi kauden kärki** – kullanvärinen "Oli kauden 1." merkki + voimassa olevan kärjen aika ja nimi, jos tulos oli sen kilpailupäivänä kauden paras mutta on sittemmin ohitettu.
-- **Ei merkintää**, jos tulos ei ole koskaan ollut kauden kärjessä tai ei kuulu kuluvaan kauteen.
+Syy: `src/routes/__root.tsx` asettaa nuo `og:`/`twitter:` -tagit koko sovellukselle, ja `seuraa.$token.tsx` ylikirjoittaa vain `title`+`description`, ei `og:title`, `og:description` eikä `og:image`. WhatsApp/Telegram/iMessage lukevat nimenomaan `og:`-tageja.
 
-Vertailu: koko Suomen tulokset, sama normalisoitu lajinimi (`normalize_event_name`) + sama `age_class`. Kausi määritetään automaattisesti tuloksen `competition_date`:sta käyttäen olemassa olevaa `seasonRange`-logiikkaa (ulko/halli). Vain top 1.
+## Korjaus
 
-## Tekninen toteutus
+1. **Tee Ahkeran logosta julkisesti haettava URL.**
+   `src/assets/lahden-ahkera-logo.png` on bundlattu Vite-asset, ja sen hash-URL:lla varustettu polku ei ole vakaa eikä toimi luotettavasti sosiaalisten crawlereiden kanssa. Lataan logon julkiseen Cloud-storage-bucketiin (`public-assets`) `supabase--storage_upload` -työkalulla → saadaan pysyvä `https://…/public-assets/lahden-ahkera-logo.png`.
 
-1. **Uusi apuri** `src/lib/season-top.ts`:
-   - `loadAthleteSeasonTopFlags(athleteKey)` -funktio, joka palauttaa `Map<resultId, { wasLeader: boolean; isCurrent: boolean; current: { resultText, resultNumeric, athleteName, competitionDate } | null }>`.
-   - Hakee ensin urheilijan tulokset (sama lähde kuin `fetchStoredHistory`).
-   - Ryhmittelee uniikit `(season, normalisoitu event, age_class)` -avaimet.
-   - Kullekin avaimelle yksi kysely `athlete_results`-tauluun: hakee kauden kaikki rivit tälle (event + age_class) kombolle (käyttäen `competition_date` between season-range, normalisoidaan client-puolella). Riittävä kun limit korkea, koska ikäluokka+laji rajaa määrän pieneksi.
-   - Laskee:
-     - `currentBest` = paras tulos kaudella (track: pienin aika, muut: suurin),
-     - kullekin urheilijan riville: oliko sen tulos paras kaikkien ennen-tai-samana-päivänä rivien joukossa (sama lajitteluvertailija `isTrackBetter`).
-   - Tulos: `wasLeader = true` jos sen ajan jälkeen on tullut parempi mutta omana hetkenään oli paras; `isCurrent = true` jos = currentBest.
+2. **Päivitä `src/routes/seuraa.$token.tsx` `head()`** asettamaan kaikki suosittelutagit jakonäkymälle:
+   - `title`: `"Seuraa kilpailupäivän etenemistä"`
+   - `description`: `"Reaaliaikainen kilpailijaseuranta — näe miten päivä etenee."`
+   - `og:title`, `og:description`, `twitter:title`, `twitter:description`: samat
+   - `og:image`, `twitter:image`: ladatun logon absoluuttinen URL
+   - `og:type`: `website`
+   - `twitter:card`: `summary` (neliökuvalle sopiva, ei iso bannerimuoto)
+   - säilytetään `robots: noindex`
 
-2. **Athlete-sivun integrointi** (`src/routes/athlete.$key.tsx`):
-   - Toinen `useQuery(["athlete-season-top", key])` joka kutsuu uutta apuria.
-   - Välitetään `Map` `EventGroupView` / `CompetitionResultRow`-komponenteille (joko propsina tai contextina). `CompetitionResultRow`:ssa renderöidään `result_text`-elementin viereen pieni badge.
+   Lapsireitin `meta`-tagit ylikirjoittavat juuren tagit samalla `name`/`property`-arvolla, joten väärä lähtölistakuva ja "Juoksulajien lähtöjärjestys" -teksti katoavat tästä näkymästä.
 
-3. **Badget** (Tailwind, semanttiset tokenit):
-   - Voimassa: `bg-emerald-500/15 text-emerald-700` + Trophy-ikoni, teksti "Kauden 1.".
-   - Aiempi: `bg-amber-500/15 text-amber-700` + Trophy, teksti `Oli kauden 1. · nyt 9,12 Etunimi S.`. Hover-tooltipissä kilpailupvm.
+3. **Ei muutoksia muihin reitteihin.** Etusivun ja muiden reittien WhatsApp-esikatselu pysyy ennallaan.
 
-## Suorituskyky
+## Tekniset huomiot
 
-- Useimmilla urheilijoilla on 5–30 uniikkia (laji+ikäluokka)-kombinaatiota; tehdään yksi kysely per kombinaatio rinnakkain `Promise.all`-pakettina. Rajataan `result_numeric not null` ja `age_class = X`, käytetään existing index-ystävällisiä sarakkeita.
-- Cache `staleTime: 60_000` riittää. Profiilisivun nykyinen kysely säilyy ennallaan.
+- WhatsApp välimuistittaa OG-tiedot URL:n perusteella aggressiivisesti. Jo jaetut linkit voivat näkyä vanhalla kuvalla kunnes WhatsApp päivittää välimuistinsa (yleensä joitain päiviä, tai uutta tokenia jakamalla).
+- Logokuvaa ei tarvitse skaalata: ~512×512 PNG riittää `summary`-kortille.
+- Vältetään suhteellisia `og:image` -polkuja — käytetään aina absoluuttista httpsURL:ää.
 
-## Mitä EI tehdä tässä
+## Muutettavat tiedostot
 
-- Top 3 / aiempien kausien tukea ei lisätä (voi tulla myöhemmin).
-- Watch-sivulle / season-leaders-sivulle ei kosketa.
-- DB-skeemaan ei kosketa.
+- `src/routes/seuraa.$token.tsx` — laajennetaan `head()` täydellä OG/Twitter-setillä
+- (storage upload, ei tiedostomuutosta repossa)
