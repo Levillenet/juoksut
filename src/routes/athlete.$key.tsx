@@ -252,18 +252,26 @@ function AthletePage() {
                               </span>
                             )}
                           </span>
-                          <span className={`shrink-0 tabular-nums font-semibold ${r.was_pb ? "text-primary" : ""}`}>
+                          <span className={`shrink-0 inline-flex items-center gap-1 tabular-nums font-semibold ${r.was_pb ? "text-primary" : ""}`}>
+                            {r.result_rank === 1 && (
+                              <Trophy
+                                aria-label="Lajivoitto"
+                                className="h-3.5 w-3.5 text-yellow-500"
+                                fill="currentColor"
+                              />
+                            )}
+                            {r.result_text}
                             {r.was_pb && (
                               <span
                                 title="Henkilökohtainen ennätys"
-                                className="mr-1"
+                                className="inline-flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary"
                               >
-                                🏆
+                                <Trophy className="h-2.5 w-2.5" />
+                                PB
                               </span>
                             )}
-                            {r.result_text}
                             {r.result_rank != null && (
-                              <span className="ml-1 font-normal text-muted-foreground">
+                              <span className="font-normal text-muted-foreground">
                                 ({r.result_rank}.)
                               </span>
                             )}
