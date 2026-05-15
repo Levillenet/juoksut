@@ -1,7 +1,10 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { RefreshCw, ChevronRight, LogOut } from "lucide-react";
+import { RefreshCw, ChevronRight, LogOut, ChevronDown, ChevronUp } from "lucide-react";
 import logo from "@/assets/lahden-ahkera-logo.png";
+import { TodayStatsSection } from "@/components/TodayStatsSection";
+
+const NAVCARDS_COLLAPSED_KEY = "home.navCards.collapsed";
 
 import {
   fetchRounds,
