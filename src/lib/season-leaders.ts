@@ -326,3 +326,81 @@ export function isWatched(set: Set<string>, key: string) {
 export function formatLeaderResult(row: LeaderRow): string {
   return row.resultText || String(row.resultNumeric);
 }
+
+export interface EventLeadersGroup {
+  key: string;
+  label: string;
+  category: string;
+  top: LeaderRow[];
+  clubTop: LeaderRow[];
+}
+
+export interface AllEventLeadersData {
+  range: { from: Date; to: Date; label: string };
+  ageClasses: string[];
+  clubs: ClubOption[];
+  groups: EventLeadersGroup[];
+}
+
+export async function loadAllEventLeaders(input: {
+  season: SeasonKind;
+  ageClass: string | null;
+  organization: string | null;
+  topN?: number;
+  clubTopN?: number;
+}): Promise<AllEventLeadersData> {
+  const topN = input.topN ?? 3;
+  const clubTopN = input.clubTopN ?? 3;
+  const range = seasonRange(input.season);
+
+  const [rows, ageClasses, clubs] = await Promise.all([
+    fetchSeasonRows(input.season, input.ageClass),
+    fetchSeasonAgeClasses(input.season),
+    fetchSeasonClubs(input.season),
+  ]);
+
+  const byEvent = new Map<string, RawRow[]>();
+  const labels = new Map<string, string>();
+  const cats = new Map<string, Map<string, number>>();
+  for (const r of rows) {
+    const k = eventKey(r.event_name);
+    if (!k) continue;
+    if (!labels.has(k)) labels.set(k, normalizeEventName(r.event_name));
+    let arr = byEvent.get(k);
+    if (!arr) { arr = []; byEvent.set(k, arr); }
+    arr.push(r);
+    let cm = cats.get(k);
+    if (!cm) { cm = new Map(); cats.set(k, cm); }
+    cm.set(r.event_category, (cm.get(r.event_category) ?? 0) + 1);
+  }
+
+  const groups: EventLeadersGroup[] = [];
+  for (const [k, evRows] of byEvent) {
+    let topCat = "";
+    let topCount = -1;
+    const cm = cats.get(k);
+    if (cm) for (const [c, n] of cm) if (n > topCount) { topCat = c; topCount = n; }
+    const all = bestPerAthlete(evRows, k);
+    all.sort((a, b) =>
+      isTrackBetter(topCat, a.resultNumeric, b.resultNumeric) ? -1 : 1,
+    );
+    all.forEach((r, i) => { r.rank = i + 1; });
+    const top = all.slice(0, topN);
+    const topKeys = new Set(top.map((r) => r.athleteKey));
+    const clubTop = input.organization
+      ? all
+          .filter((r) => r.organization === input.organization && !topKeys.has(r.athleteKey))
+          .slice(0, clubTopN)
+      : [];
+    groups.push({ key: k, label: labels.get(k) ?? k, category: topCat, top, clubTop });
+  }
+
+  groups.sort((a, b) => a.label.localeCompare(b.label, "fi"));
+
+  return {
+    range: { from: range.from, to: range.to, label: range.label },
+    ageClasses,
+    clubs,
+    groups,
+  };
+}
