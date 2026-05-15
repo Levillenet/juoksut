@@ -427,6 +427,7 @@ function CompetitionResultRow({
               ({row.result_rank}.)
             </span>
           )}
+          {seasonTop && <SeasonTopBadge flag={seasonTop} />}
         </span>
       </div>
 
