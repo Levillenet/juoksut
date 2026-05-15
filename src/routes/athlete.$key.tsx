@@ -73,6 +73,11 @@ function AthletePage() {
     queryFn: () => fetchStoredHistory([key]),
   });
 
+  const notesQuery = useQuery({
+    queryKey: ["athlete-notes", key],
+    queryFn: () => fetchNotesForAthlete(key),
+  });
+
   const rows: AthleteResultRow[] = query.data ?? [];
 
   const meta = useMemo(() => {
