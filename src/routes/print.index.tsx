@@ -34,6 +34,7 @@ function PrintPage() {
   const [data, setData] = useState<RoundsByDate | null>(null);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState<Filter>("running");
 
   useEffect(() => {
     (async () => {
@@ -57,7 +58,7 @@ function PrintPage() {
       .map(([date, rounds]) => ({
         date,
         runs: rounds
-          .filter(isRunningEvent)
+          .filter((r) => (filter === "running" ? isRunningEvent(r) : true))
           .sort((a, b) => a.BeginDateTimeWithTZ.localeCompare(b.BeginDateTimeWithTZ)),
       }))
       .filter((g) => g.runs.length > 0)
@@ -66,7 +67,7 @@ function PrintPage() {
         const [db, mb, yb] = b.date.split(".").map(Number);
         return new Date(ya, ma - 1, da).getTime() - new Date(yb, mb - 1, db).getTime();
       });
-  }, [data]);
+  }, [data, filter]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
