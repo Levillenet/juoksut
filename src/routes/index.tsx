@@ -58,7 +58,8 @@ const STATUS_STYLE: Record<Round["Status"], string> = {
 };
 
 function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
-  const isOfficial = role === "official" || isAdmin;
+  const isOfficial = role === "official" && !isAdmin;
+  const showOfficialLinks = role === "official" || isAdmin;
   return (
     <div className="mx-auto grid max-w-2xl gap-2 px-4 pb-3 sm:grid-cols-2">
       {isAdmin && (
@@ -116,7 +117,7 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
           </div>
         </Link>
       )}
-      {isOfficial && (
+      {showOfficialLinks && (
         <Link
           to="/running-ops"
           className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
@@ -127,7 +128,7 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
           </div>
         </Link>
       )}
-      {isOfficial && (
+      {showOfficialLinks && (
         <Link
           to="/announcer"
           className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
@@ -157,7 +158,7 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
           Kisan lajit, seuran urheilijat tai omien lasten aikataulu PDF:ksi
         </div>
       </Link>
-      {isOfficial && (
+      {showOfficialLinks && (
         <Link
           to="/settings"
           className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
