@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, RefreshCw, Star, Trophy } from "lucide-react";
+import { ChevronLeft, RefreshCw, Trophy } from "lucide-react";
 
 import { RequireRole } from "@/components/RequireRole";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  loadSeasonLeaders,
-  type LeaderRow,
-} from "@/lib/season-leaders";
+import { loadAllEventLeaders, type LeaderRow } from "@/lib/season-leaders";
 import { seasonRange, type SeasonKind } from "@/lib/season-stats";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +24,7 @@ export const Route = createFileRoute("/season-leaders")({
       {
         name: "description",
         content:
-          "Kauden kärkitulokset ikäluokittain ja lajeittain. Korostaa omassa seurannassa olevat urheilijat.",
+          "Kauden top 3 -tulokset lajeittain valitulle ikäluokalle. Voit valita seuran nähdäksesi myös sen kärjen.",
       },
     ],
   }),
@@ -46,49 +43,24 @@ const SEASON_OPTIONS: Array<{ value: SeasonKind; label: string }> = [
 function SeasonLeadersPage() {
   const [season, setSeason] = useState<SeasonKind>("outdoor");
   const [ageClass, setAgeClass] = useState<string | null>(null);
-  const [eventKey, setEventKey] = useState<string | null>(null);
   const [organization, setOrganization] = useState<string | null>(null);
-  const [showWatched, setShowWatched] = useState(true);
 
   const range = useMemo(() => seasonRange(season), [season]);
 
   const query = useQuery({
-    queryKey: ["season-leaders", season, ageClass, eventKey, organization],
+    queryKey: ["season-leaders-all", season, ageClass, organization],
     queryFn: () =>
-      loadSeasonLeaders({
+      loadAllEventLeaders({
         season,
         ageClass,
-        eventKey,
         organization,
-        limit: 10,
+        topN: 3,
+        clubTopN: 3,
       }),
     staleTime: 60_000,
   });
 
   const data = query.data;
-
-  const effectiveEventKey =
-    eventKey ?? (data?.events[0]?.key ?? null);
-
-  const watchedKeySet = useMemo(
-    () => new Set((data?.watchedBests ?? []).map((r) => r.athleteKey)),
-    [data?.watchedBests],
-  );
-
-  // Watched athletes NOT already in top-N (näytetään listan pohjalla)
-  const watchedExtra = useMemo(() => {
-    if (!data) return [] as LeaderRow[];
-    const topKeys = new Set(data.leaders.map((r) => r.athleteKey));
-    return data.watchedBests.filter((r) => !topKeys.has(r.athleteKey));
-  }, [data]);
-
-  // Valitun seuran 3 parasta urheilijaa, jotka eivät ole top-N listalla
-  const clubExtra = useMemo(() => {
-    if (!data || !organization) return [] as LeaderRow[];
-    const topKeys = new Set(data.leaders.map((r) => r.athleteKey));
-    return data.clubLeaders.filter((r) => !topKeys.has(r.athleteKey)).slice(0, 3);
-  }, [data, organization]);
-
 
   return (
     <div className="min-h-screen bg-background pb-12">
@@ -102,9 +74,7 @@ function SeasonLeadersPage() {
             <ChevronLeft className="h-5 w-5" />
           </Link>
           <div className="flex-1">
-            <h1 className="text-base font-semibold leading-tight">
-              Kauden kärki
-            </h1>
+            <h1 className="text-base font-semibold leading-tight">Kauden kärki</h1>
             <p className="text-xs text-muted-foreground">{range.label}</p>
           </div>
           <Button
@@ -122,10 +92,7 @@ function SeasonLeadersPage() {
       </header>
 
       <div className="mx-auto max-w-3xl space-y-4 px-4 pt-4">
-        <Tabs
-          value={season}
-          onValueChange={(v) => setSeason(v as SeasonKind)}
-        >
+        <Tabs value={season} onValueChange={(v) => setSeason(v as SeasonKind)}>
           <TabsList className="grid w-full grid-cols-2">
             {SEASON_OPTIONS.map((o) => (
               <TabsTrigger key={o.value} value={o.value}>
@@ -159,41 +126,17 @@ function SeasonLeadersPage() {
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Laji
+              Seura (valinnainen)
             </label>
-            <Select
-              value={effectiveEventKey ?? ""}
-              onValueChange={(v) => setEventKey(v)}
-              disabled={!data || data.events.length === 0}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Valitse laji" />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                {(data?.events ?? []).map((e) => (
-                  <SelectItem key={e.key} value={e.key}>
-                    {e.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Seura
-            </label>
-            <p className="mb-1 text-[11px] text-muted-foreground">
-              Kun valitset seuran, näet myös sen kolme parasta tulosta, vaikka ne eivät yltäisi top 10:een.
-            </p>
             <Select
               value={organization ?? "__all"}
               onValueChange={(v) => setOrganization(v === "__all" ? null : v)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Kaikki seurat" />
+                <SelectValue placeholder="Ei seuravalintaa" />
               </SelectTrigger>
               <SelectContent className="max-h-72">
-                <SelectItem value="__all">Kaikki seurat</SelectItem>
+                <SelectItem value="__all">Ei seuravalintaa</SelectItem>
                 {(data?.clubs ?? []).map((c) => (
                   <SelectItem key={`${c.id ?? "x"}|${c.name}`} value={c.name}>
                     {c.name}
@@ -204,15 +147,10 @@ function SeasonLeadersPage() {
           </div>
         </div>
 
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={showWatched}
-            onChange={(e) => setShowWatched(e.target.checked)}
-            className="h-4 w-4 rounded border-input accent-primary"
-          />
-          Näytä omat urheilijat (myös listan ulkopuolelta)
-        </label>
+        <p className="text-[11px] text-muted-foreground">
+          Listataan jokaisen lajin top 3.
+          {organization && " Lisäksi valitun seuran 3 parasta tulosta lajia kohden."}
+        </p>
 
         {query.isLoading && (
           <div className="rounded-lg border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
@@ -226,81 +164,51 @@ function SeasonLeadersPage() {
           </div>
         )}
 
-        {data && data.events.length === 0 && !query.isLoading && (
+        {data && data.groups.length === 0 && !query.isLoading && (
           <div className="rounded-lg border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-            Ei kauden tuloksia kannassa.
+            Ei kauden tuloksia valituilla suodattimilla.
           </div>
         )}
 
-        {data &&
-          data.events.length > 0 &&
-          data.leaders.length === 0 &&
-          (!showWatched || watchedExtra.length === 0) &&
-          !query.isLoading && (
-            <div className="rounded-lg border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-              Ei kärkituloksia valituilla suodattimilla.
-            </div>
-          )}
-
-
-        {data && data.leaders.length > 0 && (
-          <section className="rounded-lg border bg-card">
-            <div className="flex items-center gap-2 border-b px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <Trophy className="h-3.5 w-3.5" />
-              Top {data.leaders.length}
-            </div>
-            <ul className="divide-y">
-              {data.leaders.map((r, i) => (
-                <LeaderItem
-                  key={r.athleteKey}
-                  row={r}
-                  rank={r.rank ?? i + 1}
-                  watched={watchedKeySet.has(r.athleteKey)}
-                  clubMatch={
-                    !!organization && r.organization === organization
-                  }
-                />
-              ))}
-              {showWatched && watchedExtra.length > 0 && (
-                <li className="bg-muted/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Omat seurattavat
-                </li>
-              )}
-              {showWatched &&
-                watchedExtra.map((r) => (
+        <div className="space-y-3">
+          {(data?.groups ?? []).map((g) => (
+            <section key={g.key} className="rounded-lg border bg-card">
+              <div className="flex items-center gap-2 border-b px-4 py-2 text-sm font-semibold">
+                <Trophy className="h-3.5 w-3.5 text-primary" />
+                {g.label}
+              </div>
+              <ul className="divide-y">
+                {g.top.map((r, i) => (
                   <LeaderItem
-                    key={`w-${r.athleteKey}`}
+                    key={r.athleteKey}
                     row={r}
-                    rank={r.rank ?? null}
-                    watched
-                    clubMatch={
-                      !!organization && r.organization === organization
-                    }
+                    rank={i + 1}
+                    clubMatch={!!organization && r.organization === organization}
                   />
                 ))}
-              {organization && clubExtra.length > 0 && (
-                <li className="bg-muted/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Seuran tulokset ({organization})
-                </li>
-              )}
-              {organization &&
-                clubExtra.map((r) => (
-                  <LeaderItem
-                    key={`c-${r.athleteKey}`}
-                    row={r}
-                    rank={r.rank ?? null}
-                    watched={watchedKeySet.has(r.athleteKey)}
-                    clubMatch
-                  />
-                ))}
-              {organization && !data.clubBest && (
-                <li className="bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
-                  Seuralta {organization} ei tuloksia tässä lajissa.
-                </li>
-              )}
-            </ul>
-          </section>
-        )}
+                {organization && g.clubTop.length > 0 && (
+                  <li className="bg-muted/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {organization}
+                  </li>
+                )}
+                {organization &&
+                  g.clubTop.map((r) => (
+                    <LeaderItem
+                      key={`c-${r.athleteKey}`}
+                      row={r}
+                      rank={r.rank ?? null}
+                      clubMatch
+                    />
+                  ))}
+                {organization && g.clubTop.length === 0 && (
+                  <li className="px-3 py-2 text-[11px] text-muted-foreground">
+                    Ei muita seuran tuloksia tässä lajissa.
+                  </li>
+                )}
+              </ul>
+            </section>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -309,19 +217,16 @@ function SeasonLeadersPage() {
 function LeaderItem({
   row,
   rank,
-  watched,
   clubMatch,
 }: {
   row: LeaderRow;
   rank: number | null;
-  watched: boolean;
   clubMatch?: boolean;
 }) {
   return (
     <li
       className={cn(
         "flex items-center gap-3 px-3 py-2",
-        watched && "bg-primary/5",
         clubMatch && "bg-amber-500/10",
       )}
     >
@@ -338,29 +243,13 @@ function LeaderItem({
           className="block truncate text-sm font-medium hover:underline"
         >
           {row.surname} {row.firstname}
-          {watched && (
-            <Star className="ml-1 inline h-3.5 w-3.5 fill-primary text-primary" />
-          )}
         </Link>
         <div className="truncate text-[11px] text-muted-foreground">
           {row.organization}
           {row.ageClass ? ` · ${row.ageClass}` : ""}
           {row.competitionName ? ` · ${row.competitionName}` : ""}
-          {row.competitionDate
-            ? ` · ${formatDate(row.competitionDate)}`
-            : ""}
         </div>
       </div>
     </li>
   );
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("fi-FI", {
-    day: "numeric",
-    month: "numeric",
-    year: "2-digit",
-  });
 }
