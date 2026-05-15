@@ -82,11 +82,12 @@ function SeasonLeadersPage() {
     return data.watchedBests.filter((r) => !topKeys.has(r.athleteKey));
   }, [data]);
 
-  // Onko valitun seuran paras urheilija jo top-N listalla?
-  const clubBestInTop = useMemo(() => {
-    if (!data?.clubBest) return false;
-    return data.leaders.some((r) => r.athleteKey === data.clubBest!.athleteKey);
-  }, [data]);
+  // Valitun seuran urheilijat, jotka eivät ole top-N listalla
+  const clubExtra = useMemo(() => {
+    if (!data || !organization) return [] as LeaderRow[];
+    const topKeys = new Set(data.leaders.map((r) => r.athleteKey));
+    return data.clubLeaders.filter((r) => !topKeys.has(r.athleteKey));
+  }, [data, organization]);
 
 
   return (
@@ -274,20 +275,21 @@ function SeasonLeadersPage() {
                     }
                   />
                 ))}
-              {organization && data.clubBest && !clubBestInTop && (
-                <>
-                  <li className="bg-muted/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Seuran paras ({organization})
-                  </li>
+              {organization && clubExtra.length > 0 && (
+                <li className="bg-muted/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Seuran tulokset ({organization})
+                </li>
+              )}
+              {organization &&
+                clubExtra.map((r) => (
                   <LeaderItem
-                    key={`c-${data.clubBest.athleteKey}`}
-                    row={data.clubBest}
-                    rank={data.clubBest.rank ?? null}
-                    watched={watchedKeySet.has(data.clubBest.athleteKey)}
+                    key={`c-${r.athleteKey}`}
+                    row={r}
+                    rank={r.rank ?? null}
+                    watched={watchedKeySet.has(r.athleteKey)}
                     clubMatch
                   />
-                </>
-              )}
+                ))}
               {organization && !data.clubBest && (
                 <li className="bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
                   Seuralta {organization} ei tuloksia tässä lajissa.
