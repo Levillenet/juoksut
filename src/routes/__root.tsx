@@ -4,13 +4,16 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
+import { trackEvent, type AnalyticsEvent } from "@/lib/analytics";
 
 function NotFoundComponent() {
   return (
@@ -128,9 +131,36 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <RouteTracker />
         <Outlet />
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );
+}
+
+function eventForPath(path: string): AnalyticsEvent {
+  if (path.startsWith("/athlete/")) return "athlete_view";
+  if (path.startsWith("/scoreboard")) return "scoreboard_view";
+  if (path.startsWith("/announcer")) return "announcer_view";
+  if (path.startsWith("/watch")) return "watch_view";
+  if (path.startsWith("/search")) return "search_view";
+  if (path.startsWith("/season-leaders")) return "season_leaders_view";
+  if (path.startsWith("/kilpailukalenteri")) return "calendar_view";
+  if (path.startsWith("/round/")) return "round_view";
+  if (path.startsWith("/print")) return "print_view";
+  if (path.startsWith("/settings")) return "settings_view";
+  if (path.startsWith("/running-ops")) return "running_ops_view";
+  if (path === "/" || path === "") return "results_view";
+  return "page_view";
+}
+
+function RouteTracker() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (pathname.startsWith("/admin")) return; // do not log admin views
+    trackEvent(eventForPath(pathname));
+  }, [pathname]);
+  return null;
 }
