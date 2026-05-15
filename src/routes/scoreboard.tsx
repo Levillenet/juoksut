@@ -51,7 +51,7 @@ export const Route = createFileRoute("/scoreboard")({
     top: parseTop(s.top),
   }),
   component: () => (
-    <RequireRole allow={["official"]}>
+    <RequireRole allow={["official", "user"]}>
       <ScoreboardGate />
     </RequireRole>
   ),
