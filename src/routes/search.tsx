@@ -55,12 +55,10 @@ function SearchPage() {
             Hae osallistujaa
           </h2>
         </div>
-        <div className="mx-auto max-w-3xl px-4 pb-3">
-          <AthleteSearch competitionId={competitionId} autoFocus />
-        </div>
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-4">
+        <AthleteSearch competitionId={competitionId} autoFocus />
         <p className="mt-6 text-center text-xs text-muted-foreground">
           Lähde: live.tuloslista.com
         </p>
