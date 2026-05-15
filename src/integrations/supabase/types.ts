@@ -368,6 +368,33 @@ export type Database = {
         }
         Relationships: []
       }
+      watch_shares: {
+        Row: {
+          competition_id: number
+          created_at: string
+          owner_label: string
+          revoked_at: string | null
+          token: string
+          user_id: string
+        }
+        Insert: {
+          competition_id: number
+          created_at?: string
+          owner_label?: string
+          revoked_at?: string | null
+          token: string
+          user_id: string
+        }
+        Update: {
+          competition_id?: number
+          created_at?: string
+          owner_label?: string
+          revoked_at?: string | null
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       watched_athletes: {
         Row: {
           athlete_key: string
@@ -406,6 +433,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_shared_watch: {
+        Args: { p_token: string }
+        Returns: {
+          athlete_key: string
+          competition_id: number
+          firstname: string
+          organization: string
+          organization_id: number
+          owner_label: string
+          revoked: boolean
+          surname: string
+        }[]
+      }
       harvest_try_lock: { Args: never; Returns: boolean }
       harvest_unlock: { Args: never; Returns: undefined }
       is_admin_user: { Args: never; Returns: boolean }
