@@ -18,6 +18,8 @@ import {
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 import { RequireRole } from "@/components/RequireRole";
+import { effectiveRecord } from "@/lib/record-baseline";
+import { detectRecord, RecordStar } from "@/lib/records";
 
 type TopSize = 3 | 5 | 10 | "all";
 
@@ -361,6 +363,8 @@ function ScoreboardLive() {
                 row={row}
                 displayRank={idx + 1}
                 count={visible.length}
+                eventId={ev?.Id ?? 0}
+                category={ev?.EventCategory ?? ""}
               />
             ))}
           </ul>
@@ -422,10 +426,14 @@ function ScoreRow({
   row,
   displayRank,
   count,
+  eventId,
+  category,
 }: {
   row: RankedRow;
   displayRank: number;
   count: number;
+  eventId: number;
+  category: string;
 }) {
   const vw = useViewportWidth();
   const narrow = vw < 900;
@@ -435,6 +443,10 @@ function ScoreRow({
   const rankNum = row.ResultRank ?? displayRank;
   const stackName = !narrow && count <= 5;
   const { first, last } = splitName(row.Name ?? "");
+
+  // Detect new PB / SB against captured baseline (falls back to API PB/SB).
+  const eff = effectiveRecord(eventId, row);
+  const recordKind = detectRecord(category, row.best, eff.pb, eff.sb);
 
   const nameBlock = (
     <div className="flex min-w-0 flex-1 flex-col justify-center">
@@ -542,7 +554,7 @@ function ScoreRow({
 
   const resultBox = (
     <div
-      className={`flex shrink-0 flex-col items-end justify-center rounded-lg bg-foreground/95 px-3 text-background ${
+      className={`relative flex shrink-0 flex-col items-end justify-center rounded-lg bg-foreground/95 px-3 text-background ${
         narrow ? "" : "h-full"
       }`}
       style={{
@@ -551,6 +563,14 @@ function ScoreRow({
         maxWidth: narrow ? narrowResultBoxWidth(count) : resultBoxWidth(count),
       }}
     >
+      {recordKind && (
+        <span
+          className="absolute -left-3 -top-3 z-10 animate-pulse drop-shadow-md"
+          aria-label={recordKind === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
+        >
+          <RecordStar kind={recordKind} size={count <= 5 ? "lg" : "sm"} />
+        </span>
+      )}
       <span className="opacity-70" style={{ fontSize: attLabSize }}>
         Tulos
       </span>
