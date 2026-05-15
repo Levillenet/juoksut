@@ -33,6 +33,7 @@ import {
   upsertNote,
   type AthleteNote,
 } from "@/lib/athlete-notes";
+import { loadAthleteSeasonTopFlags, type SeasonTopFlag } from "@/lib/season-top";
 
 export const Route = createFileRoute("/athlete/$key")({
   head: ({ params }) => ({
@@ -81,6 +82,14 @@ function AthletePage() {
   });
 
   const rows: AthleteResultRow[] = query.data ?? [];
+
+  const seasonTopQuery = useQuery({
+    queryKey: ["athlete-season-top", key, rows.length],
+    queryFn: () => loadAthleteSeasonTopFlags(rows),
+    enabled: rows.length > 0,
+    staleTime: 60_000,
+  });
+  const seasonTop = seasonTopQuery.data ?? new Map<string, SeasonTopFlag>();
 
   const meta = useMemo(() => {
     if (rows.length === 0) return null;
@@ -324,6 +333,7 @@ function AthletePage() {
                               noteKey(r.competition_id, r.event_name, r.sub_category ?? ""),
                             ) ?? null
                           }
+                          seasonTop={seasonTop.get(r.id) ?? null}
                         />
                       ))}
                     </ul>
@@ -342,10 +352,12 @@ function CompetitionResultRow({
   row,
   athleteKey,
   note,
+  seasonTop,
 }: {
   row: AthleteResultRow;
   athleteKey: string;
   note: AthleteNote | null;
+  seasonTop: SeasonTopFlag | null;
 }) {
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
@@ -415,6 +427,7 @@ function CompetitionResultRow({
               ({row.result_rank}.)
             </span>
           )}
+          {seasonTop && <SeasonTopBadge flag={seasonTop} />}
         </span>
       </div>
 
@@ -490,3 +503,41 @@ function StatCard({
     </div>
   );
 }
+
+function SeasonTopBadge({ flag }: { flag: SeasonTopFlag }) {
+  if (flag.isCurrent) {
+    return (
+      <span
+        title={`Kauden voimassa oleva ykkönen (${flag.season === "indoor" ? "halli" : "ulko"})`}
+        className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
+      >
+        <Trophy className="h-2.5 w-2.5" />
+        Kauden 1.
+      </span>
+    );
+  }
+  if (flag.wasLeader) {
+    const cur = flag.current;
+    const curName = cur ? `${cur.firstname} ${cur.surname}`.trim() : "";
+    return (
+      <span
+        title={
+          cur
+            ? `Oli kauden ykkönen tuolloin. Nyt 1.: ${cur.resultText} – ${curName}`
+            : "Oli kauden ykkönen tuolloin"
+        }
+        className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300"
+      >
+        <Trophy className="h-2.5 w-2.5" />
+        Oli 1.
+        {cur && (
+          <span className="font-normal normal-case tracking-normal opacity-80">
+            · nyt {cur.resultText} {curName}
+          </span>
+        )}
+      </span>
+    );
+  }
+  return null;
+}
+
