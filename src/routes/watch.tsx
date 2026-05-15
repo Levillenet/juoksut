@@ -258,6 +258,7 @@ function WatchPage() {
           <h2 className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-3xl font-black uppercase tracking-widest text-primary lg:block">
             Kilpailijaseuranta
           </h2>
+          <ShareWatchButton competitionId={competitionId} />
           <Button
             variant="ghost"
             size="icon"
