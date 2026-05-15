@@ -252,6 +252,9 @@ function SeasonLeadersPage() {
                   row={r}
                   rank={r.rank ?? i + 1}
                   watched={watchedKeySet.has(r.athleteKey)}
+                  clubMatch={
+                    !!organization && r.organization === organization
+                  }
                 />
               ))}
               {showWatched && watchedExtra.length > 0 && (
@@ -266,8 +269,30 @@ function SeasonLeadersPage() {
                     row={r}
                     rank={r.rank ?? null}
                     watched
+                    clubMatch={
+                      !!organization && r.organization === organization
+                    }
                   />
                 ))}
+              {organization && data.clubBest && !clubBestInTop && (
+                <>
+                  <li className="bg-muted/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Seuran paras ({organization})
+                  </li>
+                  <LeaderItem
+                    key={`c-${data.clubBest.athleteKey}`}
+                    row={data.clubBest}
+                    rank={data.clubBest.rank ?? null}
+                    watched={watchedKeySet.has(data.clubBest.athleteKey)}
+                    clubMatch
+                  />
+                </>
+              )}
+              {organization && !data.clubBest && (
+                <li className="bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
+                  Seuralta {organization} ei tuloksia tässä lajissa.
+                </li>
+              )}
             </ul>
           </section>
         )}
