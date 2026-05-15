@@ -345,6 +345,7 @@ function LeaderItem({
         <div className="truncate text-[11px] text-muted-foreground">
           {row.organization}
           {row.ageClass ? ` · ${row.ageClass}` : ""}
+          {row.competitionName ? ` · ${row.competitionName}` : ""}
           {row.competitionDate
             ? ` · ${formatDate(row.competitionDate)}`
             : ""}
