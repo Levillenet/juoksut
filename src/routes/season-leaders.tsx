@@ -47,19 +47,19 @@ function SeasonLeadersPage() {
   const [season, setSeason] = useState<SeasonKind>("outdoor");
   const [ageClass, setAgeClass] = useState<string | null>(null);
   const [eventKey, setEventKey] = useState<string | null>(null);
+  const [showWatched, setShowWatched] = useState(true);
 
   const range = useMemo(() => seasonRange(season), [season]);
 
   const query = useQuery({
     queryKey: ["season-leaders", season, ageClass, eventKey],
     queryFn: () =>
-      loadSeasonLeaders({ season, ageClass, eventKey, limit: 50 }),
+      loadSeasonLeaders({ season, ageClass, eventKey, limit: 10 }),
     staleTime: 60_000,
   });
 
   const data = query.data;
 
-  // If no event selected yet but data has events, pick first
   const effectiveEventKey =
     eventKey ?? (data?.events[0]?.key ?? null);
 
@@ -68,7 +68,7 @@ function SeasonLeadersPage() {
     [data?.watchedBests],
   );
 
-  // Watched athletes who are NOT already in top-N
+  // Watched athletes NOT already in top-N (näytetään listan pohjalla)
   const watchedExtra = useMemo(() => {
     if (!data) return [] as LeaderRow[];
     const topKeys = new Set(data.leaders.map((r) => r.athleteKey));
@@ -172,6 +172,16 @@ function SeasonLeadersPage() {
           </div>
         </div>
 
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={showWatched}
+            onChange={(e) => setShowWatched(e.target.checked)}
+            className="h-4 w-4 rounded border-input accent-primary"
+          />
+          Näytä omat urheilijat (myös listan ulkopuolelta)
+        </label>
+
         {query.isLoading && (
           <div className="rounded-lg border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
             Ladataan…
@@ -190,24 +200,6 @@ function SeasonLeadersPage() {
           </div>
         )}
 
-        {data && watchedExtra.length > 0 && (
-          <section className="rounded-lg border bg-card">
-            <div className="border-b px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Omat seurattavat (kärjen ulkopuolella)
-            </div>
-            <ul className="divide-y">
-              {watchedExtra.map((r) => (
-                <LeaderItem
-                  key={r.athleteKey}
-                  row={r}
-                  rank={null}
-                  watched
-                />
-              ))}
-            </ul>
-          </section>
-        )}
-
         {data && data.leaders.length > 0 && (
           <section className="rounded-lg border bg-card">
             <div className="flex items-center gap-2 border-b px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -219,10 +211,24 @@ function SeasonLeadersPage() {
                 <LeaderItem
                   key={r.athleteKey}
                   row={r}
-                  rank={i + 1}
+                  rank={r.rank ?? i + 1}
                   watched={watchedKeySet.has(r.athleteKey)}
                 />
               ))}
+              {showWatched && watchedExtra.length > 0 && (
+                <li className="bg-muted/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Omat seurattavat
+                </li>
+              )}
+              {showWatched &&
+                watchedExtra.map((r) => (
+                  <LeaderItem
+                    key={`w-${r.athleteKey}`}
+                    row={r}
+                    rank={r.rank ?? null}
+                    watched
+                  />
+                ))}
             </ul>
           </section>
         )}
