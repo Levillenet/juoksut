@@ -191,9 +191,11 @@ export async function loadSeasonLeaders(
     all.sort((a, b) =>
       isTrackBetter(topCat, a.resultNumeric, b.resultNumeric) ? -1 : 1,
     );
+    // assign rank to all
+    all.forEach((r, i) => { r.rank = i + 1; });
     leaders = all.slice(0, limit);
 
-    // Watched athletes
+    // Watched athletes (with their real rank in `all`)
     const { data: watched } = await supabase
       .from("watched_athletes")
       .select("athlete_key");
