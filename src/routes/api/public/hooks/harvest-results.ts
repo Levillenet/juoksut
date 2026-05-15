@@ -329,7 +329,7 @@ async function run(request: Request): Promise<Response> {
       for (let i = start; i <= end; i++) ids.push(i);
       mode = "backfill";
     } else {
-      const tailStart = Math.max(17000, latestId - TAIL_RESCAN);
+      const tailStart = Math.max(FLOOR_ID, latestId - TAIL_RESCAN);
       const probeEnd = Math.min(latestId + BATCH_SIZE, HARD_MAX_ID);
       ids = [];
       for (let i = tailStart; i <= probeEnd; i++) ids.push(i);
