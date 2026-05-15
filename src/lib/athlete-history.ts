@@ -108,6 +108,8 @@ export interface EventGroup {
   lowerBetter: boolean;
   rows: AthleteResultRow[]; // sorted by date asc
   pb: AthleteResultRow | null;
+  pbIndoor: AthleteResultRow | null;
+  pbOutdoor: AthleteResultRow | null;
 }
 
 /** Strip age-class prefix ("M17 100m" → "100m", "P9 60m" → "60m") so the
@@ -130,6 +132,8 @@ export function groupByEvent(rows: AthleteResultRow[]): EventGroup[] {
         lowerBetter: isLowerBetter(r.event_category),
         rows: [],
         pb: null,
+        pbIndoor: null,
+        pbOutdoor: null,
       });
     }
     map.get(key)!.rows.push(r);
@@ -138,18 +142,25 @@ export function groupByEvent(rows: AthleteResultRow[]): EventGroup[] {
     g.rows.sort((a, b) =>
       (a.competition_date ?? "").localeCompare(b.competition_date ?? ""),
     );
+    const better = (a: AthleteResultRow, b: AthleteResultRow) =>
+      g.lowerBetter ? (a.result_numeric ?? Infinity) < (b.result_numeric ?? Infinity)
+                    : (a.result_numeric ?? -Infinity) > (b.result_numeric ?? -Infinity);
     let best: AthleteResultRow | null = null;
+    let bestIn: AthleteResultRow | null = null;
+    let bestOut: AthleteResultRow | null = null;
     for (const r of g.rows) {
       if (r.result_numeric == null) continue;
-      if (best == null || best.result_numeric == null) {
-        best = r;
-        continue;
-      }
-      if (g.lowerBetter ? r.result_numeric < best.result_numeric : r.result_numeric > best.result_numeric) {
-        best = r;
+      if (best == null || better(r, best)) best = r;
+      const indoor = isIndoorResult(r);
+      if (indoor === true) {
+        if (bestIn == null || better(r, bestIn)) bestIn = r;
+      } else if (indoor === false) {
+        if (bestOut == null || better(r, bestOut)) bestOut = r;
       }
     }
     g.pb = best;
+    g.pbIndoor = bestIn;
+    g.pbOutdoor = bestOut;
   }
   return Array.from(map.values()).sort((a, b) => a.eventName.localeCompare(b.eventName, "fi"));
 }
