@@ -315,7 +315,12 @@ function ScoreboardLive() {
         {visible.length > 0 && (
           <ul className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden">
             {visible.map((row, idx) => (
-              <ScoreRow key={row.AllocId} row={row} displayRank={idx + 1} count={visible.length} />
+              <ScoreRow
+                key={row.AllocId}
+                row={row}
+                displayRank={idx + 1}
+                count={visible.length}
+              />
             ))}
           </ul>
         )}
