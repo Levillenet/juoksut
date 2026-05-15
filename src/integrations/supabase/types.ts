@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      athlete_notes: {
+        Row: {
+          athlete_key: string
+          competition_id: number
+          created_at: string
+          event_name: string
+          id: string
+          note: string
+          sub_category: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          athlete_key: string
+          competition_id: number
+          created_at?: string
+          event_name: string
+          id?: string
+          note?: string
+          sub_category?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          athlete_key?: string
+          competition_id?: number
+          created_at?: string
+          event_name?: string
+          id?: string
+          note?: string
+          sub_category?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       athlete_results: {
         Row: {
           age_class: string
