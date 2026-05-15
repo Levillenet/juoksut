@@ -127,10 +127,7 @@ function SeasonLeadersPage() {
             </label>
             <Select
               value={ageClass ?? "__all"}
-              onValueChange={(v) => {
-                setAgeClass(v === "__all" ? null : v);
-                setEventKey(null);
-              }}
+              onValueChange={(v) => setAgeClass(v === "__all" ? null : v)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Kaikki" />
