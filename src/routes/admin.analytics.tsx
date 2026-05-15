@@ -270,6 +270,64 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+function NamedTable({
+  data,
+  keyLabel,
+  linkPrefix,
+}: {
+  data: [string, { count: number; name: string | null }][];
+  keyLabel: string;
+  linkPrefix?: string;
+}) {
+  if (data.length === 0)
+    return <p className="text-xs text-muted-foreground">Ei dataa.</p>;
+  const max = data[0][1].count;
+  return (
+    <div className="overflow-x-auto rounded-md border">
+      <table className="w-full text-xs">
+        <thead className="bg-muted/50 text-left">
+          <tr>
+            <th className="p-2">{keyLabel}</th>
+            <th className="p-2">Tunniste</th>
+            <th className="p-2 text-right">Määrä</th>
+            <th className="p-2 w-1/3">Osuus</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map(([k, v]) => (
+            <tr key={k} className="border-t">
+              <td className="p-2">
+                {linkPrefix ? (
+                  <Link
+                    to={`${linkPrefix}${encodeURIComponent(k)}` as string}
+                    className="text-primary hover:underline"
+                  >
+                    {v.name || "(nimetön)"}
+                  </Link>
+                ) : (
+                  v.name || "(nimetön)"
+                )}
+              </td>
+              <td className="p-2 font-mono text-muted-foreground">{k}</td>
+              <td className="p-2 text-right tabular-nums">
+                {v.count.toLocaleString("fi-FI")}
+              </td>
+              <td className="p-2">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full bg-primary"
+                    style={{ width: `${(v.count / max) * 100}%` }}
+                  />
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function Table({ data, keyLabel }: { data: [string, number][]; keyLabel: string }) {
   if (data.length === 0)
     return <p className="text-xs text-muted-foreground">Ei dataa.</p>;
