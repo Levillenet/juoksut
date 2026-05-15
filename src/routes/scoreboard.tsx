@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { RequireRole } from "@/components/RequireRole";
 import { effectiveRecord } from "@/lib/record-baseline";
 import { detectRecord, RecordStar } from "@/lib/records";
+import { useWakeLock } from "@/hooks/useWakeLock";
 
 type TopSize = 3 | 5 | 10 | "all";
 
@@ -201,6 +202,7 @@ interface RankedRow extends Allocation {
 }
 
 function ScoreboardLive() {
+  useWakeLock();
   const { eventId, roundId, top } = Route.useSearch();
   const [competitionId] = useCompetitionId();
   const navigate = useNavigate({ from: "/scoreboard" });
