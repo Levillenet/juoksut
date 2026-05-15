@@ -182,6 +182,9 @@ function SeasonLeadersPage() {
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
               Seura
             </label>
+            <p className="mb-1 text-[11px] text-muted-foreground">
+              Kun valitset seuran, näet myös sen kolme parasta tulosta, vaikka ne eivät yltäisi top 10:een.
+            </p>
             <Select
               value={organization ?? "__all"}
               onValueChange={(v) => setOrganization(v === "__all" ? null : v)}
