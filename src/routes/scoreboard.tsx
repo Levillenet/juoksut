@@ -363,6 +363,8 @@ function ScoreboardLive() {
                 row={row}
                 displayRank={idx + 1}
                 count={visible.length}
+                eventId={ev?.Id ?? 0}
+                category={ev?.EventCategory ?? ""}
               />
             ))}
           </ul>
