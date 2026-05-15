@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Maximize2 } from "lucide-react";
 
@@ -315,7 +315,12 @@ function ScoreboardLive() {
         {visible.length > 0 && (
           <ul className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden">
             {visible.map((row, idx) => (
-              <ScoreRow key={row.AllocId} row={row} displayRank={idx + 1} count={visible.length} />
+              <ScoreRow
+                key={row.AllocId}
+                row={row}
+                displayRank={idx + 1}
+                count={visible.length}
+              />
             ))}
           </ul>
         )}
@@ -330,6 +335,22 @@ function splitName(full: string): { first: string; last: string } {
   return { first: parts[0], last: parts.slice(1).join(" ") };
 }
 
+function useViewportWidth(): number {
+  const [w, setW] = useState<number>(() =>
+    typeof window === "undefined" ? 1024 : window.innerWidth,
+  );
+  useEffect(() => {
+    const onResize = () => setW(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
+  }, []);
+  return w;
+}
+
 function ScoreRow({
   row,
   displayRank,
@@ -339,132 +360,171 @@ function ScoreRow({
   displayRank: number;
   count: number;
 }) {
+  const vw = useViewportWidth();
+  const narrow = vw < 900;
   // Distribute height across rows; aim for big text but cap on small counts
   const heightStyle = { flex: "1 1 0", minHeight: 0 };
   const isLeader = displayRank === 1 && row.best;
   const rankNum = row.ResultRank ?? displayRank;
-  const stackName = count <= 5;
+  const stackName = !narrow && count <= 5;
   const { first, last } = splitName(row.Name ?? "");
+
+  const nameBlock = (
+    <div className="flex min-w-0 flex-1 flex-col justify-center">
+      {stackName && first ? (
+        <>
+          <p
+            className="break-words font-semibold leading-tight text-muted-foreground"
+            style={{ fontSize: firstNameFontSize(count) }}
+          >
+            {first}
+          </p>
+          <p
+            className="break-words font-black leading-tight"
+            style={{ fontSize: nameFontSize(count) }}
+          >
+            {last}
+          </p>
+        </>
+      ) : (
+        <p
+          className="truncate font-black leading-tight"
+          style={{ fontSize: narrow ? narrowNameFontSize(count) : nameFontSize(count) }}
+        >
+          {row.Name}
+        </p>
+      )}
+      <p
+        className="mt-0.5 truncate text-muted-foreground"
+        style={{ fontSize: clubFontSize(count) }}
+      >
+        {row.Organization?.Name ?? row.Organization?.NameShort ?? ""}
+        {row.Number ? ` · #${row.Number}` : ""}
+      </p>
+    </div>
+  );
+
+  const rankBox = (
+    <div
+      className={`flex shrink-0 items-center justify-center rounded-lg font-black tabular-nums ${
+        narrow ? "" : "h-full"
+      } ${
+        isLeader
+          ? "bg-primary text-primary-foreground"
+          : "bg-secondary text-secondary-foreground"
+      }`}
+      style={{
+        fontSize: narrow ? narrowRankFontSize(count) : rankFontSize(count),
+        minWidth: narrow ? "3rem" : rankBoxWidth(count),
+        maxWidth: narrow ? "4rem" : rankBoxMaxWidth(count),
+        paddingLeft: "0.5rem",
+        paddingRight: "0.5rem",
+        paddingTop: narrow ? "0.25rem" : undefined,
+        paddingBottom: narrow ? "0.25rem" : undefined,
+      }}
+    >
+      {rankNum}.
+    </div>
+  );
+
+  const attMin = narrow ? narrowAttemptMinWidth(count) : attemptMinWidth(count);
+  const attMax = narrow ? narrowAttemptMaxWidth(count) : attemptMaxWidth(count);
+  const attValSize = narrow ? narrowAttemptValueSize(count) : attemptValueSize(count);
+  const attLabSize = attemptLabelSize(count);
+
+  const attemptsList = (
+    <ol className={`flex shrink-0 items-stretch gap-1 ${narrow ? "flex-1" : "h-full"}`}>
+      {row.attempts.map((att, i) => {
+        const isBest = row.bestIdx === i && att != null;
+        const isFoul = att && /^(x|X|-)$/.test(att.trim());
+        return (
+          <li
+            key={i}
+            className={`flex flex-col items-center justify-center rounded-md border ${
+              narrow ? "px-1 py-0.5" : "px-2"
+            } ${
+              isBest
+                ? "border-primary bg-primary text-primary-foreground"
+                : isFoul
+                  ? "border-destructive/40 bg-destructive/10 text-destructive"
+                  : att
+                    ? "border-border bg-secondary"
+                    : "border-dashed border-border bg-background text-muted-foreground/40"
+            }`}
+            style={{
+              minWidth: attMin,
+              maxWidth: attMax,
+              width: narrow ? undefined : attMax,
+              flex: narrow ? "1 1 0" : undefined,
+            }}
+          >
+            <span className="font-medium opacity-70" style={{ fontSize: attLabSize }}>
+              {i + 1}.
+            </span>
+            <span
+              className="font-black tabular-nums leading-none"
+              style={{ fontSize: attValSize }}
+            >
+              {att ?? "–"}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+
+  const resultBox = (
+    <div
+      className={`flex shrink-0 flex-col items-end justify-center rounded-lg bg-foreground/95 px-3 text-background ${
+        narrow ? "" : "h-full"
+      }`}
+      style={{
+        minWidth: narrow ? "4rem" : "5rem",
+        width: narrow ? narrowResultBoxWidth(count) : resultBoxWidth(count),
+        maxWidth: narrow ? narrowResultBoxWidth(count) : resultBoxWidth(count),
+      }}
+    >
+      <span className="opacity-70" style={{ fontSize: attLabSize }}>
+        Tulos
+      </span>
+      <span
+        className="font-black tabular-nums leading-none"
+        style={{ fontSize: narrow ? narrowBestFontSize(count) : bestFontSize(count) }}
+      >
+        {row.best ?? "–"}
+      </span>
+    </div>
+  );
+
+  if (narrow) {
+    return (
+      <li
+        style={heightStyle}
+        className={`flex min-h-0 flex-col gap-1.5 overflow-hidden rounded-xl border-2 px-2 py-1.5 ${
+          isLeader ? "border-primary bg-primary/10" : "border-border bg-card"
+        }`}
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          {rankBox}
+          {nameBlock}
+          {resultBox}
+        </div>
+        <div className="min-h-0 flex-1">{attemptsList}</div>
+      </li>
+    );
+  }
 
   return (
     <li
       style={heightStyle}
       className={`flex min-h-0 items-center gap-2 overflow-hidden rounded-xl border-2 px-3 py-2 sm:gap-3 sm:px-4 ${
-        isLeader
-          ? "border-primary bg-primary/10"
-          : "border-border bg-card"
+        isLeader ? "border-primary bg-primary/10" : "border-border bg-card"
       }`}
     >
-      <div
-        className={`flex h-full shrink-0 items-center justify-center rounded-lg font-black tabular-nums ${
-          isLeader
-            ? "bg-primary text-primary-foreground"
-            : "bg-secondary text-secondary-foreground"
-        }`}
-        style={{
-          fontSize: rankFontSize(count),
-          minWidth: rankBoxWidth(count),
-          maxWidth: rankBoxMaxWidth(count),
-          paddingLeft: "0.5rem",
-          paddingRight: "0.5rem",
-        }}
-      >
-        {rankNum}.
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col justify-center">
-        {stackName && first ? (
-          <>
-            <p
-              className="break-words font-semibold leading-tight text-muted-foreground"
-              style={{ fontSize: firstNameFontSize(count) }}
-            >
-              {first}
-            </p>
-            <p
-              className="break-words font-black leading-tight"
-              style={{ fontSize: nameFontSize(count) }}
-            >
-              {last}
-            </p>
-          </>
-        ) : (
-          <p
-            className={`font-black leading-tight ${stackName ? "break-words" : "truncate"}`}
-            style={{ fontSize: nameFontSize(count) }}
-          >
-            {row.Name}
-          </p>
-        )}
-        <p
-          className="mt-1 truncate text-muted-foreground"
-          style={{ fontSize: clubFontSize(count) }}
-        >
-          {row.Organization?.Name ?? row.Organization?.NameShort ?? ""}
-          {row.Number ? ` · #${row.Number}` : ""}
-        </p>
-      </div>
-
-      <ol className="flex h-full shrink-0 items-stretch gap-1">
-        {row.attempts.map((att, i) => {
-          const isBest = row.bestIdx === i && att != null;
-          const isFoul = att && /^(x|X|-)$/.test(att.trim());
-          return (
-            <li
-              key={i}
-              className={`flex flex-col items-center justify-center rounded-md border px-2 ${
-                isBest
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : isFoul
-                    ? "border-destructive/40 bg-destructive/10 text-destructive"
-                    : att
-                      ? "border-border bg-secondary"
-                      : "border-dashed border-border bg-background text-muted-foreground/40"
-              }`}
-              style={{
-                minWidth: attemptMinWidth(count),
-                maxWidth: attemptMaxWidth(count),
-                width: attemptMaxWidth(count),
-              }}
-            >
-              <span
-                className="font-medium opacity-70"
-                style={{ fontSize: attemptLabelSize(count) }}
-              >
-                {i + 1}.
-              </span>
-              <span
-                className="font-black tabular-nums leading-none"
-                style={{ fontSize: attemptValueSize(count) }}
-              >
-                {att ?? "–"}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
-
-      <div
-        className="flex h-full shrink-0 flex-col items-end justify-center rounded-lg bg-foreground/95 px-3 text-background"
-        style={{
-          minWidth: "5rem",
-          width: resultBoxWidth(count),
-          maxWidth: resultBoxWidth(count),
-        }}
-      >
-        <span
-          className="opacity-70"
-          style={{ fontSize: attemptLabelSize(count) }}
-        >
-          Tulos
-        </span>
-        <span
-          className="font-black tabular-nums leading-none"
-          style={{ fontSize: bestFontSize(count) }}
-        >
-          {row.best ?? "–"}
-        </span>
-      </div>
+      {rankBox}
+      {nameBlock}
+      {attemptsList}
+      {resultBox}
     </li>
   );
 }
@@ -536,4 +596,42 @@ function resultBoxWidth(count: number): string {
 function firstNameFontSize(count: number): string {
   if (count <= 3) return "clamp(1rem, 2.6vh, 2rem)";
   return "clamp(0.875rem, 2vh, 1.5rem)";
+}
+
+/* Narrow viewport (<900px) sizing — name is on its own row, attempts share remaining width. */
+function narrowNameFontSize(count: number): string {
+  if (count <= 3) return "clamp(1.25rem, 4vh, 2.5rem)";
+  if (count <= 5) return "clamp(1.125rem, 3vh, 2rem)";
+  if (count <= 10) return "clamp(1rem, 2.4vh, 1.5rem)";
+  return "clamp(0.875rem, 1.8vh, 1.25rem)";
+}
+function narrowRankFontSize(count: number): string {
+  if (count <= 3) return "clamp(1.5rem, 4.5vh, 3rem)";
+  if (count <= 5) return "clamp(1.25rem, 3.5vh, 2.25rem)";
+  if (count <= 10) return "clamp(1rem, 2.8vh, 1.75rem)";
+  return "clamp(0.875rem, 2vh, 1.5rem)";
+}
+function narrowAttemptMinWidth(_count: number): string {
+  return "0";
+}
+function narrowAttemptMaxWidth(_count: number): string {
+  return "100%";
+}
+function narrowAttemptValueSize(count: number): string {
+  if (count <= 3) return "clamp(1.25rem, 3.5vh, 2.25rem)";
+  if (count <= 5) return "clamp(1rem, 2.8vh, 1.75rem)";
+  if (count <= 10) return "clamp(0.875rem, 2vh, 1.375rem)";
+  return "clamp(0.75rem, 1.6vh, 1.125rem)";
+}
+function narrowResultBoxWidth(count: number): string {
+  if (count <= 3) return "5.5rem";
+  if (count <= 5) return "5rem";
+  if (count <= 10) return "4.5rem";
+  return "4rem";
+}
+function narrowBestFontSize(count: number): string {
+  if (count <= 3) return "clamp(1.5rem, 4vh, 2.5rem)";
+  if (count <= 5) return "clamp(1.25rem, 3.2vh, 2rem)";
+  if (count <= 10) return "clamp(1.125rem, 2.6vh, 1.75rem)";
+  return "clamp(1rem, 2vh, 1.5rem)";
 }
