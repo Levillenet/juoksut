@@ -82,11 +82,12 @@ function SeasonLeadersPage() {
     return data.watchedBests.filter((r) => !topKeys.has(r.athleteKey));
   }, [data]);
 
-  // Onko valitun seuran paras urheilija jo top-N listalla?
-  const clubBestInTop = useMemo(() => {
-    if (!data?.clubBest) return false;
-    return data.leaders.some((r) => r.athleteKey === data.clubBest!.athleteKey);
-  }, [data]);
+  // Valitun seuran urheilijat, jotka eivät ole top-N listalla
+  const clubExtra = useMemo(() => {
+    if (!data || !organization) return [] as LeaderRow[];
+    const topKeys = new Set(data.leaders.map((r) => r.athleteKey));
+    return data.clubLeaders.filter((r) => !topKeys.has(r.athleteKey));
+  }, [data, organization]);
 
 
   return (
