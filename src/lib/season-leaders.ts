@@ -27,6 +27,7 @@ export interface LeaderRow {
   competitionId: number;
   competitionName: string;
   competitionDate: string | null;
+  rank?: number; // sija koko vertailujoukossa
 }
 
 export interface LeaderEventOption {
