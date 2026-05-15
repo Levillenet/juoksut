@@ -36,7 +36,7 @@ export async function trackEvent(event: AnalyticsEvent, opts: TrackOptions = {})
       user_id: user?.id ?? null,
       user_email: user?.email ?? null,
       role,
-      metadata: opts.metadata ?? null,
+      metadata: (opts.metadata ?? null) as never,
       user_agent: navigator.userAgent.slice(0, 300),
     });
   } catch (err) {
