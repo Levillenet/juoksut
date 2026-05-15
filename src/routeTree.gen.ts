@@ -18,6 +18,7 @@ import { Route as RunningOpsRouteImport } from './routes/running-ops'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrintRouteImport } from './routes/print'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as KilpailukalenteriRouteImport } from './routes/kilpailukalenteri'
 import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PrintIndexRouteImport } from './routes/print.index'
@@ -76,6 +77,11 @@ const PrintRoute = PrintRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KilpailukalenteriRoute = KilpailukalenteriRouteImport.update({
+  id: '/kilpailukalenteri',
+  path: '/kilpailukalenteri',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnnouncerRoute = AnnouncerRouteImport.update({
@@ -154,6 +160,7 @@ const ApiPublicHooksHarvestKilpailukalenteriRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRouteWithChildren
+  '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
@@ -178,6 +185,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/running-ops': typeof RunningOpsRoute
@@ -203,6 +211,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRouteWithChildren
+  '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/announcer'
+    | '/kilpailukalenteri'
     | '/login'
     | '/print'
     | '/reset-password'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/kilpailukalenteri'
     | '/login'
     | '/reset-password'
     | '/running-ops'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/announcer'
+    | '/kilpailukalenteri'
     | '/login'
     | '/print'
     | '/reset-password'
@@ -304,6 +316,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnnouncerRoute: typeof AnnouncerRouteWithChildren
+  KilpailukalenteriRoute: typeof KilpailukalenteriRoute
   LoginRoute: typeof LoginRoute
   PrintRoute: typeof PrintRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -383,6 +396,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kilpailukalenteri': {
+      id: '/kilpailukalenteri'
+      path: '/kilpailukalenteri'
+      fullPath: '/kilpailukalenteri'
+      preLoaderRoute: typeof KilpailukalenteriRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/announcer': {
@@ -521,6 +541,7 @@ const PrintRouteWithChildren = PrintRoute._addFileChildren(PrintRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnnouncerRoute: AnnouncerRouteWithChildren,
+  KilpailukalenteriRoute: KilpailukalenteriRoute,
   LoginRoute: LoginRoute,
   PrintRoute: PrintRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
