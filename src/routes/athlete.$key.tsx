@@ -142,8 +142,8 @@ function AthletePage() {
 
   // Determine top PBs by event (just the PB row from each group)
   const allPbs = groups
-    .map((g) => g.pb)
-    .filter((r): r is AthleteResultRow => r != null);
+    .map((g) => ({ pb: g.pb, pbIndoor: g.pbIndoor, pbOutdoor: g.pbOutdoor }))
+    .filter((g): g is { pb: AthleteResultRow; pbIndoor: AthleteResultRow | null; pbOutdoor: AthleteResultRow | null } => g.pb != null);
 
   return (
     <div className="min-h-screen bg-background">
