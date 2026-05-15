@@ -189,7 +189,19 @@ function SeasonLeadersPage() {
 
         {data && data.events.length === 0 && !query.isLoading && (
           <div className="rounded-lg border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-            Ei kauden tuloksia kannassa valituilla suodattimilla.
+            Ei kauden tuloksia kannassa.
+          </div>
+        )}
+
+        {data &&
+          data.events.length > 0 &&
+          data.leaders.length === 0 &&
+          (!showWatched || watchedExtra.length === 0) &&
+          !query.isLoading && (
+            <div className="rounded-lg border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+              Ei kärkituloksia valituilla suodattimilla.
+            </div>
+          )}
           </div>
         )}
 
