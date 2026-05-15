@@ -504,8 +504,36 @@ function bestFontSize(count: number): string {
   return "clamp(1rem, 2vh, 1.5rem)";
 }
 function attemptMinWidth(count: number): string {
-  if (count <= 3) return "5rem";
-  if (count <= 5) return "4rem";
+  if (count <= 3) return "4.5rem";
+  if (count <= 5) return "3.75rem";
   if (count <= 10) return "3rem";
   return "2.5rem";
+}
+function attemptMaxWidth(count: number): string {
+  if (count <= 3) return "6.5rem";
+  if (count <= 5) return "5.5rem";
+  if (count <= 10) return "4.5rem";
+  return "3.5rem";
+}
+function rankBoxWidth(count: number): string {
+  if (count <= 3) return "5rem";
+  if (count <= 5) return "4rem";
+  if (count <= 10) return "3.25rem";
+  return "2.75rem";
+}
+function rankBoxMaxWidth(count: number): string {
+  if (count <= 3) return "7rem";
+  if (count <= 5) return "5.5rem";
+  if (count <= 10) return "4.5rem";
+  return "3.5rem";
+}
+function resultBoxWidth(count: number): string {
+  if (count <= 3) return "9rem";
+  if (count <= 5) return "8rem";
+  if (count <= 10) return "7rem";
+  return "5.5rem";
+}
+function firstNameFontSize(count: number): string {
+  if (count <= 3) return "clamp(1rem, 2.6vh, 2rem)";
+  return "clamp(0.875rem, 2vh, 1.5rem)";
 }
