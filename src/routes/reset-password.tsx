@@ -35,10 +35,6 @@ function ResetPasswordPage() {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (pw.length < 6) {
-      toast.error("Salasanan tulee olla vähintään 6 merkkiä");
-      return;
-    }
     if (pw !== pw2) {
       toast.error("Salasanat eivät täsmää");
       return;
@@ -80,7 +76,6 @@ function ResetPasswordPage() {
                   id="pw"
                   type="password"
                   required
-                  minLength={6}
                   className="pl-9"
                   value={pw}
                   onChange={(e) => setPw(e.target.value)}
@@ -96,7 +91,6 @@ function ResetPasswordPage() {
                   id="pw2"
                   type="password"
                   required
-                  minLength={6}
                   className="pl-9"
                   value={pw2}
                   onChange={(e) => setPw2(e.target.value)}
