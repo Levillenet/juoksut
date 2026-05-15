@@ -305,16 +305,19 @@ function LeaderItem({
   row,
   rank,
   watched,
+  clubMatch,
 }: {
   row: LeaderRow;
   rank: number | null;
   watched: boolean;
+  clubMatch?: boolean;
 }) {
   return (
     <li
       className={cn(
         "flex items-center gap-3 px-3 py-2",
         watched && "bg-primary/5",
+        clubMatch && "bg-amber-500/10",
       )}
     >
       <div className="w-7 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
