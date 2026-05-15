@@ -248,6 +248,7 @@ function LeaderItem({
           {row.organization}
           {row.ageClass ? ` · ${row.ageClass}` : ""}
           {row.competitionName ? ` · ${row.competitionName}` : ""}
+          {row.competitionDate ? ` · ${formatDate(row.competitionDate)}` : ""}
         </div>
       </div>
     </li>
