@@ -47,19 +47,19 @@ function SeasonLeadersPage() {
   const [season, setSeason] = useState<SeasonKind>("outdoor");
   const [ageClass, setAgeClass] = useState<string | null>(null);
   const [eventKey, setEventKey] = useState<string | null>(null);
+  const [showWatched, setShowWatched] = useState(true);
 
   const range = useMemo(() => seasonRange(season), [season]);
 
   const query = useQuery({
     queryKey: ["season-leaders", season, ageClass, eventKey],
     queryFn: () =>
-      loadSeasonLeaders({ season, ageClass, eventKey, limit: 50 }),
+      loadSeasonLeaders({ season, ageClass, eventKey, limit: 10 }),
     staleTime: 60_000,
   });
 
   const data = query.data;
 
-  // If no event selected yet but data has events, pick first
   const effectiveEventKey =
     eventKey ?? (data?.events[0]?.key ?? null);
 
@@ -68,7 +68,7 @@ function SeasonLeadersPage() {
     [data?.watchedBests],
   );
 
-  // Watched athletes who are NOT already in top-N
+  // Watched athletes NOT already in top-N (näytetään listan pohjalla)
   const watchedExtra = useMemo(() => {
     if (!data) return [] as LeaderRow[];
     const topKeys = new Set(data.leaders.map((r) => r.athleteKey));
