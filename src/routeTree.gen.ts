@@ -13,6 +13,7 @@ import { Route as WatchRouteImport } from './routes/watch'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SeasonLeadersRouteImport } from './routes/season-leaders'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as ScoreboardRouteImport } from './routes/scoreboard'
 import { Route as RunningOpsRouteImport } from './routes/running-ops'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrintRouteImport } from './routes/print'
@@ -49,6 +50,11 @@ const SeasonLeadersRoute = SeasonLeadersRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScoreboardRoute = ScoreboardRouteImport.update({
+  id: '/scoreboard',
+  path: '/scoreboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RunningOpsRoute = RunningOpsRouteImport.update({
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/running-ops': typeof RunningOpsRoute
+  '/scoreboard': typeof ScoreboardRoute
   '/search': typeof SearchRoute
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRoute
@@ -166,6 +173,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/running-ops': typeof RunningOpsRoute
+  '/scoreboard': typeof ScoreboardRoute
   '/search': typeof SearchRoute
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRoute
@@ -190,6 +198,7 @@ export interface FileRoutesById {
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/running-ops': typeof RunningOpsRoute
+  '/scoreboard': typeof ScoreboardRoute
   '/search': typeof SearchRoute
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRoute
@@ -215,6 +224,7 @@ export interface FileRouteTypes {
     | '/print'
     | '/reset-password'
     | '/running-ops'
+    | '/scoreboard'
     | '/search'
     | '/season-leaders'
     | '/settings'
@@ -236,6 +246,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/running-ops'
+    | '/scoreboard'
     | '/search'
     | '/season-leaders'
     | '/settings'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/print'
     | '/reset-password'
     | '/running-ops'
+    | '/scoreboard'
     | '/search'
     | '/season-leaders'
     | '/settings'
@@ -283,6 +295,7 @@ export interface RootRouteChildren {
   PrintRoute: typeof PrintRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   RunningOpsRoute: typeof RunningOpsRoute
+  ScoreboardRoute: typeof ScoreboardRoute
   SearchRoute: typeof SearchRoute
   SeasonLeadersRoute: typeof SeasonLeadersRoute
   SettingsRoute: typeof SettingsRoute
@@ -321,6 +334,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scoreboard': {
+      id: '/scoreboard'
+      path: '/scoreboard'
+      fullPath: '/scoreboard'
+      preLoaderRoute: typeof ScoreboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/running-ops': {
@@ -484,6 +504,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrintRoute: PrintRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   RunningOpsRoute: RunningOpsRoute,
+  ScoreboardRoute: ScoreboardRoute,
   SearchRoute: SearchRoute,
   SeasonLeadersRoute: SeasonLeadersRoute,
   SettingsRoute: SettingsRoute,
