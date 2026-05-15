@@ -23,6 +23,7 @@ import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PrintIndexRouteImport } from './routes/print.index'
 import { Route as AnnouncerIndexRouteImport } from './routes/announcer.index'
+import { Route as SeuraaTokenRouteImport } from './routes/seuraa.$token'
 import { Route as PrintWatchedRouteImport } from './routes/print.watched'
 import { Route as PrintClubRouteImport } from './routes/print.club'
 import { Route as AthleteKeyRouteImport } from './routes/athlete.$key'
@@ -105,6 +106,11 @@ const AnnouncerIndexRoute = AnnouncerIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AnnouncerRoute,
 } as any)
+const SeuraaTokenRoute = SeuraaTokenRouteImport.update({
+  id: '/seuraa/$token',
+  path: '/seuraa/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrintWatchedRoute = PrintWatchedRouteImport.update({
   id: '/watched',
   path: '/watched',
@@ -184,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
+  '/seuraa/$token': typeof SeuraaTokenRoute
   '/announcer/': typeof AnnouncerIndexRoute
   '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
@@ -209,6 +216,7 @@ export interface FileRoutesByTo {
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
+  '/seuraa/$token': typeof SeuraaTokenRoute
   '/announcer': typeof AnnouncerIndexRoute
   '/print': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
+  '/seuraa/$token': typeof SeuraaTokenRoute
   '/announcer/': typeof AnnouncerIndexRoute
   '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
@@ -266,6 +275,7 @@ export interface FileRouteTypes {
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
+    | '/seuraa/$token'
     | '/announcer/'
     | '/print/'
     | '/round/$eventId/$roundId'
@@ -291,6 +301,7 @@ export interface FileRouteTypes {
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
+    | '/seuraa/$token'
     | '/announcer'
     | '/print'
     | '/round/$eventId/$roundId'
@@ -318,6 +329,7 @@ export interface FileRouteTypes {
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
+    | '/seuraa/$token'
     | '/announcer/'
     | '/print/'
     | '/round/$eventId/$roundId'
@@ -341,6 +353,7 @@ export interface RootRouteChildren {
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminClubLocationsRoute: typeof AdminClubLocationsRoute
   AthleteKeyRoute: typeof AthleteKeyRoute
+  SeuraaTokenRoute: typeof SeuraaTokenRoute
   RoundEventIdRoundIdRoute: typeof RoundEventIdRoundIdRoute
   ApiPublicHooksHarvestKilpailukalenteriRoute: typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   ApiPublicHooksHarvestResultsRoute: typeof ApiPublicHooksHarvestResultsRoute
@@ -445,6 +458,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/announcer/'
       preLoaderRoute: typeof AnnouncerIndexRouteImport
       parentRoute: typeof AnnouncerRoute
+    }
+    '/seuraa/$token': {
+      id: '/seuraa/$token'
+      path: '/seuraa/$token'
+      fullPath: '/seuraa/$token'
+      preLoaderRoute: typeof SeuraaTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/print/watched': {
       id: '/print/watched'
@@ -574,6 +594,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminClubLocationsRoute: AdminClubLocationsRoute,
   AthleteKeyRoute: AthleteKeyRoute,
+  SeuraaTokenRoute: SeuraaTokenRoute,
   RoundEventIdRoundIdRoute: RoundEventIdRoundIdRoute,
   ApiPublicHooksHarvestKilpailukalenteriRoute:
     ApiPublicHooksHarvestKilpailukalenteriRoute,
