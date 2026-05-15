@@ -36,12 +36,19 @@ export interface LeaderEventOption {
   category: string;       // Track/Field/etc (most common)
 }
 
+export interface ClubOption {
+  id: number | null;
+  name: string;
+}
+
 export interface LeadersData {
   range: { from: Date; to: Date; label: string };
   ageClasses: string[];
   events: LeaderEventOption[];
+  clubs: ClubOption[];
   leaders: LeaderRow[];           // top-N for selected event
   watchedBests: LeaderRow[];      // best-per-watched-athlete for selected event
+  clubBest: LeaderRow | null;     // best result for selected club (null if none)
 }
 
 interface RawRow {
