@@ -82,11 +82,11 @@ function SeasonLeadersPage() {
     return data.watchedBests.filter((r) => !topKeys.has(r.athleteKey));
   }, [data]);
 
-  // Valitun seuran urheilijat, jotka eivät ole top-N listalla
+  // Valitun seuran 3 parasta urheilijaa, jotka eivät ole top-N listalla
   const clubExtra = useMemo(() => {
     if (!data || !organization) return [] as LeaderRow[];
     const topKeys = new Set(data.leaders.map((r) => r.athleteKey));
-    return data.clubLeaders.filter((r) => !topKeys.has(r.athleteKey));
+    return data.clubLeaders.filter((r) => !topKeys.has(r.athleteKey)).slice(0, 3);
   }, [data, organization]);
 
 
@@ -182,6 +182,9 @@ function SeasonLeadersPage() {
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
               Seura
             </label>
+            <p className="mb-1 text-[11px] text-muted-foreground">
+              Kun valitset seuran, näet myös sen kolme parasta tulosta, vaikka ne eivät yltäisi top 10:een.
+            </p>
             <Select
               value={organization ?? "__all"}
               onValueChange={(v) => setOrganization(v === "__all" ? null : v)}
