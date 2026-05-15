@@ -180,7 +180,6 @@ export async function loadSeasonLeaders(
   const evMap = new Map<string, { label: string; cats: Map<string, number> }>();
   const ageSet = new Set<string>();
   for (const r of rows) {
-    if (r.age_class) ageSet.add(r.age_class);
     const k = eventKey(r.event_name);
     if (!k) continue;
     let entry = evMap.get(k);
@@ -198,8 +197,6 @@ export async function loadSeasonLeaders(
       return { key: k, label: v.label, category: topCat };
     })
     .sort((a, b) => a.label.localeCompare(b.label, "fi"));
-
-  const ageClasses = Array.from(ageSet).sort((a, b) => a.localeCompare(b, "fi"));
 
   // Pick selected event
   const evK = input.eventKey && evMap.has(input.eventKey)
