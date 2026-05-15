@@ -20,16 +20,28 @@ import { loadSharedWatch, type SharedWatchAthlete } from "@/lib/watch-share";
 import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/seuraa/$token")({
-  head: () => ({
-    meta: [
-      { title: "Kilpailijaseuranta" },
-      { name: "robots", content: "noindex" },
-      {
-        name: "description",
-        content: "Jaettu kilpailijaseuranta — seuraa päivän etenemistä reaaliajassa.",
-      },
-    ],
-  }),
+  head: () => {
+    const title = "Seuraa kilpailupäivän etenemistä";
+    const description =
+      "Jaettu kilpailijaseuranta — näe reaaliajassa miten päivä etenee.";
+    const image =
+      "https://rqhlwjggotpbwfvvxlox.supabase.co/storage/v1/object/public/public-assets/lahden-ahkera-logo.png";
+    return {
+      meta: [
+        { title },
+        { name: "robots", content: "noindex" },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:image", content: image },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
+        { name: "twitter:image", content: image },
+      ],
+    };
+  },
   component: SharedWatchPage,
 });
 
