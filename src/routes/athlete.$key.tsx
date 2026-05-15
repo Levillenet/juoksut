@@ -170,6 +170,39 @@ function AthletePage() {
     .map((g) => ({ pb: g.pb, pbIndoor: g.pbIndoor, pbOutdoor: g.pbOutdoor }))
     .filter((g): g is { pb: AthleteResultRow; pbIndoor: AthleteResultRow | null; pbOutdoor: AthleteResultRow | null } => g.pb != null);
 
+  // Kauden kärkitulokset ryhmiteltynä lajeittain (uusin ensin per laji)
+  const seasonLeaderships = useMemo(() => {
+    interface Item {
+      row: AthleteResultRow;
+      flag: SeasonTopFlag;
+    }
+    const map = new Map<string, Item[]>();
+    for (const r of rows) {
+      const flag = seasonTop.get(r.id);
+      if (!flag || !flag.wasLeader) continue;
+      const k = `${r.event_name}|${r.age_class ?? ""}|${flag.season}`;
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push({ row: r, flag });
+    }
+    return Array.from(map.entries())
+      .map(([k, items]) => {
+        items.sort((a, b) =>
+          (b.row.competition_date ?? "").localeCompare(a.row.competition_date ?? ""),
+        );
+        return { key: k, items };
+      })
+      .sort((a, b) => {
+        const da = a.items[0]?.row.competition_date ?? "";
+        const db = b.items[0]?.row.competition_date ?? "";
+        return db.localeCompare(da);
+      });
+  }, [rows, seasonTop]);
+
+  const seasonLeadershipsCount = seasonLeaderships.reduce(
+    (n, g) => n + g.items.length,
+    0,
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
