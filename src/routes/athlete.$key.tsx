@@ -33,6 +33,7 @@ import {
   upsertNote,
   type AthleteNote,
 } from "@/lib/athlete-notes";
+import { loadAthleteSeasonTopFlags, type SeasonTopFlag } from "@/lib/season-top";
 
 export const Route = createFileRoute("/athlete/$key")({
   head: ({ params }) => ({
@@ -81,6 +82,14 @@ function AthletePage() {
   });
 
   const rows: AthleteResultRow[] = query.data ?? [];
+
+  const seasonTopQuery = useQuery({
+    queryKey: ["athlete-season-top", key, rows.length],
+    queryFn: () => loadAthleteSeasonTopFlags(rows),
+    enabled: rows.length > 0,
+    staleTime: 60_000,
+  });
+  const seasonTop = seasonTopQuery.data ?? new Map<string, SeasonTopFlag>();
 
   const meta = useMemo(() => {
     if (rows.length === 0) return null;
