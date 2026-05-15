@@ -117,7 +117,7 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
           </div>
         </Link>
       )}
-      {isOfficial && (
+      {showOfficialLinks && (
         <Link
           to="/running-ops"
           className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
@@ -128,7 +128,7 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
           </div>
         </Link>
       )}
-      {isOfficial && (
+      {showOfficialLinks && (
         <Link
           to="/announcer"
           className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
@@ -158,7 +158,7 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
           Kisan lajit, seuran urheilijat tai omien lasten aikataulu PDF:ksi
         </div>
       </Link>
-      {isOfficial && (
+      {showOfficialLinks && (
         <Link
           to="/settings"
           className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
