@@ -260,6 +260,18 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
 
   const hiddenPastCount = allRuns.length - runs.length;
 
+  const [navCollapsed, setNavCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(NAVCARDS_COLLAPSED_KEY) === "1";
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(NAVCARDS_COLLAPSED_KEY, navCollapsed ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [navCollapsed]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
