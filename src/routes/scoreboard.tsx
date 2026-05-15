@@ -565,10 +565,11 @@ function ScoreRow({
     >
       {recordKind && (
         <span
-          className="absolute -left-3 -top-3 z-10 animate-pulse drop-shadow-md"
+          className="absolute -left-5 -top-5 z-10 animate-pulse drop-shadow-lg"
+          style={{ transform: count <= 5 ? "scale(2)" : "scale(1.6)", transformOrigin: "top left" }}
           aria-label={recordKind === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
         >
-          <RecordStar kind={recordKind} size={count <= 5 ? "lg" : "sm"} />
+          <RecordStar kind={recordKind} size="lg" />
         </span>
       )}
       <span className="opacity-70" style={{ fontSize: attLabSize }}>
