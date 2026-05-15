@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Maximize2 } from "lucide-react";
 
