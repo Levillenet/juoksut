@@ -202,8 +202,7 @@ function SeasonLeadersPage() {
               Ei kärkituloksia valituilla suodattimilla.
             </div>
           )}
-          </div>
-        )}
+
 
         {data && data.leaders.length > 0 && (
           <section className="rounded-lg border bg-card">
