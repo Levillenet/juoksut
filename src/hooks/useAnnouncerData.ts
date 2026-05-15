@@ -180,7 +180,6 @@ export function useAnnouncerData() {
   useEffect(() => {
     const seen = seenResultsRef.current;
     const fresh: RecordAlert[] = [];
-    const isFirstRun = !initializedRef.current;
     Object.values(details).forEach((ev) => {
       ev.Rounds.forEach((round) => {
         round.Heats.forEach((heat) => {
@@ -188,7 +187,6 @@ export function useAnnouncerData() {
             if (!a.Result || a.NotInCompetition) return;
             const prevResult = seen.get(a.AllocId);
             seen.set(a.AllocId, a.Result);
-            if (isFirstRun) return;
             if (prevResult === a.Result) return;
             const eff = effectiveRecord(ev.Id, a);
             const rec = detectRecord(ev.EventCategory, a.Result, eff.pb, eff.sb);
