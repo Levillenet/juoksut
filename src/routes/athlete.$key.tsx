@@ -1,16 +1,36 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Award, Calendar, MapPin, Trophy, Activity } from "lucide-react";
-import { useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ArrowLeft,
+  Award,
+  Calendar,
+  MapPin,
+  Trophy,
+  Activity,
+  StickyNote,
+  Loader2,
+  X,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { RequireRole } from "@/components/RequireRole";
 import { EventGroupView } from "@/components/RecordsPanel";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import {
   fetchStoredHistory,
   groupByEvent,
   isLowerBetter,
   type AthleteResultRow,
 } from "@/lib/athlete-history";
+import {
+  fetchNotesForAthlete,
+  noteKey,
+  placeholderForEvent,
+  upsertNote,
+  type AthleteNote,
+} from "@/lib/athlete-notes";
 
 export const Route = createFileRoute("/athlete/$key")({
   head: ({ params }) => ({
@@ -51,6 +71,11 @@ function AthletePage() {
   const query = useQuery({
     queryKey: ["athlete-dashboard", key],
     queryFn: () => fetchStoredHistory([key]),
+  });
+
+  const notesQuery = useQuery({
+    queryKey: ["athlete-notes", key],
+    queryFn: () => fetchNotesForAthlete(key),
   });
 
   const rows: AthleteResultRow[] = query.data ?? [];
@@ -239,44 +264,16 @@ function AthletePage() {
                     )}
                     <ul className="divide-y divide-border text-xs">
                       {c.results.map((r) => (
-                        <li
+                        <CompetitionResultRow
                           key={r.id}
-                          className="flex items-baseline justify-between gap-2 py-1"
-                        >
-                          <span className="min-w-0 truncate">
-                            {r.event_name}
-                            {r.sub_category && (
-                              <span className="text-muted-foreground">
-                                {" "}
-                                · {r.sub_category}
-                              </span>
-                            )}
-                          </span>
-                          <span className={`shrink-0 inline-flex items-center gap-1 tabular-nums font-semibold ${r.was_pb ? "text-primary" : ""}`}>
-                            {r.result_rank === 1 && (
-                              <Trophy
-                                aria-label="Lajivoitto"
-                                className="h-3.5 w-3.5 text-yellow-500"
-                                fill="currentColor"
-                              />
-                            )}
-                            {r.result_text}
-                            {r.was_pb && (
-                              <span
-                                title="Henkilökohtainen ennätys"
-                                className="inline-flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary"
-                              >
-                                <Trophy className="h-2.5 w-2.5" />
-                                PB
-                              </span>
-                            )}
-                            {r.result_rank != null && (
-                              <span className="font-normal text-muted-foreground">
-                                ({r.result_rank}.)
-                              </span>
-                            )}
-                          </span>
-                        </li>
+                          row={r}
+                          athleteKey={key}
+                          note={
+                            notesQuery.data?.get(
+                              noteKey(r.competition_id, r.event_name, r.sub_category ?? ""),
+                            ) ?? null
+                          }
+                        />
                       ))}
                     </ul>
                   </li>
@@ -287,6 +284,137 @@ function AthletePage() {
         )}
       </main>
     </div>
+  );
+}
+
+function CompetitionResultRow({
+  row,
+  athleteKey,
+  note,
+}: {
+  row: AthleteResultRow;
+  athleteKey: string;
+  note: AthleteNote | null;
+}) {
+  const queryClient = useQueryClient();
+  const [expanded, setExpanded] = useState(false);
+  const [draft, setDraft] = useState(note?.note ?? "");
+  const [saving, setSaving] = useState(false);
+  const hasNote = !!note?.note;
+
+  const open = () => {
+    setDraft(note?.note ?? "");
+    setExpanded(true);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await upsertNote({
+        athleteKey,
+        competitionId: row.competition_id,
+        eventName: row.event_name,
+        subCategory: row.sub_category ?? "",
+        note: draft,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["athlete-notes", athleteKey] });
+      toast.success(draft.trim() ? "Muistiinpano tallennettu" : "Muistiinpano poistettu");
+      setExpanded(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Tallennus epäonnistui");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <li className="py-1">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="min-w-0 truncate">
+          {row.event_name}
+          {row.sub_category && (
+            <span className="text-muted-foreground"> · {row.sub_category}</span>
+          )}
+        </span>
+        <span
+          className={`shrink-0 inline-flex items-center gap-1 tabular-nums font-semibold ${
+            row.was_pb ? "text-primary" : ""
+          }`}
+        >
+          {row.result_rank === 1 && (
+            <Trophy
+              aria-label="Lajivoitto"
+              className="h-3.5 w-3.5 text-yellow-500"
+              fill="currentColor"
+            />
+          )}
+          {row.result_text}
+          {row.was_pb && (
+            <span
+              title="Henkilökohtainen ennätys"
+              className="inline-flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary"
+            >
+              <Trophy className="h-2.5 w-2.5" />
+              PB
+            </span>
+          )}
+          {row.result_rank != null && (
+            <span className="font-normal text-muted-foreground">
+              ({row.result_rank}.)
+            </span>
+          )}
+        </span>
+      </div>
+
+      <div className="mt-1">
+        {!expanded ? (
+          <button
+            type="button"
+            onClick={open}
+            className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+              hasNote
+                ? "bg-primary/10 text-primary hover:bg-primary/20"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+            aria-label={hasNote ? "Avaa muistiinpano" : "Lisää muistiinpano"}
+          >
+            <StickyNote className="h-3 w-3" />
+            {hasNote ? (
+              <span className="max-w-[220px] truncate">{note!.note}</span>
+            ) : (
+              <span>Lisää muistiinpano (esim. askelmerkki)</span>
+            )}
+          </button>
+        ) : (
+          <div className="mt-1 rounded-md border bg-muted/30 p-2">
+            <Textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder={placeholderForEvent(row.event_name, row.event_category)}
+              className="min-h-[80px] text-xs"
+              autoFocus
+            />
+            <div className="mt-2 flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setExpanded(false)}
+                disabled={saving}
+              >
+                <X className="h-3.5 w-3.5" />
+                Peruuta
+              </Button>
+              <Button type="button" size="sm" onClick={save} disabled={saving}>
+                {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Tallenna
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </li>
   );
 }
 
