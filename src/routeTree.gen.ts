@@ -30,6 +30,7 @@ import { Route as AnnouncerPlanningRouteImport } from './routes/announcer.planni
 import { Route as AnnouncerLiveRouteImport } from './routes/announcer.live'
 import { Route as AnnouncerCombinedRouteImport } from './routes/announcer.combined'
 import { Route as AdminClubLocationsRouteImport } from './routes/admin.club-locations'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
 import { Route as ApiPublicHooksHarvestResultsRouteImport } from './routes/api/public/hooks/harvest-results'
 import { Route as ApiPublicHooksHarvestKilpailukalenteriRouteImport } from './routes/api/public/hooks/harvest-kilpailukalenteri'
@@ -139,6 +140,11 @@ const AdminClubLocationsRoute = AdminClubLocationsRouteImport.update({
   path: '/admin/club-locations',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/admin/analytics',
+  path: '/admin/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RoundEventIdRoundIdRoute = RoundEventIdRoundIdRouteImport.update({
   id: '/round/$eventId/$roundId',
   path: '/round/$eventId/$roundId',
@@ -170,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRoute
   '/watch': typeof WatchRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/announcer/combined': typeof AnnouncerCombinedRoute
   '/announcer/live': typeof AnnouncerLiveRoute
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRoute
   '/watch': typeof WatchRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/announcer/combined': typeof AnnouncerCombinedRoute
   '/announcer/live': typeof AnnouncerLiveRoute
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRoute
   '/watch': typeof WatchRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/announcer/combined': typeof AnnouncerCombinedRoute
   '/announcer/live': typeof AnnouncerLiveRoute
@@ -249,6 +258,7 @@ export interface FileRouteTypes {
     | '/season-leaders'
     | '/settings'
     | '/watch'
+    | '/admin/analytics'
     | '/admin/club-locations'
     | '/announcer/combined'
     | '/announcer/live'
@@ -273,6 +283,7 @@ export interface FileRouteTypes {
     | '/season-leaders'
     | '/settings'
     | '/watch'
+    | '/admin/analytics'
     | '/admin/club-locations'
     | '/announcer/combined'
     | '/announcer/live'
@@ -299,6 +310,7 @@ export interface FileRouteTypes {
     | '/season-leaders'
     | '/settings'
     | '/watch'
+    | '/admin/analytics'
     | '/admin/club-locations'
     | '/announcer/combined'
     | '/announcer/live'
@@ -326,6 +338,7 @@ export interface RootRouteChildren {
   SeasonLeadersRoute: typeof SeasonLeadersRoute
   SettingsRoute: typeof SettingsRoute
   WatchRoute: typeof WatchRoute
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminClubLocationsRoute: typeof AdminClubLocationsRoute
   AthleteKeyRoute: typeof AthleteKeyRoute
   RoundEventIdRoundIdRoute: typeof RoundEventIdRoundIdRoute
@@ -482,6 +495,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminClubLocationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/admin/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/round/$eventId/$roundId': {
       id: '/round/$eventId/$roundId'
       path: '/round/$eventId/$roundId'
@@ -551,6 +571,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeasonLeadersRoute: SeasonLeadersRoute,
   SettingsRoute: SettingsRoute,
   WatchRoute: WatchRoute,
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminClubLocationsRoute: AdminClubLocationsRoute,
   AthleteKeyRoute: AthleteKeyRoute,
   RoundEventIdRoundIdRoute: RoundEventIdRoundIdRoute,
@@ -561,3 +582,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
