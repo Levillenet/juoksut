@@ -252,9 +252,28 @@ function ScoreboardLive() {
 
   const visible = top === "all" ? rows : rows.slice(0, top);
 
+  // Wind: prefer first heat's wind; fallback to most recent allocation wind.
+  const wind = useMemo<number | null>(() => {
+    if (!round) return null;
+    const heatWind = round.Heats[0]?.Wind;
+    if (heatWind != null && Number.isFinite(heatWind)) return heatWind;
+    for (const h of round.Heats) {
+      for (let i = h.Allocations.length - 1; i >= 0; i--) {
+        const w = h.Allocations[i]?.Wind;
+        if (w != null && Number.isFinite(w)) return w;
+      }
+    }
+    return null;
+  }, [round]);
+
+  const vw = useViewportWidth();
+  const narrow = vw < 900;
+
+  const clock = useClock();
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
-      <header className="flex shrink-0 items-center gap-3 border-b bg-card/95 px-4 py-2 backdrop-blur">
+      <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-card/95 px-4 py-2 backdrop-blur">
         <Button
           variant="ghost"
           size="icon"
@@ -273,6 +292,28 @@ function ScoreboardLive() {
               : ""}
           </p>
         </div>
+
+        <div
+          className="shrink-0 font-black tabular-nums leading-none text-foreground"
+          style={{ fontSize: narrow ? "1.25rem" : "1.75rem" }}
+          aria-label="Kellonaika"
+        >
+          {narrow ? clock.slice(0, 5) : clock}
+        </div>
+
+        {wind != null && (
+          <div
+            className={`shrink-0 rounded-full border px-3 py-1 text-sm font-bold tabular-nums ${
+              wind > 2.0
+                ? "border-destructive/40 bg-destructive/10 text-destructive"
+                : "border-border bg-secondary text-secondary-foreground"
+            }`}
+            title="Tuuli"
+          >
+            Tuuli {formatWind(wind)} m/s
+          </div>
+        )}
+
         <div className="flex shrink-0 gap-1 rounded-full border bg-background p-1 text-xs font-semibold">
           {([3, 5, 10, "all"] as TopSize[]).map((n) => (
             <button
@@ -333,6 +374,32 @@ function splitName(full: string): { first: string; last: string } {
   const parts = full.trim().split(/\s+/);
   if (parts.length <= 1) return { first: "", last: full };
   return { first: parts[0], last: parts.slice(1).join(" ") };
+}
+
+function useClock(): string {
+  const [t, setT] = useState<string>(() => formatHelsinkiClock(new Date()));
+  useEffect(() => {
+    const tick = () => setT(formatHelsinkiClock(new Date()));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return t;
+}
+
+function formatHelsinkiClock(d: Date): string {
+  return new Intl.DateTimeFormat("fi-FI", {
+    timeZone: "Europe/Helsinki",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(d);
+}
+
+function formatWind(w: number): string {
+  const sign = w > 0 ? "+" : w < 0 ? "−" : "";
+  return `${sign}${Math.abs(w).toFixed(1)}`;
 }
 
 function useViewportWidth(): number {
