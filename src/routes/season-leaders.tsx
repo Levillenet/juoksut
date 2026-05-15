@@ -82,11 +82,11 @@ function SeasonLeadersPage() {
     return data.watchedBests.filter((r) => !topKeys.has(r.athleteKey));
   }, [data]);
 
-  // Valitun seuran urheilijat, jotka eivät ole top-N listalla
+  // Valitun seuran 3 parasta urheilijaa, jotka eivät ole top-N listalla
   const clubExtra = useMemo(() => {
     if (!data || !organization) return [] as LeaderRow[];
     const topKeys = new Set(data.leaders.map((r) => r.athleteKey));
-    return data.clubLeaders.filter((r) => !topKeys.has(r.athleteKey));
+    return data.clubLeaders.filter((r) => !topKeys.has(r.athleteKey)).slice(0, 3);
   }, [data, organization]);
 
 
