@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type SeasonKind = "year" | "summer" | "winter";
+export type SeasonKind = "year" | "summer" | "winter" | "outdoor" | "indoor";
 
 export interface SeasonRange {
   from: Date;
