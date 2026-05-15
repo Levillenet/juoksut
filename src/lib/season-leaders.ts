@@ -100,6 +100,30 @@ async function fetchSeasonRows(
   return out;
 }
 
+/** Fetch all distinct age classes in season range (ignoring ageClass filter). */
+async function fetchSeasonAgeClasses(season: SeasonKind): Promise<string[]> {
+  const range = seasonRange(season);
+  const set = new Set<string>();
+  let offset = 0;
+  const HARD_CAP = 100_000;
+  while (true) {
+    const { data, error } = await supabase
+      .from("athlete_results")
+      .select("age_class")
+      .gte("competition_date", range.from.toISOString())
+      .lt("competition_date", range.to.toISOString())
+      .not("result_numeric", "is", null)
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as { age_class: string | null }[];
+    for (const r of rows) if (r.age_class) set.add(r.age_class);
+    if (rows.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+    if (offset >= HARD_CAP) break;
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, "fi"));
+}
+
 function isTrackBetter(category: string, a: number, b: number) {
   if (category === "Track") return a < b;
   return a > b;
@@ -148,12 +172,13 @@ export async function loadSeasonLeaders(
   const range = seasonRange(season);
 
   const rows = await fetchSeasonRows(season, ageClass);
+  // Age class list comes from full season range, independent of selected ageClass,
+  // so the dropdown stays usable when an age class is already selected.
+  const ageClasses = await fetchSeasonAgeClasses(season);
 
   // Build event option list (per normalized key)
   const evMap = new Map<string, { label: string; cats: Map<string, number> }>();
-  const ageSet = new Set<string>();
   for (const r of rows) {
-    if (r.age_class) ageSet.add(r.age_class);
     const k = eventKey(r.event_name);
     if (!k) continue;
     let entry = evMap.get(k);
@@ -171,8 +196,6 @@ export async function loadSeasonLeaders(
       return { key: k, label: v.label, category: topCat };
     })
     .sort((a, b) => a.label.localeCompare(b.label, "fi"));
-
-  const ageClasses = Array.from(ageSet).sort((a, b) => a.localeCompare(b, "fi"));
 
   // Pick selected event
   const evK = input.eventKey && evMap.has(input.eventKey)
