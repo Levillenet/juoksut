@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Building2, ChevronDown, ChevronUp } from "lucide-react";
+import { Building2, ChevronDown, ChevronUp, Trophy } from "lucide-react";
 
 import {
   fetchClubPbs,

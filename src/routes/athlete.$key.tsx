@@ -255,7 +255,7 @@ function AthletePage() {
                           <span className={`shrink-0 inline-flex items-center gap-1 tabular-nums font-semibold ${r.was_pb ? "text-primary" : ""}`}>
                             {r.result_rank === 1 && (
                               <Trophy
-                                title="Lajivoitto"
+                                aria-label="Lajivoitto"
                                 className="h-3.5 w-3.5 text-yellow-500"
                                 fill="currentColor"
                               />
