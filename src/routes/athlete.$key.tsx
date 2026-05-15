@@ -95,6 +95,21 @@ function AthletePage() {
     };
   }, [rows]);
 
+  const trackedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (trackedRef.current === key) return;
+    trackedRef.current = key;
+    const name = meta ? `${meta.firstname} ${meta.surname}`.trim() : null;
+    trackEvent("athlete_view", {
+      metadata: {
+        athlete_key: key,
+        athlete_name: name,
+        organization: meta?.organization ?? null,
+      },
+    });
+  }, [key, meta]);
+
   const groups = useMemo(() => groupByEvent(rows), [rows]);
 
   // Group competitions
