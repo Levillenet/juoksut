@@ -27,7 +27,7 @@ async function run(): Promise<Response> {
         registration_deadline: r.registration_deadline,
         organizer: "",
         url: r.url,
-        raw: r.raw,
+        raw: r.raw as never,
         last_seen_at: nowIso,
       }));
       const { error } = await supabaseAdmin
