@@ -312,8 +312,8 @@ async function run(request: Request): Promise<Response> {
       .select("next_id, latest_id")
       .eq("id", "singleton")
       .maybeSingle();
-    let nextId = stateRow?.next_id ?? 17000;
-    let latestId = stateRow?.latest_id ?? 17000;
+    let nextId = stateRow?.next_id ?? FLOOR_ID;
+    let latestId = stateRow?.latest_id ?? FLOOR_ID;
 
     let ids: number[];
     let mode: "manual" | "backfill" | "tail";
