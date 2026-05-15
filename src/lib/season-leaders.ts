@@ -274,6 +274,7 @@ export async function loadSeasonLeaders(
   let leaders: LeaderRow[] = [];
   let watchedBests: LeaderRow[] = [];
   let clubBest: LeaderRow | null = null;
+  let clubLeaders: LeaderRow[] = [];
 
   if (evK) {
     const all = bestPerAthlete(rows, evK);
@@ -301,7 +302,8 @@ export async function loadSeasonLeaders(
     watchedBests = all.filter((r) => watchedKeys.has(r.athleteKey));
 
     if (organization) {
-      clubBest = all.find((r) => r.organization === organization) ?? null;
+      clubLeaders = all.filter((r) => r.organization === organization);
+      clubBest = clubLeaders[0] ?? null;
     }
   }
 
@@ -313,6 +315,7 @@ export async function loadSeasonLeaders(
     leaders,
     watchedBests,
     clubBest,
+    clubLeaders,
   };
 }
 
