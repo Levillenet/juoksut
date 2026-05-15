@@ -364,6 +364,7 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
 
         {!isOfficial && (
           <>
+            <TodayStatsSection />
             <DailyBestSection />
             <ClubTodaySection excludeCompetitionId={competitionId} />
             <LiveCompetitionsSection />
