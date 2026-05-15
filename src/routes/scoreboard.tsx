@@ -74,6 +74,20 @@ function ScoreboardPicker() {
   const navigate = useNavigate({ from: "/scoreboard" });
   const scheduleQ = useQuery(competitionScheduleQueryOptions(competitionId));
 
+  const trackedRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!competitionId) return;
+    if (trackedRef.current === competitionId) return;
+    trackedRef.current = competitionId;
+    trackEvent("scoreboard_view", {
+      metadata: {
+        competition_id: competitionId,
+        competition_name: scheduleQ.data?.name ?? null,
+      },
+    });
+  }, [competitionId, scheduleQ.data?.name]);
+
   const fieldByDate = useMemo(() => {
     const rounds = scheduleQ.data?.rounds ?? {};
     const out: Record<string, Round[]> = {};
