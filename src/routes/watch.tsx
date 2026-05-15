@@ -492,9 +492,9 @@ function WatchPage() {
                       <Link
                         to="/athlete/$key"
                         params={{ key: athlete.key }}
-                        className="inline-flex items-center rounded-md border bg-background px-2 py-1 text-xs font-medium hover:bg-accent"
+                        className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
                       >
-                        Dashboard
+                        Urheilijatilastot
                       </Link>
                       <Button
                         variant="ghost"
