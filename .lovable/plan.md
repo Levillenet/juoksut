@@ -1,56 +1,42 @@
-## Vahvistettu bugi
+## Vahvistus
 
-T11 60m juoksussa (esim. **Tampere Junior Indoor Games 2026**, kisa 18978) on sekä alkuerät että loppukilpailu samalla `event_id`:llä (493848). Tietokannassa on kuitenkin tallennettu vain alkuerien aika:
+Tuloslistan API Kouvola Junior Games 19.7.2025, T11 60m, Savolainen Elli:
 
-| Urheilija | Alkuerä | Finaali | DB:ssä |
-|---|---|---|---|
-| Helmi Kork | 8,78 | **8,70** | 8,78 ❌ |
-| Iida Pesonen | 9,23 | **9,13** | 9,23 ❌ |
-| Siiri Aavikko | 9,33 | **9,20** | 9,33 ❌ |
-| Liina Tytykoski | 9,37 | **9,31** | 9,37 ❌ |
+| Kierros | Aika | Sija |
+|---|---|---|
+| Alkuerä | 9,35 | 4 |
+| **Loppukilpailu** | **9,12** | **4** |
 
-Sama tilanne on todennäköisesti kaikissa kisoissa, joissa on alkuerät + finaali samalla event_id:llä.
+Tietokannassa nyt: `9,35`, sija 4 (alkuerän tulos).
 
-## Syy
+## Yön ajo
 
-`src/routes/api/public/hooks/harvest-results.ts` (rivit 153–209) iteroi `ev.Rounds` järjestyksessä ja työntää jokaisesta allokaatiosta rivin `pending`-listaan. Upsert tehdään näin:
+Cron ajaa harvesterin joka **2 minuutti** (100 kisa-ID:tä per ajo, 5 rinnakkain). Koko historian (~16456 → 19345 ≈ 2900 ID:tä) uudelleenharvestointi vie noin **60 minuuttia** — yön aikana ehtii moneen kertaan.
 
-```ts
-.upsert(slice, {
-  onConflict: "athlete_key,competition_id,event_id",
-  ignoreDuplicates: true,
-})
+Korjattu koodi (edellisestä viestistä) on jo paikallaan:
+- Event-tason deduplikointi (paras tulos / urheilija)
+- `ignoreDuplicates: false` → olemassa olevat rivit päivittyvät
+
+### Toimenpide
+
+Nollataan harvesterin kursori alkuun, jolloin cron käy koko historian läpi yön aikana ja päivittää kaikki finaalit oikein:
+
+```sql
+UPDATE harvest_state
+SET next_id = 16456, updated_at = now()
+WHERE id = 'singleton';
 ```
 
-Koska `Rounds[0] = "Alkuerät"` ja `Rounds[1] = "Loppukilpailu"`, ja konfliktissa **ensimmäinen rivi voittaa** (`ignoreDuplicates: true`), alkuerän aika jää tietokantaan ja finaali hylätään.
+`latest_id` säilytetään (19345), jotta cron pysyy backfill-moodissa kunnes saavuttaa nykyhetken — sitten siirtyy tail-moodiin normaalisti.
 
-## Korjaus
+### Aamulla tarkistettavaa
 
-### 1. Harvesterin logiikka
+1. **Savolainen Elli, kisa 17741** → pitäisi olla `9,12`, sija 4.
+2. **Aavikko Siiri, kisa 18978** → pitäisi olla `9,20` (oli `9,33`).
+3. **Helmi Kork, kisa 18978** → pitäisi olla `8,70` (oli `8,78`).
+4. `harvest_state.next_id` ≈ 19345 (kursori on saavuttanut nykyhetken).
 
-Tiedostossa `src/routes/api/public/hooks/harvest-results.ts`:
+## Tiedostot / komennot
 
-- Kerätään urheilijoiden tulokset event-kohtaisesti `Map`iin avaimella `athlete_key` ennen pushaamista `pending`-listaan.
-- Jokaiselle (event, athlete) -parille valitaan **paras tulos** käyttäen olemassa olevaa logiikkaa (Track = pienin numeerinen, Field = suurin). `bestPerAthlete`/`isTrackBetter`-tapaista vertailua löytyy jo `src/lib/season-leaders.ts`:stä — sama sääntö tähän.
-- Jos vertailu ei onnistu (esim. `result_numeric` puuttuu mutta toisella on), suositaan kierrosta jonka `Round.Name` on "Loppukilpailu" / "Final" jne. yli "Alkuerät"/"Heats".
-
-Näin syöttöön menee vain yksi rivi per (athlete, competition, event), eikä `ignoreDuplicates`-järjestysongelmaa enää ole.
-
-### 2. Olemassa olevan datan korjaus
-
-Pelkkä koodimuutos ei korjaa jo tallennettuja vääriä rivejä, koska upsert ohittaa ne `ignoreDuplicates: true`:n vuoksi tulevillakin ajoilla. Vaihtoehdot:
-
-- **A.** Vaihdetaan `ignoreDuplicates: false` ja annetaan upsertin päivittää rivi → mutta silloin pitää varmistaa että rivit menevät sisään parhaimmuusjärjestyksessä (toteutuu kun deduplikointi tehdään ennen flushia, kuten yllä). Tämä on suositeltava ratkaisu, koska se korjaa myös tulevat uudelleenharvestointi-ajot.
-- **B.** Lisätään kertaluonteinen migraatio/skripti, joka käy läpi kisat joissa on useampi `Round` per event ja päivittää `athlete_results`-rivit oikeaksi.
-
-Tehdään **A** + manuaalisesti uudelleenharvestoidaan vaikuttaneet kisat (tai lisätään pieni admin-toiminto ajaa harvesteri uudelleen yhdelle kisalle).
-
-## Tiedostot
-
-- `src/routes/api/public/hooks/harvest-results.ts` — deduplikointi event-tasolla + `ignoreDuplicates: false`.
-- (Valinnainen) admin-painike / cron, joka uudelleenajaa harvesterin kisoille joissa `Rounds.length > 1`.
-
-## Vaikutus
-
-- "Kauden kärki" -näkymä (sekä urheilija- ja seuranäkymät) näyttää oikein finaaliajan, ei alkuerän aikaa.
-- Sijoitukset (`result_rank`) tulevat jatkossa finaalin mukaan, mikä on oikea käytäntö.
+- Ei koodimuutoksia.
+- Yksi SQL-update `harvest_state`-tauluun (data-muutos).
