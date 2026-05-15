@@ -28,22 +28,35 @@ export function EventGroupView({ group }: { group: EventGroup }) {
       (a.competition_date ?? "").localeCompare(b.competition_date ?? ""),
     );
     let best: number | null = null;
+    let bestIn: number | null = null;
+    let bestOut: number | null = null;
+    const cmp = (n: number, b: number | null) =>
+      b == null || (group.lowerBetter ? n < b : n > b);
     const withPb = sortedAsc.map((r) => {
       let isPb = false;
+      let isPbIn = false;
+      let isPbOut = false;
+      const indoor = isIndoorResult(r);
       if (r.result_numeric != null) {
-        if (
-          best == null ||
-          (group.lowerBetter ? r.result_numeric < best : r.result_numeric > best)
-        ) {
+        if (cmp(r.result_numeric, best)) {
           best = r.result_numeric;
           isPb = true;
         }
+        if (indoor === true && cmp(r.result_numeric, bestIn)) {
+          bestIn = r.result_numeric;
+          isPbIn = true;
+        } else if (indoor === false && cmp(r.result_numeric, bestOut)) {
+          bestOut = r.result_numeric;
+          isPbOut = true;
+        }
       }
-      return { row: r, isPb };
+      return { row: r, isPb, isPbIn, isPbOut, indoor };
     });
-    return withPb.reverse(); // uusin ensin näyttöön
+    return withPb.reverse();
   }, [group.rows, group.lowerBetter]);
 
+  const pbInText = group.pbIndoor?.result_text;
+  const pbOutText = group.pbOutdoor?.result_text;
   const pbValueText = group.pb?.result_text ?? "—";
 
   return (
@@ -53,12 +66,22 @@ export function EventGroupView({ group }: { group: EventGroup }) {
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{group.eventName}</p>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <Trophy className="h-3.5 w-3.5 text-primary" />
           <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
             PB
           </span>
           <span className="text-sm font-bold tabular-nums">{pbValueText}</span>
+          {pbInText && (
+            <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:text-sky-300">
+              Halli <span className="tabular-nums">{pbInText}</span>
+            </span>
+          )}
+          {pbOutText && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+              Ulko <span className="tabular-nums">{pbOutText}</span>
+            </span>
+          )}
           <span className="text-[10px] text-muted-foreground">
             · {rows.length} tulosta
           </span>
