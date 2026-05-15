@@ -6,7 +6,6 @@ import logo from "@/assets/lahden-ahkera-logo.png";
 import {
   fetchRounds,
   fetchProperties,
-  // isRunningEvent removed: show all events
   formatTime,
   helsinkiDateKey,
   STATUS_LABEL,
@@ -14,7 +13,7 @@ import {
   type RoundsByDate,
 } from "@/lib/tuloslista";
 import { useCompetitionId } from "@/lib/competition-store";
-import { useAuth } from "@/lib/auth";
+import { useAuth, type Role } from "@/lib/auth";
 import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
 import { DailyBestSection } from "@/components/DailyBestSection";
 import { ClubTodaySection } from "@/components/ClubTodaySection";
@@ -46,7 +45,7 @@ function IndexGate() {
     );
   }
   if (!role) return <Navigate to="/login" />;
-  return <Index />;
+  return <Index role={role} />;
 }
 
 const STATUS_STYLE: Record<Round["Status"], string> = {
@@ -56,9 +55,93 @@ const STATUS_STYLE: Record<Round["Status"], string> = {
   Official: "bg-foreground text-background",
 };
 
-function Index() {
-  const { role, signOut } = useAuth();
+function NavCards({ role }: { role: Role }) {
+  const isOfficial = role === "official";
+  return (
+    <div className="mx-auto grid max-w-2xl gap-2 px-4 pb-3 sm:grid-cols-2">
+      {!isOfficial && (
+        <Link
+          to="/search"
+          className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
+        >
+          <div className="text-sm font-semibold leading-tight">Hae sukunimellä</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            Etsi urheilijaa nimellä kisan osallistujista
+          </div>
+        </Link>
+      )}
+      {role === "user" && (
+        <Link
+          to="/watch"
+          className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
+        >
+          <div className="text-sm font-semibold leading-tight">Kilpailijaseuranta</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            Lisää haluamiasi urheilijoita helppoon tulosseurantaan
+          </div>
+        </Link>
+      )}
+      {!isOfficial && (
+        <Link
+          to="/season-leaders"
+          className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
+        >
+          <div className="text-sm font-semibold leading-tight">Kauden kärki</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            Kauden parhaat tulokset lajeittain ja ikäluokittain
+          </div>
+        </Link>
+      )}
+      {isOfficial && (
+        <Link
+          to="/running-ops"
+          className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
+        >
+          <div className="text-sm font-semibold leading-tight">Juoksulajien operointi</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            Päivän juoksulajit ja sukunimihaku erään tunnistamiseen
+          </div>
+        </Link>
+      )}
+      {isOfficial && (
+        <Link
+          to="/announcer"
+          className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
+        >
+          <div className="text-sm font-semibold leading-tight">Kuuluttaja</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            Erä kerrallaan etenevä kuuluttajanäkymä
+          </div>
+        </Link>
+      )}
+      <Link
+        to="/print"
+        className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
+      >
+        <div className="text-sm font-semibold leading-tight">Tulostettava aikataulu</div>
+        <div className="mt-0.5 text-[11px] text-muted-foreground">
+          Kisan lajit, seuran urheilijat tai omien lasten aikataulu PDF:ksi
+        </div>
+      </Link>
+      {isOfficial && (
+        <Link
+          to="/settings"
+          className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
+        >
+          <div className="text-sm font-semibold leading-tight">Asetukset</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            Päivitystiheys, seurojen sijainnit ja muut asetukset
+          </div>
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function Index({ role }: { role: Role }) {
+  const { signOut } = useAuth();
   const [competitionId] = useCompetitionId();
+  const isOfficial = role === "official";
   const [data, setData] = useState<RoundsByDate | null>(null);
   const [name, setName] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -73,13 +156,19 @@ function Index() {
     setLoading(true);
     setError(null);
     try {
-      const [rounds, props] = await Promise.all([
-        fetchRounds(competitionId),
-        fetchProperties(competitionId).catch(() => null),
-      ]);
-      setData(rounds);
-      setName(props?.Competition?.Name ?? "");
-      setUpdatedAt(new Date());
+      if (isOfficial) {
+        const props = await fetchProperties(competitionId).catch(() => null);
+        setName(props?.Competition?.Name ?? "");
+        setUpdatedAt(new Date());
+      } else {
+        const [rounds, props] = await Promise.all([
+          fetchRounds(competitionId),
+          fetchProperties(competitionId).catch(() => null),
+        ]);
+        setData(rounds);
+        setName(props?.Competition?.Name ?? "");
+        setUpdatedAt(new Date());
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Tuntematon virhe");
     } finally {
@@ -92,7 +181,7 @@ function Index() {
     const t = setInterval(load, Math.max(5, refreshSec) * 1000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competitionId, refreshSec]);
+  }, [competitionId, refreshSec, isOfficial]);
 
   const dates = useMemo(() => {
     if (!data) return [];
@@ -110,7 +199,6 @@ function Index() {
     }
   }, [dates, activeDate]);
 
-  // Tick clock every 30s so past/upcoming filter stays accurate
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(t);
@@ -123,9 +211,6 @@ function Index() {
       .sort((a, b) => a.BeginDateTimeWithTZ.localeCompare(b.BeginDateTimeWithTZ));
   }, [data, activeDate]);
 
-  // The API encodes local time as UTC ("06:20:00+00:00" really means 06:20 local),
-  // so compare using UTC parts of the round vs local parts of "now".
-  // Kisat ovat usein hieman myöhässä → siirrä laji menneisiin vasta 5 min ajoitetun ajan jälkeen.
   const isPast = (iso: string): boolean =>
     new Date(iso).getTime() + 5 * 60_000 < now.getTime();
 
@@ -156,7 +241,7 @@ function Index() {
             </p>
           </div>
           <h2 className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-lg font-black uppercase tracking-widest text-primary xl:block">
-            Päivän lajit
+            {isOfficial ? "Toimitsija" : "Päivän lajit"}
           </h2>
           <Button
             variant="ghost"
@@ -181,73 +266,12 @@ function Index() {
           <p className="mb-1 text-[11px] font-medium text-muted-foreground">
             Valitse tästä seurattava kilpailu
           </p>
-          <CompetitionSwitcher className="w-full" confirmOnChange={role === "official"} />
+          <CompetitionSwitcher className="w-full" confirmOnChange={isOfficial} />
         </div>
 
-        <div className="mx-auto grid max-w-2xl gap-2 px-4 pb-3 sm:grid-cols-2">
-          <Link
-            to="/search"
-            className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
-          >
-            <div className="text-sm font-semibold leading-tight">Hae sukunimellä</div>
-            <div className="mt-0.5 text-[11px] text-muted-foreground">
-              Etsi urheilijaa nimellä kisan osallistujista
-            </div>
-          </Link>
-          {role === "user" && (
-            <Link
-              to="/watch"
-              className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
-            >
-              <div className="text-sm font-semibold leading-tight">Kilpailijaseuranta</div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">
-                Lisää haluamiasi urheilijoita helppoon tulosseurantaan
-              </div>
-            </Link>
-          )}
-          <Link
-            to="/season-leaders"
-            className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
-          >
-            <div className="text-sm font-semibold leading-tight">Kauden kärki</div>
-            <div className="mt-0.5 text-[11px] text-muted-foreground">
-              Kauden parhaat tulokset lajeittain ja ikäluokittain
-            </div>
-          </Link>
-          {role === "official" && (
-            <Link
-              to="/announcer"
-              className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
-            >
-              <div className="text-sm font-semibold leading-tight">Kuuluttaja</div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">
-                Erä kerrallaan etenevä kuuluttajanäkymä
-              </div>
-            </Link>
-          )}
-          <Link
-            to="/print"
-            className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
-          >
-            <div className="text-sm font-semibold leading-tight">Tulostettava aikataulu</div>
-            <div className="mt-0.5 text-[11px] text-muted-foreground">
-              Kisan lajit, seuran urheilijat tai omien lasten aikataulu PDF:ksi
-            </div>
-          </Link>
-          {role === "official" && (
-            <Link
-              to="/settings"
-              className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
-            >
-              <div className="text-sm font-semibold leading-tight">Asetukset</div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">
-                Päivitystiheys, seurojen sijainnit ja muut asetukset
-              </div>
-            </Link>
-          )}
-        </div>
+        <NavCards role={role} />
 
-        {dates.length > 1 && (
+        {!isOfficial && dates.length > 1 && (
           <div className="mx-auto flex max-w-2xl gap-2 overflow-x-auto px-4 pb-3">
             {dates.map((d) => (
               <button
@@ -273,77 +297,79 @@ function Index() {
           </div>
         )}
 
-        {role !== "official" && (
+        {!isOfficial && (
           <>
             <DailyBestSection />
             <ClubTodaySection excludeCompetitionId={competitionId} />
             <SeasonStatsSection />
+
+            {loading && !data && (
+              <div className="py-12 text-center text-sm text-muted-foreground">Ladataan…</div>
+            )}
+
+            {data && allRuns.length > 0 && (
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {runs.length} lajia
+                  {!showPast &&
+                    hiddenPastCount > 0 &&
+                    ` · ${hiddenPastCount} mennyttä piilotettu`}
+                </p>
+                <button
+                  onClick={() => setShowPast((v) => !v)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                    showPast
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-foreground hover:bg-secondary"
+                  }`}
+                >
+                  {showPast ? "Piilota menneet" : "Näytä menneet"}
+                </button>
+              </div>
+            )}
+
+            {!loading && data && runs.length === 0 && (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                {hiddenPastCount > 0
+                  ? "Päivän lajit on jo suoritettu. Paina ”Näytä menneet”."
+                  : "Ei lajeja valitulle päivälle."}
+              </div>
+            )}
+
+            <ul className="space-y-2">
+              {runs.map((r) => {
+                const past = isPast(r.BeginDateTimeWithTZ);
+                return (
+                  <li key={r.Id}>
+                    <Link
+                      to="/round/$eventId/$roundId"
+                      params={{ eventId: String(r.EventId), roundId: String(r.Id) }}
+                      className={`flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm transition-colors hover:bg-secondary active:bg-secondary ${past ? "opacity-50" : ""}`}
+                    >
+                      <div className="flex w-14 shrink-0 flex-col items-center">
+                        <span className="text-lg font-bold tabular-nums tracking-tight text-foreground">
+                          {formatTime(r.BeginDateTimeWithTZ)}
+                        </span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold leading-tight">{r.EventName}</p>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {r.Name}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_STYLE[r.Status]}`}
+                      >
+                        {STATUS_LABEL[r.Status]}
+                      </span>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
           </>
         )}
-
-        {loading && !data && (
-          <div className="py-12 text-center text-sm text-muted-foreground">Ladataan…</div>
-        )}
-
-        {data && allRuns.length > 0 && (
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">
-              {runs.length} lajia
-              {!showPast && hiddenPastCount > 0 && ` · ${hiddenPastCount} mennyttä piilotettu`}
-            </p>
-            <button
-              onClick={() => setShowPast((v) => !v)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                showPast
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-foreground hover:bg-secondary"
-              }`}
-            >
-              {showPast ? "Piilota menneet" : "Näytä menneet"}
-            </button>
-          </div>
-        )}
-
-        {!loading && data && runs.length === 0 && (
-          <div className="py-12 text-center text-sm text-muted-foreground">
-            {hiddenPastCount > 0
-              ? "Päivän lajit on jo suoritettu. Paina ”Näytä menneet”."
-              : "Ei lajeja valitulle päivälle."}
-          </div>
-        )}
-
-        <ul className="space-y-2">
-          {runs.map((r) => {
-            const past = isPast(r.BeginDateTimeWithTZ);
-            return (
-            <li key={r.Id}>
-              <Link
-                to="/round/$eventId/$roundId"
-                params={{ eventId: String(r.EventId), roundId: String(r.Id) }}
-                className={`flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm transition-colors hover:bg-secondary active:bg-secondary ${past ? "opacity-50" : ""}`}
-              >
-                <div className="flex w-14 shrink-0 flex-col items-center">
-                  <span className="text-lg font-bold tabular-nums tracking-tight text-foreground">
-                    {formatTime(r.BeginDateTimeWithTZ)}
-                  </span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold leading-tight">{r.EventName}</p>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {r.Name}
-                  </p>
-                </div>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_STYLE[r.Status]}`}
-                >
-                  {STATUS_LABEL[r.Status]}
-                </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </Link>
-            </li>
-            );
-          })}
-        </ul>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
           Lähde: live.tuloslista.com · automaattinen päivitys 30&nbsp;s välein
@@ -351,25 +377,6 @@ function Index() {
       </main>
     </div>
   );
-}
-
-function translateSub(sub: string): string {
-  switch (sub) {
-    case "Sprint":
-      return "Pikajuoksu";
-    case "Run":
-      return "Juoksu";
-    case "Hurdles":
-      return "Aidat";
-    case "Steeple":
-      return "Estejuoksu";
-    case "Relay":
-      return "Viesti";
-    case "Walk":
-      return "Kävely";
-    default:
-      return sub;
-  }
 }
 
 function formatClock(d: Date): string {
