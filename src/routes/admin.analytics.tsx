@@ -203,6 +203,18 @@ function Page() {
           <Table data={stats.byRole} keyLabel="Rooli" />
         </Section>
 
+        <Section title="Katsotuimmat urheilijat">
+          <NamedTable
+            data={stats.byAthlete}
+            keyLabel="Urheilija"
+            linkPrefix="/athlete/"
+          />
+        </Section>
+
+        <Section title="Katsotuimmat kilpailut">
+          <NamedTable data={stats.byCompetition} keyLabel="Kilpailu" />
+        </Section>
+
         <Section title="Päivittäin">
           <Table data={stats.byDay} keyLabel="Päivä" />
         </Section>
