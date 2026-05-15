@@ -1,23 +1,31 @@
-## Ongelma
+## Päivitystiheys nyt
 
-`src/routes/scoreboard.tsx` käyttää `aspect-square`/`aspect-[4/3]` -laatikoita sijoitukselle ja kuudelle yritykselle, ja niiden korkeus on `h-full`. Kun rivejä on vähän (esim. 4 osallistujaa), rivit ovat hyvin korkeita, jolloin neliö-/4:3-laatikot levenevät valtavasti ja syövät nimisarakkeen tilan. Loppu-tulos-laatikko vie lisäksi `w-[18%]`. Nimikenttään jää niin vähän leveyttä, että vain etunimi mahtuu ja sukunimi katkeaa `truncate`lla pois.
+Suorituspaikan livenäyttö hakee lajin tiedot **15 sekunnin välein** (`eventDetailsQueryOptions` → `refetchInterval: 15_000`). Ei tarvetta muuttaa.
 
-## Korjaus
+## Lisäykset livenäyttöön
 
-Muokkaa vain `src/routes/scoreboard.tsx` `ScoreRow`-komponenttia (ei muuta logiikkaa):
+Muokataan vain `src/routes/scoreboard.tsx` (header-osio, `ScoreboardLive`):
 
-1. **Rajoita sijoitus- ja yrityslaatikoiden leveys.** Korvaa `aspect-square` / `aspect-[4/3]` `max-width`-rajalla, joka skaalautuu osallistujamäärän mukaan (esim. sijoitus ≤ 6rem ja yrityslaatikko ≤ 7rem kun count ≤ 5). Säilytä `min-width` luettavuuden vuoksi. Näin korkeat rivit eivät enää venytä laatikoita vaakasuunnassa, ja vapautunut tila menee nimisarakkeelle.
+### 1. Kello headeriin
+- Lisätään `useEffect`-ajastin (1 s), joka pitää `now`-tilan ajantasaisena.
+- Näytetään Helsinki-aikaan muotoiltu **HH:MM:SS** isolla, tabular-numeroilla, statuksen oikealle puolelle.
+- Mobile/kapealla ruudulla (alle 900 px) näytetään **HH:MM** ilman sekunteja, ettei rikota top-valitsinta.
 
-2. **Pienennä tulos-laatikon prosenttileveyttä** pienillä count-arvoilla (esim. ≤ 5 → kiinteä `w-32`/`max-w-[10rem]`).
+### 2. Tuuliolosuhteet
+- API antaa tuulen kahdella tasolla: `Heat.Wind` ja `Allocation.Wind` (per yritys -tuulet eivät ole mukana).
+- Lasketaan näytettävä tuuli näin:
+  - Jos `round.Heats[0].Wind` on numero → käytetään sitä erän tuulena.
+  - Muussa tapauksessa otetaan **viimeisin ei-null `Allocation.Wind`** allokaatioiden joukosta (tuoreimman yrityksen kuvaaja).
+  - Jos kumpaakaan ei ole, tuuli-elementtiä ei renderöidä (kuula, korkeus, keihäs jne.).
+- Esitys: pieni "rinta" headerissa, esim. `Tuuli +1.2 m/s`. Etumerkki näkyvissä (`+`/`−`), yksi desimaali. Sallittu rajat ylittävä korostuu (yli +2.0) eri värillä.
 
-3. **Kaksirivinen nimi.** Jaa `row.Name` etunimeen ja sukunimeen ja renderöi ne kahdelle riville (heading-tyyliin: etunimi pienemmällä `font-semibold`, sukunimi isolla `font-black`) kun `count <= 5`. Suuremmilla count-arvoilla säilytä yksirivinen nimi. Jakologiikka: ensimmäinen sana = etunimi, loput = sukunimi; jos sanoja on vain yksi, näytä se isolla yksirivisenä. Poista `truncate` nimirivien tilalta `break-words` + `leading-tight`, jotta pitkät sukunimet katkeavat sanasta eivätkä häviä.
-
-4. **Säädä `nameFontSize` pienille count-arvoille** niin että kaksirivinen versio mahtuu (etunimirivi ~60–70 % sukunimen koosta).
-
-Tämä pitää erottelevuus (sijoitus + 6 yritystä + lopputulos) entisellään mutta varmistaa, että nimi on aina luettavissa kokonaan.
+### 3. Layout
+- Header säilyy yhden rivin korkuisena. Järjestys vasemmalta oikealle:
+  takaisin · laji + kierros + status · **kello** · **tuuli (jos saatavilla)** · top-valitsin · päivitä.
+- Kapealla ruudulla kello + tuuli sijoittuvat omalle riville statusrivin alle, jotta top-valitsin mahtuu.
 
 ## Mitä ei muuteta
 
-- Picker-näkymä, päivitys, top-valitsin, värit ja korostus säilyvät.
-- Ranking-/parsinta-/datalogiikka (`rows`, `bestIdx`, sorttaus) ei muutu.
-- Muita reittejä tai komponentteja ei kosketa.
+- Päivitystiheys (15 s) ja datalogiikka säilyvät ennallaan.
+- Kortit, picker-näkymä, ScoreRow-komponentti ja tyylit eivät muutu.
+- Muita reittejä ei kosketa.
