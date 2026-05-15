@@ -100,7 +100,7 @@ export function EventGroupView({ group }: { group: EventGroup }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ row, isPb }) => (
+            {rows.map(({ row, isPb, isPbIn, isPbOut, indoor }) => (
               <tr
                 key={row.id}
                 className={`border-t border-border/60 ${
@@ -111,7 +111,21 @@ export function EventGroupView({ group }: { group: EventGroup }) {
                   {formatDate(row.competition_date)}
                 </td>
                 <td className="px-3 py-1.5">
-                  <span className="block truncate">{row.competition_name}</span>
+                  <span className="block truncate">
+                    {row.competition_name}
+                    {indoor != null && (
+                      <span
+                        title={indoor ? "Hallikilpailu" : "Ulkokilpailu"}
+                        className={`ml-1 inline-block rounded px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+                          indoor
+                            ? "bg-sky-500/15 text-sky-700 dark:text-sky-300"
+                            : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                        }`}
+                      >
+                        {indoor ? "Halli" : "Ulko"}
+                      </span>
+                    )}
+                  </span>
                   {row.location && (
                     <span className="block truncate text-[10px] text-muted-foreground">
                       {row.location}
@@ -133,6 +147,22 @@ export function EventGroupView({ group }: { group: EventGroup }) {
                     >
                       <Trophy className="h-2.5 w-2.5" />
                       PB
+                    </span>
+                  )}
+                  {!isPb && isPbIn && (
+                    <span
+                      title="Hallikauden ennätys"
+                      className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-700 dark:text-sky-300"
+                    >
+                      Halli-PB
+                    </span>
+                  )}
+                  {!isPb && isPbOut && (
+                    <span
+                      title="Ulkokauden ennätys"
+                      className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
+                    >
+                      Ulko-PB
                     </span>
                   )}
                   {row.wind != null && (
