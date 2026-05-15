@@ -1,8 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Search as SearchIcon, RefreshCw, Pin, X, UserPlus, Building2, Trophy } from "lucide-react";
+import { ArrowLeft, Search as SearchIcon, RefreshCw, Pin, X, UserPlus, Building2, Trophy, Share2, Copy, Check, Trash2 } from "lucide-react";
 import logo from "@/assets/lahden-ahkera-logo.png";
+import { useWatchShare } from "@/lib/watch-share";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { toast } from "sonner";
 
 import {
   formatTime,
