@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import {
   fetchStoredHistory,
   groupByEvent,
+  isIndoorResult,
   isLowerBetter,
   type AthleteResultRow,
 } from "@/lib/athlete-history";
