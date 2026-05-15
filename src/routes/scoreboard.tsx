@@ -121,7 +121,7 @@ function ScoreboardPicker() {
             {([3, 5, 10, "all"] as TopSize[]).map((n) => (
               <button
                 key={String(n)}
-                onClick={() => navigate({ search: (prev) => ({ ...prev, top: n }) })}
+                onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, top: n }) })}
                 className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
                   top === n
                     ? "border-primary bg-primary text-primary-foreground"
@@ -277,7 +277,7 @@ function ScoreboardLive() {
           {([3, 5, 10, "all"] as TopSize[]).map((n) => (
             <button
               key={String(n)}
-              onClick={() => navigate({ search: (prev) => ({ ...prev, top: n }) })}
+              onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, top: n }) })}
               className={`rounded-full px-3 py-1 transition-colors ${
                 top === n
                   ? "bg-primary text-primary-foreground"
