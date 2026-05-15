@@ -426,10 +426,14 @@ function ScoreRow({
   row,
   displayRank,
   count,
+  eventId,
+  category,
 }: {
   row: RankedRow;
   displayRank: number;
   count: number;
+  eventId: number;
+  category: string;
 }) {
   const vw = useViewportWidth();
   const narrow = vw < 900;
@@ -439,6 +443,10 @@ function ScoreRow({
   const rankNum = row.ResultRank ?? displayRank;
   const stackName = !narrow && count <= 5;
   const { first, last } = splitName(row.Name ?? "");
+
+  // Detect new PB / SB against captured baseline (falls back to API PB/SB).
+  const eff = effectiveRecord(eventId, row);
+  const recordKind = detectRecord(category, row.best, eff.pb, eff.sb);
 
   const nameBlock = (
     <div className="flex min-w-0 flex-1 flex-col justify-center">
