@@ -109,11 +109,7 @@ function SeasonLeadersPage() {
       <div className="mx-auto max-w-3xl space-y-4 px-4 pt-4">
         <Tabs
           value={season}
-          onValueChange={(v) => {
-            setSeason(v as SeasonKind);
-            setEventKey(null);
-            setAgeClass(null);
-          }}
+          onValueChange={(v) => setSeason(v as SeasonKind)}
         >
           <TabsList className="grid w-full grid-cols-2">
             {SEASON_OPTIONS.map((o) => (
@@ -131,10 +127,7 @@ function SeasonLeadersPage() {
             </label>
             <Select
               value={ageClass ?? "__all"}
-              onValueChange={(v) => {
-                setAgeClass(v === "__all" ? null : v);
-                setEventKey(null);
-              }}
+              onValueChange={(v) => setAgeClass(v === "__all" ? null : v)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Kaikki" />
@@ -196,9 +189,20 @@ function SeasonLeadersPage() {
 
         {data && data.events.length === 0 && !query.isLoading && (
           <div className="rounded-lg border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-            Ei kauden tuloksia kannassa valituilla suodattimilla.
+            Ei kauden tuloksia kannassa.
           </div>
         )}
+
+        {data &&
+          data.events.length > 0 &&
+          data.leaders.length === 0 &&
+          (!showWatched || watchedExtra.length === 0) &&
+          !query.isLoading && (
+            <div className="rounded-lg border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+              Ei kärkituloksia valituilla suodattimilla.
+            </div>
+          )}
+
 
         {data && data.leaders.length > 0 && (
           <section className="rounded-lg border bg-card">

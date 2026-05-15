@@ -124,6 +124,48 @@ async function fetchSeasonAgeClasses(season: SeasonKind): Promise<string[]> {
   return Array.from(set).sort((a, b) => a.localeCompare(b, "fi"));
 }
 
+/** Fetch all distinct events in season range (ignoring ageClass filter). */
+async function fetchSeasonEvents(season: SeasonKind): Promise<LeaderEventOption[]> {
+  const range = seasonRange(season);
+  const map = new Map<string, { label: string; cats: Map<string, number> }>();
+  let offset = 0;
+  const HARD_CAP = 100_000;
+  while (true) {
+    const { data, error } = await supabase
+      .from("athlete_results")
+      .select("event_name, event_category")
+      .gte("competition_date", range.from.toISOString())
+      .lt("competition_date", range.to.toISOString())
+      .not("result_numeric", "is", null)
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as { event_name: string | null; event_category: string | null }[];
+    for (const r of rows) {
+      if (!r.event_name) continue;
+      const k = eventKey(r.event_name);
+      if (!k) continue;
+      let entry = map.get(k);
+      if (!entry) {
+        entry = { label: normalizeEventName(r.event_name), cats: new Map() };
+        map.set(k, entry);
+      }
+      const c = r.event_category ?? "";
+      entry.cats.set(c, (entry.cats.get(c) ?? 0) + 1);
+    }
+    if (rows.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+    if (offset >= HARD_CAP) break;
+  }
+  return Array.from(map.entries())
+    .map(([k, v]) => {
+      let topCat = "";
+      let topN = -1;
+      for (const [c, n] of v.cats) if (n > topN) { topCat = c; topN = n; }
+      return { key: k, label: v.label, category: topCat };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label, "fi"));
+}
+
 function isTrackBetter(category: string, a: number, b: number) {
   if (category === "Track") return a < b;
   return a > b;
@@ -172,53 +214,44 @@ export async function loadSeasonLeaders(
   const range = seasonRange(season);
 
   const rows = await fetchSeasonRows(season, ageClass);
-  // Age class list comes from full season range, independent of selected ageClass,
-  // so the dropdown stays usable when an age class is already selected.
   const ageClasses = await fetchSeasonAgeClasses(season);
+  // Event list is independent of age-class filter so the chosen event stays
+  // selectable when the user changes age class (and vice versa).
+  const events = await fetchSeasonEvents(season);
 
-  // Build event option list (per normalized key)
-  const evMap = new Map<string, { label: string; cats: Map<string, number> }>();
+  // Per-category map from currently filtered rows (used for sort direction)
+  const evMap = new Map<string, Map<string, number>>();
   for (const r of rows) {
     const k = eventKey(r.event_name);
     if (!k) continue;
     let entry = evMap.get(k);
-    if (!entry) {
-      entry = { label: normalizeEventName(r.event_name), cats: new Map() };
-      evMap.set(k, entry);
-    }
-    entry.cats.set(r.event_category, (entry.cats.get(r.event_category) ?? 0) + 1);
+    if (!entry) { entry = new Map(); evMap.set(k, entry); }
+    entry.set(r.event_category, (entry.get(r.event_category) ?? 0) + 1);
   }
-  const events: LeaderEventOption[] = Array.from(evMap.entries())
-    .map(([k, v]) => {
-      let topCat = "";
-      let topN = -1;
-      for (const [c, n] of v.cats) if (n > topN) { topCat = c; topN = n; }
-      return { key: k, label: v.label, category: topCat };
-    })
-    .sort((a, b) => a.label.localeCompare(b.label, "fi"));
 
-  // Pick selected event
-  const evK = input.eventKey && evMap.has(input.eventKey)
-    ? input.eventKey
-    : events[0]?.key ?? null;
+  // Keep user's selection as-is. If no rows match, leaders will simply be empty.
+  const evK = input.eventKey ?? events[0]?.key ?? null;
 
   let leaders: LeaderRow[] = [];
   let watchedBests: LeaderRow[] = [];
 
   if (evK) {
     const all = bestPerAthlete(rows, evK);
-    const cat = evMap.get(evK)?.cats ?? new Map();
+    // Sort direction: prefer category from current rows, else from full-season events.
     let topCat = "";
-    let topN = -1;
-    for (const [c, n] of cat) if (n > topN) { topCat = c; topN = n; }
+    const cat = evMap.get(evK);
+    if (cat) {
+      let topN = -1;
+      for (const [c, n] of cat) if (n > topN) { topCat = c; topN = n; }
+    } else {
+      topCat = events.find((e) => e.key === evK)?.category ?? "";
+    }
     all.sort((a, b) =>
       isTrackBetter(topCat, a.resultNumeric, b.resultNumeric) ? -1 : 1,
     );
-    // assign rank to all
     all.forEach((r, i) => { r.rank = i + 1; });
     leaders = all.slice(0, limit);
 
-    // Watched athletes (with their real rank in `all`)
     const { data: watched } = await supabase
       .from("watched_athletes")
       .select("athlete_key");
