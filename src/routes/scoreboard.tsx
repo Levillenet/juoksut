@@ -554,7 +554,7 @@ function ScoreRow({
 
   const resultBox = (
     <div
-      className={`flex shrink-0 flex-col items-end justify-center rounded-lg bg-foreground/95 px-3 text-background ${
+      className={`relative flex shrink-0 flex-col items-end justify-center rounded-lg bg-foreground/95 px-3 text-background ${
         narrow ? "" : "h-full"
       }`}
       style={{
@@ -563,6 +563,14 @@ function ScoreRow({
         maxWidth: narrow ? narrowResultBoxWidth(count) : resultBoxWidth(count),
       }}
     >
+      {recordKind && (
+        <span
+          className="absolute -left-3 -top-3 z-10 animate-pulse drop-shadow-md"
+          aria-label={recordKind === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
+        >
+          <RecordStar kind={recordKind} size={count <= 5 ? "lg" : "sm"} />
+        </span>
+      )}
       <span className="opacity-70" style={{ fontSize: attLabSize }}>
         Tulos
       </span>
