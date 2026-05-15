@@ -49,6 +49,7 @@ export interface LeadersData {
   leaders: LeaderRow[];           // top-N for selected event
   watchedBests: LeaderRow[];      // best-per-watched-athlete for selected event
   clubBest: LeaderRow | null;     // best result for selected club (null if none)
+  clubLeaders: LeaderRow[];       // all athletes from selected club (best per athlete)
 }
 
 interface RawRow {
