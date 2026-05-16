@@ -181,7 +181,13 @@ export function AthleteSearch({
           <li key={g.key} className="rounded-xl border bg-card p-4 shadow-sm">
             <div className="mb-3 flex items-baseline justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-base font-bold leading-tight">{g.name}</p>
+                <Link
+                  to="/athlete/$key"
+                  params={{ key: g.key }}
+                  className="block truncate text-base font-bold leading-tight hover:underline"
+                >
+                  {g.name}
+                </Link>
                 {g.organization && (
                   <p className="truncate text-xs text-muted-foreground">{g.organization}</p>
                 )}
