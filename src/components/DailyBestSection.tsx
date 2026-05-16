@@ -133,26 +133,41 @@ export function DailyBestSection() {
                         {rows.map((r) => (
                           <li
                             key={`${r.event_name}|${r.competition_id}|${r.surname}-${r.firstname}`}
-                            className="flex items-baseline gap-3 px-3 py-2"
                           >
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-semibold">
-                                {r.event_name}
-                              </p>
-                              <p className="truncate text-[11px] text-muted-foreground">
-                                <Link
-                                  to="/athlete/$key"
-                                  params={{ key: r.athlete_key }}
-                                  className="hover:underline"
-                                >
-                                  {r.surname} {r.firstname}
-                                </Link>
-                                {" "}({r.organization}) · {r.competition_name}
-                              </p>
-                            </div>
-                            <span className="shrink-0 text-base font-bold tabular-nums">
-                              {r.result_text}
-                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCompetitionId(r.competition_id);
+                                navigate({
+                                  to: "/round/$eventId/$roundId",
+                                  params: {
+                                    eventId: String(r.event_id),
+                                    roundId: "0",
+                                  },
+                                });
+                              }}
+                              className="flex w-full items-baseline gap-3 px-3 py-2 text-left transition-colors hover:bg-secondary"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold">
+                                  {r.event_name}
+                                </p>
+                                <p className="truncate text-[11px] text-muted-foreground">
+                                  <Link
+                                    to="/athlete/$key"
+                                    params={{ key: r.athlete_key }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="hover:underline"
+                                  >
+                                    {r.surname} {r.firstname}
+                                  </Link>
+                                  {" "}({r.organization}) · {r.competition_name}
+                                </p>
+                              </div>
+                              <span className="shrink-0 text-base font-bold tabular-nums">
+                                {r.result_text}
+                              </span>
+                            </button>
                           </li>
                         ))}
                       </ul>
