@@ -96,7 +96,7 @@ export function EventGroupView({ group }: { group: EventGroup }) {
               <th className="px-3 py-1.5 text-left font-medium">Pvm</th>
               <th className="px-3 py-1.5 text-left font-medium">Kilpailu</th>
               <th className="px-3 py-1.5 text-right font-medium">Tulos</th>
-              <th className="px-3 py-1.5 text-right font-medium">Sija</th>
+              <th className="hidden px-3 py-1.5 text-right font-medium sm:table-cell">Sija</th>
             </tr>
           </thead>
           <tbody>
@@ -111,7 +111,7 @@ export function EventGroupView({ group }: { group: EventGroup }) {
                   {formatDate(row.competition_date)}
                 </td>
                 <td className="px-3 py-1.5">
-                  <span className="block truncate">
+                  <span className="block break-words sm:truncate">
                     {row.competition_name}
                     {indoor != null && (
                       <span
@@ -127,51 +127,58 @@ export function EventGroupView({ group }: { group: EventGroup }) {
                     )}
                   </span>
                   {row.location && (
-                    <span className="block truncate text-[10px] text-muted-foreground">
+                    <span className="block break-words text-[10px] text-muted-foreground sm:truncate">
                       {row.location}
                     </span>
                   )}
                 </td>
-                <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">
-                  <span
-                    className={`font-semibold ${
-                      isPb ? "text-primary" : "text-foreground"
-                    }`}
-                  >
-                    {row.result_text}
-                  </span>
-                  {isPb && (
+                <td className="w-px whitespace-nowrap px-3 py-1.5 text-right tabular-nums align-top">
+                  <div className="flex flex-col items-end gap-0.5 sm:flex-row sm:items-center sm:justify-end sm:gap-1">
                     <span
-                      title="Henkilökohtainen ennätys (kaikki ikäluokat)"
-                      className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary"
+                      className={`font-semibold ${
+                        isPb ? "text-primary" : "text-foreground"
+                      }`}
                     >
-                      <Trophy className="h-2.5 w-2.5" />
-                      PB
+                      {row.result_text}
                     </span>
-                  )}
-                  {!isPb && isPbIn && (
-                    <span
-                      title="Hallikauden ennätys"
-                      className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-700 dark:text-sky-300"
-                    >
-                      Halli-PB
-                    </span>
-                  )}
-                  {!isPb && isPbOut && (
-                    <span
-                      title="Ulkokauden ennätys"
-                      className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
-                    >
-                      Ulko-PB
-                    </span>
-                  )}
-                  {row.wind != null && (
-                    <span className="ml-1 text-[10px] text-muted-foreground">
-                      {row.wind > 0 ? `+${row.wind.toFixed(1)}` : row.wind.toFixed(1)} m/s
-                    </span>
-                  )}
+                    {isPb && (
+                      <span
+                        title="Henkilökohtainen ennätys (kaikki ikäluokat)"
+                        className="inline-flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary"
+                      >
+                        <Trophy className="h-2.5 w-2.5" />
+                        PB
+                      </span>
+                    )}
+                    {!isPb && isPbIn && (
+                      <span
+                        title="Hallikauden ennätys"
+                        className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-700 dark:text-sky-300"
+                      >
+                        Halli-PB
+                      </span>
+                    )}
+                    {!isPb && isPbOut && (
+                      <span
+                        title="Ulkokauden ennätys"
+                        className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
+                      >
+                        Ulko-PB
+                      </span>
+                    )}
+                    {row.wind != null && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {row.wind > 0 ? `+${row.wind.toFixed(1)}` : row.wind.toFixed(1)} m/s
+                      </span>
+                    )}
+                    {row.result_rank != null && (
+                      <span className="text-[10px] text-muted-foreground sm:hidden">
+                        · {row.result_rank}.
+                      </span>
+                    )}
+                  </div>
                 </td>
-                <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                <td className="hidden w-px whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground sm:table-cell">
                   {row.result_rank != null ? `${row.result_rank}.` : "—"}
                 </td>
               </tr>
