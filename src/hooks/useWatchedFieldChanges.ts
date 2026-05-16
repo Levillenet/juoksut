@@ -70,7 +70,7 @@ export function useWatchedFieldChanges(
       if (!snap.result) continue;
 
       const name = `${e.alloc.Firstname} ${e.alloc.Surname}`.trim();
-      const eventName = e.round.Name || e.round.SubCategory || "kenttälajissa";
+      const eventName = e.round.EventName || e.round.Name || "kenttälaji";
 
       const rankImproved =
         prev.rank != null && snap.rank != null && snap.rank < prev.rank;
