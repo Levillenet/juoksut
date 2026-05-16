@@ -4,6 +4,7 @@
 // athlete_results. Client code only reads.
 
 import { supabase } from "@/integrations/supabase/client";
+import { parseResult } from "./result-parse";
 
 export interface AthleteResultRow {
   id: string;
