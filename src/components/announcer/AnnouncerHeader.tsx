@@ -46,6 +46,7 @@ export function AnnouncerHeader({
     manualLoading,
   } = data;
   const meta = MODE_META[mode];
+  const [autoOpenCompleted, setAutoOpenCompleted] = useAutoOpenCompleted();
   return (
     <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
       <div className="relative mx-auto flex max-w-[1600px] items-center gap-3 px-6 py-3">
