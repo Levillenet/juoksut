@@ -27,6 +27,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fetchDailyBestForAthletes } from "@/lib/daily-best";
+import { LiveTicker } from "@/components/announcer/LiveTicker";
+import { useWatchedFieldChanges } from "@/hooks/useWatchedFieldChanges";
 
 import { RequireRole } from "@/components/RequireRole";
 
