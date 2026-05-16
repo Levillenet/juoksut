@@ -15,6 +15,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 
 import { RequireRole } from "@/components/RequireRole";
+import { ShareAthleteButton } from "@/components/ShareAthleteButton";
 import { EventGroupView } from "@/components/RecordsPanel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
