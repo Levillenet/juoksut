@@ -83,7 +83,7 @@ function WatchPage() {
     queryClient.invalidateQueries({ queryKey: competitionIndexKey(competitionId) });
   };
 
-  // Search results (grouped by athlete) — only when 2+ chars typed
+  // Search results from CURRENT competition (grouped by athlete) — when 2+ chars
   const searchGroups = useMemo(() => {
     if (!index) return [];
     const q = query.trim().toLowerCase();
@@ -93,7 +93,9 @@ function WatchPage() {
       { key: string; surname: string; firstname: string; organization: string; organizationId: number | null; count: number }
     >();
     for (const e of index) {
-      if (!e.alloc.Surname?.toLowerCase().includes(q)) continue;
+      const s = e.alloc.Surname?.toLowerCase() ?? "";
+      const f = e.alloc.Firstname?.toLowerCase() ?? "";
+      if (!s.includes(q) && !f.includes(q)) continue;
       const orgId = e.alloc.Organization?.Id ?? null;
       const k = athleteKey(e.alloc.Surname, e.alloc.Firstname, orgId);
       if (!map.has(k)) {
@@ -113,7 +115,57 @@ function WatchPage() {
     );
   }, [index, query]);
 
-  const watchedKeys = useMemo(() => new Set(watched.map((w) => w.key)), [watched]);
+  // Debounced query string for DB-wide search
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // DB-wide athlete search (across all competitions)
+  const dbSearchQuery = useQuery({
+    queryKey: ["watch-db-search", debouncedQuery.toLowerCase()],
+    queryFn: async () => {
+      const q = debouncedQuery.trim();
+      if (q.length < 2) return [] as Array<{
+        key: string; surname: string; firstname: string; organization: string; organizationId: number | null;
+      }>;
+      const like = `%${q.replace(/[%_]/g, (m) => `\\${m}`)}%`;
+      const { data, error } = await supabase
+        .from("athlete_results")
+        .select("athlete_key, surname, firstname, organization, organization_id, captured_at")
+        .or(`surname.ilike.${like},firstname.ilike.${like}`)
+        .order("captured_at", { ascending: false })
+        .limit(1000);
+      if (error) throw error;
+      const map = new Map<string, { key: string; surname: string; firstname: string; organization: string; organizationId: number | null }>();
+      for (const r of data ?? []) {
+        if (!r.athlete_key) continue;
+        if (map.has(r.athlete_key)) continue; // first (most recent) wins
+        map.set(r.athlete_key, {
+          key: r.athlete_key,
+          surname: r.surname ?? "",
+          firstname: r.firstname ?? "",
+          organization: r.organization ?? "",
+          organizationId: r.organization_id ?? null,
+        });
+      }
+      return Array.from(map.values()).sort((a, b) =>
+        `${a.surname} ${a.firstname}`.localeCompare(`${b.surname} ${b.firstname}`, "fi"),
+      );
+    },
+    enabled: debouncedQuery.trim().length >= 2,
+    staleTime: 60_000,
+  });
+
+  // DB results not already in the current-competition list
+  const dbOnlyResults = useMemo(() => {
+    const data = dbSearchQuery.data ?? [];
+    const inComp = new Set(searchGroups.map((g) => g.key));
+    return data.filter((a) => !inComp.has(a.key)).slice(0, 50);
+  }, [dbSearchQuery.data, searchGroups]);
+
+
 
   // Per watched athlete: their entries sorted by start time
   const watchedSections = useMemo(() => {
