@@ -328,7 +328,7 @@ function WatchPage() {
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Hae sukunimellä ja kiinnitä seurantaan"
+              placeholder="Hae nimellä (etu- tai sukunimi) koko tietokannasta"
               className="pl-9"
               aria-label="Sukunimi"
             />
