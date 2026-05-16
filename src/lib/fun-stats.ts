@@ -276,46 +276,99 @@ function normEvent(s: string): string {
     .toLowerCase();
 }
 
+const INVALID_ORGS = new Set(["", "0", "-", ".", "Ei seuraa"]);
+
+export async function fetchOrganizations(season: SeasonKind): Promise<string[]> {
+  const range = seasonRange(season);
+  const seen = new Set<string>();
+  const PAGE = 1000;
+  let from = 0;
+  // Selailtava paginointi, jotta saadaan kaikki uniikit seurat
+  // (Supabase select+distinct ei tuettu suoraan PostgREST:llä helpolla tavalla)
+  for (let i = 0; i < 50; i++) {
+    const { data, error } = await supabase
+      .from("athlete_results")
+      .select("organization")
+      .gte("competition_date", range.from.toISOString())
+      .lt("competition_date", range.to.toISOString())
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as Array<{ organization: string }>;
+    for (const r of rows) {
+      const o = (r.organization ?? "").trim();
+      if (o && !INVALID_ORGS.has(o)) seen.add(o);
+    }
+    if (rows.length < PAGE) break;
+    from += PAGE;
+  }
+  return Array.from(seen).sort((a, b) => a.localeCompare(b, "fi"));
+}
+
+export async function fetchAgeClassesForOrg(
+  season: SeasonKind,
+  organization: string,
+): Promise<string[]> {
+  const range = seasonRange(season);
+  const seen = new Set<string>();
+  const PAGE = 1000;
+  let from = 0;
+  for (let i = 0; i < 20; i++) {
+    const { data, error } = await supabase
+      .from("athlete_results")
+      .select("age_class")
+      .eq("organization", organization)
+      .gte("competition_date", range.from.toISOString())
+      .lt("competition_date", range.to.toISOString())
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as Array<{ age_class: string }>;
+    for (const r of rows) {
+      const a = (r.age_class ?? "").trim();
+      if (a) seen.add(a);
+    }
+    if (rows.length < PAGE) break;
+    from += PAGE;
+  }
+  return Array.from(seen).sort((a, b) => a.localeCompare(b, "fi"));
+}
+
 export async function fetchFunStats(
   season: SeasonKind,
-  ageClassFilter: string | null,
+  organization: string | null,
+  ageClassFilter: string[] | null,
 ): Promise<FunStatsResult> {
   const range = seasonRange(season);
-
-  const { data: watched, error: wErr } = await supabase
-    .from("watched_athletes")
-    .select("athlete_key");
-  if (wErr) throw wErr;
-  const keys = Array.from(
-    new Set(((watched ?? []) as Array<{ athlete_key: string }>).map((w) => w.athlete_key)),
-  );
   const empty = makeEmpty();
-  if (keys.length === 0) return empty;
+  if (!organization) return empty;
 
   const all: Row[] = [];
-  const chunkSize = 100;
-  for (let i = 0; i < keys.length; i += chunkSize) {
-    const chunk = keys.slice(i, i + chunkSize);
-    const { data, error } = await supabase
+  const PAGE = 1000;
+  let from = 0;
+  for (let i = 0; i < 50; i++) {
+    let q = supabase
       .from("athlete_results")
       .select(
         "athlete_key, surname, firstname, organization, competition_id, competition_date, location, event_name, event_category, sub_category, result_numeric, age_class, was_pb",
       )
-      .in("athlete_key", chunk)
+      .eq("organization", organization)
       .gte("competition_date", range.from.toISOString())
-      .lt("competition_date", range.to.toISOString())
-      .limit(1000);
+      .lt("competition_date", range.to.toISOString());
+    if (ageClassFilter && ageClassFilter.length > 0) {
+      q = q.in("age_class", ageClassFilter);
+    }
+    const { data, error } = await q.range(from, from + PAGE - 1);
     if (error) throw error;
-    all.push(...((data ?? []) as Row[]));
+    const rows = (data ?? []) as Row[];
+    all.push(...rows);
+    if (rows.length < PAGE) break;
+    from += PAGE;
   }
 
   const ageClasses = Array.from(
     new Set(all.map((r) => r.age_class).filter((s) => s && s.length > 0)),
   ).sort((a, b) => a.localeCompare(b, "fi"));
 
-  const filtered = ageClassFilter
-    ? all.filter((r) => r.age_class === ageClassFilter)
-    : all;
+  const filtered = all;
 
   interface Acc {
     athleteKey: string;
