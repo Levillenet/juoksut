@@ -167,7 +167,7 @@ export async function fetchTodayStats(): Promise<TodayStats> {
   let seasonTops = 0;
   for (const [key, t] of todayBest) {
     const prior = priorBest.get(key);
-    const lower = isLowerBetter(t.eventCategory);
+    const lower = isLowerBetter(t.eventCategory, t.subCategory);
     if (prior == null) {
       seasonTops++;
       continue;
