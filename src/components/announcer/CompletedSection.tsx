@@ -1,5 +1,6 @@
 import { Trophy } from "lucide-react";
 import { EmptyCard, SectionTitle, UpcomingItem } from "./shared";
+import { useAutoOpenCompleted } from "@/lib/settings-store";
 import type { AnnouncerData } from "@/hooks/useAnnouncerData";
 
 export function CompletedSection({
