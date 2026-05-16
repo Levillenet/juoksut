@@ -20,8 +20,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 const API = "https://cached-public-api.tuloslista.com/live/v1";
 const BATCH_SIZE = 100;      // competition IDs scanned per invocation
 const TAIL_RESCAN = 30;      // IDs to re-scan when caught up
-const REVISIT_LIMIT = 40;    // tuloksettomien kisojen uudelleentarkistus per ajo
-const REVISIT_MAX_AGE_DAYS = 14; // kuinka kauan palataan tyhjiin kisoihin
+const REVISIT_LIMIT = 120;   // tuloksellisten/tuloksettomien kisojen uudelleentarkistus per ajo
+const REVISIT_MAX_AGE_DAYS = 365; // kuinka kauan palataan kisoihin (alkuerä→finaali voi täydentyä myöhemmin)
 const CONCURRENCY = 5;       // parallel competitions per chunk
 const HARD_MAX_ID = 30000;   // safety ceiling
 const FLOOR_ID = 16456;      // tuloslista API:n vanhin saatavilla oleva kisa (5.1.2025)
