@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WatchRouteImport } from './routes/watch'
+import { Route as TietoaPalvelustaRouteImport } from './routes/tietoa-palvelusta'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SeasonLeadersRouteImport } from './routes/season-leaders'
 import { Route as SearchRouteImport } from './routes/search'
@@ -40,6 +41,11 @@ import { Route as ApiPublicHooksHarvestKilpailukalenteriRouteImport } from './ro
 const WatchRoute = WatchRouteImport.update({
   id: '/watch',
   path: '/watch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TietoaPalvelustaRoute = TietoaPalvelustaRouteImport.update({
+  id: '/tietoa-palvelusta',
+  path: '/tietoa-palvelusta',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -188,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof SearchRoute
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRoute
+  '/tietoa-palvelusta': typeof TietoaPalvelustaRoute
   '/watch': typeof WatchRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
@@ -215,6 +222,7 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRoute
+  '/tietoa-palvelusta': typeof TietoaPalvelustaRoute
   '/watch': typeof WatchRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
@@ -245,6 +253,7 @@ export interface FileRoutesById {
   '/search': typeof SearchRoute
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRoute
+  '/tietoa-palvelusta': typeof TietoaPalvelustaRoute
   '/watch': typeof WatchRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
@@ -276,6 +285,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/season-leaders'
     | '/settings'
+    | '/tietoa-palvelusta'
     | '/watch'
     | '/admin/analytics'
     | '/admin/club-locations'
@@ -303,6 +313,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/season-leaders'
     | '/settings'
+    | '/tietoa-palvelusta'
     | '/watch'
     | '/admin/analytics'
     | '/admin/club-locations'
@@ -332,6 +343,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/season-leaders'
     | '/settings'
+    | '/tietoa-palvelusta'
     | '/watch'
     | '/admin/analytics'
     | '/admin/club-locations'
@@ -362,6 +374,7 @@ export interface RootRouteChildren {
   SearchRoute: typeof SearchRoute
   SeasonLeadersRoute: typeof SeasonLeadersRoute
   SettingsRoute: typeof SettingsRoute
+  TietoaPalvelustaRoute: typeof TietoaPalvelustaRoute
   WatchRoute: typeof WatchRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminClubLocationsRoute: typeof AdminClubLocationsRoute
@@ -379,6 +392,13 @@ declare module '@tanstack/react-router' {
       path: '/watch'
       fullPath: '/watch'
       preLoaderRoute: typeof WatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tietoa-palvelusta': {
+      id: '/tietoa-palvelusta'
+      path: '/tietoa-palvelusta'
+      fullPath: '/tietoa-palvelusta'
+      preLoaderRoute: typeof TietoaPalvelustaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -611,6 +631,7 @@ const rootRouteChildren: RootRouteChildren = {
   SearchRoute: SearchRoute,
   SeasonLeadersRoute: SeasonLeadersRoute,
   SettingsRoute: SettingsRoute,
+  TietoaPalvelustaRoute: TietoaPalvelustaRoute,
   WatchRoute: WatchRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminClubLocationsRoute: AdminClubLocationsRoute,
