@@ -158,6 +158,45 @@ export type Database = {
         }
         Relationships: []
       }
+      athlete_shares: {
+        Row: {
+          athlete_key: string
+          created_at: string
+          firstname: string
+          organization: string
+          organization_id: number | null
+          owner_label: string
+          revoked_at: string | null
+          surname: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          athlete_key: string
+          created_at?: string
+          firstname?: string
+          organization?: string
+          organization_id?: number | null
+          owner_label?: string
+          revoked_at?: string | null
+          surname?: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          athlete_key?: string
+          created_at?: string
+          firstname?: string
+          organization?: string
+          organization_id?: number | null
+          owner_label?: string
+          revoked_at?: string | null
+          surname?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       competition_locations: {
         Row: {
           competition_id: number
@@ -433,6 +472,43 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_shared_athlete: {
+        Args: { p_token: string }
+        Returns: {
+          athlete_key: string
+          firstname: string
+          organization: string
+          organization_id: number
+          owner_label: string
+          revoked: boolean
+          surname: string
+        }[]
+      }
+      get_shared_athlete_results: {
+        Args: { p_token: string }
+        Returns: {
+          age_class: string
+          athlete_key: string
+          competition_date: string
+          competition_id: number
+          competition_name: string
+          event_category: string
+          event_id: number
+          event_name: string
+          firstname: string
+          id: string
+          location: string
+          organization: string
+          organization_id: number
+          result_numeric: number
+          result_rank: number
+          result_text: string
+          sub_category: string
+          surname: string
+          was_pb: boolean
+          wind: number
+        }[]
+      }
       get_shared_watch: {
         Args: { p_token: string }
         Returns: {

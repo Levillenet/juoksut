@@ -25,6 +25,7 @@ import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PrintIndexRouteImport } from './routes/print.index'
 import { Route as AnnouncerIndexRouteImport } from './routes/announcer.index'
+import { Route as UrheilijaTokenRouteImport } from './routes/urheilija.$token'
 import { Route as SeuraaTokenRouteImport } from './routes/seuraa.$token'
 import { Route as PrintWatchedRouteImport } from './routes/print.watched'
 import { Route as PrintClubRouteImport } from './routes/print.club'
@@ -118,6 +119,11 @@ const AnnouncerIndexRoute = AnnouncerIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AnnouncerRoute,
 } as any)
+const UrheilijaTokenRoute = UrheilijaTokenRouteImport.update({
+  id: '/urheilija/$token',
+  path: '/urheilija/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SeuraaTokenRoute = SeuraaTokenRouteImport.update({
   id: '/seuraa/$token',
   path: '/seuraa/$token',
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
   '/seuraa/$token': typeof SeuraaTokenRoute
+  '/urheilija/$token': typeof UrheilijaTokenRoute
   '/announcer/': typeof AnnouncerIndexRoute
   '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
@@ -233,6 +240,7 @@ export interface FileRoutesByTo {
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
   '/seuraa/$token': typeof SeuraaTokenRoute
+  '/urheilija/$token': typeof UrheilijaTokenRoute
   '/announcer': typeof AnnouncerIndexRoute
   '/print': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
@@ -264,6 +272,7 @@ export interface FileRoutesById {
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
   '/seuraa/$token': typeof SeuraaTokenRoute
+  '/urheilija/$token': typeof UrheilijaTokenRoute
   '/announcer/': typeof AnnouncerIndexRoute
   '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
@@ -296,6 +305,7 @@ export interface FileRouteTypes {
     | '/print/club'
     | '/print/watched'
     | '/seuraa/$token'
+    | '/urheilija/$token'
     | '/announcer/'
     | '/print/'
     | '/round/$eventId/$roundId'
@@ -324,6 +334,7 @@ export interface FileRouteTypes {
     | '/print/club'
     | '/print/watched'
     | '/seuraa/$token'
+    | '/urheilija/$token'
     | '/announcer'
     | '/print'
     | '/round/$eventId/$roundId'
@@ -354,6 +365,7 @@ export interface FileRouteTypes {
     | '/print/club'
     | '/print/watched'
     | '/seuraa/$token'
+    | '/urheilija/$token'
     | '/announcer/'
     | '/print/'
     | '/round/$eventId/$roundId'
@@ -380,6 +392,7 @@ export interface RootRouteChildren {
   AdminClubLocationsRoute: typeof AdminClubLocationsRoute
   AthleteKeyRoute: typeof AthleteKeyRoute
   SeuraaTokenRoute: typeof SeuraaTokenRoute
+  UrheilijaTokenRoute: typeof UrheilijaTokenRoute
   RoundEventIdRoundIdRoute: typeof RoundEventIdRoundIdRoute
   ApiPublicHooksHarvestKilpailukalenteriRoute: typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   ApiPublicHooksHarvestResultsRoute: typeof ApiPublicHooksHarvestResultsRoute
@@ -498,6 +511,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/announcer/'
       preLoaderRoute: typeof AnnouncerIndexRouteImport
       parentRoute: typeof AnnouncerRoute
+    }
+    '/urheilija/$token': {
+      id: '/urheilija/$token'
+      path: '/urheilija/$token'
+      fullPath: '/urheilija/$token'
+      preLoaderRoute: typeof UrheilijaTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/seuraa/$token': {
       id: '/seuraa/$token'
@@ -637,6 +657,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminClubLocationsRoute: AdminClubLocationsRoute,
   AthleteKeyRoute: AthleteKeyRoute,
   SeuraaTokenRoute: SeuraaTokenRoute,
+  UrheilijaTokenRoute: UrheilijaTokenRoute,
   RoundEventIdRoundIdRoute: RoundEventIdRoundIdRoute,
   ApiPublicHooksHarvestKilpailukalenteriRoute:
     ApiPublicHooksHarvestKilpailukalenteriRoute,
@@ -645,13 +666,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

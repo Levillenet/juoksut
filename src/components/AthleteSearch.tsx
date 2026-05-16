@@ -117,10 +117,13 @@ export function AthleteSearch({
     if (!index) return [];
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
+    const tokens = q.split(/\s+/).filter((t) => t.length > 0);
     const matches = index.filter((e) => {
-      const s = e.alloc.Surname?.toLowerCase() ?? "";
-      const f = e.alloc.Firstname?.toLowerCase() ?? "";
-      return s.includes(q) || f.includes(q);
+      const s = (e.alloc.Surname ?? "").toLowerCase();
+      const f = (e.alloc.Firstname ?? "").toLowerCase();
+      // Sallitaan haku missä järjestyksessä tahansa: "Aapo Simo" tai "Simo Aapo".
+      const haystack = `${s} ${f} ${f} ${s}`;
+      return tokens.every((t) => haystack.includes(t));
     });
     const map = new Map<string, GroupedAthlete>();
     for (const e of matches) {

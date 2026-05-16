@@ -15,6 +15,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 
 import { RequireRole } from "@/components/RequireRole";
+import { ShareAthleteButton } from "@/components/ShareAthleteButton";
 import { EventGroupView } from "@/components/RecordsPanel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -231,6 +232,19 @@ function AthletePage() {
               <p className="truncate text-xs text-muted-foreground">{meta.organization}</p>
             )}
           </div>
+          <ShareAthleteButton
+            target={
+              meta
+                ? {
+                    athleteKey: key,
+                    surname: meta.surname,
+                    firstname: meta.firstname,
+                    organization: meta.organization ?? "",
+                    organizationId: null,
+                  }
+                : null
+            }
+          />
         </div>
       </header>
 
