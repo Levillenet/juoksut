@@ -92,7 +92,7 @@ async function fetchSeasonPriorBests(
     for (const r of rows) {
       if (r.result_numeric == null) continue;
       const key = `${normalizeEventName(r.event_name)}|${r.age_class}`;
-      const lower = isLowerBetter(r.event_category);
+      const lower = isLowerBetter(r.event_category, r.sub_category);
       const cur = best.get(key);
       if (cur == null || (lower ? r.result_numeric < cur : r.result_numeric > cur)) {
         best.set(key, r.result_numeric);
