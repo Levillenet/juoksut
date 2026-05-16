@@ -18,9 +18,20 @@ interface LiveTickerProps {
   source: TickerSource;
   showLabel?: string;
   emptyText?: string;
+  /**
+   * When false, the persistent ticker bar is hidden. If there are stored
+   * messages the user can still re-open history via a small corner button.
+   * Defaults to true (announcer views always-on behaviour).
+   */
+  active?: boolean;
 }
 
-export function LiveTicker({ source, showLabel, emptyText }: LiveTickerProps) {
+export function LiveTicker({
+  source,
+  showLabel,
+  emptyText,
+  active = true,
+}: LiveTickerProps) {
   const { messages, enabled, lastReadAt, unreadCount } = useTickerStore(source);
   const [expanded, setExpanded] = useState(false);
   const latest = messages[0];
@@ -52,6 +63,46 @@ export function LiveTicker({ source, showLabel, emptyText }: LiveTickerProps) {
           </span>
         )}
       </button>
+    );
+  }
+
+  // Inactive: hide the bar, but offer a history button if there are messages.
+  if (!active) {
+    if (messages.length === 0) return null;
+    return (
+      <>
+        {expanded && (
+          <div className="fixed inset-x-0 bottom-12 z-40 border-t border-border bg-card/95 backdrop-blur animate-fade-in">
+            <div className="mx-auto max-h-[40vh] max-w-[1600px] overflow-y-auto px-4 py-3">
+              <ol className="space-y-1.5">
+                {messages.map((m) => (
+                  <MessageRow key={m.id} m={m} unread={m.timestamp > lastReadAt} />
+                ))}
+              </ol>
+            </div>
+          </div>
+        )}
+        <button
+          onClick={() => {
+            setExpanded((v) => !v);
+            if (!expanded) markTickerRead(source);
+          }}
+          className="fixed bottom-3 right-3 z-40 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold shadow-lg hover:bg-secondary"
+          aria-label={`Näytä ${label.toLowerCase()} historia`}
+        >
+          {expanded ? (
+            <ChevronDown className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronUp className="h-3.5 w-3.5" />
+          )}
+          {label} historia ({messages.length})
+          {!expanded && unreadCount > 0 && (
+            <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary-foreground">
+              {unreadCount}
+            </span>
+          )}
+        </button>
+      </>
     );
   }
 
