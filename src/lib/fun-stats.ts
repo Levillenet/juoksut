@@ -160,6 +160,7 @@ interface Row {
   location: string;
   event_name: string;
   event_category: string;
+  sub_category: string;
   result_numeric: number | null;
   age_class: string;
 }
@@ -217,7 +218,7 @@ export async function fetchFunStats(
     const { data, error } = await supabase
       .from("athlete_results")
       .select(
-        "athlete_key, surname, firstname, organization, competition_id, competition_date, location, event_name, event_category, result_numeric, age_class",
+        "athlete_key, surname, firstname, organization, competition_id, competition_date, location, event_name, event_category, sub_category, result_numeric, age_class",
       )
       .in("athlete_key", chunk)
       .gte("competition_date", range.from.toISOString())
@@ -301,9 +302,9 @@ export async function fetchFunStats(
       if (r.result_numeric != null && r.result_numeric > 0 && r.result_numeric < 10 * 3600) {
         a.runSeconds += r.result_numeric;
       }
-    } else if (r.event_category === "Jump") {
+    } else if (r.sub_category === "HorizontalJump" || r.sub_category === "VerticalJump") {
       a.jumpCount += 1;
-    } else if (r.event_category === "Throw") {
+    } else if (r.sub_category === "Throw") {
       a.throwCount += 1;
     }
   }
