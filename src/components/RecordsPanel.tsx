@@ -11,10 +11,26 @@ const HELSINKI_DATE = new Intl.DateTimeFormat("fi-FI", {
   year: "numeric",
 });
 
+const HELSINKI_DATE_SHORT = new Intl.DateTimeFormat("fi-FI", {
+  timeZone: "Europe/Helsinki",
+  day: "numeric",
+  month: "numeric",
+  year: "2-digit",
+});
+
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   try {
     return HELSINKI_DATE.format(new Date(iso));
+  } catch {
+    return "—";
+  }
+}
+
+function formatDateShort(iso: string | null): string {
+  if (!iso) return "—";
+  try {
+    return HELSINKI_DATE_SHORT.format(new Date(iso));
   } catch {
     return "—";
   }
