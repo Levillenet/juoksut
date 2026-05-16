@@ -16,6 +16,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { parseResult } from "@/lib/result-parse";
 
 const API = "https://cached-public-api.tuloslista.com/live/v1";
 const BATCH_SIZE = 100;      // competition IDs scanned per invocation
@@ -64,21 +65,13 @@ interface RoundsByDateShape {
   [date: string]: { EventId: number; GroupName?: string }[];
 }
 
-function parseResultNumeric(text: string, category: string): number | null {
-  if (!text) return null;
-  const t = text.trim();
-  if (!t || /^(DNF|DNS|DQ|NM|FAIL)$/i.test(t)) return null;
-  const cleaned = t.replace(",", ".").replace(/[a-zA-Z]/g, "").trim();
-  if (!cleaned) return null;
-  if (category === "Track") {
-    const parts = cleaned.split(":").map((p) => parseFloat(p));
-    if (parts.some((n) => Number.isNaN(n))) return null;
-    let s = 0;
-    for (const p of parts) s = s * 60 + p;
-    return s;
-  }
-  const n = parseFloat(cleaned);
-  return Number.isNaN(n) ? null : n;
+function parseResultNumeric(
+  text: string,
+  category: string,
+  subCategory: string,
+  eventName: string,
+): number | null {
+  return parseResult(text, { category, subCategory, eventName });
 }
 
 async function fetchJson<T>(url: string): Promise<T | null> {
@@ -185,7 +178,7 @@ async function processCompetition(
             sub_category: subCategory,
             event_category: category,
             result_text: a.Result,
-            result_numeric: parseResultNumeric(a.Result, category),
+            result_numeric: parseResultNumeric(a.Result, category, subCategory, ev.Name),
             result_rank: a.ResultRank ?? null,
             wind: parseWind(a.Wind),
             age_class: ageClass,
