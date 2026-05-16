@@ -134,6 +134,7 @@ function RootComponent() {
       <AuthProvider>
         <RouteTracker />
         <Outlet />
+        <WelcomeDialog />
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>
