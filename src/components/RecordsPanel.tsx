@@ -96,7 +96,7 @@ export function EventGroupView({ group }: { group: EventGroup }) {
               <th className="px-3 py-1.5 text-left font-medium">Pvm</th>
               <th className="px-3 py-1.5 text-left font-medium">Kilpailu</th>
               <th className="px-3 py-1.5 text-right font-medium">Tulos</th>
-              <th className="px-3 py-1.5 text-right font-medium">Sija</th>
+              <th className="hidden px-3 py-1.5 text-right font-medium sm:table-cell">Sija</th>
             </tr>
           </thead>
           <tbody>
