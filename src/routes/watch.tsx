@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Search as SearchIcon, RefreshCw, Pin, X, UserPlus, Building2, Trophy, Share2, Copy, Check, Trash2 } from "lucide-react";
 import logo from "@/assets/lahden-ahkera-logo.png";
 import { useWatchShare } from "@/lib/watch-share";
@@ -82,7 +83,7 @@ function WatchPage() {
     queryClient.invalidateQueries({ queryKey: competitionIndexKey(competitionId) });
   };
 
-  // Search results (grouped by athlete) — only when 2+ chars typed
+  // Search results from CURRENT competition (grouped by athlete) — when 2+ chars
   const searchGroups = useMemo(() => {
     if (!index) return [];
     const q = query.trim().toLowerCase();
@@ -92,7 +93,9 @@ function WatchPage() {
       { key: string; surname: string; firstname: string; organization: string; organizationId: number | null; count: number }
     >();
     for (const e of index) {
-      if (!e.alloc.Surname?.toLowerCase().includes(q)) continue;
+      const s = e.alloc.Surname?.toLowerCase() ?? "";
+      const f = e.alloc.Firstname?.toLowerCase() ?? "";
+      if (!s.includes(q) && !f.includes(q)) continue;
       const orgId = e.alloc.Organization?.Id ?? null;
       const k = athleteKey(e.alloc.Surname, e.alloc.Firstname, orgId);
       if (!map.has(k)) {
@@ -111,6 +114,56 @@ function WatchPage() {
       `${a.surname} ${a.firstname}`.localeCompare(`${b.surname} ${b.firstname}`, "fi"),
     );
   }, [index, query]);
+
+  // Debounced query string for DB-wide search
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // DB-wide athlete search (across all competitions)
+  const dbSearchQuery = useQuery({
+    queryKey: ["watch-db-search", debouncedQuery.toLowerCase()],
+    queryFn: async () => {
+      const q = debouncedQuery.trim();
+      if (q.length < 2) return [] as Array<{
+        key: string; surname: string; firstname: string; organization: string; organizationId: number | null;
+      }>;
+      const like = `%${q.replace(/[%_]/g, (m) => `\\${m}`)}%`;
+      const { data, error } = await supabase
+        .from("athlete_results")
+        .select("athlete_key, surname, firstname, organization, organization_id, captured_at")
+        .or(`surname.ilike.${like},firstname.ilike.${like}`)
+        .order("captured_at", { ascending: false })
+        .limit(1000);
+      if (error) throw error;
+      const map = new Map<string, { key: string; surname: string; firstname: string; organization: string; organizationId: number | null }>();
+      for (const r of data ?? []) {
+        if (!r.athlete_key) continue;
+        if (map.has(r.athlete_key)) continue; // first (most recent) wins
+        map.set(r.athlete_key, {
+          key: r.athlete_key,
+          surname: r.surname ?? "",
+          firstname: r.firstname ?? "",
+          organization: r.organization ?? "",
+          organizationId: r.organization_id ?? null,
+        });
+      }
+      return Array.from(map.values()).sort((a, b) =>
+        `${a.surname} ${a.firstname}`.localeCompare(`${b.surname} ${b.firstname}`, "fi"),
+      );
+    },
+    enabled: debouncedQuery.trim().length >= 2,
+    staleTime: 60_000,
+  });
+
+  // DB results not already in the current-competition list
+  const dbOnlyResults = useMemo(() => {
+    const data = dbSearchQuery.data ?? [];
+    const inComp = new Set(searchGroups.map((g) => g.key));
+    return data.filter((a) => !inComp.has(a.key)).slice(0, 50);
+  }, [dbSearchQuery.data, searchGroups]);
 
   const watchedKeys = useMemo(() => new Set(watched.map((w) => w.key)), [watched]);
 
@@ -275,7 +328,7 @@ function WatchPage() {
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Hae sukunimellä ja kiinnitä seurantaan"
+              placeholder="Hae nimellä (etu- tai sukunimi) koko tietokannasta"
               className="pl-9"
               aria-label="Sukunimi"
             />
@@ -303,57 +356,141 @@ function WatchPage() {
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Hakutulokset
             </h3>
-            {searchGroups.length === 0 ? (
+            {searchGroups.length === 0 && dbOnlyResults.length === 0 && !dbSearchQuery.isFetching ? (
               <p className="rounded-lg border bg-card px-4 py-3 text-sm text-muted-foreground">
                 Ei osumia haulla "{query}".
               </p>
             ) : (
-              <ul className="space-y-2">
-                {searchGroups.map((g) => {
-                  const isWatched = watchedKeys.has(g.key);
-                  return (
-                    <li
-                      key={g.key}
-                      className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold">
-                          {g.surname} {g.firstname}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {g.organization} · {g.count} {g.count === 1 ? "laji" : "lajia"}
-                        </p>
-                      </div>
-                      {isWatched ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => remove(g.key)}
-                          aria-label="Poista seurannasta"
-                        >
-                          <X className="h-4 w-4" /> Seurannassa
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            add({
-                              key: g.key,
-                              surname: g.surname,
-                              firstname: g.firstname,
-                              organization: g.organization,
-                              organizationId: g.organizationId,
-                            } satisfies WatchedAthlete)
-                          }
-                          aria-label="Lisää seurantaan"
-                        >
-                          <UserPlus className="h-4 w-4" /> Seuraa
-                        </Button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+              <>
+                {searchGroups.length > 0 && (
+                  <>
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Tässä kisassa
+                    </p>
+                    <ul className="mb-3 space-y-2">
+                      {searchGroups.map((g) => {
+                        const isWatched = watchedKeys.has(g.key);
+                        return (
+                          <li
+                            key={g.key}
+                            className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold">
+                                <Link
+                                  to="/athlete/$key"
+                                  params={{ key: g.key }}
+                                  className="hover:underline"
+                                >
+                                  {g.surname} {g.firstname}
+                                </Link>
+                              </p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {g.organization} · {g.count} {g.count === 1 ? "laji" : "lajia"}
+                              </p>
+                            </div>
+                            {isWatched ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => remove(g.key)}
+                                aria-label="Poista seurannasta"
+                              >
+                                <X className="h-4 w-4" /> Seurannassa
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  add({
+                                    key: g.key,
+                                    surname: g.surname,
+                                    firstname: g.firstname,
+                                    organization: g.organization,
+                                    organizationId: g.organizationId,
+                                  } satisfies WatchedAthlete)
+                                }
+                                aria-label="Lisää seurantaan"
+                              >
+                                <UserPlus className="h-4 w-4" /> Seuraa
+                              </Button>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                )}
+
+                {dbSearchQuery.isFetching && (
+                  <p className="mb-2 text-xs text-muted-foreground">Haetaan tietokannasta…</p>
+                )}
+
+                {dbOnlyResults.length > 0 && (
+                  <>
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Muista kisoista (koko tietokanta)
+                    </p>
+                    <ul className="space-y-2">
+                      {dbOnlyResults.map((g) => {
+                        const isWatched = watchedKeys.has(g.key);
+                        return (
+                          <li
+                            key={g.key}
+                            className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold">
+                                <Link
+                                  to="/athlete/$key"
+                                  params={{ key: g.key }}
+                                  className="hover:underline"
+                                >
+                                  {g.surname} {g.firstname}
+                                </Link>
+                              </p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {g.organization || "—"}
+                              </p>
+                            </div>
+                            {isWatched ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => remove(g.key)}
+                                aria-label="Poista seurannasta"
+                              >
+                                <X className="h-4 w-4" /> Seurannassa
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  add({
+                                    key: g.key,
+                                    surname: g.surname,
+                                    firstname: g.firstname,
+                                    organization: g.organization,
+                                    organizationId: g.organizationId,
+                                  } satisfies WatchedAthlete)
+                                }
+                                aria-label="Lisää seurantaan"
+                              >
+                                <UserPlus className="h-4 w-4" /> Seuraa
+                              </Button>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {(dbSearchQuery.data?.length ?? 0) - searchGroups.length > dbOnlyResults.length && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Näytetään {dbOnlyResults.length} ensimmäistä — tarkenna hakua kirjoittamalla lisää.
+                      </p>
+                    )}
+                  </>
+                )}
+              </>
             )}
           </section>
         )}
@@ -474,7 +611,7 @@ function WatchPage() {
             <div className="rounded-xl border border-dashed bg-card/50 px-6 py-10 text-center">
               <Pin className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                Ei vielä kiinnitettyjä urheilijoita. Hae sukunimellä yltä ja paina <em>Seuraa</em>.
+                Ei vielä kiinnitettyjä urheilijoita. Hae nimellä yltä ja paina <em>Seuraa</em>.
               </p>
             </div>
           ) : (

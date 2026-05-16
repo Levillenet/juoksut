@@ -1,52 +1,45 @@
-# PB-merkinnän bugin korjaus
+# Kilpailijaseurannan nimihaku laajennetaan koko tietokantaan
 
 ## Ongelma
 
-Elli Savolaisen 60m Reilu Cup 1 (14.5.2026, 9,21) on merkitty PB:ksi, vaikka hänellä on aiempia parempia aikoja:
-- Kouvola Junior Games 19.7.2025: **9,12**
-- Avoimet nuorten pm-hallit 5.4.2026: **9,10**
+`/watch`-sivun hakukenttä rajautuu nykyisin pelkästään käsillä olevan kilpailun osallistujiin ja vertailee vain sukunimeen. Käyttäjä haluaa lisätä seurantaan tuttuja myös muista seuroista, joten haun pitää löytää kaikki tietokannan urheilijat — etu- tai sukunimellä.
 
-## Syy
+## Korjaus (vain `src/routes/watch.tsx`)
 
-`mark_pbs_for_competitions`-funktio vertailee "aikaisempia" tuloksia `captured_at`-aikaleiman perusteella, eli sen mukaan **milloin rivi lisättiin tietokantaan** — ei kilpailun päivämäärän mukaan.
+### 1. Haku osuu sekä etu- että sukunimeen
+Nykyinen `searchGroups`-suodatus tarkistaa vain `Surname`. Laajenna se kattamaan myös `Firstname` (sama logiikka kuin `AthleteSearch`-komponentissa).
 
-Reilu Cup 1 syötettiin 14.5. klo 17:29. Historialliset tulokset (mm. Kouvola) ehdittiin perata vasta 15.5. — silloin kun Reilu Cupin PB-arvio tehtiin, Kouvolan tulosta ei vielä ollut taulussa, joten 9,21 näytti PB:ltä.
+### 2. Lisää tietokantahaku
+Uusi `useQuery`, joka triggeröityy kun haku on ≥ 2 merkkiä (300 ms debounce):
 
-Lisäksi funktio käsittelee vain rivejä joilla `was_pb = false` ja kääntää lipun vain ylöspäin. Se ei koskaan **poista** virheellistä PB-merkintää, vaikka aiempi parempi tulos myöhemmin ilmestyisi.
+```ts
+supabase
+  .from("athlete_results")
+  .select("athlete_key, surname, firstname, organization, organization_id")
+  .or(`surname.ilike.%${q}%,firstname.ilike.%${q}%`)
+  .limit(500);
+```
 
-## Korjaus
+Tulokset deduplikoidaan `athlete_key`:n perusteella. Kullekin urheilijalle valitaan tuorein `organization` näkyviin.
 
-### 1. Uusi PB-funktio (migration)
+### 3. Yhdistetty tuloslista
+Yksi "Hakutulokset"-osio, joka sisältää:
+- **Ensin** tämän kilpailun osumat (säilyttävät nykyisen "X lajia" -badgen)
+- **Sen jälkeen** muut tietokannan osumat (badge "muista kisoista" tai pelkkä seuran nimi)
+- Dedupe `athlete_key`-tasolla: jos sama urheilija on jo kilpailun listalla, älä toista häntä alaosiossa.
 
-Korvaa `mark_pbs_for_competitions` funktiolla joka:
-- Vertailee ensisijaisesti `competition_date`-ajalla, tiebreakerinä `captured_at` ja `id`.
-- Asettaa `was_pb`-kentän aina oikein (sekä TRUE → FALSE että FALSE → TRUE) kohderyhmälle.
-- Sama normalisointi (`normalize_event_name`) ja samat sääntö Track vs. ei-Track.
+Kummassakin tapauksessa rivillä on sama "Seuraa / Seurannassa" -painike kuin nyt.
 
-### 2. Globaali uudelleenlaskenta
+### 4. UX-yksityiskohdat
+- Placeholder: "Hae nimellä (etu- tai sukunimi)"
+- Latausindikaattori jos tietokantahaku on kesken
+- Maks. esim. 50 nimeä näkyviin, jos enemmän → "Jatka kirjoittamista tarkentaaksesi"
 
-Lisää funktio `recalculate_all_pbs()` joka käy kaikki uniikit `(athlete_key, normalize_event_name(event_name))`-parit ja merkitsee jokaiselle aikajärjestyksessä ensimmäisen "all-time-best"-rivin PB:ksi (kuten silloin tulos oli ennätys hetkellään).
+## Pois rajauksesta
 
-Säännöt per (athlete, normalisoitu laji):
-- Käy rivit järjestyksessä `competition_date ASC, captured_at ASC, id ASC`.
-- Pidä yllä juoksevaa parasta (`min` Trackille, `max` muille).
-- Jos rivi on parempi tai yhtä hyvä kuin aiemmat → `was_pb = true`. Muuten `false`.
-
-Ajetaan tämä kerran migraation lopuksi.
-
-### 3. Harvester pysyy ennallaan
-
-`harvest-results.ts` kutsuu jatkossakin `mark_pbs_for_competitions(comp_ids)`. Funktion uusi toteutus toimii inkrementaalisesti: kun uusia kilpailuja tulee, niiden PB-status lasketaan kaikkia muita rivejä vasten oikein.
-
-Huom: jos historiallista dataa ladataan jälkikäteen (kuten nyt 2025-kausi 15.5.), `mark_pbs_for_competitions` kutsutaan niillekin comp_id:eillä → uudet "vanhat" tulokset saavat PB-statuksen oikein ja **purkavat** myöhempien rivien virheellisen PB:n.
-
-## Tekniset yksityiskohdat
-
-- `mark_pbs_for_competitions(comp_ids)`: kohderyhmänä kaikki rivit joissa `competition_id = ANY(comp_ids)` JA niiden (athlete, norm_event)-parien **kaikki muut rivit** — koska yhden rivin lisääminen voi muuttaa myöhemmän rivin statusta. Käytännössä helpoin toteutus: aja rivit pareittain läpi PL/pgSQL-kursorilla tai `WITH ranked AS (...)` -kyselyllä joka laskee uuden statuksen kaikille `(athlete_key, norm_event)`-pareille joihin uudet rivit kuuluvat, ja UPDATE jos `was_pb` poikkeaa nykyisestä.
-- Ei muutoksia frontend-koodiin eikä `harvest-results.ts`:ään.
+- "Lisää seuran urheilijat seurantaan" -osio jätetään nykyiseksi (se on sidottu käsillä olevaan kisaan tarkoituksella).
+- Frontend-only muutos, ei tietokantamuutoksia.
 
 ## Tiedostot
 
-- Uusi migraatio: `supabase/migrations/<timestamp>_fix_pb_calculation.sql`
-  - `CREATE OR REPLACE FUNCTION public.mark_pbs_for_competitions(...)` (uusi logiikka)
-  - Kertakäyttöinen `DO $$ ... $$` -lohko joka ajaa uudelleenlaskennan kaikille olemassaoleville kilpailuille
+- `src/routes/watch.tsx` — haun logiikka ja `Hakutulokset`-osion rendaus
