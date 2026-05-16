@@ -93,7 +93,7 @@ export const FUN_METRICS: FunMetricDef[] = [
     key: "jumpCount",
     emoji: "🦘",
     title: "Hyppykirppu",
-    description: "Eniten hyppysuorituksia.",
+    description: "Eniten hyppy-yrityksiä (arvio ≈ 4 / kisalaji).",
     format: (v) => `${v} hyppyä`,
     unitShort: "hyp.",
   },
