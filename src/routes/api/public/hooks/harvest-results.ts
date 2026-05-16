@@ -150,11 +150,16 @@ async function processCompetition(
     const category = ev.EventCategory ?? "";
     const subCategory = ev.EventSubCategory ?? "";
     const ageClass = ageByEvent.get(eid) ?? "";
-    // Lajilla voi olla useita kierroksia (alkuerät + finaali) saman event_id:n
-    // alla. Pidetään vain paras tulos per urheilija (Track = pienin numeerinen,
-    // muut = suurin). Jos numeerista vertailua ei voi tehdä, otetaan
-    // myöhemmin nähty kierros (Rounds-järjestys = aikajärjestys), jolloin
-    // finaali korvaa alkuerän.
+    // Lajilla voi olla useita kierroksia (alkuerät + loppukilpailu/A-/B-finaali)
+    // saman event_id:n alla. API palauttaa Rounds-listan kronologisesti.
+    //
+    // Track: tulokseksi tulee VIIMEISIN kierros, jolla urheilijalla on tulos
+    // — eli loppukilpailun/finaalin aika, vaikka alkuerässä olisi juossut
+    // nopeammin. Jos urheilija jää alkuerään, jää alkuerän aika. A/B-finaali
+    // ratkeaa automaattisesti: urheilija esiintyy vain toisen finaalin
+    // allokoinneissa.
+    //
+    // Muut kategoriat (Field, Throw, Combined…): pidetään paras numeerinen.
     const bestForEvent = new Map<string, Row>();
     const isTrack = category === "Track";
     for (const r of ev.Rounds ?? []) {
@@ -188,16 +193,20 @@ async function processCompetition(
             bestForEvent.set(key, row);
             continue;
           }
-          const a1 = row.result_numeric;
-          const a0 = prev.result_numeric;
           let replace = false;
-          if (a1 != null && a0 != null) {
-            replace = isTrack ? a1 < a0 : a1 > a0;
-          } else if (a1 != null && a0 == null) {
+          if (isTrack) {
+            // Juoksut: myöhin kierros voittaa aina (Rounds on kronologinen).
             replace = true;
-          } else if (a1 == null && a0 == null) {
-            // molemmat ei-numeerisia (DNF, NM, ...): pidetään myöhempi kierros
-            replace = true;
+          } else {
+            const a1 = row.result_numeric;
+            const a0 = prev.result_numeric;
+            if (a1 != null && a0 != null) {
+              replace = a1 > a0;
+            } else if (a1 != null && a0 == null) {
+              replace = true;
+            } else if (a1 == null && a0 == null) {
+              replace = true;
+            }
           }
           if (replace) bestForEvent.set(key, row);
         }
