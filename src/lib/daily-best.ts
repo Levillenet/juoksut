@@ -149,7 +149,7 @@ export async function fetchDailyBestForAthletes(
       bestByPair.set(k, row);
       continue;
     }
-    const lower = isLowerBetter(row.event_category);
+    const lower = isLowerBetter(row.event_category, row.sub_category);
     const a = row.result_numeric ?? Number.POSITIVE_INFINITY;
     const b = cur.result_numeric ?? Number.POSITIVE_INFINITY;
     if (lower ? a < b : a > b) bestByPair.set(k, row);
