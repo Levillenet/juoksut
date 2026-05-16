@@ -23,6 +23,7 @@ interface TodayRow {
   athlete_key: string;
   event_name: string;
   event_category: string;
+  sub_category: string;
   age_class: string;
   result_numeric: number | null;
   was_pb: boolean | null;
@@ -38,7 +39,7 @@ async function fetchTodayRows(): Promise<TodayRow[]> {
     const { data, error } = await supabase
       .from("athlete_results")
       .select(
-        "competition_id, event_id, athlete_key, event_name, event_category, age_class, result_numeric, was_pb",
+        "competition_id, event_id, athlete_key, event_name, event_category, sub_category, age_class, result_numeric, was_pb",
       )
       .gte("competition_date", startISO)
       .lt("competition_date", endISO)
