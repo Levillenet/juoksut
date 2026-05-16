@@ -11,7 +11,7 @@ import { AthleteSearch } from "@/components/AthleteSearch";
 export const Route = createFileRoute("/search")({
   head: () => ({
     meta: [
-      { title: "Hae sukunimellä – kisahaku" },
+      { title: "Hae nimellä – kisahaku" },
       {
         name: "description",
         content: "Hae osallistujaa sukunimellä ja näe lajit, juoksuerät ja aikataulu.",
