@@ -132,7 +132,7 @@ export async function fetchDailyBestForAthletes(
   const { data: all, error: e2 } = await supabase
     .from("athlete_results")
     .select(
-      "event_name, sub_category, event_category, age_class, result_text, result_numeric, surname, firstname, organization, competition_name, competition_id, competition_date",
+      "event_name, sub_category, event_category, age_class, result_text, result_numeric, result_rank, surname, firstname, organization, competition_name, competition_id, competition_date",
     )
     .in("event_name", eventNames)
     .in("age_class", ageClasses.length > 0 ? ageClasses : [""])
@@ -141,8 +141,24 @@ export async function fetchDailyBestForAthletes(
     .not("result_numeric", "is", null);
   if (e2) throw e2;
 
-  const bestByPair = new Map<string, DailyBestRow>();
+  // Step 1: per (competition, event, age) keep the official winner (lowest
+  // result_rank from tuloslista).
+  const perCompetition = new Map<string, DailyBestRow>();
   for (const row of (all ?? []) as DailyBestRow[]) {
+    const k = `${row.competition_id}|${row.event_name}|${row.age_class}`;
+    const cur = perCompetition.get(k);
+    if (!cur) {
+      perCompetition.set(k, row);
+      continue;
+    }
+    const a = row.result_rank ?? Number.POSITIVE_INFINITY;
+    const b = cur.result_rank ?? Number.POSITIVE_INFINITY;
+    if (a < b) perCompetition.set(k, row);
+  }
+
+  // Step 2: across competitions for the same (event, age) pick the best.
+  const bestByPair = new Map<string, DailyBestRow>();
+  for (const row of perCompetition.values()) {
     const k = `${row.event_name}|${row.age_class}`;
     if (!pairs.has(k)) continue;
     const cur = bestByPair.get(k);
