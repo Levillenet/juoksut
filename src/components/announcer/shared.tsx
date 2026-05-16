@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, ArrowUp, ArrowDown } from "lucide-react";
 import { detectRecord, RecordBadge } from "@/lib/records";
