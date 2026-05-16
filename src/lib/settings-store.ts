@@ -45,3 +45,35 @@ export function useRefreshIntervalSec(): [number, (n: number) => void] {
 }
 
 export const REFRESH_OPTIONS = [10, 15, 30, 60, 120, 300] as const;
+
+const AUTO_OPEN_COMPLETED_KEY = "announcer.autoOpenCompleted";
+
+export function getAutoOpenCompleted(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(AUTO_OPEN_COMPLETED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setAutoOpenCompleted(value: boolean) {
+  try {
+    localStorage.setItem(AUTO_OPEN_COMPLETED_KEY, value ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+  emit();
+}
+
+export function useAutoOpenCompleted(): [boolean, (v: boolean) => void] {
+  const [value, setValue] = useState<boolean>(() => getAutoOpenCompleted());
+  useEffect(() => {
+    const l = () => setValue(getAutoOpenCompleted());
+    listeners.add(l);
+    return () => {
+      listeners.delete(l);
+    };
+  }, []);
+  return [value, setAutoOpenCompleted];
+}

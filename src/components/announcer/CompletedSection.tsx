@@ -1,5 +1,6 @@
 import { Trophy } from "lucide-react";
 import { EmptyCard, SectionTitle, UpcomingItem } from "./shared";
+import { useAutoOpenCompleted } from "@/lib/settings-store";
 import type { AnnouncerData } from "@/hooks/useAnnouncerData";
 
 export function CompletedSection({
@@ -17,6 +18,7 @@ export function CompletedSection({
     restoreDismissed,
     details,
   } = data;
+  const [autoOpen] = useAutoOpenCompleted();
 
   return (
     <section>
@@ -49,7 +51,7 @@ export function CompletedSection({
               round={r}
               detail={details[r.EventId]}
               groupHeats={false}
-              defaultOpen
+              defaultOpen={autoOpen}
               onDismiss={() => dismissCompleted(r.Id)}
             />
           ))}
