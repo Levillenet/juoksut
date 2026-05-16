@@ -29,20 +29,15 @@ export interface AthleteResultRow {
   age_class?: string;
 }
 
-/** Track times "11.34", "1:23.45" → seconds. Field marks "12.34" → meters. */
-export function parseResultNumeric(text: string, category: string): number | null {
-  if (!text) return null;
-  const cleaned = text.trim().replace(",", ".").replace(/[a-zA-Z]/g, "").trim();
-  if (!cleaned || /^(DNF|DNS|DQ|NM|FAIL)$/i.test(text.trim())) return null;
-  if (category === "Track") {
-    const parts = cleaned.split(":").map((p) => parseFloat(p));
-    if (parts.some((n) => Number.isNaN(n))) return null;
-    let s = 0;
-    for (const p of parts) s = s * 60 + p;
-    return s;
-  }
-  const n = parseFloat(cleaned);
-  return Number.isNaN(n) ? null : n;
+/** Track times "11.34", "1:23.45", "4.42,40", "4,18" → seconds.
+ * Field marks "12.34", "4,18" → meters. Käytä shared parsijaa. */
+export function parseResultNumeric(
+  text: string,
+  category: string,
+  subCategory?: string,
+  eventName?: string,
+): number | null {
+  return parseResult(text, { category, subCategory, eventName });
 }
 
 const TIME_SUBCATEGORIES = new Set([
