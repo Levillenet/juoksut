@@ -19,6 +19,7 @@ import { useCompetitionId } from "@/lib/competition-store";
 import { useAuth, type Role } from "@/lib/auth";
 import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
 import { DailyBestSection } from "@/components/DailyBestSection";
+import { HarvestStatusBadge } from "@/components/HarvestStatusBadge";
 import { ClubTodaySection } from "@/components/ClubTodaySection";
 import { LiveCompetitionsSection } from "@/components/LiveCompetitionsSection";
 import { SeasonStatsSection } from "@/components/SeasonStatsSection";
