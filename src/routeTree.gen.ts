@@ -19,6 +19,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrintRouteImport } from './routes/print'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as KilpailukalenteriRouteImport } from './routes/kilpailukalenteri'
+import { Route as HauskatTilastotRouteImport } from './routes/hauskat-tilastot'
 import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PrintIndexRouteImport } from './routes/print.index'
@@ -84,6 +85,11 @@ const LoginRoute = LoginRouteImport.update({
 const KilpailukalenteriRoute = KilpailukalenteriRouteImport.update({
   id: '/kilpailukalenteri',
   path: '/kilpailukalenteri',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HauskatTilastotRoute = HauskatTilastotRouteImport.update({
+  id: '/hauskat-tilastot',
+  path: '/hauskat-tilastot',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnnouncerRoute = AnnouncerRouteImport.update({
@@ -172,6 +178,7 @@ const ApiPublicHooksHarvestKilpailukalenteriRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRouteWithChildren
+  '/hauskat-tilastot': typeof HauskatTilastotRoute
   '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
   '/print': typeof PrintRouteWithChildren
@@ -199,6 +206,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/hauskat-tilastot': typeof HauskatTilastotRoute
   '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/announcer': typeof AnnouncerRouteWithChildren
+  '/hauskat-tilastot': typeof HauskatTilastotRoute
   '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
   '/print': typeof PrintRouteWithChildren
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/announcer'
+    | '/hauskat-tilastot'
     | '/kilpailukalenteri'
     | '/login'
     | '/print'
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/hauskat-tilastot'
     | '/kilpailukalenteri'
     | '/login'
     | '/reset-password'
@@ -311,6 +322,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/announcer'
+    | '/hauskat-tilastot'
     | '/kilpailukalenteri'
     | '/login'
     | '/print'
@@ -340,6 +352,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnnouncerRoute: typeof AnnouncerRouteWithChildren
+  HauskatTilastotRoute: typeof HauskatTilastotRoute
   KilpailukalenteriRoute: typeof KilpailukalenteriRoute
   LoginRoute: typeof LoginRoute
   PrintRoute: typeof PrintRouteWithChildren
@@ -429,6 +442,13 @@ declare module '@tanstack/react-router' {
       path: '/kilpailukalenteri'
       fullPath: '/kilpailukalenteri'
       preLoaderRoute: typeof KilpailukalenteriRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hauskat-tilastot': {
+      id: '/hauskat-tilastot'
+      path: '/hauskat-tilastot'
+      fullPath: '/hauskat-tilastot'
+      preLoaderRoute: typeof HauskatTilastotRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/announcer': {
@@ -581,6 +601,7 @@ const PrintRouteWithChildren = PrintRoute._addFileChildren(PrintRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnnouncerRoute: AnnouncerRouteWithChildren,
+  HauskatTilastotRoute: HauskatTilastotRoute,
   KilpailukalenteriRoute: KilpailukalenteriRoute,
   LoginRoute: LoginRoute,
   PrintRoute: PrintRouteWithChildren,

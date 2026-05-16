@@ -109,6 +109,17 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
           </div>
         </Link>
       )}
+      {role === "user" && (
+        <Link
+          to="/hauskat-tilastot"
+          className="rounded-xl border-2 border-amber-500/40 bg-amber-50/60 px-4 py-2.5 text-center hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
+        >
+          <div className="text-sm font-semibold leading-tight">🎉 Hauskat tilastot</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            Leikkimieliset kausimittarit seuratuille urheilijoille
+          </div>
+        </Link>
+      )}
       {!isOfficial && (
         <Link
           to="/kilpailukalenteri"
