@@ -215,9 +215,14 @@ function AthletePage() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
         <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-3">
-          <Link to="/watch" className="text-muted-foreground hover:text-foreground">
+          <button
+            type="button"
+            onClick={handleBack}
+            aria-label="Takaisin"
+            className="text-muted-foreground hover:text-foreground"
+          >
             <ArrowLeft className="h-5 w-5" />
-          </Link>
+          </button>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-bold">
               {meta ? `${meta.surname} ${meta.firstname}` : decodeURIComponent(key)}
