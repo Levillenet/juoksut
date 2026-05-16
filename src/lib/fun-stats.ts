@@ -245,6 +245,7 @@ interface Row {
   event_category: string;
   sub_category: string;
   result_numeric: number | null;
+  result_text: string | null;
   age_class: string;
   was_pb: boolean;
 }
