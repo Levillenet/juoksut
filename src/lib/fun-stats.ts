@@ -31,8 +31,6 @@ export type FunMetricKey =
   | "uniqueCompetitions"
   | "allRounder"
   | "specialEvents"
-  | "earlyBird"
-  | "nightOwl"
   | "longestStreak";
 
 export interface FunMetricDef {
