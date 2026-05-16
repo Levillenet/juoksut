@@ -278,10 +278,13 @@ async function harvestRange(ids: number[]) {
           existed++;
           if (v.rowsAdded > 0) touchedCompIds.add(id);
         }
-        // Päätä onko tämä kisa "done" — eli ei tarvitse palata
+        // Päätä onko tämä kisa "done" — eli ei tarvitse palata.
+        // Pidetään revisit-tilassa myös jo tuloksellisia kisoja, koska
+        // alkuerien jälkeen voi tulla finaali (tai uusia kierroksia), ja
+        // upsert valitsee parhaan tuloksen per urheilija/laji uudelleen.
         const dateMs = v.competitionDate ? Date.parse(v.competitionDate) : NaN;
         const tooOldToRevisit = Number.isFinite(dateMs) && dateMs < cutoffMs;
-        const done = !v.existed || v.rowsAdded > 0 || tooOldToRevisit;
+        const done = !v.existed || tooOldToRevisit;
         scanRecords.push({
           competition_id: id,
           competition_date: v.competitionDate,
