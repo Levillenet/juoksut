@@ -178,7 +178,7 @@ async function processCompetition(
             sub_category: subCategory,
             event_category: category,
             result_text: a.Result,
-            result_numeric: parseResultNumeric(a.Result, category),
+            result_numeric: parseResultNumeric(a.Result, category, subCategory, ev.Name),
             result_rank: a.ResultRank ?? null,
             wind: parseWind(a.Wind),
             age_class: ageClass,
