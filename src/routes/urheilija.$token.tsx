@@ -16,9 +16,21 @@ import { loadSharedAthlete } from "@/lib/athlete-share";
 export const Route = createFileRoute("/urheilija/$token")({
   head: () => ({
     meta: [
-      { title: "Jaettu urheilijakortti" },
+      { title: "Urheilijakortti" },
       {
         name: "description",
+        content: "Urheilijakohtaiset tulokset ja ennätykset.",
+      },
+      { property: "og:title", content: "Urheilijakortti" },
+      {
+        property: "og:description",
+        content: "Urheilijakohtaiset tulokset ja ennätykset.",
+      },
+      { property: "og:type", content: "profile" },
+      { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Urheilijakortti" },
+      {
+        name: "twitter:description",
         content: "Urheilijakohtaiset tulokset ja ennätykset.",
       },
       { name: "robots", content: "noindex" },
