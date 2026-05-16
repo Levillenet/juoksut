@@ -1,47 +1,23 @@
-## Tavoite
+## Ongelma
 
-Käyttäjä näkee, milloin tausta-ajo on viimeksi päivittänyt tietokannan (eli kuinka tuoreita "Päivän parhaat", "Seuran tämän päivän tulokset", "Hauskat tilastot", "Kauden kärki" -näkymien tulokset ovat).
+T10:n päivän paras näyttää voittajaksi Saarelma Tuulen ajalla 5,28, vaikka oikea voittaja on Amanda Gustafsson (4,09). Tietokannassa Amanda on, mutta hänet sivuutetaan järjestyksessä.
 
-## Lähde
+Syy: tietokannassa nämä T10 1km -tulokset ovat tallessa kategorialla `event_category = "Street"` ja `sub_category = "Run"` (maantie-/maastojuoksu). Funktio `isLowerBetter(category)` palauttaa `true` ainoastaan kun kategoria on `"Track"`. Niinpä `reduceBest` (ja muut "paras"-vertailut) kohtelevat näitä juoksutuloksia kuten kenttälajeja, joissa suurempi luku voittaa → 5,28 valitaan voittajaksi 4,09:n sijaan.
 
-`harvest_state`-taulun rivissä `id = 'singleton'` on jo sarake `last_run_at`, jonka harvester päivittää jokaisen ajon päätteeksi. Sitä ei tarvitse muuttaa.
+## Korjaus
 
-## Toteutus
+Yksi muutos kohdassa `src/lib/athlete-history.ts`:
 
-### 1. Uusi apuri `src/lib/harvest-status.ts`
+- Laajenna `isLowerBetter` ottamaan myös `sub_category` huomioon ja palauttamaan `true` kaikille juoksu- ja kävelytyyppisille alalajeille riippumatta siitä, onko `event_category` `"Track"`, `"Street"`, `"CrossCountry"` vms.
+- Alalajit joiden ajat ovat pienempi = parempi: `Run`, `Sprint`, `MiddleDistance`, `LongDistance`, `Hurdles`, `Steeple`, `Relay`, `Walk`, `RoadRun`, `CrossCountry`.
 
-- Funktio `fetchHarvestStatus(): Promise<{ lastRunAt: string | null }>` joka tekee `supabase.from("harvest_state").select("last_run_at").eq("id","singleton").maybeSingle()`.
-- Funktio `formatRelativeFi(date: Date, now: Date): string` joka palauttaa suomenkielisen suhteellisen ajan: "juuri nyt", "2 min sitten", "1 t sitten", "eilen klo 14:32", "16.5. klo 09:08".
+Päivitä kaikki kutsupaikat välittämään `sub_category` toiseksi argumentiksi:
 
-### 2. Uusi komponentti `src/components/HarvestStatusBadge.tsx`
+- `src/lib/daily-best.ts` (2 paikkaa, `reduceBest` ja `fetchDailyBestForAthletes`)
+- `src/lib/today-stats.ts` (3 paikkaa)
+- `src/lib/athlete-history.ts` (1 paikka rivillä 133)
+- `src/routes/athlete.$key.tsx` (1 paikka — käytetään vain etiketissä, voi jättää nykyiseen muotoon tai välittää myös sub_categoryn)
 
-- Käyttää `useQuery`:a (`queryKey: ["harvest-status"]`, `staleTime: 30_000`, `refetchInterval: 60_000`).
-- Renderöi pienen rivin: "Tietokanta päivitetty: 2 min sitten" + tooltip tarkalla aikaleimalla (lokaaliaika).
-- Hover/aria-label: "Tausta-ajo hakee tuloksia live.tuloslista.com -palvelusta. Päivitetty viimeksi 16.5.2026 klo 14:08."
-- Tyyli: `text-[11px] text-muted-foreground`, sopii nykyiseen tunnelmaan.
+Tämän jälkeen Amanda Gustafsson 4,09 nousee oikein T10:n päivän parhaaksi, ja sama korjaus pätee kaikkiin maasto-, maantie- ja muihin juoksulajeihin, joiden `event_category` ei ole `"Track"`.
 
-### 3. Sijoitus
-
-Yksi näkyvä paikka kotinäkymässä riittää, koska sama tausta-ajo kattaa kaikki tausta-driven osiot:
-
-- `src/routes/index.tsx` (rivi ~448–450): muokataan alalaidan attribuutiorivi muotoon:
-  > "Lähde: live.tuloslista.com · Tietokanta päivitetty 2 min sitten"
-
-  Tehdään korvaamalla nykyinen tekstirivi komponentilla, joka renderöi attribuution + `<HarvestStatusBadge />`.
-
-Sama komponentti renderöidään myös:
-- `src/routes/hauskat-tilastot.tsx` (sivun alalaidassa tai otsikon vieressä).
-- `src/routes/season-leaders.tsx` (otsikon alla).
-
-Näin käyttäjä saa palautteen tietokannan tuoreudesta riippumatta siitä, mistä näkymästä hän katsoo dataa.
-
-## Rajaukset
-
-- Ei muutoksia tietokannan rakenteeseen — `harvest_state.last_run_at` on jo olemassa.
-- Ei muutoksia harvester-koodiin.
-- Ei muutoksia muihin komponentteihin kuin yllä mainittuihin.
-- Ei näytetä kursorin tilaa (next_id/latest_id) — käyttäjälle riittää aikaleima.
-
-## Avoin valinta
-
-Jos haluat, näytän aikaleiman vain kotinäkymässä, en muissa. Kerro jos haluat suppeamman tai laajemman sijoittelun.
+Muita muutoksia ei tarvita (parseResultNumeric tuottaa nykyisellään "4,09" → 4.09 ja "5,28" → 5.28, mikä riittää oikeaan järjestykseen nyt kun pienempi = parempi).
