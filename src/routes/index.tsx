@@ -448,6 +448,14 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
         <p className="mt-6 text-center text-xs text-muted-foreground">
           Lähde: live.tuloslista.com · automaattinen päivitys 30&nbsp;s välein
         </p>
+        <p className="mt-3 text-center text-xs">
+          <Link
+            to="/tietoa-palvelusta"
+            className="font-medium text-primary underline-offset-2 hover:underline"
+          >
+            Tärkeää tietoa palvelusta
+          </Link>
+        </p>
       </main>
     </div>
   );
