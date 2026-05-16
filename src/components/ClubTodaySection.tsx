@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { Building2, ChevronDown, ChevronUp, Trophy } from "lucide-react";
 
 import {
@@ -199,7 +200,13 @@ export function ClubTodaySection({
                           >
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-sm font-semibold">
-                                {r.surname} {r.firstname}
+                                <Link
+                                  to="/athlete/$key"
+                                  params={{ key: r.athlete_key }}
+                                  className="hover:underline"
+                                >
+                                  {r.surname} {r.firstname}
+                                </Link>
                               </p>
                               <p className="truncate text-[11px] text-muted-foreground">
                                 {r.event_name}

@@ -11,7 +11,7 @@ import { AthleteSearch } from "@/components/AthleteSearch";
 export const Route = createFileRoute("/search")({
   head: () => ({
     meta: [
-      { title: "Hae sukunimellä – kisahaku" },
+      { title: "Hae nimellä – kisahaku" },
       {
         name: "description",
         content: "Hae osallistujaa sukunimellä ja näe lajit, juoksuerät ja aikataulu.",
@@ -49,7 +49,7 @@ function SearchPage() {
             <h1 className="truncate text-base font-semibold leading-tight">
               {name || `Kisa #${competitionId}`}
             </h1>
-            <p className="truncate text-xs text-muted-foreground">Hae sukunimellä</p>
+            <p className="truncate text-xs text-muted-foreground">Hae nimellä</p>
           </div>
           <h2 className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-3xl font-black uppercase tracking-widest text-primary lg:block">
             Hae osallistujaa

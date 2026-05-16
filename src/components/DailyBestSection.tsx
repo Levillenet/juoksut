@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { Trophy, ChevronDown, ChevronUp } from "lucide-react";
 
 import {
@@ -136,8 +137,14 @@ export function DailyBestSection() {
                                 {r.event_name}
                               </p>
                               <p className="truncate text-[11px] text-muted-foreground">
-                                {r.surname} {r.firstname} ({r.organization}) ·{" "}
-                                {r.competition_name}
+                                <Link
+                                  to="/athlete/$key"
+                                  params={{ key: r.athlete_key }}
+                                  className="hover:underline"
+                                >
+                                  {r.surname} {r.firstname}
+                                </Link>
+                                {" "}({r.organization}) · {r.competition_name}
                               </p>
                             </div>
                             <span className="shrink-0 text-base font-bold tabular-nums">

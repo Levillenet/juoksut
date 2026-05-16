@@ -12,9 +12,11 @@ export interface DailyBestRow {
   age_class: string;
   result_text: string;
   result_numeric: number | null;
+  athlete_key: string;
   surname: string;
   firstname: string;
   organization: string;
+  organization_id: number | null;
   competition_name: string;
   competition_id: number;
   competition_date: string | null;
@@ -81,7 +83,7 @@ export async function fetchDailyBest(ageClasses: string[]): Promise<DailyBestRow
   const { data, error } = await supabase
     .from("athlete_results")
     .select(
-      "event_name, sub_category, event_category, age_class, result_text, result_numeric, surname, firstname, organization, competition_name, competition_id, competition_date",
+      "event_name, sub_category, event_category, age_class, result_text, result_numeric, athlete_key, surname, firstname, organization, organization_id, competition_name, competition_id, competition_date",
     )
     .in("age_class", ageClasses)
     .gte("competition_date", startISO)

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { BarChart3, ChevronDown, ChevronUp } from "lucide-react";
 
 import {
@@ -149,9 +150,13 @@ export function SeasonStatsSection() {
                     {rows.map((r) => (
                       <tr key={r.athleteKey}>
                         <td className="px-1 py-1.5">
-                          <div className="font-semibold">
+                          <Link
+                            to="/athlete/$key"
+                            params={{ key: r.athleteKey }}
+                            className="block font-semibold hover:underline"
+                          >
                             {r.surname} {r.firstname}
-                          </div>
+                          </Link>
                           <div className="text-[10px] text-muted-foreground">
                             {r.ageClass}
                           </div>

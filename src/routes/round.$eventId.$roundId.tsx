@@ -13,6 +13,7 @@ import {
 } from "@/lib/tuloslista-queries";
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
+import { athleteKey } from "@/lib/watch-store";
 
 export const Route = createFileRoute("/round/$eventId/$roundId")({
   head: () => ({
@@ -160,7 +161,15 @@ function RoundView() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium leading-tight">
-                          {a.Name}
+                          <Link
+                            to="/athlete/$key"
+                            params={{
+                              key: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
+                            }}
+                            className="hover:underline"
+                          >
+                            {a.Name}
+                          </Link>
                           {a.NotInCompetition && (
                             <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
                               ei lisenssiä?

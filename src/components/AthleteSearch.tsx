@@ -11,6 +11,7 @@ import {
   type Allocation,
 } from "@/lib/tuloslista";
 import { Input } from "@/components/ui/input";
+import { athleteKey } from "@/lib/watch-store";
 
 interface IndexedEntry {
   round: Round;
@@ -22,7 +23,10 @@ interface IndexedEntry {
 interface GroupedAthlete {
   key: string;
   name: string;
+  surname: string;
+  firstname: string;
   organization: string;
+  organizationId: number | null;
   entries: IndexedEntry[];
 }
 
@@ -37,7 +41,7 @@ interface Props {
 export function AthleteSearch({
   competitionId,
   runningOnly = false,
-  placeholder = "Sukunimi (esim. Virtanen)",
+  placeholder = "Nimi (etu- tai sukunimi)",
   autoFocus = false,
 }: Props) {
   const [query, setQuery] = useState("");
@@ -113,15 +117,23 @@ export function AthleteSearch({
     if (!index) return [];
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
-    const matches = index.filter((e) => e.alloc.Surname?.toLowerCase().includes(q));
+    const matches = index.filter((e) => {
+      const s = e.alloc.Surname?.toLowerCase() ?? "";
+      const f = e.alloc.Firstname?.toLowerCase() ?? "";
+      return s.includes(q) || f.includes(q);
+    });
     const map = new Map<string, GroupedAthlete>();
     for (const e of matches) {
-      const key = `${e.alloc.Surname}|${e.alloc.Firstname}|${e.alloc.Organization?.Id ?? ""}`;
+      const orgId = e.alloc.Organization?.Id ?? null;
+      const key = athleteKey(e.alloc.Surname, e.alloc.Firstname, orgId);
       if (!map.has(key)) {
         map.set(key, {
           key,
           name: `${e.alloc.Surname} ${e.alloc.Firstname}`.trim(),
+          surname: e.alloc.Surname,
+          firstname: e.alloc.Firstname,
           organization: e.alloc.Organization?.Name ?? "",
+          organizationId: orgId,
           entries: [],
         });
       }
@@ -143,7 +155,7 @@ export function AthleteSearch({
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
           className="pl-9"
-          aria-label="Sukunimi"
+          aria-label="Nimi"
         />
       </div>
       {loading && progress.total > 0 && (
@@ -169,7 +181,13 @@ export function AthleteSearch({
           <li key={g.key} className="rounded-xl border bg-card p-4 shadow-sm">
             <div className="mb-3 flex items-baseline justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-base font-bold leading-tight">{g.name}</p>
+                <Link
+                  to="/athlete/$key"
+                  params={{ key: g.key }}
+                  className="block truncate text-base font-bold leading-tight hover:underline"
+                >
+                  {g.name}
+                </Link>
                 {g.organization && (
                   <p className="truncate text-xs text-muted-foreground">{g.organization}</p>
                 )}
