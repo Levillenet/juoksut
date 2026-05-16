@@ -72,6 +72,8 @@ function WatchPage() {
   const index: IndexedEntry[] | null = indexQuery.data?.entries ?? null;
   const name = indexQuery.data?.name ?? "";
   const loading = indexQuery.isFetching;
+
+  useWatchedFieldChanges(index, watched);
   const error = indexQuery.error
     ? indexQuery.error instanceof Error
       ? indexQuery.error.message
