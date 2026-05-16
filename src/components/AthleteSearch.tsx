@@ -117,15 +117,23 @@ export function AthleteSearch({
     if (!index) return [];
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
-    const matches = index.filter((e) => e.alloc.Surname?.toLowerCase().includes(q));
+    const matches = index.filter((e) => {
+      const s = e.alloc.Surname?.toLowerCase() ?? "";
+      const f = e.alloc.Firstname?.toLowerCase() ?? "";
+      return s.includes(q) || f.includes(q);
+    });
     const map = new Map<string, GroupedAthlete>();
     for (const e of matches) {
-      const key = `${e.alloc.Surname}|${e.alloc.Firstname}|${e.alloc.Organization?.Id ?? ""}`;
+      const orgId = e.alloc.Organization?.Id ?? null;
+      const key = athleteKey(e.alloc.Surname, e.alloc.Firstname, orgId);
       if (!map.has(key)) {
         map.set(key, {
           key,
           name: `${e.alloc.Surname} ${e.alloc.Firstname}`.trim(),
+          surname: e.alloc.Surname,
+          firstname: e.alloc.Firstname,
           organization: e.alloc.Organization?.Name ?? "",
+          organizationId: orgId,
           entries: [],
         });
       }
