@@ -70,6 +70,14 @@ function fmtDate(iso: string | null): string {
 
 function AthletePage() {
   const { key } = Route.useParams();
+  const router = useRouter();
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.history.back();
+    } else {
+      router.navigate({ to: "/watch" });
+    }
+  };
 
   const query = useQuery({
     queryKey: ["athlete-dashboard", key],
