@@ -1,28 +1,28 @@
-## Löydetyt bugit
+## Muutokset
 
-**1. Kelloseppä — väärä aikalaskenta**
+### 1. `src/routes/hauskat-tilastot.tsx` — muista kausi ja ikäluokat
 
-Tietokannassa `result_numeric` on rikki pidemmissä juoksuissa. Esim. 800m tulos `result_text = "2.58,25"` (2 min 58,25 s = 178,25 s), mutta `result_numeric = 2.58`. Nykyinen koodi summaa nämä `result_numeric`-arvot suoraan sekunteina, joten 800-metrin juoksu lasketaan ~2,5 sekunniksi.
+- Lisää `localStorage`-avaimet:
+  - `funstats:season` (arvot `year` | `summer` | `winter`)
+  - `funstats:ages` (JSON-array valituista ikäluokista)
+- Alusta `season`-tila lukemalla `localStorage.getItem("funstats:season")` (fallback `"year"`).
+- Kirjoita `season` localStorageen `useEffect`illa kun se muuttuu (kuten `org` jo tehdään).
+- Ikäluokat:
+  - Alusta `selectedAges` localStoragesta jos arvo on tallennettu, ja aseta `ageTouched = true` silloin, jotta nykyinen "valitse kaikki kun data latautuu" -auto-init ei ylikirjoita.
+  - Kirjoita `selectedAges` localStorageen kun se muuttuu (vain jos `ageTouched`).
+  - **Tärkeää:** poista nykyinen `useEffect`, joka nollaa `selectedAges` ja `ageTouched` kun `org` tai `season` muuttuu. Sen sijaan: pidä käyttäjän valinta. Jos käyttäjä vaihtaa seuraa ja nykyiset valitut ikäluokat eivät kuulu uuden seuran `allAges`-listaan, suodata `selectedAges` automaattisesti vain niihin jotka ovat saatavilla (jos tyhjäksi jäisi, valitse kaikki uuden seuran ikäluokat).
 
-**2. Hyppykirppu / Heittotykki — laskee tuloksia, ei yrityksiä**
+### 2. `src/routes/athlete.$key.tsx` — takaisin-nuoli oikeaan paikkaan
 
-Tietokannassa on yksi rivi per urheilija per laji (lopputulos), ei yritystä per rivi. Pituushypyssä lapsi hyppää tyypillisesti 3–6 kertaa, mutta nykyinen mittari laskee vain yhden "hypyn".
+Nykyinen `<Link to="/watch">` vie aina watch-sivulle. Vaihda se siten, että nuoli käyttää selainhistoriaa:
 
-## Korjaukset
+- Korvaa `Link` tavallisella `<button>`illa, joka kutsuu `router.history.back()`.
+- Käytä `useRouter()`-hookia `@tanstack/react-router`:sta.
+- Fallback: jos `router.history.length <= 1` (esim. avattu suoraan), navigoi `/watch`-sivulle kuten ennen.
 
-**`src/lib/season-stats.ts`** — uusi apuri `parseTrackSeconds(resultText)`:
-- `"2.58,25"` → `2*60 + 58.25 = 178.25`
-- `"58,25"` → `58.25`
-- `"1.23.45,6"` (tunnit) → `1*3600 + 23*60 + 45.6`
-- Palauttaa `null`, jos ei matchaa numeerista muotoa (DNS/DNF/DQ).
-
-**`src/lib/fun-stats.ts`**:
-- `Row`-tyyppiin lisätään edelleen `result_text` (jo on).
-- Kelloseppä: vaihda `a.runSeconds += r.result_numeric` → käytä `parseTrackSeconds(r.result_text) ?? r.result_numeric`.
-- Hyppykirppu/Heittotykki: kerro yritysarviolla. Käytetään vakiota `ATTEMPTS_PER_FIELD = 4` per validi tulos (kun `result_numeric != null && > 0`). DNS/DNF (ei numeerista) lasketaan 0. Päivitetään formaattiteksti pysymään "X hyppyä" / "X heittoa" — luku tarkoittaa nyt arvioituja yrityksiä.
-- Päivitä mittarien kuvaukset: "Eniten hyppy-/heittoyrityksiä (≈ 4 / kisalaji)." jotta käyttäjä ymmärtää arvion.
+Tämä korjaa kaikki tulopolut (hauskat tilastot, haku, watch jne.) — käyttäjä palaa aina sinne mistä tuli.
 
 ## Mitä ei muuteta
 
-- UI-komponentit (`FunStatCard`, `hauskat-tilastot.tsx`) pysyvät ennallaan.
-- Muut mittarit, seura-/ikäluokkavalinnat ja kysely pysyvät ennallaan.
+- Seuravalinta (`funstats:org`) toimii jo, jätetään ennalleen.
+- `fetchFunStats` / data-logiikka pysyy ennallaan.
