@@ -21,6 +21,8 @@ const API = "https://cached-public-api.tuloslista.com/live/v1";
 const BATCH_SIZE = 100;      // competition IDs scanned per invocation
 const TAIL_RESCAN = 30;      // IDs to re-scan when caught up
 const REVISIT_LIMIT = 120;   // tuloksellisten/tuloksettomien kisojen uudelleentarkistus per ajo
+const FRESH_REVISIT_LIMIT = 80;   // näistä budjetoidaan tämän päivän + eilisen kisoille
+const FRESH_REVISIT_WINDOW_DAYS = 2;
 const REVISIT_MAX_AGE_DAYS = 365; // kuinka kauan palataan kisoihin (alkuerä→finaali voi täydentyä myöhemmin)
 const CONCURRENCY = 5;       // parallel competitions per chunk
 const HARD_MAX_ID = 30000;   // safety ceiling
@@ -380,15 +382,38 @@ async function run(request: Request): Promise<Response> {
     // mutta saattavat nyt olla valmiina (esim. tämän päivän kisa). Vain
     // backfill/tail-moodissa, ei manuaalisessa toistossa.
     if (mode !== "manual") {
-      const { data: revisitRows } = await supabaseAdmin
-        .from("harvest_competitions")
-        .select("competition_id")
-        .eq("done", false)
-        .order("last_scanned_at", { ascending: true })
-        .limit(REVISIT_LIMIT);
+      const freshCutoff = new Date(
+        Date.now() - FRESH_REVISIT_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+      ).toISOString();
+      const staleLimit = Math.max(0, REVISIT_LIMIT - FRESH_REVISIT_LIMIT);
+      const [freshRes, staleRes] = await Promise.all([
+        supabaseAdmin
+          .from("harvest_competitions")
+          .select("competition_id")
+          .eq("done", false)
+          .gte("competition_date", freshCutoff)
+          .order("last_scanned_at", { ascending: true })
+          .limit(FRESH_REVISIT_LIMIT),
+        staleLimit > 0
+          ? supabaseAdmin
+              .from("harvest_competitions")
+              .select("competition_id")
+              .eq("done", false)
+              .lt("competition_date", freshCutoff)
+              .order("last_scanned_at", { ascending: true })
+              .limit(staleLimit)
+          : Promise.resolve({ data: [] as Array<{ competition_id: number }> }),
+      ]);
       const existing = new Set(ids);
-      for (const r of (revisitRows ?? []) as Array<{ competition_id: number }>) {
-        if (!existing.has(r.competition_id)) ids.push(r.competition_id);
+      const revisitRows = [
+        ...((freshRes.data ?? []) as Array<{ competition_id: number }>),
+        ...((staleRes.data ?? []) as Array<{ competition_id: number }>),
+      ];
+      for (const r of revisitRows) {
+        if (!existing.has(r.competition_id)) {
+          existing.add(r.competition_id);
+          ids.push(r.competition_id);
+        }
       }
     }
 
