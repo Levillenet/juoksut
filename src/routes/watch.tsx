@@ -771,6 +771,7 @@ function WatchPage() {
           Lähde: live.tuloslista.com · päivittyy automaattisesti minuutin välein
         </p>
       </main>
+      <LiveTicker source="watched" />
     </div>
   );
 }
