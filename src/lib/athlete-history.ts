@@ -44,8 +44,23 @@ export function parseResultNumeric(text: string, category: string): number | nul
   return Number.isNaN(n) ? null : n;
 }
 
-export function isLowerBetter(category: string): boolean {
-  return category === "Track";
+const TIME_SUBCATEGORIES = new Set([
+  "Run",
+  "Sprint",
+  "MiddleDistance",
+  "LongDistance",
+  "Hurdles",
+  "Steeple",
+  "Relay",
+  "Walk",
+  "RoadRun",
+  "CrossCountry",
+]);
+
+export function isLowerBetter(category: string, subCategory?: string): boolean {
+  if (category === "Track") return true;
+  if (subCategory && TIME_SUBCATEGORIES.has(subCategory)) return true;
+  return false;
 }
 
 /**
@@ -130,7 +145,7 @@ export function groupByEvent(rows: AthleteResultRow[]): EventGroup[] {
         eventName: normName,
         category: r.event_category,
         subCategory: r.sub_category,
-        lowerBetter: isLowerBetter(r.event_category),
+        lowerBetter: isLowerBetter(r.event_category, r.sub_category),
         rows: [],
         pb: null,
         pbIndoor: null,

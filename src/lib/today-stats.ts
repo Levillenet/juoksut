@@ -23,6 +23,7 @@ interface TodayRow {
   athlete_key: string;
   event_name: string;
   event_category: string;
+  sub_category: string;
   age_class: string;
   result_numeric: number | null;
   was_pb: boolean | null;
@@ -38,7 +39,7 @@ async function fetchTodayRows(): Promise<TodayRow[]> {
     const { data, error } = await supabase
       .from("athlete_results")
       .select(
-        "competition_id, event_id, athlete_key, event_name, event_category, age_class, result_numeric, was_pb",
+        "competition_id, event_id, athlete_key, event_name, event_category, sub_category, age_class, result_numeric, was_pb",
       )
       .gte("competition_date", startISO)
       .lt("competition_date", endISO)
@@ -57,6 +58,7 @@ interface PriorRow {
   event_name: string;
   age_class: string;
   event_category: string;
+  sub_category: string;
   result_numeric: number | null;
 }
 
@@ -78,7 +80,7 @@ async function fetchSeasonPriorBests(
   while (true) {
     const { data, error } = await supabase
       .from("athlete_results")
-      .select("event_name, age_class, event_category, result_numeric")
+      .select("event_name, age_class, event_category, sub_category, result_numeric")
       .in("event_name", eventNames)
       .in("age_class", ageClasses)
       .gte("competition_date", from.toISOString())
@@ -90,7 +92,7 @@ async function fetchSeasonPriorBests(
     for (const r of rows) {
       if (r.result_numeric == null) continue;
       const key = `${normalizeEventName(r.event_name)}|${r.age_class}`;
-      const lower = isLowerBetter(r.event_category);
+      const lower = isLowerBetter(r.event_category, r.sub_category);
       const cur = best.get(key);
       if (cur == null || (lower ? r.result_numeric < cur : r.result_numeric > cur)) {
         best.set(key, r.result_numeric);
@@ -121,14 +123,14 @@ export async function fetchTodayStats(): Promise<TodayStats> {
   // and compare to the best in the rest of the current season.
   const todayBest = new Map<
     string,
-    { numeric: number; eventCategory: string; eventName: string; ageClass: string }
+    { numeric: number; eventCategory: string; subCategory: string; eventName: string; ageClass: string }
   >();
   for (const r of today) {
     if (r.result_numeric == null) continue;
     if (!r.age_class) continue;
     const norm = normalizeEventName(r.event_name);
     const key = `${norm}|${r.age_class}`;
-    const lower = isLowerBetter(r.event_category);
+    const lower = isLowerBetter(r.event_category, r.sub_category);
     const cur = todayBest.get(key);
     if (
       !cur ||
@@ -137,6 +139,7 @@ export async function fetchTodayStats(): Promise<TodayStats> {
       todayBest.set(key, {
         numeric: r.result_numeric,
         eventCategory: r.event_category,
+        subCategory: r.sub_category,
         eventName: r.event_name,
         ageClass: r.age_class,
       });
@@ -164,7 +167,7 @@ export async function fetchTodayStats(): Promise<TodayStats> {
   let seasonTops = 0;
   for (const [key, t] of todayBest) {
     const prior = priorBest.get(key);
-    const lower = isLowerBetter(t.eventCategory);
+    const lower = isLowerBetter(t.eventCategory, t.subCategory);
     if (prior == null) {
       seasonTops++;
       continue;
