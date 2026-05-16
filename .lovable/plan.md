@@ -1,19 +1,20 @@
-# Korjaus: tulos näkyy aina mobiilissa
+# Korjaus: WhatsApp-esikatselu jaetulle urheilijakortille
 
 ## Ongelma
-`src/components/RecordsPanel.tsx` renderöi tulokset 4-sarakkeisena taulukkona (Pvm / Kilpailu / Tulos / Sija) `overflow-x-auto`-kääreessä. Kapealla puhelinnäytöllä (esim. 374 px) Kilpailu-sarakkeen pitkät nimet + Ulko/Halli-badge työntävät Tulos-sarakkeen osittain näkymän ulkopuolelle. Käyttäjä joutuisi scrollaamaan vaakaan nähdäkseen ei-PB-tuloksen ja tuulilukeman — mutta sivu ei käytännössä mahdollista vaakascrollia kortin sisällä, joten tulos jää piiloon.
+`src/routes/urheilija.$token.tsx`:n `head()` asettaa vain `title` ja `description` (name), mutta WhatsApp/Facebook/Twitter lukevat esikatselun **Open Graph** -tageista (`og:title`, `og:description`, `twitter:title`, `twitter:description`). Nämä periytyvät root-routelta (`src/routes/__root.tsx`), jossa lukee "Juoksulajien lähtöjärjestys" → siksi jaettu linkki näyttää väärän otsikon.
 
 ## Ratkaisu
+Lisää `src/routes/urheilija.$token.tsx`:n `head()`-paluuseen seuraavat meta-tagit, jotka ylikirjoittavat rootin arvot juuri tällä reitillä:
 
-Muutos vain `src/components/RecordsPanel.tsx`:ssä — pidetään olemassa oleva taulukkorakenne desktopilla ja tehdään mobiilille selkeämpi layout.
+- `og:title` = "Urheilijakortti"
+- `og:description` = "Urheilijakohtaiset tulokset ja ennätykset"
+- `og:type` = "profile"
+- `twitter:title` = "Urheilijakortti"
+- `twitter:description` = "Urheilijakohtaiset tulokset ja ennätykset"
+- `twitter:card` = "summary"
 
-1. **Yhdistä Sija Tulos-soluun mobiilissa**: piilota oma Sija-sarake `< sm` -leveydellä (`hidden sm:table-cell`) ja näytä sija pienenä `· 3.` -merkintänä Tulos-solun perässä mobiilissa.
-2. **Anna kilpailunimen rivittyä**: poista `truncate` Kilpailu-solusta mobiilissa (`sm:truncate`), jotta Tulos-sarake ei joudu kilpailemaan tilasta. Badge (Halli/Ulko) ja sijainti rivittyvät luonnollisesti.
-3. **Lukitse Tulos-sarake oikealle**: lisää `w-px` + `whitespace-nowrap` (jo on) ja anna PB/Halli-PB/Ulko-PB-badge mennä omalle riville tuloksen alle mobiilissa (`flex flex-col items-end sm:flex-row sm:items-center`), jotta badge ei työnnä numeroa pois näkyvistä.
-4. **Tuulilukema** siirtyy tuloksen alle samaan flex-pinoon, jotta se ei vie vaakatilaa.
-5. Säilytä `overflow-x-auto` varmuuden vuoksi, mutta käytännössä mobiilissa ei enää tarvita vaakascrollia.
+Pidetään `noindex` ennallaan (jaettu yksityisempi linkki). Urheilijan nimeä ei voi laittaa otsikkoon staattisessa `head()`-funktiossa ilman loaderia — pidetään yleinen "Urheilijakortti" -teksti, joka vastaa käyttäjän toivetta.
 
 ## Mitä EI muuteta
-- Taulukon data, järjestys, PB-laskenta — ennallaan.
-- Desktop-näkymä — visuaalisesti sama (sm-breakpointin yläpuolella).
-- Muut komponentit, reitit tai jaettu urheilijakortti.
+- Itse sivun sisältö, jakologiikka, tietokanta — ennallaan.
+- Muut reitit tai root-meta.
