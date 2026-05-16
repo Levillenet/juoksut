@@ -65,21 +65,13 @@ interface RoundsByDateShape {
   [date: string]: { EventId: number; GroupName?: string }[];
 }
 
-function parseResultNumeric(text: string, category: string): number | null {
-  if (!text) return null;
-  const t = text.trim();
-  if (!t || /^(DNF|DNS|DQ|NM|FAIL)$/i.test(t)) return null;
-  const cleaned = t.replace(",", ".").replace(/[a-zA-Z]/g, "").trim();
-  if (!cleaned) return null;
-  if (category === "Track") {
-    const parts = cleaned.split(":").map((p) => parseFloat(p));
-    if (parts.some((n) => Number.isNaN(n))) return null;
-    let s = 0;
-    for (const p of parts) s = s * 60 + p;
-    return s;
-  }
-  const n = parseFloat(cleaned);
-  return Number.isNaN(n) ? null : n;
+function parseResultNumeric(
+  text: string,
+  category: string,
+  subCategory: string,
+  eventName: string,
+): number | null {
+  return parseResult(text, { category, subCategory, eventName });
 }
 
 async function fetchJson<T>(url: string): Promise<T | null> {
