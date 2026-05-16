@@ -81,7 +81,7 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
           to="/search"
           className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
         >
-          <div className="text-sm font-semibold leading-tight">Hae sukunimellä</div>
+          <div className="text-sm font-semibold leading-tight">Hae nimellä</div>
           <div className="mt-0.5 text-[11px] text-muted-foreground">
             Etsi urheilijaa nimellä kisan osallistujista
           </div>
