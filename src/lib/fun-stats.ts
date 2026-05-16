@@ -68,7 +68,8 @@ export const FUN_METRICS: FunMetricDef[] = [
     key: "totalPerformances",
     emoji: "💪",
     title: "Suoritusten supersankari",
-    description: "Eniten suorituksia yhteensä.",
+    description:
+      "Eniten suorituksia/yrityksiä yhteensä (arvio ≈ 4 / kenttäkisalaji).",
     format: (v) => `${v} suoritusta`,
     unitShort: "suor.",
   },
@@ -117,7 +118,8 @@ export const FUN_METRICS: FunMetricDef[] = [
     key: "bestDay",
     emoji: "🔥",
     title: "Pinnistäjä",
-    description: "Eniten suorituksia samana päivänä.",
+    description:
+      "Eniten suorituksia/yrityksiä samana päivänä (arvio ≈ 4 / kenttäkisalaji).",
     format: (v) => `${v} suoritusta`,
     unitShort: "suor.",
   },
@@ -435,8 +437,17 @@ export async function fetchFunStats(
       };
       accs.set(r.athlete_key, a);
     }
-    a.performances += 1;
     const norm = normEvent(r.event_name);
+    const isField = r.event_category === "Field";
+    const validField = isField && r.result_numeric != null && r.result_numeric > 0;
+    // Kenttälajeissa yksi rivi = ~4 yritystä; juoksuissa alkuerät/finaalit ovat
+    // erillisiä rivejä, joten 1 / rivi riittää.
+    const attempts = isField
+      ? validField
+        ? ATTEMPTS_PER_FIELD
+        : 0
+      : 1;
+    a.performances += attempts;
     a.events.add(norm);
     a.perEvent.set(norm, (a.perEvent.get(norm) ?? 0) + 1);
     if (r.location) a.venues.add(r.location.trim().toLowerCase());
@@ -446,7 +457,7 @@ export async function fetchFunStats(
     const day = (r.competition_date ?? "").slice(0, 10);
     if (day) {
       a.competitionDays.add(day);
-      a.perDay.set(day, (a.perDay.get(day) ?? 0) + 1);
+      a.perDay.set(day, (a.perDay.get(day) ?? 0) + attempts);
       a.months.add(day.slice(0, 7));
       const dayKey = `${day}|${r.competition_id}`;
       if (!a.hoursByDay.has(dayKey)) a.hoursByDay.set(dayKey, new Set());
@@ -472,14 +483,12 @@ export async function fetchFunStats(
       if (secs != null && secs > 0 && secs < 10 * 3600) {
         a.runSeconds += secs;
       }
-    } else if (r.event_category === "Field") {
+    } else if (isField) {
       a.fieldPerf += 1;
-      const validResult = r.result_numeric != null && r.result_numeric > 0;
-      const attempts = validResult ? ATTEMPTS_PER_FIELD : 0;
       if (r.sub_category === "HorizontalJump" || r.sub_category === "VerticalJump") {
-        a.jumpCount += attempts;
+        a.jumpCount += validField ? ATTEMPTS_PER_FIELD : 0;
       } else if (r.sub_category === "Throw") {
-        a.throwCount += attempts;
+        a.throwCount += validField ? ATTEMPTS_PER_FIELD : 0;
       }
     } else if (r.event_category === "Relay" || r.event_category === "Street") {
       a.special += 1;
