@@ -12,6 +12,7 @@ export interface DailyBestRow {
   age_class: string;
   result_text: string;
   result_numeric: number | null;
+  result_rank: number | null;
   athlete_key: string;
   surname: string;
   firstname: string;
