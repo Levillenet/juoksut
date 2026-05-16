@@ -19,10 +19,21 @@ export type FunMetricKey =
   | "jumpCount"
   | "throwCount"
   | "venues"
-  
   | "bestDay"
   | "loyalEvent"
-  | "hours";
+  | "hours"
+  | "pbCount"
+  | "sprinter"
+  | "endurance"
+  | "weekendWarrior"
+  | "weekdayHero"
+  | "monthsActive"
+  | "uniqueCompetitions"
+  | "allRounder"
+  | "specialEvents"
+  | "earlyBird"
+  | "nightOwl"
+  | "longestStreak";
 
 export interface FunMetricDef {
   key: FunMetricKey;
