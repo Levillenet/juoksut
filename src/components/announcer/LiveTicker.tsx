@@ -5,6 +5,7 @@ import {
   setTickerEnabled,
   useTickerStore,
   type TickerMessage,
+  type TickerSource,
 } from "@/lib/ticker-store";
 
 function formatTime(ts: number): string {
@@ -13,27 +14,38 @@ function formatTime(ts: number): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-export function LiveTicker() {
-  const { messages, enabled, lastReadAt, unreadCount } = useTickerStore();
+interface LiveTickerProps {
+  source: TickerSource;
+  showLabel?: string;
+  emptyText?: string;
+}
+
+export function LiveTicker({ source, showLabel, emptyText }: LiveTickerProps) {
+  const { messages, enabled, lastReadAt, unreadCount } = useTickerStore(source);
   const [expanded, setExpanded] = useState(false);
   const latest = messages[0];
-
-  // Animate latest message by keying it.
   const latestKey = latest?.id ?? "empty";
 
+  const label = showLabel ?? (source === "watched" ? "Seurattavat" : "Live");
+  const empty =
+    emptyText ??
+    (source === "watched"
+      ? "Odotetaan seurattavien kenttälajipäivityksiä…"
+      : "Odotetaan kenttälajien kärkimuutoksia…");
+
   useEffect(() => {
-    if (expanded) markTickerRead();
-  }, [expanded, messages.length]);
+    if (expanded) markTickerRead(source);
+  }, [expanded, messages.length, source]);
 
   if (!enabled) {
     return (
       <button
-        onClick={() => setTickerEnabled(true)}
+        onClick={() => setTickerEnabled(source, true)}
         className="fixed bottom-3 right-3 z-40 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold shadow-lg hover:bg-secondary"
-        aria-label="Näytä live ticker"
+        aria-label={`Näytä ${label.toLowerCase()} ticker`}
       >
         <Eye className="h-3.5 w-3.5" />
-        Näytä live ticker
+        Näytä {label.toLowerCase()} ticker
         {unreadCount > 0 && (
           <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary-foreground">
             {unreadCount}
@@ -45,7 +57,6 @@ export function LiveTicker() {
 
   return (
     <>
-      {/* History panel (slides up from the bar) */}
       {expanded && (
         <div className="fixed inset-x-0 bottom-11 z-40 border-t border-border bg-card/95 backdrop-blur animate-fade-in">
           <div className="mx-auto max-h-[40vh] max-w-[1600px] overflow-y-auto px-4 py-3">
@@ -64,12 +75,11 @@ export function LiveTicker() {
         </div>
       )}
 
-      {/* The bar itself */}
       <div className="fixed inset-x-0 bottom-0 z-50 h-11 border-t border-border bg-card/95 backdrop-blur">
         <div className="mx-auto flex h-full max-w-[1600px] items-center gap-2 px-3 sm:px-4">
           <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-primary">
             <Radio className="h-3 w-3 animate-pulse" />
-            Live
+            {label}
           </span>
 
           <div className="relative min-w-0 flex-1 overflow-hidden">
@@ -84,16 +94,14 @@ export function LiveTicker() {
                 <p className="truncate font-medium">{latest.text}</p>
               </div>
             ) : (
-              <p className="truncate text-xs text-muted-foreground">
-                Odotetaan kenttälajien kärkimuutoksia…
-              </p>
+              <p className="truncate text-xs text-muted-foreground">{empty}</p>
             )}
           </div>
 
           <button
             onClick={() => {
               setExpanded((v) => !v);
-              if (!expanded) markTickerRead();
+              if (!expanded) markTickerRead(source);
             }}
             className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-semibold hover:bg-secondary"
             aria-label={expanded ? "Sulje historia" : "Avaa historia"}
@@ -112,7 +120,7 @@ export function LiveTicker() {
           </button>
 
           <button
-            onClick={() => setTickerEnabled(false)}
+            onClick={() => setTickerEnabled(source, false)}
             className="inline-flex shrink-0 items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
             aria-label="Piilota ticker"
             title="Piilota ticker"
