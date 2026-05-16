@@ -80,7 +80,7 @@ async function fetchSeasonPriorBests(
   while (true) {
     const { data, error } = await supabase
       .from("athlete_results")
-      .select("event_name, age_class, event_category, result_numeric")
+      .select("event_name, age_class, event_category, sub_category, result_numeric")
       .in("event_name", eventNames)
       .in("age_class", ageClasses)
       .gte("competition_date", from.toISOString())
