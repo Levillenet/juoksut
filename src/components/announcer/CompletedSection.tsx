@@ -18,6 +18,7 @@ export function CompletedSection({
     restoreDismissed,
     details,
   } = data;
+  const [autoOpen] = useAutoOpenCompleted();
 
   return (
     <section>
