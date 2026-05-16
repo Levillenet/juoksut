@@ -153,7 +153,7 @@ export function SeasonStatsSection() {
                           <Link
                             to="/athlete/$key"
                             params={{ key: r.athleteKey }}
-                            className="font-semibold hover:underline"
+                            className="block font-semibold hover:underline"
                           >
                             {r.surname} {r.firstname}
                           </Link>
