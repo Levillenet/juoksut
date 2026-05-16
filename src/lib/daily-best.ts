@@ -177,8 +177,28 @@ export async function fetchDailyBestForAthletes(
 }
 
 function reduceBest(rows: DailyBestRow[]): DailyBestRow[] {
-  const map = new Map<string, DailyBestRow>();
+  // Step 1: per (competition, event, age) keep the official winner from
+  // tuloslista — the row with the lowest result_rank. This avoids guessing
+  // whether a numeric comparison should pick the smallest or largest value
+  // within one competition.
+  const perCompetition = new Map<string, DailyBestRow>();
   for (const r of rows) {
+    const k = `${r.competition_id}|${r.event_name}|${r.age_class}`;
+    const cur = perCompetition.get(k);
+    if (!cur) {
+      perCompetition.set(k, r);
+      continue;
+    }
+    const a = r.result_rank ?? Number.POSITIVE_INFINITY;
+    const b = cur.result_rank ?? Number.POSITIVE_INFINITY;
+    if (a < b) perCompetition.set(k, r);
+  }
+
+  // Step 2: across competitions for the same (event, age) pick the best
+  // numerically — here we still need to know the direction (lower/higher
+  // better) because it spans multiple competitions.
+  const map = new Map<string, DailyBestRow>();
+  for (const r of perCompetition.values()) {
     const k = `${r.event_name}|${r.age_class}`;
     const cur = map.get(k);
     if (!cur) {
