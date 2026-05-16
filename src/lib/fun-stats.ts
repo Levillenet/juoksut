@@ -19,10 +19,19 @@ export type FunMetricKey =
   | "jumpCount"
   | "throwCount"
   | "venues"
-  
   | "bestDay"
   | "loyalEvent"
-  | "hours";
+  | "hours"
+  | "pbCount"
+  | "sprinter"
+  | "endurance"
+  | "weekendWarrior"
+  | "weekdayHero"
+  | "monthsActive"
+  | "uniqueCompetitions"
+  | "allRounder"
+  | "specialEvents"
+  | "longestStreak";
 
 export interface FunMetricDef {
   key: FunMetricKey;
@@ -125,6 +134,86 @@ export const FUN_METRICS: FunMetricDef[] = [
     format: (v) => `${v.toFixed(1).replace(".", ",")} h`,
     unitShort: "h",
   },
+  {
+    key: "pbCount",
+    emoji: "🌟",
+    title: "Ennätystehdas",
+    description: "Eniten omia ennätyksiä rikottu kauden aikana.",
+    format: (v) => `${v} ennätystä`,
+    unitShort: "ER",
+  },
+  {
+    key: "sprinter",
+    emoji: "⚡",
+    title: "Salamasprintteri",
+    description: "Eniten pikajuoksuja (≤ 200 m) kaudella.",
+    format: (v) => `${v} pikalähtöä`,
+    unitShort: "kpl",
+  },
+  {
+    key: "endurance",
+    emoji: "🐢",
+    title: "Sisukas kestäjä",
+    description: "Eniten pitkiä juoksuja (≥ 600 m).",
+    format: (v) => `${v} pitkää`,
+    unitShort: "kpl",
+  },
+  {
+    key: "weekendWarrior",
+    emoji: "🎉",
+    title: "Viikonloppusankari",
+    description: "Eniten suorituksia lauantaisin ja sunnuntaisin.",
+    format: (v) => `${v} suoritusta`,
+    unitShort: "vkl",
+  },
+  {
+    key: "weekdayHero",
+    emoji: "🗓️",
+    title: "Arkikisaaja",
+    description: "Eniten suorituksia arkipäivinä (ma–pe).",
+    format: (v) => `${v} suoritusta`,
+    unitShort: "arki",
+  },
+  {
+    key: "monthsActive",
+    emoji: "🌗",
+    title: "Pitkän linjan kisaaja",
+    description: "Eniten eri kuukausia, joina on kisattu.",
+    format: (v) => `${v} kuukautta`,
+    unitShort: "kk",
+  },
+  {
+    key: "uniqueCompetitions",
+    emoji: "🎪",
+    title: "Kisakiertäjä",
+    description: "Eniten eri kilpailutapahtumia kaudella.",
+    format: (v) => `${v} kisaa`,
+    unitShort: "kisaa",
+  },
+  {
+    key: "allRounder",
+    emoji: "⚖️",
+    title: "Tasapainoilija",
+    description: "Eniten suorituksia sekä radalla että kentällä yhdistettynä.",
+    format: (v) => `${v} paria`,
+    unitShort: "paria",
+  },
+  {
+    key: "specialEvents",
+    emoji: "🤝",
+    title: "Erikoislajien tutkija",
+    description: "Eniten viesti- ja katulajisuorituksia.",
+    format: (v) => `${v} erikoista`,
+    unitShort: "erik.",
+  },
+  {
+    key: "longestStreak",
+    emoji: "🔗",
+    title: "Putkimestari",
+    description: "Pisin peräkkäisten kisapäivien putki.",
+    format: (v) => `${v} päivää putkeen`,
+    unitShort: "pv",
+  },
 ];
 
 export interface FunEntry {
@@ -154,6 +243,7 @@ interface Row {
   sub_category: string;
   result_numeric: number | null;
   age_class: string;
+  was_pb: boolean;
 }
 
 function formatDuration(totalSec: number): string {
@@ -209,7 +299,7 @@ export async function fetchFunStats(
     const { data, error } = await supabase
       .from("athlete_results")
       .select(
-        "athlete_key, surname, firstname, organization, competition_id, competition_date, location, event_name, event_category, sub_category, result_numeric, age_class",
+        "athlete_key, surname, firstname, organization, competition_id, competition_date, location, event_name, event_category, sub_category, result_numeric, age_class, was_pb",
       )
       .in("athlete_key", chunk)
       .gte("competition_date", range.from.toISOString())
@@ -243,6 +333,16 @@ export async function fetchFunStats(
     perDay: Map<string, number>;
     perEvent: Map<string, number>;
     hoursByDay: Map<string, Set<string>>;
+    pbCount: number;
+    sprinter: number;
+    endurance: number;
+    weekend: number;
+    weekday: number;
+    months: Set<string>;
+    competitions: Set<number>;
+    trackPerf: number;
+    fieldPerf: number;
+    special: number;
   }
 
   const accs = new Map<string, Acc>();
@@ -265,6 +365,16 @@ export async function fetchFunStats(
         perDay: new Map(),
         perEvent: new Map(),
         hoursByDay: new Map(),
+        pbCount: 0,
+        sprinter: 0,
+        endurance: 0,
+        weekend: 0,
+        weekday: 0,
+        months: new Set(),
+        competitions: new Set(),
+        trackPerf: 0,
+        fieldPerf: 0,
+        special: 0,
       };
       accs.set(r.athlete_key, a);
     }
@@ -273,30 +383,46 @@ export async function fetchFunStats(
     a.events.add(norm);
     a.perEvent.set(norm, (a.perEvent.get(norm) ?? 0) + 1);
     if (r.location) a.venues.add(r.location.trim().toLowerCase());
+    if (r.competition_id) a.competitions.add(r.competition_id);
+    if (r.was_pb) a.pbCount += 1;
 
     const day = (r.competition_date ?? "").slice(0, 10);
     if (day) {
       a.competitionDays.add(day);
       a.perDay.set(day, (a.perDay.get(day) ?? 0) + 1);
+      a.months.add(day.slice(0, 7));
       const dayKey = `${day}|${r.competition_id}`;
       if (!a.hoursByDay.has(dayKey)) a.hoursByDay.set(dayKey, new Set());
       a.hoursByDay.get(dayKey)!.add(norm);
+      const dow = new Date(day + "T12:00:00").getDay(); // 0=Sun,6=Sat
+      if (dow === 0 || dow === 6) a.weekend += 1;
+      else a.weekday += 1;
     }
     if (r.competition_date) {
       if (!a.earliest || r.competition_date < a.earliest) a.earliest = r.competition_date;
     }
 
     if (r.event_category === "Track") {
+      a.trackPerf += 1;
       const m = parseTrackDistanceMeters(r.event_name);
-      if (m != null) a.runMeters += m;
+      if (m != null) {
+        a.runMeters += m;
+        if (m <= 200) a.sprinter += 1;
+        else if (m >= 600) a.endurance += 1;
+      }
       // result_numeric for Track = seconds
       if (r.result_numeric != null && r.result_numeric > 0 && r.result_numeric < 10 * 3600) {
         a.runSeconds += r.result_numeric;
       }
-    } else if (r.sub_category === "HorizontalJump" || r.sub_category === "VerticalJump") {
-      a.jumpCount += 1;
-    } else if (r.sub_category === "Throw") {
-      a.throwCount += 1;
+    } else if (r.event_category === "Field") {
+      a.fieldPerf += 1;
+      if (r.sub_category === "HorizontalJump" || r.sub_category === "VerticalJump") {
+        a.jumpCount += 1;
+      } else if (r.sub_category === "Throw") {
+        a.throwCount += 1;
+      }
+    } else if (r.event_category === "Relay" || r.event_category === "Street") {
+      a.special += 1;
     }
   }
 
@@ -446,6 +572,54 @@ export async function fetchFunStats(
         name: a.name,
         organization: a.organization,
         value: Math.round(h * 10) / 10,
+      };
+    }),
+  );
+
+  const simple = (key: FunMetricKey, pick: (a: typeof list[number]) => number) =>
+    pushTop(
+      key,
+      list.map((a) => ({
+        athleteKey: a.athleteKey,
+        name: a.name,
+        organization: a.organization,
+        value: pick(a),
+      })),
+    );
+
+  simple("pbCount", (a) => a.pbCount);
+  simple("sprinter", (a) => a.sprinter);
+  simple("endurance", (a) => a.endurance);
+  simple("weekendWarrior", (a) => a.weekend);
+  simple("weekdayHero", (a) => a.weekday);
+  simple("monthsActive", (a) => a.months.size);
+  simple("uniqueCompetitions", (a) => a.competitions.size);
+  simple("allRounder", (a) => Math.min(a.trackPerf, a.fieldPerf));
+  simple("specialEvents", (a) => a.special);
+
+  // Putkimestari — pisin peräkkäisten kisapäivien sarja
+  pushTop(
+    "longestStreak",
+    list.map((a) => {
+      const days = Array.from(a.competitionDays).sort();
+      let best = days.length > 0 ? 1 : 0;
+      let cur = best;
+      for (let i = 1; i < days.length; i++) {
+        const prev = new Date(days[i - 1] + "T12:00:00").getTime();
+        const now = new Date(days[i] + "T12:00:00").getTime();
+        const diffDays = Math.round((now - prev) / 86400000);
+        if (diffDays === 1) {
+          cur += 1;
+          if (cur > best) best = cur;
+        } else {
+          cur = 1;
+        }
+      }
+      return {
+        athleteKey: a.athleteKey,
+        name: a.name,
+        organization: a.organization,
+        value: best,
       };
     }),
   );
