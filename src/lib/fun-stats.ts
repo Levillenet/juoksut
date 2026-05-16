@@ -5,10 +5,13 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
   parseTrackDistanceMeters,
+  parseTrackSeconds,
   seasonRange,
   estimateHoursAtVenue,
   type SeasonKind,
 } from "./season-stats";
+
+const ATTEMPTS_PER_FIELD = 4;
 
 export type FunMetricKey =
   | "varietyEvents"
