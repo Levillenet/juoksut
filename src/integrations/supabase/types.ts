@@ -472,6 +472,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      fix_running_times_numeric: {
+        Args: never
+        Returns: {
+          affected_competitions: number[]
+          updated_count: number
+        }[]
+      }
       get_shared_athlete: {
         Args: { p_token: string }
         Returns: {
