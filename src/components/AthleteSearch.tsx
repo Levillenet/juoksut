@@ -23,7 +23,10 @@ interface IndexedEntry {
 interface GroupedAthlete {
   key: string;
   name: string;
+  surname: string;
+  firstname: string;
   organization: string;
+  organizationId: number | null;
   entries: IndexedEntry[];
 }
 
