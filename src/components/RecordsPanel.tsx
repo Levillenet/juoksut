@@ -105,13 +105,13 @@ export function EventGroupView({ group }: { group: EventGroup }) {
       </div>
 
       {/* Taulukko */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
+      <div className="sm:overflow-x-auto">
+        <table className="w-full table-fixed text-xs sm:table-auto">
           <thead className="bg-background/60 text-[10px] uppercase tracking-wide text-muted-foreground">
             <tr>
-              <th className="px-3 py-1.5 text-left font-medium">Pvm</th>
-              <th className="px-3 py-1.5 text-left font-medium">Kilpailu</th>
-              <th className="px-3 py-1.5 text-right font-medium">Tulos</th>
+              <th className="w-[62px] px-2 py-1.5 text-left font-medium sm:w-auto sm:px-3">Pvm</th>
+              <th className="px-2 py-1.5 text-left font-medium sm:px-3">Kilpailu</th>
+              <th className="w-[96px] px-2 py-1.5 text-right font-medium sm:w-auto sm:px-3">Tulos</th>
               <th className="hidden px-3 py-1.5 text-right font-medium sm:table-cell">Sija</th>
             </tr>
           </thead>
@@ -123,10 +123,11 @@ export function EventGroupView({ group }: { group: EventGroup }) {
                   isPb ? "bg-primary/5" : ""
                 }`}
               >
-                <td className="whitespace-nowrap px-3 py-1.5 tabular-nums text-muted-foreground">
-                  {formatDate(row.competition_date)}
+                <td className="px-2 py-1.5 align-top tabular-nums text-muted-foreground sm:whitespace-nowrap sm:px-3">
+                  <span className="sm:hidden">{formatDateShort(row.competition_date)}</span>
+                  <span className="hidden sm:inline">{formatDate(row.competition_date)}</span>
                 </td>
-                <td className="px-3 py-1.5">
+                <td className="min-w-0 px-2 py-1.5 align-top sm:px-3">
                   <span className="block break-words sm:truncate">
                     {row.competition_name}
                     {indoor != null && (
@@ -148,10 +149,10 @@ export function EventGroupView({ group }: { group: EventGroup }) {
                     </span>
                   )}
                 </td>
-                <td className="w-px whitespace-nowrap px-3 py-1.5 text-right tabular-nums align-top">
+                <td className="w-[96px] px-2 py-1.5 text-right align-top tabular-nums sm:w-px sm:whitespace-nowrap sm:px-3">
                   <div className="flex flex-col items-end gap-0.5 sm:flex-row sm:items-center sm:justify-end sm:gap-1">
                     <span
-                      className={`font-semibold ${
+                      className={`whitespace-nowrap font-semibold ${
                         isPb ? "text-primary" : "text-foreground"
                       }`}
                     >
@@ -183,7 +184,7 @@ export function EventGroupView({ group }: { group: EventGroup }) {
                       </span>
                     )}
                     {row.wind != null && (
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="whitespace-nowrap text-[10px] text-muted-foreground">
                         {row.wind > 0 ? `+${row.wind.toFixed(1)}` : row.wind.toFixed(1)} m/s
                       </span>
                     )}
