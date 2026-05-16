@@ -299,7 +299,7 @@ export async function fetchFunStats(
     const { data, error } = await supabase
       .from("athlete_results")
       .select(
-        "athlete_key, surname, firstname, organization, competition_id, competition_date, location, event_name, event_category, sub_category, result_numeric, age_class",
+        "athlete_key, surname, firstname, organization, competition_id, competition_date, location, event_name, event_category, sub_category, result_numeric, age_class, was_pb",
       )
       .in("athlete_key", chunk)
       .gte("competition_date", range.from.toISOString())
