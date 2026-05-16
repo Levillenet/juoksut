@@ -101,7 +101,7 @@ export const FUN_METRICS: FunMetricDef[] = [
     key: "throwCount",
     emoji: "💥",
     title: "Heittotykki",
-    description: "Eniten heittosuorituksia.",
+    description: "Eniten heittoyrityksiä (arvio ≈ 4 / kisalaji).",
     format: (v) => `${v} heittoa`,
     unitShort: "heit.",
   },
