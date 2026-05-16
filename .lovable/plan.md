@@ -1,28 +1,31 @@
+## Tavoite
+
+1. Kilpailijan nimi vie kaikkialla urheilijatilastoihin (`/athlete/$key`).
+2. Sukunimihaku → "Haku nimellä", joka osuu sekä etu- että sukunimeen.
+
 ## Muutokset
 
-### 1. `src/routes/hauskat-tilastot.tsx` — muista kausi ja ikäluokat
+### 1. `src/components/AthleteSearch.tsx` — haku nimellä + nimi klikattavaksi
+- Vaihda placeholder ja `aria-label`: `"Sukunimi"` → `"Nimi (etu- tai sukunimi)"`. Päivitä propsin oletus.
+- Suodatuslogiikka: matchaa, jos `Surname` TAI `Firstname` sisältää kyselyn (case-insensitive). Käytä jo olemassa olevaa `q.length >= 2` -ehtoa.
+- Ryhmäkortin yläosan nimi (`{g.name}`) → muuta `<Link to="/athlete/$key" params={{ key: athleteKey(surname, firstname, orgId) }}>`. Käytä `athleteKey`-helperia `@/lib/watch-store`:sta. Heat-rivien linkit `/round/...` jäävät ennalleen.
+- Käytä `routes/search.tsx`-kutsuun sopivaa kuvausta (otsikko "Hae nimellä"). Päivitä `search.tsx`:n header-tekstit ("Hae nimellä", "Hae osallistujaa" säilyy).
 
-- Lisää `localStorage`-avaimet:
-  - `funstats:season` (arvot `year` | `summer` | `winter`)
-  - `funstats:ages` (JSON-array valituista ikäluokista)
-- Alusta `season`-tila lukemalla `localStorage.getItem("funstats:season")` (fallback `"year"`).
-- Kirjoita `season` localStorageen `useEffect`illa kun se muuttuu (kuten `org` jo tehdään).
-- Ikäluokat:
-  - Alusta `selectedAges` localStoragesta jos arvo on tallennettu, ja aseta `ageTouched = true` silloin, jotta nykyinen "valitse kaikki kun data latautuu" -auto-init ei ylikirjoita.
-  - Kirjoita `selectedAges` localStorageen kun se muuttuu (vain jos `ageTouched`).
-  - **Tärkeää:** poista nykyinen `useEffect`, joka nollaa `selectedAges` ja `ageTouched` kun `org` tai `season` muuttuu. Sen sijaan: pidä käyttäjän valinta. Jos käyttäjä vaihtaa seuraa ja nykyiset valitut ikäluokat eivät kuulu uuden seuran `allAges`-listaan, suodata `selectedAges` automaattisesti vain niihin jotka ovat saatavilla (jos tyhjäksi jäisi, valitse kaikki uuden seuran ikäluokat).
+### 2. `src/routes/round.$eventId.$roundId.tsx` — nimi linkittyy
+- `a.Name` -elementti `<p>` → kääri `<Link to="/athlete/$key" params={{ key: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null) }}>`. Säilytä `NotInCompetition`-badge nimen vieressä (ei linkin sisällä).
 
-### 2. `src/routes/athlete.$key.tsx` — takaisin-nuoli oikeaan paikkaan
+### 3. `src/components/SeasonStatsSection.tsx` — nimi linkittyy
+- Rivi 152–154: nimi `<Link to="/athlete/$key" params={{ key: r.athleteKey }}>`.
 
-Nykyinen `<Link to="/watch">` vie aina watch-sivulle. Vaihda se siten, että nuoli käyttää selainhistoriaa:
+### 4. `src/components/ClubTodaySection.tsx` — nimi linkittyy
+- Rivi 201–203: nimi `<Link to="/athlete/$key" params={{ key: r.athlete_key }}>` (kenttä on jo dataissa).
 
-- Korvaa `Link` tavallisella `<button>`illa, joka kutsuu `router.history.back()`.
-- Käytä `useRouter()`-hookia `@tanstack/react-router`:sta.
-- Fallback: jos `router.history.length <= 1` (esim. avattu suoraan), navigoi `/watch`-sivulle kuten ennen.
+### 5. `src/components/DailyBestSection.tsx` + `src/lib/daily-best.ts` — nimi linkittyy
+- `DailyBestRow`-tyyppiin lisää `athlete_key: string` ja `organization_id: number | null`.
+- `fetchDailyBest`-`.select(...)` lisää `athlete_key, organization_id`.
+- Komponentissa rivi 139: kääri `{r.surname} {r.firstname}` `<Link to="/athlete/$key" params={{ key: r.athlete_key }}>`.
 
-Tämä korjaa kaikki tulopolut (hauskat tilastot, haku, watch jne.) — käyttäjä palaa aina sinne mistä tuli.
-
-## Mitä ei muuteta
-
-- Seuravalinta (`funstats:org`) toimii jo, jätetään ennalleen.
-- `fetchFunStats` / data-logiikka pysyy ennallaan.
+## Mitä ei kosketa
+- `athlete.$key.tsx`, hauskat tilastot, watch-lista, season-leaders — niissä nimet ovat jo klikattavissa.
+- Hakulogiikan rakenne (`buildIndex`, concurrency) säilyy; vain filtteri ja UI-tekstit muuttuvat.
+- Linkkien tyylit pidetään hillittyinä (hover-underline), ettei layout muutu.
