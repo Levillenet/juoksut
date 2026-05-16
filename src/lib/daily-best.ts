@@ -21,6 +21,7 @@ export interface DailyBestRow {
   competition_name: string;
   competition_id: number;
   competition_date: string | null;
+  event_id: number;
 }
 
 /** [startISO, endISO) covering the given calendar date in Helsinki TZ. */
@@ -84,7 +85,7 @@ export async function fetchDailyBest(ageClasses: string[]): Promise<DailyBestRow
   const { data, error } = await supabase
     .from("athlete_results")
     .select(
-      "event_name, sub_category, event_category, age_class, result_text, result_numeric, result_rank, athlete_key, surname, firstname, organization, organization_id, competition_name, competition_id, competition_date",
+      "event_name, sub_category, event_category, age_class, result_text, result_numeric, result_rank, athlete_key, surname, firstname, organization, organization_id, competition_name, competition_id, competition_date, event_id",
     )
     .in("age_class", ageClasses)
     .gte("competition_date", startISO)
@@ -132,7 +133,7 @@ export async function fetchDailyBestForAthletes(
   const { data: all, error: e2 } = await supabase
     .from("athlete_results")
     .select(
-      "event_name, sub_category, event_category, age_class, result_text, result_numeric, result_rank, surname, firstname, organization, competition_name, competition_id, competition_date",
+      "event_name, sub_category, event_category, age_class, result_text, result_numeric, result_rank, athlete_key, surname, firstname, organization, organization_id, competition_name, competition_id, competition_date, event_id",
     )
     .in("event_name", eventNames)
     .in("age_class", ageClasses.length > 0 ? ageClasses : [""])
