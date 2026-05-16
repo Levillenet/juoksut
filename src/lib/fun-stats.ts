@@ -73,7 +73,7 @@ export const FUN_METRICS: FunMetricDef[] = [
     key: "runSeconds",
     emoji: "⏱️",
     title: "Kelloseppä",
-    description: "Eniten aikaa juoksuradalla viereytetty.",
+    description: "Eniten aikaa juoksuradalla vietetty.",
     format: (v) => formatDuration(v),
     unitShort: "min",
   },
