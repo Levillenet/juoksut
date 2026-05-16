@@ -13,6 +13,7 @@ import { useEffect } from "react";
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
+import { WelcomeDialog } from "@/components/WelcomeDialog";
 import { trackEvent, type AnalyticsEvent } from "@/lib/analytics";
 
 function NotFoundComponent() {
@@ -133,6 +134,7 @@ function RootComponent() {
       <AuthProvider>
         <RouteTracker />
         <Outlet />
+        <WelcomeDialog />
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>
