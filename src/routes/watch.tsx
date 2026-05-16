@@ -74,6 +74,23 @@ function WatchPage() {
   const loading = indexQuery.isFetching;
 
   useWatchedFieldChanges(index, watched);
+
+  const hasActiveWatchedField = useMemo(() => {
+    if (!index || watched.length === 0) return false;
+    const watchedKeys = new Set(
+      watched.map(
+        (w) => `${w.surname}|${w.firstname}|${w.organizationId ?? ""}`,
+      ),
+    );
+    return index.some(
+      (e) =>
+        e.round.Category === "Field" &&
+        e.round.Status === "Progress" &&
+        watchedKeys.has(
+          `${e.alloc.Surname}|${e.alloc.Firstname}|${e.alloc.Organization?.Id ?? ""}`,
+        ),
+    );
+  }, [index, watched]);
   const error = indexQuery.error
     ? indexQuery.error instanceof Error
       ? indexQuery.error.message
