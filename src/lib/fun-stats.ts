@@ -467,16 +467,19 @@ export async function fetchFunStats(
         if (m <= 200) a.sprinter += 1;
         else if (m >= 600) a.endurance += 1;
       }
-      // result_numeric for Track = seconds
-      if (r.result_numeric != null && r.result_numeric > 0 && r.result_numeric < 10 * 3600) {
-        a.runSeconds += r.result_numeric;
+      // Aika sekunteina parsittuna result_textistä (result_numeric on rikki pidemmissä juoksuissa)
+      const secs = parseTrackSeconds(r.result_text) ?? r.result_numeric;
+      if (secs != null && secs > 0 && secs < 10 * 3600) {
+        a.runSeconds += secs;
       }
     } else if (r.event_category === "Field") {
       a.fieldPerf += 1;
+      const validResult = r.result_numeric != null && r.result_numeric > 0;
+      const attempts = validResult ? ATTEMPTS_PER_FIELD : 0;
       if (r.sub_category === "HorizontalJump" || r.sub_category === "VerticalJump") {
-        a.jumpCount += 1;
+        a.jumpCount += attempts;
       } else if (r.sub_category === "Throw") {
-        a.throwCount += 1;
+        a.throwCount += attempts;
       }
     } else if (r.event_category === "Relay" || r.event_category === "Street") {
       a.special += 1;
