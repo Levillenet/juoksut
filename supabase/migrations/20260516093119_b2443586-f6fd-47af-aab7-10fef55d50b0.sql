@@ -1,0 +1,1 @@
+UPDATE harvest_competitions SET done = false WHERE competition_date > now() - interval '365 days';
