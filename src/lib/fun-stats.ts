@@ -576,6 +576,54 @@ export async function fetchFunStats(
     }),
   );
 
+  const simple = (key: FunMetricKey, pick: (a: typeof list[number]) => number) =>
+    pushTop(
+      key,
+      list.map((a) => ({
+        athleteKey: a.athleteKey,
+        name: a.name,
+        organization: a.organization,
+        value: pick(a),
+      })),
+    );
+
+  simple("pbCount", (a) => a.pbCount);
+  simple("sprinter", (a) => a.sprinter);
+  simple("endurance", (a) => a.endurance);
+  simple("weekendWarrior", (a) => a.weekend);
+  simple("weekdayHero", (a) => a.weekday);
+  simple("monthsActive", (a) => a.months.size);
+  simple("uniqueCompetitions", (a) => a.competitions.size);
+  simple("allRounder", (a) => Math.min(a.trackPerf, a.fieldPerf));
+  simple("specialEvents", (a) => a.special);
+
+  // Putkimestari — pisin peräkkäisten kisapäivien sarja
+  pushTop(
+    "longestStreak",
+    list.map((a) => {
+      const days = Array.from(a.competitionDays).sort();
+      let best = days.length > 0 ? 1 : 0;
+      let cur = best;
+      for (let i = 1; i < days.length; i++) {
+        const prev = new Date(days[i - 1] + "T12:00:00").getTime();
+        const now = new Date(days[i] + "T12:00:00").getTime();
+        const diffDays = Math.round((now - prev) / 86400000);
+        if (diffDays === 1) {
+          cur += 1;
+          if (cur > best) best = cur;
+        } else {
+          cur = 1;
+        }
+      }
+      return {
+        athleteKey: a.athleteKey,
+        name: a.name,
+        organization: a.organization,
+        value: best,
+      };
+    }),
+  );
+
   return out;
 }
 
