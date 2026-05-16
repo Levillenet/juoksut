@@ -14,7 +14,7 @@ export const Route = createFileRoute("/announcer/combined")({
 
 function AnnouncerCombined() {
   const data = useAnnouncerData();
-  return (
+  useFieldLeaderChanges(data.details);
     <div className="min-h-screen bg-background text-foreground">
       <AnnouncerHeader data={data} mode="combined" />
       <RecordsBanner data={data} variant="compact" />
