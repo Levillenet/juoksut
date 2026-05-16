@@ -15,7 +15,8 @@ export const Route = createFileRoute("/announcer/combined")({
 function AnnouncerCombined() {
   const data = useAnnouncerData();
   useFieldLeaderChanges(data.details);
-    <div className="min-h-screen bg-background text-foreground">
+  return (
+    <div className="min-h-screen bg-background text-foreground pb-12">
       <AnnouncerHeader data={data} mode="combined" />
       <RecordsBanner data={data} variant="compact" />
       <main className="mx-auto max-w-[1600px] px-6 py-6">
@@ -32,6 +33,7 @@ function AnnouncerCombined() {
           Lähde: live.tuloslista.com · automaattinen päivitys 15&nbsp;s välein
         </p>
       </main>
+      <LiveTicker />
     </div>
   );
 }
