@@ -232,6 +232,19 @@ function AthletePage() {
               <p className="truncate text-xs text-muted-foreground">{meta.organization}</p>
             )}
           </div>
+          <ShareAthleteButton
+            target={
+              meta
+                ? {
+                    athleteKey: key,
+                    surname: meta.surname,
+                    firstname: meta.firstname,
+                    organization: meta.organization ?? "",
+                    organizationId: null,
+                  }
+                : null
+            }
+          />
         </div>
       </header>
 
