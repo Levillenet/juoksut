@@ -23,7 +23,7 @@ function AnnouncerLive() {
           Lähde: live.tuloslista.com · automaattinen päivitys 15&nbsp;s välein
         </p>
       </main>
-      <LiveTicker />
+      <LiveTicker source="announcer" />
     </div>
   );
 }
