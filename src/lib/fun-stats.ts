@@ -19,7 +19,7 @@ export type FunMetricKey =
   | "jumpCount"
   | "throwCount"
   | "venues"
-  | "earliest"
+  
   | "bestDay"
   | "loyalEvent"
   | "hours";
@@ -396,21 +396,6 @@ export async function fetchFunStats(
       organization: a.organization,
       value: a.venues.size,
     })),
-  );
-
-  // Aikainen herääjä — varhaisin päivä
-  pushTop(
-    "earliest",
-    list
-      .filter((a) => a.earliest)
-      .map((a) => ({
-        athleteKey: a.athleteKey,
-        name: a.name,
-        organization: a.organization,
-        value: new Date(a.earliest!).getTime(),
-        extra: fmtDateFi(a.earliest),
-      })),
-    true,
   );
 
   // Pinnistäjä — paras päivä (max suoritusten määrä)
