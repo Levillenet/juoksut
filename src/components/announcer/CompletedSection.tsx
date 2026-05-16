@@ -51,7 +51,7 @@ export function CompletedSection({
               round={r}
               detail={details[r.EventId]}
               groupHeats={false}
-              defaultOpen
+              defaultOpen={autoOpen}
               onDismiss={() => dismissCompleted(r.Id)}
             />
           ))}
