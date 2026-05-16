@@ -1,43 +1,28 @@
-## Tilanne
+## Löydetyt bugit
 
-Nyt `hauskat-tilastot` -sivu hakee dataa vain `watched_athletes`-taulun urheilijoille (eli käyttäjän omat seuratut). Sinä haluat:
+**1. Kelloseppä — väärä aikalaskenta**
 
-1. Sivu näyttää tilastoja **koko tietokannan** urheilijoista, ei vain seuratuista.
-2. **Seuravalinta** (pakollinen rajaus, jotta data ei räjähdä) — käyttäjä valitsee yhden seuran (esim. "Lahden Ahkera").
-3. **Ikäluokkavalinta monivalintana** — käyttäjä voi rastittaa esim. P9, P10, P11, T9, T10, T11 → näytetään kaikki alle 12-vuotiaat. Oletuksena kaikki valittu.
+Tietokannassa `result_numeric` on rikki pidemmissä juoksuissa. Esim. 800m tulos `result_text = "2.58,25"` (2 min 58,25 s = 178,25 s), mutta `result_numeric = 2.58`. Nykyinen koodi summaa nämä `result_numeric`-arvot suoraan sekunteina, joten 800-metrin juoksu lasketaan ~2,5 sekunniksi.
 
-## Muutokset
+**2. Hyppykirppu / Heittotykki — laskee tuloksia, ei yrityksiä**
 
-### 1. `src/lib/fun-stats.ts`
-- Poistetaan `watched_athletes`-rajaus.
-- Funktion signatuuri: `fetchFunStats(season, orgFilter: string | null, ageClassFilter: string[] | null)`.
-  - `orgFilter`: jos `null` → ei haeta mitään (palautetaan tyhjä; seuravalinta pakollinen).
-  - `ageClassFilter`: jos `null` tai tyhjä taulukko → ei rajata; muutoin `in()`.
-- Kysely: `from("athlete_results")` + `.eq("organization", orgFilter)` + `.in("age_class", ageClassFilter)` + season-rangerajaus.
-- Lisätään `fetchOrganizations(season)` joka palauttaa uniikit `organization`-arvot kauden datasta (lajittelu: ensin Lahden Ahkera ja muut tunnetut, sitten aakkosjärjestys; suodatetaan pois "0", "-", ".", tyhjät).
-- Lisätään `fetchAgeClasses(season, org)` joka palauttaa uniikit `age_class`-arvot valitulle seuralle.
-- `Acc`-rakenne ja metriikat säilyvät ennallaan.
-- Vaihe 1 limit 1000 voi tulla vastaan isoilla seuroilla → käytetään sivutusta (range) jos rivimäärä > 1000.
+Tietokannassa on yksi rivi per urheilija per laji (lopputulos), ei yritystä per rivi. Pituushypyssä lapsi hyppää tyypillisesti 3–6 kertaa, mutta nykyinen mittari laskee vain yhden "hypyn".
 
-### 2. `src/routes/hauskat-tilastot.tsx`
-- Lisätään tila: `org: string` (oletus käyttäjän oman seuran arvaus tai tyhjä), `ageClasses: string[]` (oletus kaikki).
-- Yläpalkkiin:
-  - **Seuravalinta** (`Select`, haettavalla `Command`-popoverilla koska seuroja paljon). Pakollinen — jos tyhjä, näytetään ohjeteksti "Valitse seura".
-  - **Ikäluokat**: korvataan nykyinen `Select` `Popover`+`Checkbox`-listalla (monivalinta). Painikkeessa lyhyt yhteenveto ("3 ikäluokkaa" / "Kaikki ikäluokat" / "P9, P10").
-- Kausivalinta ja päivityspainike säilyvät.
-- Query: `["fun-stats", season, org, ageClasses.join(",")]`, `enabled: !!org`.
-- Erillinen kysely seuralistalle ja ikäluokkalistalle (riippuu seurasta).
-- Oletus-seura tallennetaan `localStorage`iin (`funstats:org`), niin että käyttäjän valinta muistetaan.
+## Korjaukset
 
-### 3. Korjaus runtime-erroriin
-Nykyisessä `fun-stats.ts`:ssä on syntaksivirhe rivillä 248 (`Unexpected "{"`). Tarkistetaan ja korjataan saman ohessa (todennäköisesti vanhasta editistä jäänyt rivi).
+**`src/lib/season-stats.ts`** — uusi apuri `parseTrackSeconds(resultText)`:
+- `"2.58,25"` → `2*60 + 58.25 = 178.25`
+- `"58,25"` → `58.25`
+- `"1.23.45,6"` (tunnit) → `1*3600 + 23*60 + 45.6`
+- Palauttaa `null`, jos ei matchaa numeerista muotoa (DNS/DNF/DQ).
 
-## Tekninen huomio
+**`src/lib/fun-stats.ts`**:
+- `Row`-tyyppiin lisätään edelleen `result_text` (jo on).
+- Kelloseppä: vaihda `a.runSeconds += r.result_numeric` → käytä `parseTrackSeconds(r.result_text) ?? r.result_numeric`.
+- Hyppykirppu/Heittotykki: kerro yritysarviolla. Käytetään vakiota `ATTEMPTS_PER_FIELD = 4` per validi tulos (kun `result_numeric != null && > 0`). DNS/DNF (ei numeerista) lasketaan 0. Päivitetään formaattiteksti pysymään "X hyppyä" / "X heittoa" — luku tarkoittaa nyt arvioituja yrityksiä.
+- Päivitä mittarien kuvaukset: "Eniten hyppy-/heittoyrityksiä (≈ 4 / kisalaji)." jotta käyttäjä ymmärtää arvion.
 
-- Suuren datan kysely (esim. "Hippo" ~2000 urheilijaa × monta suoritusta) voi olla raskas. Pidetään season-rajaus ja sivutus, ja näytetään latausindikaattori.
-- Ei DB-muutoksia.
-- Ei muutoksia muihin sivuihin.
+## Mitä ei muuteta
 
-## Lopputulos
-
-Käyttäjä avaa Hauskat tilastot → valitsee seuran (esim. "Lahden Ahkera") → rastittaa halutut ikäluokat (esim. P9–P11, T9–T11) → näkee kaikkien seuran ko. ikäluokkien lasten kärkilistat 21 leikkimielisellä mittarilla.
+- UI-komponentit (`FunStatCard`, `hauskat-tilastot.tsx`) pysyvät ennallaan.
+- Muut mittarit, seura-/ikäluokkavalinnat ja kysely pysyvät ennallaan.

@@ -5,10 +5,13 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
   parseTrackDistanceMeters,
+  parseTrackSeconds,
   seasonRange,
   estimateHoursAtVenue,
   type SeasonKind,
 } from "./season-stats";
+
+const ATTEMPTS_PER_FIELD = 4;
 
 export type FunMetricKey =
   | "varietyEvents"
@@ -90,7 +93,7 @@ export const FUN_METRICS: FunMetricDef[] = [
     key: "jumpCount",
     emoji: "🦘",
     title: "Hyppykirppu",
-    description: "Eniten hyppysuorituksia.",
+    description: "Eniten hyppy-yrityksiä (arvio ≈ 4 / kisalaji).",
     format: (v) => `${v} hyppyä`,
     unitShort: "hyp.",
   },
@@ -98,7 +101,7 @@ export const FUN_METRICS: FunMetricDef[] = [
     key: "throwCount",
     emoji: "💥",
     title: "Heittotykki",
-    description: "Eniten heittosuorituksia.",
+    description: "Eniten heittoyrityksiä (arvio ≈ 4 / kisalaji).",
     format: (v) => `${v} heittoa`,
     unitShort: "heit.",
   },
@@ -242,6 +245,7 @@ interface Row {
   event_category: string;
   sub_category: string;
   result_numeric: number | null;
+  result_text: string | null;
   age_class: string;
   was_pb: boolean;
 }
@@ -348,7 +352,7 @@ export async function fetchFunStats(
     let q = supabase
       .from("athlete_results")
       .select(
-        "athlete_key, surname, firstname, organization, competition_id, competition_date, location, event_name, event_category, sub_category, result_numeric, age_class, was_pb",
+        "athlete_key, surname, firstname, organization, competition_id, competition_date, location, event_name, event_category, sub_category, result_numeric, result_text, age_class, was_pb",
       )
       .eq("organization", organization)
       .gte("competition_date", range.from.toISOString())
@@ -463,16 +467,19 @@ export async function fetchFunStats(
         if (m <= 200) a.sprinter += 1;
         else if (m >= 600) a.endurance += 1;
       }
-      // result_numeric for Track = seconds
-      if (r.result_numeric != null && r.result_numeric > 0 && r.result_numeric < 10 * 3600) {
-        a.runSeconds += r.result_numeric;
+      // Aika sekunteina parsittuna result_textistä (result_numeric on rikki pidemmissä juoksuissa)
+      const secs = parseTrackSeconds(r.result_text) ?? r.result_numeric;
+      if (secs != null && secs > 0 && secs < 10 * 3600) {
+        a.runSeconds += secs;
       }
     } else if (r.event_category === "Field") {
       a.fieldPerf += 1;
+      const validResult = r.result_numeric != null && r.result_numeric > 0;
+      const attempts = validResult ? ATTEMPTS_PER_FIELD : 0;
       if (r.sub_category === "HorizontalJump" || r.sub_category === "VerticalJump") {
-        a.jumpCount += 1;
+        a.jumpCount += attempts;
       } else if (r.sub_category === "Throw") {
-        a.throwCount += 1;
+        a.throwCount += attempts;
       }
     } else if (r.event_category === "Relay" || r.event_category === "Street") {
       a.special += 1;

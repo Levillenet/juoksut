@@ -51,6 +51,37 @@ export function parseTrackDistanceMeters(eventName: string): number | null {
   return meters;
 }
 
+/**
+ * Parsii suomalaisen ratakellon tuloksen sekunneiksi.
+ * Esim. "12,34" → 12.34, "2.58,25" → 178.25, "1.23.45,6" → 5025.6.
+ * Palauttaa null jos teksti ei ole numeerinen aika (DNS/DNF/DQ/…).
+ */
+export function parseTrackSeconds(resultText: string | null | undefined): number | null {
+  if (!resultText) return null;
+  const t = resultText.trim();
+  // h.mm.ss,cs
+  let m = t.match(/^(\d+)\.(\d{1,2})\.(\d{1,2}),(\d{1,3})$/);
+  if (m) {
+    const h = +m[1], mi = +m[2], s = +m[3], cs = +m[4];
+    return h * 3600 + mi * 60 + s + cs / Math.pow(10, m[4].length);
+  }
+  // m.ss,cs  (esim. 2.58,25)
+  m = t.match(/^(\d+)\.(\d{1,2}),(\d{1,3})$/);
+  if (m) {
+    const mi = +m[1], s = +m[2], cs = +m[3];
+    return mi * 60 + s + cs / Math.pow(10, m[3].length);
+  }
+  // ss,cs  (esim. 12,34)
+  m = t.match(/^(\d+),(\d{1,3})$/);
+  if (m) {
+    return +m[1] + +m[2] / Math.pow(10, m[2].length);
+  }
+  // pelkkä kokonaisluku sekunteina
+  m = t.match(/^(\d+)$/);
+  if (m) return +m[1];
+  return null;
+}
+
 /** Haversine distance in km. */
 export function haversineKm(
   a: { lat: number; lng: number },
