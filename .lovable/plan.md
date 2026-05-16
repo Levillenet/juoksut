@@ -1,41 +1,32 @@
-## Ongelma
+## Mitä muutetaan
 
-Urheilijakortin lajikohtaisessa tulostaulukossa (`RecordsPanel.tsx`) on `overflow-x-auto`, ja kolmesta solusta jokainen käyttää `whitespace-nowrap`. Tämän takia taulukko leviää helposti leveämmäksi kuin mobiililaitteen näyttö (Samsung Fold 7, iPhone 13), jolloin "Tulos"-sarake jää piiloon oikealle ja sitä pääsee katsomaan vain rullaamalla korttia sivuttain. Kortti ei siis "skaalaudu" laitteen leveyteen.
+`src/components/DailyBestSection.tsx`:n päivän parhaiden listassa jokainen rivi on tällä hetkellä pelkkä `<li>`, jossa vain urheilijan nimi on linkki urheilijakortille. Tehdään rivin muusta alueesta (laji, kilpailun nimi, tulos) linkki kisanäkymään, mutta urheilijan nimi säilyy omana linkkinä urheilijakortille.
 
-Ratkaisu ei vaadi laitteen resoluution erillistä tunnistamista — riittää, että taulukko mitoitetaan käytettävissä olevan leveyden mukaan ja pakotetaan se mahtumaan ilman vaakasuuntaista vieritystä. Tailwindin `sm:`-breakpoint (640 px) toimii rajana mobiili vs. isompi näyttö.
+## Miten linkki kisaan toimii
 
-## Muutokset
+Sovelluksessa ei ole erillistä "kilpailun etusivua" — lähin vastine on erän näkymä `/round/$eventId/$roundId`, joka käyttää aktiivista kisa-ID:tä storesta ja hakee tapahtuman tiedot sen mukaan.
 
-Vain yksi tiedosto: `src/components/RecordsPanel.tsx`.
+Käytettävissä olevista kentistä (`competition_id`, `event_id`) ei saada `roundId`:tä suoraan, mutta `round`-reitin koodi putoaa takaisin ensimmäiseen erään, jos annettua roundId:tä ei löydy:
 
-1. **Ulompi käärintä**
-   - Poista `overflow-x-auto` taulukon ympäriltä mobiilissa (`sm:overflow-x-auto` jätetään isommille näytöille turvaverkoksi).
-   - Aseta `<table>`-elementille `table-fixed w-full` mobiilissa, jotta sarakkeet jakavat tilan eivätkä venytä korttia ulos näytöltä.
+```
+data?.Rounds.find((r) => r.Id === parseInt(roundId, 10)) ?? data?.Rounds[0]
+```
 
-2. **Pvm-sarake**
-   - Poista `whitespace-nowrap` mobiilissa (`sm:whitespace-nowrap`).
-   - Käytä lyhyttä päivämäärämuotoa mobiilissa: `d.M.yy` (esim. "16.11.25") ja täysi `d.M.yyyy` `sm:`-näytöillä. Toteutus: lisätään toinen `Intl.DateTimeFormat` ja renderöidään pvm kahdessa spanissa (`sm:hidden` ja `hidden sm:inline`).
-   - Pienennetään mobiilipaddingia (`px-2 sm:px-3`).
+Hyödynnetään tätä: navigoidaan `/round/$eventId/0` ja se näyttää lajin ensimmäisen (tyypillisesti ainoan/finaalin) erän tulokset siitä kisasta.
 
-3. **Kilpailu-sarake**
-   - Anna sarakkeen ottaa loput tilasta (`w-full` `table-fixed`-kontekstissa).
-   - Säilytä `break-words`, mutta lisää `min-w-0` jotta flex/text-truncate ei pakota leveyttä.
-   - Pienennetään mobiilipaddingia samoin.
+## Rivin rakenne
 
-4. **Tulos-sarake**
-   - Poista `w-px` (joka teki sarakkeesta sisällönmittaisen ja työnsi muita ulos) ja korvaa kiinteällä minimillä: `w-[88px] sm:w-auto`.
-   - Säilytä `whitespace-nowrap` itse tulosnumerolle wrapissa, mutta poista solusta, jotta badge/wind voivat rivittyä.
-   - Tuuli näytetään omalla rivillä mobiilissa (jo nyt `flex-col`), mikä riittää.
+1. Tuodaan `useCompetitionId` paketista `@/lib/competition-store` ja `useNavigate` reitittimestä.
+2. Tehdään rivin "ulkokuori" napiksi tai `Link`iksi joka:
+   - Asettaa aktiivisen kisan: `setCompetitionId(r.competition_id)`
+   - Navigoi: `navigate({ to: "/round/$eventId/$roundId", params: { eventId: String(r.event_id), roundId: "0" } })`
+3. Urheilijan nimi pysyy sisäkkäisenä `Link`inä urheilijakortille. Pysäytetään klikin kuplinta `e.stopPropagation()`:lla, jotta nimen klikkaus ei laukaise myös rivin navigointia.
+4. Lisätään `hover:bg-secondary` ja `cursor-pointer` -tyylit visuaaliseksi vihjeeksi siitä, että rivi on klikattavissa.
 
-5. **Sija-sarake**
-   - Pysyy `hidden sm:table-cell` (ei muutosta).
+## Tekninen huomio
 
-6. **Otsikkorivi (kortin yläosa)**
-   - Tarkistetaan että PB-badge-rivin `flex-wrap` toimii kapealla näytöllä — ei muutosta jos jo mahtuu.
+Rivin ulkokuori on toteutettava `<button>`-elementtinä tai oman `onClick`-handlerin kautta, koska sisäkkäiset `<a>`-tagit (Link Linkin sisällä) eivät ole sallittuja HTML:ssä. Urheilijan nimen Link säilyy normaalina `<a>`-tagina sisällä.
 
-Lopputulos: jokaisella mobiilileveydellä (vähintään ~320 px asti) taulukon Pvm + Kilpailu + Tulos mahtuvat samalle riville ilman vaakavieritystä. Pidemmät kilpailunimet rivittyvät, ja Tulos-sarake on aina näkyvissä.
+## Tiedostot
 
-## Mitä ei muuteta
-
-- Ei kosketa muita urheilijakortin osioita (otsikko, tilastot, PB-yhteenveto, kilpailulistaus), koska ne käyttävät jo `grid`-pohjia ja `truncate`a eivätkä aiheuta vaakavieritystä.
-- Ei lisätä JS-pohjaista resoluution tunnistusta, koska CSS-breakpointit hoitavat saman luotettavammin ja ilman hydraatio-ongelmia.
+- `src/components/DailyBestSection.tsx` — ainoa muokattava tiedosto.

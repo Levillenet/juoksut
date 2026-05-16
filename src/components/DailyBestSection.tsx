@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Trophy, ChevronDown, ChevronUp } from "lucide-react";
 
 import {
@@ -8,6 +8,7 @@ import {
   fetchTodayAgeClasses,
   sortAgeClass,
 } from "@/lib/daily-best";
+import { useCompetitionId } from "@/lib/competition-store";
 
 const STORAGE_KEY = "dailyBest.ageClasses";
 
