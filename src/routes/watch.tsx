@@ -63,8 +63,6 @@ function WatchPage() {
   const [query, setQuery] = useState<string>("");
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
-  useWatchedFieldChanges(null, watched);
-
   const indexQuery = useQuery(
     competitionIndexQueryOptions(competitionId, (done, total) =>
       setProgress({ done, total }),
