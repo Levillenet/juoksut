@@ -1,23 +1,24 @@
-## Ongelma
+## Tilanne
 
-T10:n päivän paras näyttää voittajaksi Saarelma Tuulen ajalla 5,28, vaikka oikea voittaja on Amanda Gustafsson (4,09). Tietokannassa Amanda on, mutta hänet sivuutetaan järjestyksessä.
+Tarkistin missä kilpailutuloksia järjestetään näytöllä:
 
-Syy: tietokannassa nämä T10 1km -tulokset ovat tallessa kategorialla `event_category = "Street"` ja `sub_category = "Run"` (maantie-/maastojuoksu). Funktio `isLowerBetter(category)` palauttaa `true` ainoastaan kun kategoria on `"Track"`. Niinpä `reduceBest` (ja muut "paras"-vertailut) kohtelevat näitä juoksutuloksia kuten kenttälajeja, joissa suurempi luku voittaa → 5,28 valitaan voittajaksi 4,09:n sijaan.
+- `src/routes/round.$eventId.$roundId.tsx` (Lopputulokset-osio) — käyttää jo `ResultRank`. OK.
+- `src/components/announcer/shared.tsx`, `CompletedSection`, `RecordsBanner` — käyttävät jo `ResultRank`. OK.
+- `src/routes/scoreboard.tsx` — käyttää jo `ResultRank` ensisijaisesti, numero fallbackina. OK.
+- `src/routes/watch.tsx`, `src/routes/seuraa.$token.tsx` — näyttävät urheilijan oman sijoituksen suoraan `ResultRank`-arvolla. OK.
+- `src/lib/daily-best.ts` — edellisessä korjauksessa otettu `ResultRank` käyttöön kisan sisällä. OK.
+
+**Ainoa kohta joka ei vielä käytä ResultRankia kilpailutuloksien esittämiseen:**
+
+- `src/routes/print.club.tsx` (rivi 108) ja `src/routes/print.watched.tsx` (rivi 91) järjestävät erän kilpailijat aina `heatIndex` + `Position` mukaan (= lähtöjärjestys). Tämä on järkevää ennen kisaa ja sen aikana, mutta kun erän tulokset on jo julkaistu (Official / Progress ja `ResultRank` annettu), näiden tulosteiden pitäisi näyttää virallinen lopputulosjärjestys eikä lähtöjärjestys — muuten esim. korkeushypyn pudotuksilla ratkaistut sijoitukset näkyvät väärässä järjestyksessä.
 
 ## Korjaus
 
-Yksi muutos kohdassa `src/lib/athlete-history.ts`:
+Päivitä molempien tulostenäkymien `allocs`-järjestys siten, että:
 
-- Laajenna `isLowerBetter` ottamaan myös `sub_category` huomioon ja palauttamaan `true` kaikille juoksu- ja kävelytyyppisille alalajeille riippumatta siitä, onko `event_category` `"Track"`, `"Street"`, `"CrossCountry"` vms.
-- Alalajit joiden ajat ovat pienempi = parempi: `Run`, `Sprint`, `MiddleDistance`, `LongDistance`, `Hurdles`, `Steeple`, `Relay`, `Walk`, `RoadRun`, `CrossCountry`.
+1. Jos vähintään yhdellä erän kilpailijalla on `ResultRank` (= kisa on edennyt tuloksiin asti), järjestä KAIKKI rivit ensisijaisesti `ResultRank`-arvon (nouseva, `null` viimeiseksi) mukaan.
+2. Muutoin säilytä nykyinen `heatIndex` + `Position` -järjestys (lähtöjärjestys).
 
-Päivitä kaikki kutsupaikat välittämään `sub_category` toiseksi argumentiksi:
+Muutos tehdään kahteen tiedostoon: `src/routes/print.club.tsx` ja `src/routes/print.watched.tsx`.
 
-- `src/lib/daily-best.ts` (2 paikkaa, `reduceBest` ja `fetchDailyBestForAthletes`)
-- `src/lib/today-stats.ts` (3 paikkaa)
-- `src/lib/athlete-history.ts` (1 paikka rivillä 133)
-- `src/routes/athlete.$key.tsx` (1 paikka — käytetään vain etiketissä, voi jättää nykyiseen muotoon tai välittää myös sub_categoryn)
-
-Tämän jälkeen Amanda Gustafsson 4,09 nousee oikein T10:n päivän parhaaksi, ja sama korjaus pätee kaikkiin maasto-, maantie- ja muihin juoksulajeihin, joiden `event_category` ei ole `"Track"`.
-
-Muita muutoksia ei tarvita (parseResultNumeric tuottaa nykyisellään "4,09" → 4.09 ja "5,28" → 5.28, mikä riittää oikeaan järjestykseen nyt kun pienempi = parempi).
+Muita muutoksia ei tarvita — kaikki muut kilpailutulosnäkymät käyttävät jo `ResultRankia`.

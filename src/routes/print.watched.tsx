@@ -89,6 +89,14 @@ function PrintWatchedPage() {
           .map((g) => ({
             ...g,
             allocs: [...g.allocs].sort((a, b) => {
+              const ar = a.alloc.ResultRank;
+              const br = b.alloc.ResultRank;
+              const hasRank = g.allocs.some((x) => x.alloc.ResultRank != null);
+              if (hasRank) {
+                const av = ar ?? Number.POSITIVE_INFINITY;
+                const bv = br ?? Number.POSITIVE_INFINITY;
+                if (av !== bv) return av - bv;
+              }
               if (a.heatIndex !== b.heatIndex) return a.heatIndex - b.heatIndex;
               return (a.alloc.Position ?? 0) - (b.alloc.Position ?? 0);
             }),
