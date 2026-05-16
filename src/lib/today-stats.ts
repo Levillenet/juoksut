@@ -123,14 +123,14 @@ export async function fetchTodayStats(): Promise<TodayStats> {
   // and compare to the best in the rest of the current season.
   const todayBest = new Map<
     string,
-    { numeric: number; eventCategory: string; eventName: string; ageClass: string }
+    { numeric: number; eventCategory: string; subCategory: string; eventName: string; ageClass: string }
   >();
   for (const r of today) {
     if (r.result_numeric == null) continue;
     if (!r.age_class) continue;
     const norm = normalizeEventName(r.event_name);
     const key = `${norm}|${r.age_class}`;
-    const lower = isLowerBetter(r.event_category);
+    const lower = isLowerBetter(r.event_category, r.sub_category);
     const cur = todayBest.get(key);
     if (
       !cur ||
@@ -139,6 +139,7 @@ export async function fetchTodayStats(): Promise<TodayStats> {
       todayBest.set(key, {
         numeric: r.result_numeric,
         eventCategory: r.event_category,
+        subCategory: r.sub_category,
         eventName: r.event_name,
         ageClass: r.age_class,
       });
