@@ -145,7 +145,7 @@ export function groupByEvent(rows: AthleteResultRow[]): EventGroup[] {
         eventName: normName,
         category: r.event_category,
         subCategory: r.sub_category,
-        lowerBetter: isLowerBetter(r.event_category),
+        lowerBetter: isLowerBetter(r.event_category, r.sub_category),
         rows: [],
         pb: null,
         pbIndoor: null,
