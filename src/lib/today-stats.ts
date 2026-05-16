@@ -58,6 +58,7 @@ interface PriorRow {
   event_name: string;
   age_class: string;
   event_category: string;
+  sub_category: string;
   result_numeric: number | null;
 }
 
