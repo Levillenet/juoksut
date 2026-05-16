@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { AboutServiceContent } from "@/components/AboutServiceContent";
 
-const STORAGE_PREFIX = "welcome.dialog.seen.v1";
+const STORAGE_PREFIX = "welcome.dialog.seen.v2";
 
 export function WelcomeDialog() {
   const { user, loading } = useAuth();
