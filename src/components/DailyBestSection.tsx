@@ -34,6 +34,8 @@ function saveSelected(list: string[]) {
 export function DailyBestSection() {
   const [selected, setSelected] = useState<string[]>(() => loadSelected());
   const [open, setOpen] = useState(true);
+  const [, setCompetitionId] = useCompetitionId();
+  const navigate = useNavigate();
 
   const ageClassesQuery = useQuery({
     queryKey: ["daily-best", "age-classes"],
