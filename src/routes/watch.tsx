@@ -356,57 +356,141 @@ function WatchPage() {
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Hakutulokset
             </h3>
-            {searchGroups.length === 0 ? (
+            {searchGroups.length === 0 && dbOnlyResults.length === 0 && !dbSearchQuery.isFetching ? (
               <p className="rounded-lg border bg-card px-4 py-3 text-sm text-muted-foreground">
                 Ei osumia haulla "{query}".
               </p>
             ) : (
-              <ul className="space-y-2">
-                {searchGroups.map((g) => {
-                  const isWatched = watchedKeys.has(g.key);
-                  return (
-                    <li
-                      key={g.key}
-                      className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold">
-                          {g.surname} {g.firstname}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {g.organization} · {g.count} {g.count === 1 ? "laji" : "lajia"}
-                        </p>
-                      </div>
-                      {isWatched ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => remove(g.key)}
-                          aria-label="Poista seurannasta"
-                        >
-                          <X className="h-4 w-4" /> Seurannassa
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            add({
-                              key: g.key,
-                              surname: g.surname,
-                              firstname: g.firstname,
-                              organization: g.organization,
-                              organizationId: g.organizationId,
-                            } satisfies WatchedAthlete)
-                          }
-                          aria-label="Lisää seurantaan"
-                        >
-                          <UserPlus className="h-4 w-4" /> Seuraa
-                        </Button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+              <>
+                {searchGroups.length > 0 && (
+                  <>
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Tässä kisassa
+                    </p>
+                    <ul className="mb-3 space-y-2">
+                      {searchGroups.map((g) => {
+                        const isWatched = watchedKeys.has(g.key);
+                        return (
+                          <li
+                            key={g.key}
+                            className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold">
+                                <Link
+                                  to="/athlete/$key"
+                                  params={{ key: g.key }}
+                                  className="hover:underline"
+                                >
+                                  {g.surname} {g.firstname}
+                                </Link>
+                              </p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {g.organization} · {g.count} {g.count === 1 ? "laji" : "lajia"}
+                              </p>
+                            </div>
+                            {isWatched ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => remove(g.key)}
+                                aria-label="Poista seurannasta"
+                              >
+                                <X className="h-4 w-4" /> Seurannassa
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  add({
+                                    key: g.key,
+                                    surname: g.surname,
+                                    firstname: g.firstname,
+                                    organization: g.organization,
+                                    organizationId: g.organizationId,
+                                  } satisfies WatchedAthlete)
+                                }
+                                aria-label="Lisää seurantaan"
+                              >
+                                <UserPlus className="h-4 w-4" /> Seuraa
+                              </Button>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                )}
+
+                {dbSearchQuery.isFetching && (
+                  <p className="mb-2 text-xs text-muted-foreground">Haetaan tietokannasta…</p>
+                )}
+
+                {dbOnlyResults.length > 0 && (
+                  <>
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Muista kisoista (koko tietokanta)
+                    </p>
+                    <ul className="space-y-2">
+                      {dbOnlyResults.map((g) => {
+                        const isWatched = watchedKeys.has(g.key);
+                        return (
+                          <li
+                            key={g.key}
+                            className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold">
+                                <Link
+                                  to="/athlete/$key"
+                                  params={{ key: g.key }}
+                                  className="hover:underline"
+                                >
+                                  {g.surname} {g.firstname}
+                                </Link>
+                              </p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {g.organization || "—"}
+                              </p>
+                            </div>
+                            {isWatched ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => remove(g.key)}
+                                aria-label="Poista seurannasta"
+                              >
+                                <X className="h-4 w-4" /> Seurannassa
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  add({
+                                    key: g.key,
+                                    surname: g.surname,
+                                    firstname: g.firstname,
+                                    organization: g.organization,
+                                    organizationId: g.organizationId,
+                                  } satisfies WatchedAthlete)
+                                }
+                                aria-label="Lisää seurantaan"
+                              >
+                                <UserPlus className="h-4 w-4" /> Seuraa
+                              </Button>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {(dbSearchQuery.data?.length ?? 0) - searchGroups.length > dbOnlyResults.length && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Näytetään {dbOnlyResults.length} ensimmäistä — tarkenna hakua kirjoittamalla lisää.
+                      </p>
+                    )}
+                  </>
+                )}
+              </>
             )}
           </section>
         )}
