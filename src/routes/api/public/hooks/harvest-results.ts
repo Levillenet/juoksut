@@ -20,8 +20,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 const API = "https://cached-public-api.tuloslista.com/live/v1";
 const BATCH_SIZE = 100;      // competition IDs scanned per invocation
 const TAIL_RESCAN = 30;      // IDs to re-scan when caught up
-const REVISIT_LIMIT = 40;    // tuloksettomien kisojen uudelleentarkistus per ajo
-const REVISIT_MAX_AGE_DAYS = 14; // kuinka kauan palataan tyhjiin kisoihin
+const REVISIT_LIMIT = 120;   // tuloksellisten/tuloksettomien kisojen uudelleentarkistus per ajo
+const REVISIT_MAX_AGE_DAYS = 365; // kuinka kauan palataan kisoihin (alkuerä→finaali voi täydentyä myöhemmin)
 const CONCURRENCY = 5;       // parallel competitions per chunk
 const HARD_MAX_ID = 30000;   // safety ceiling
 const FLOOR_ID = 16456;      // tuloslista API:n vanhin saatavilla oleva kisa (5.1.2025)
@@ -278,10 +278,13 @@ async function harvestRange(ids: number[]) {
           existed++;
           if (v.rowsAdded > 0) touchedCompIds.add(id);
         }
-        // Päätä onko tämä kisa "done" — eli ei tarvitse palata
+        // Päätä onko tämä kisa "done" — eli ei tarvitse palata.
+        // Pidetään revisit-tilassa myös jo tuloksellisia kisoja, koska
+        // alkuerien jälkeen voi tulla finaali (tai uusia kierroksia), ja
+        // upsert valitsee parhaan tuloksen per urheilija/laji uudelleen.
         const dateMs = v.competitionDate ? Date.parse(v.competitionDate) : NaN;
         const tooOldToRevisit = Number.isFinite(dateMs) && dateMs < cutoffMs;
-        const done = !v.existed || v.rowsAdded > 0 || tooOldToRevisit;
+        const done = !v.existed || tooOldToRevisit;
         scanRecords.push({
           competition_id: id,
           competition_date: v.competitionDate,
