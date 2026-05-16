@@ -155,7 +155,7 @@ export function AthleteSearch({
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
           className="pl-9"
-          aria-label="Sukunimi"
+          aria-label="Nimi"
         />
       </div>
       {loading && progress.total > 0 && (
