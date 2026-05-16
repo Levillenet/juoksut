@@ -113,11 +113,22 @@ function FunStatsPage() {
     staleTime: 5 * 60_000,
   });
 
-  // Oletuksena valitaan kaikki seuran ikäluokat heti kun ne ladataan
+  // Kun ikäluokkalista latautuu: jos käyttäjä ei ole valinnut, valitse kaikki.
+  // Jos käyttäjä on valinnut, suodata pois ikäluokat joita ei ole tarjolla;
+  // jos mitään ei jää, palauta valinnaksi kaikki saatavilla olevat.
   useEffect(() => {
-    if (!ageTouched && ageQuery.data && ageQuery.data.length > 0) {
-      setSelectedAges(ageQuery.data);
+    const ages = ageQuery.data;
+    if (!ages || ages.length === 0) return;
+    if (!ageTouched) {
+      setSelectedAges(ages);
+      return;
     }
+    setSelectedAges((prev) => {
+      const filtered = prev.filter((a) => ages.includes(a));
+      if (filtered.length === 0) return ages;
+      if (filtered.length === prev.length) return prev;
+      return filtered;
+    });
   }, [ageQuery.data, ageTouched]);
 
   const statsQuery = useQuery({
