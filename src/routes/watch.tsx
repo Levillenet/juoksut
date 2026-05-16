@@ -165,7 +165,7 @@ function WatchPage() {
     return data.filter((a) => !inComp.has(a.key)).slice(0, 50);
   }, [dbSearchQuery.data, searchGroups]);
 
-
+  const watchedKeys = useMemo(() => new Set(watched.map((w) => w.key)), [watched]);
 
   // Per watched athlete: their entries sorted by start time
   const watchedSections = useMemo(() => {
