@@ -5,6 +5,8 @@ import { RecordsBanner } from "@/components/announcer/RecordsBanner";
 import { InProgressSection } from "@/components/announcer/InProgressSection";
 import { CompletedSection } from "@/components/announcer/CompletedSection";
 import { UpcomingSection } from "@/components/announcer/UpcomingSection";
+import { LiveTicker } from "@/components/announcer/LiveTicker";
+import { useFieldLeaderChanges } from "@/hooks/useFieldLeaderChanges";
 
 export const Route = createFileRoute("/announcer/combined")({
   component: AnnouncerCombined,
@@ -12,8 +14,9 @@ export const Route = createFileRoute("/announcer/combined")({
 
 function AnnouncerCombined() {
   const data = useAnnouncerData();
+  useFieldLeaderChanges(data.details);
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground pb-12">
       <AnnouncerHeader data={data} mode="combined" />
       <RecordsBanner data={data} variant="compact" />
       <main className="mx-auto max-w-[1600px] px-6 py-6">
@@ -30,6 +33,7 @@ function AnnouncerCombined() {
           Lähde: live.tuloslista.com · automaattinen päivitys 15&nbsp;s välein
         </p>
       </main>
+      <LiveTicker />
     </div>
   );
 }

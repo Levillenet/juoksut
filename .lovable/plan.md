@@ -1,37 +1,50 @@
 ## Tavoite
 
-Suorituspaikkojen livenäkymässä (announcer/live ja announcer/combined → `EventCard` `src/components/announcer/shared.tsx`) lista järjestyy nyt uudestaan välittömästi kun uusi tulos saapuu — rivit "hyppäävät" uuteen kohtaan. Lisätään tyylikäs liuku-animaatio, jossa kilpailija nousee esim. 4. → 1. visuaalisesti liukuen muiden valuessa alaspäin. Nykyiset ylös/alas-nuolet säilyvät pikkuvihjeinä.
+En vielä toteuttanut — olin suunnittelutilassa. Tässä tarkennettu, käyttöön valmis suunnitelma. Rajataan ensimmäinen toteutus **vain kuuluttajanäkymään** (combined + live + planning). Seurattavien sovellus root-tasolla jää myöhemmälle iteraatiolle.
 
-## Lähestymistapa
+## Käyttäytyminen
 
-Käytetään FLIP-tekniikkaa (First-Last-Invert-Play) ilman uutta riippuvuutta — pelkkää Reactia + Web Animations APIa (`element.animate`). Tämä toimii hyvin lyhyissä listoissa (top 3–N), ei vaadi `framer-motion`-paketin lisäystä, ja sopii projektin nykyiseen kevyeen tyyliin.
+- Kiinteä palkki kuuluttajanäkymän alalaidassa, koko ruudun leveys, yksi rivi korkeudeltaan (~44 px).
+- **Viimeisin viesti jää näkyviin**, kunnes uusi korvaa sen (slide-in animaatio vasemmalta).
+- Palkin oikeassa reunassa pieni laskuri ja **▲-nappi**, joka avaa ylöspäin liukuvan paneelin (max ~40 vh, scrollattava) — sieltä voi lukea vanhempia viestejä, myös niitä jotka jäivät lukematta. Palkki itse ei vie korkeutta.
+- Vasemmalla pulssaava LIVE-piste + "Live ticker" -teksti, sen vieressä **silmä/X-toggle**: piilottaa palkin kokonaan. Piilotettuna näkyy oikeassa alakulmassa pieni "Näytä live ticker (N uutta)" -nappi.
+- Toggle-tila ja "viimeksi luettu -aikaleima" tallennetaan `localStorage`iin per kilpailu, jotta uudet vs. luetut erotellaan paluunkin jälkeen.
+- Viestit eivät persistoidu reloadin yli (in-memory pino, max 50). Asetus säilyy.
 
-### Toteutus pähkinänkuoressa
+## Viestilogiikka (kenttälajien kärkimuutokset)
 
-`EventCard`-komponentissa (sama paikka jossa `rankChanges` jo lasketaan):
+Hook `useFieldLeaderChanges(details)`:
+- Pitää refissä mapin `eventId → { leaderAllocId, leaderResult, secondResult }`.
+- Käy `details` läpi jokaisella päivityksellä. Vain `EventCategory === "Field"`.
+- Aktiivisen `Round`in `Allocations`ista lasketaan ResultRankin mukaan ykkönen ja kakkonen.
+- Lähettää viestin kun:
+  - ykkösen `AllocId` muuttuu (uusi kärki), tai
+  - ykkönen pysyy mutta hänen tuloksensa paranee.
+- Muoto: `"Siiri Aavikko (Lahden Ahkera) nousi T11 pituuden kärkeen: 5.42 m – ero 12 cm kakkoseen (Maija M.)"`. Eron muotoilu:
+  - korkeus/seiväs: `cm` jos < 1 m, muuten `m`.
+  - pituushypyt/heitot: `cm` jos < 1 m, muuten yksi desimaali metreinä.
+- Ensimmäinen iteraatio talletetaan baselineksi hiljaa (ei viestiä).
 
-1. Annetaan jokaiselle `<li>`-riville `ref` Map-rakenteen kautta (`refs.current.set(allocId, el)`).
-2. Talletetaan jokaisen rivin edellinen `getBoundingClientRect().top` `useLayoutEffect`issa **ennen** kuin uusi järjestys renderöityy (rerenderin alku).
-3. Uuden renderin jälkeen toisessa `useLayoutEffect`issa:
-   - lasketaan jokaisen rivin uusi `top`
-   - jos rivi liikkui, kutsutaan `el.animate([{ transform: 'translateY(<delta>px)' }, { transform: 'translateY(0)' }], { duration: 600, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' })`
-   - "voittajariville" (jonka uusi sija = 1 ja vanha > 1) annetaan vahvempi korostus: lyhyt scale-pulssi `[{ transform: 'translateY(...) scale(1.02)' }, { transform: 'translateY(0) scale(1)' }]` + `box-shadow` ring `ring-2 ring-primary/60`-luokka noin 1.5 s ajan.
-4. Käytetään `key={a.AllocId}` (jo käytössä) jotta React säilyttää DOM-noden ja animaatio kohdistuu samaan elementtiin.
-5. Lisätään `ol`-säiliölle ja `li`-elementeille `will-change: transform` vain animaation ajaksi.
+## Komponentit ja tiedostot
 
-### Rajaukset
+**Uudet:**
+- `src/lib/ticker-store.ts` — Reactiivinen pino: `useTickerStore()` palauttaa `{ messages, push, enabled, setEnabled, markRead, unreadCount }`. Toteutus: yksinkertainen module-level `useSyncExternalStore` ilman uusia paketteja.
+- `src/hooks/useFieldLeaderChanges.ts` — kuten yllä; käyttää `ticker-store.push`ia.
+- `src/components/announcer/LiveTicker.tsx` — visuaalinen palkki + ▲-paneeli + togglet + animaatiot (CSS).
 
-- Animaatio koskee **vain** `EventCard`-listaa (livenäkymän kenttälajikortit). Lopputulokset, print-näkymät, scoreboard ja `UpcomingItem` jätetään ennalleen — siellä ei ole jatkuvaa rerankausta.
-- Animaatio laukeaa vain kun rivin sija oikeasti muuttui (delta ≠ 0). Ensirenderissä ei animoida.
-- Kunnioitetaan `prefers-reduced-motion`-asetusta: jos asetettu, ohitetaan animaatio ja näytetään rivit normaalisti (nuolet riittävät).
-- Pidetään animaation kesto n. 500–700 ms — riittävän huomattava esiintyjälle/kuuluttajalle mutta ei häiritsevä.
+**Muokataan:**
+- `src/routes/announcer.combined.tsx`, `src/routes/announcer.live.tsx`, `src/routes/announcer.planning.tsx`:
+  - kutsutaan `useFieldLeaderChanges(data.details)`,
+  - lisätään `<LiveTicker />` `main`-osion ulkopuolelle,
+  - lisätään `<main>`iin `pb-14` (vain kun ticker enabled — luetaan storesta).
 
-## Muutettavat tiedostot
+## Rajaukset
 
-- `src/components/announcer/shared.tsx` — `EventCard`: lisätään refit, kaksi `useLayoutEffect`iä FLIPiä varten, voittajakorostus. Ei API- eikä tyylimuutoksia muualle.
+- Vain kenttälajit. Juoksulajit ohitetaan.
+- Vain announcer-routet — root-tason mountia, seurattavien live-seurantaa ja settings-togglea ei tehdä tässä iteraatiossa.
+- Ei uusia npm-paketteja.
+- Ei backend-muutoksia. Data tulee jo olemassa olevasta `useAnnouncerData().details`istä.
 
 ## Mitä ei muuteta
 
-- Mitään dataa, lajien lajittelua, sijoituslogiikkaa tai `rankChanges`-laskentaa.
-- Ei lisätä uusia npm-paketteja.
-- Muut näkymät (lopputulokset, print, watch, seuraa, scoreboard).
+- `useAnnouncerData`-hookin ulostulo, `EventCard`, FLIP-animaatio, `RecordsBanner`, dataformaatit, RLS, migrations.
