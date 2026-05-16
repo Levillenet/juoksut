@@ -68,7 +68,8 @@ export const FUN_METRICS: FunMetricDef[] = [
     key: "totalPerformances",
     emoji: "💪",
     title: "Suoritusten supersankari",
-    description: "Eniten suorituksia yhteensä.",
+    description:
+      "Eniten suorituksia/yrityksiä yhteensä (arvio ≈ 4 / kenttäkisalaji).",
     format: (v) => `${v} suoritusta`,
     unitShort: "suor.",
   },
