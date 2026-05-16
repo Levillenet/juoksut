@@ -51,27 +51,52 @@ const SEASON_OPTIONS: Array<{ value: SeasonKind; label: string }> = [
 ];
 
 const ORG_STORAGE_KEY = "funstats:org";
+const SEASON_STORAGE_KEY = "funstats:season";
+const AGES_STORAGE_KEY = "funstats:ages";
 
 function FunStatsPage() {
-  const [season, setSeason] = useState<SeasonKind>("year");
+  const [season, setSeason] = useState<SeasonKind>(() => {
+    if (typeof window === "undefined") return "year";
+    const v = window.localStorage.getItem(SEASON_STORAGE_KEY);
+    return v === "summer" || v === "winter" || v === "year" ? v : "year";
+  });
   const [org, setOrg] = useState<string>(() => {
     if (typeof window === "undefined") return "";
     return window.localStorage.getItem(ORG_STORAGE_KEY) ?? "";
   });
   const [orgPopoverOpen, setOrgPopoverOpen] = useState(false);
-  const [selectedAges, setSelectedAges] = useState<string[]>([]);
-  const [ageTouched, setAgeTouched] = useState(false);
+  const [selectedAges, setSelectedAges] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem(AGES_STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
+    } catch {
+      return [];
+    }
+  });
+  const [ageTouched, setAgeTouched] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return !!window.localStorage.getItem(AGES_STORAGE_KEY);
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (org) window.localStorage.setItem(ORG_STORAGE_KEY, org);
   }, [org]);
 
-  // Reset age selection when org or season changes
   useEffect(() => {
-    setAgeTouched(false);
-    setSelectedAges([]);
-  }, [org, season]);
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SEASON_STORAGE_KEY, season);
+  }, [season]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (ageTouched) {
+      window.localStorage.setItem(AGES_STORAGE_KEY, JSON.stringify(selectedAges));
+    }
+  }, [selectedAges, ageTouched]);
 
   const range = useMemo(() => seasonRange(season), [season]);
 
