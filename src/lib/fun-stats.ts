@@ -118,7 +118,8 @@ export const FUN_METRICS: FunMetricDef[] = [
     key: "bestDay",
     emoji: "🔥",
     title: "Pinnistäjä",
-    description: "Eniten suorituksia samana päivänä.",
+    description:
+      "Eniten suorituksia/yrityksiä samana päivänä (arvio ≈ 4 / kenttäkisalaji).",
     format: (v) => `${v} suoritusta`,
     unitShort: "suor.",
   },
