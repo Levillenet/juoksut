@@ -38,7 +38,7 @@ interface Props {
 export function AthleteSearch({
   competitionId,
   runningOnly = false,
-  placeholder = "Sukunimi (esim. Virtanen)",
+  placeholder = "Nimi (etu- tai sukunimi)",
   autoFocus = false,
 }: Props) {
   const [query, setQuery] = useState("");
