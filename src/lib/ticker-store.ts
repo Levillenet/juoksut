@@ -42,8 +42,31 @@ interface State {
   lastReadAt: Record<TickerSource, number>;
 }
 
+const MESSAGES_KEY = "ticker.messages";
+
+function readMessages(): TickerMessage[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(MESSAGES_KEY);
+    if (!raw) return [];
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v.slice(0, MAX_MESSAGES) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeMessages(messages: TickerMessage[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+  } catch {
+    /* ignore */
+  }
+}
+
 let state: State = {
-  messages: [],
+  messages: readMessages(),
   enabled: {
     announcer: readEnabled("announcer"),
     watched: readEnabled("watched"),
@@ -70,10 +93,9 @@ export function pushTickerMessage(
     id: `${msg.source}-${msg.eventId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     timestamp: Date.now(),
   };
-  state = {
-    ...state,
-    messages: [full, ...state.messages].slice(0, MAX_MESSAGES),
-  };
+  const nextMessages = [full, ...state.messages].slice(0, MAX_MESSAGES);
+  state = { ...state, messages: nextMessages };
+  writeMessages(nextMessages);
   emit();
 }
 
