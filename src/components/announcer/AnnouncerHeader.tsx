@@ -1,6 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, RefreshCw, LayoutGrid } from "lucide-react";
+import { ArrowLeft, RefreshCw, LayoutGrid, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { useAutoOpenCompleted } from "@/lib/settings-store";
 import logo from "@/assets/lahden-ahkera-logo.png";
 import { pad } from "./shared";
 import type { AnnouncerData } from "@/hooks/useAnnouncerData";
