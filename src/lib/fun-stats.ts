@@ -102,15 +102,6 @@ export const FUN_METRICS: FunMetricDef[] = [
     unitShort: "paikk.",
   },
   {
-    key: "earliest",
-    emoji: "🌅",
-    title: "Aikainen herääjä",
-    description: "Kauden ensimmäisinä liikkeellä olleet.",
-    lowerIsBetter: true,
-    format: (_v, extra) => extra ?? "–",
-    unitShort: "",
-  },
-  {
     key: "bestDay",
     emoji: "🔥",
     title: "Pinnistäjä",
