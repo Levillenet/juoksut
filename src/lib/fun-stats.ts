@@ -243,7 +243,7 @@ interface Row {
   sub_category: string;
   result_numeric: number | null;
   age_class: string;
-}
+  was_pb: boolean;
 
 function formatDuration(totalSec: number): string {
   if (totalSec <= 0) return "–";
