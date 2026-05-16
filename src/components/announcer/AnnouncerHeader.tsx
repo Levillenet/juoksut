@@ -104,6 +104,38 @@ export function AnnouncerHeader({
             <LayoutGrid className="h-5 w-5" />
           </Link>
         </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label="Kuuluttajan asetukset">
+              <Settings className="h-5 w-5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-72">
+            <div className="space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold">Kuuluttajan asetukset</h3>
+                <p className="text-xs text-muted-foreground">
+                  Säädöt tallennetaan tähän selaimeen.
+                </p>
+              </div>
+              <div className="flex items-start justify-between gap-3 rounded-md border bg-card px-3 py-2">
+                <div className="min-w-0">
+                  <Label htmlFor="auto-open-completed" className="text-sm">
+                    Avaa lopputulokset automaattisesti
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Pois päältä: avaa lopputulokset käsin kun haluat lukea ne.
+                  </p>
+                </div>
+                <Switch
+                  id="auto-open-completed"
+                  checked={autoOpenCompleted}
+                  onCheckedChange={setAutoOpenCompleted}
+                />
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
         <Button variant="ghost" size="icon" onClick={reload} aria-label="Päivitä">
           <RefreshCw className={`h-5 w-5 ${manualLoading ? "animate-spin" : ""}`} />
         </Button>
