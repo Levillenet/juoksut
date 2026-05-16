@@ -11,6 +11,7 @@ import {
   type Allocation,
 } from "@/lib/tuloslista";
 import { Input } from "@/components/ui/input";
+import { athleteKey } from "@/lib/watch-store";
 
 interface IndexedEntry {
   round: Round;
