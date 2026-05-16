@@ -27,6 +27,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fetchDailyBestForAthletes } from "@/lib/daily-best";
+import { LiveTicker } from "@/components/announcer/LiveTicker";
+import { useWatchedFieldChanges } from "@/hooks/useWatchedFieldChanges";
 
 import { RequireRole } from "@/components/RequireRole";
 
@@ -70,6 +72,8 @@ function WatchPage() {
   const index: IndexedEntry[] | null = indexQuery.data?.entries ?? null;
   const name = indexQuery.data?.name ?? "";
   const loading = indexQuery.isFetching;
+
+  useWatchedFieldChanges(index, watched);
   const error = indexQuery.error
     ? indexQuery.error instanceof Error
       ? indexQuery.error.message
@@ -286,7 +290,7 @@ function WatchPage() {
 
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground pb-12">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
         <div className="relative mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
           <Button variant="ghost" size="icon" asChild aria-label="Takaisin">
@@ -767,6 +771,7 @@ function WatchPage() {
           Lähde: live.tuloslista.com · päivittyy automaattisesti minuutin välein
         </p>
       </main>
+      <LiveTicker source="watched" />
     </div>
   );
 }

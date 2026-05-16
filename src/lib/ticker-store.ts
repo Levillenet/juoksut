@@ -1,31 +1,35 @@
 import { useSyncExternalStore } from "react";
 
+export type TickerSource = "announcer" | "watched";
+
 export interface TickerMessage {
   id: string;
   text: string;
   timestamp: number;
   eventId: number;
   eventName: string;
+  source: TickerSource;
 }
 
 const MAX_MESSAGES = 50;
-const ENABLED_KEY = "announcer.liveTicker.enabled";
-const LAST_READ_KEY = "announcer.liveTicker.lastReadAt";
 
-function readEnabled(): boolean {
+const enabledKey = (s: TickerSource) => `ticker.${s}.enabled`;
+const lastReadKey = (s: TickerSource) => `ticker.${s}.lastReadAt`;
+
+function readEnabled(s: TickerSource): boolean {
   if (typeof window === "undefined") return true;
   try {
-    const v = localStorage.getItem(ENABLED_KEY);
+    const v = localStorage.getItem(enabledKey(s));
     return v === null ? true : v === "1";
   } catch {
     return true;
   }
 }
 
-function readLastRead(): number {
+function readLastRead(s: TickerSource): number {
   if (typeof window === "undefined") return 0;
   try {
-    const v = localStorage.getItem(LAST_READ_KEY);
+    const v = localStorage.getItem(lastReadKey(s));
     return v ? parseInt(v, 10) || 0 : 0;
   } catch {
     return 0;
@@ -34,39 +38,36 @@ function readLastRead(): number {
 
 interface State {
   messages: TickerMessage[];
-  enabled: boolean;
-  lastReadAt: number;
+  enabled: Record<TickerSource, boolean>;
+  lastReadAt: Record<TickerSource, number>;
 }
 
 let state: State = {
   messages: [],
-  enabled: readEnabled(),
-  lastReadAt: readLastRead(),
+  enabled: {
+    announcer: readEnabled("announcer"),
+    watched: readEnabled("watched"),
+  },
+  lastReadAt: {
+    announcer: readLastRead("announcer"),
+    watched: readLastRead("watched"),
+  },
 };
 
 const listeners = new Set<() => void>();
-
-function emit() {
-  for (const l of listeners) l();
-}
-
-function subscribe(l: () => void) {
+const emit = () => listeners.forEach((l) => l());
+const subscribe = (l: () => void) => {
   listeners.add(l);
   return () => listeners.delete(l);
-}
+};
+const getSnapshot = () => state;
 
-function getSnapshot() {
-  return state;
-}
-
-function getServerSnapshot() {
-  return state;
-}
-
-export function pushTickerMessage(msg: Omit<TickerMessage, "id" | "timestamp">) {
+export function pushTickerMessage(
+  msg: Omit<TickerMessage, "id" | "timestamp">,
+) {
   const full: TickerMessage = {
     ...msg,
-    id: `${msg.eventId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    id: `${msg.source}-${msg.eventId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     timestamp: Date.now(),
   };
   state = {
@@ -76,34 +77,36 @@ export function pushTickerMessage(msg: Omit<TickerMessage, "id" | "timestamp">) 
   emit();
 }
 
-export function setTickerEnabled(enabled: boolean) {
-  state = { ...state, enabled };
+export function setTickerEnabled(source: TickerSource, enabled: boolean) {
+  state = { ...state, enabled: { ...state.enabled, [source]: enabled } };
   try {
-    localStorage.setItem(ENABLED_KEY, enabled ? "1" : "0");
+    localStorage.setItem(enabledKey(source), enabled ? "1" : "0");
   } catch {
     /* ignore */
   }
   emit();
 }
 
-export function markTickerRead() {
+export function markTickerRead(source: TickerSource) {
   const now = Date.now();
-  state = { ...state, lastReadAt: now };
+  state = { ...state, lastReadAt: { ...state.lastReadAt, [source]: now } };
   try {
-    localStorage.setItem(LAST_READ_KEY, String(now));
+    localStorage.setItem(lastReadKey(source), String(now));
   } catch {
     /* ignore */
   }
   emit();
 }
 
-export function useTickerStore() {
-  const snap = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const unreadCount = snap.messages.filter((m) => m.timestamp > snap.lastReadAt).length;
+export function useTickerStore(source: TickerSource) {
+  const snap = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const messages = snap.messages.filter((m) => m.source === source);
+  const lastReadAt = snap.lastReadAt[source];
+  const unreadCount = messages.filter((m) => m.timestamp > lastReadAt).length;
   return {
-    messages: snap.messages,
-    enabled: snap.enabled,
-    lastReadAt: snap.lastReadAt,
+    messages,
+    enabled: snap.enabled[source],
+    lastReadAt,
     unreadCount,
   };
 }

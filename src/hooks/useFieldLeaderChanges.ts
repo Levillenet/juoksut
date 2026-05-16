@@ -117,6 +117,7 @@ export function useFieldLeaderChanges(details: DetailCache) {
         text,
         eventId: ev.Id,
         eventName: ev.Name,
+        source: "announcer",
       });
     });
   }, [details]);
