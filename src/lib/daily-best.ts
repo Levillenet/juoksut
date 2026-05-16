@@ -184,7 +184,7 @@ function reduceBest(rows: DailyBestRow[]): DailyBestRow[] {
       map.set(k, r);
       continue;
     }
-    const lower = isLowerBetter(r.event_category);
+    const lower = isLowerBetter(r.event_category, r.sub_category);
     const a = r.result_numeric ?? Number.POSITIVE_INFINITY;
     const b = cur.result_numeric ?? Number.POSITIVE_INFINITY;
     if (lower ? a < b : a > b) map.set(k, r);
