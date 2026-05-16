@@ -13,7 +13,7 @@ export function RecordsBanner({
   variant?: "compact" | "full";
 }) {
   const { filteredRecords, recordAlerts, includeSB, setIncludeSB, clearRecords } = data;
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(variant === "compact");
   const [expanded, setExpanded] = useState(variant === "full");
   const showAll = variant === "full" || expanded;
 
