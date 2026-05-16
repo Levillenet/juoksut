@@ -19,6 +19,7 @@ import { useCompetitionId } from "@/lib/competition-store";
 import { useAuth, type Role } from "@/lib/auth";
 import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
 import { DailyBestSection } from "@/components/DailyBestSection";
+import { HarvestStatusBadge } from "@/components/HarvestStatusBadge";
 import { ClubTodaySection } from "@/components/ClubTodaySection";
 import { LiveCompetitionsSection } from "@/components/LiveCompetitionsSection";
 import { SeasonStatsSection } from "@/components/SeasonStatsSection";
@@ -447,6 +448,9 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
           Lähde: live.tuloslista.com · automaattinen päivitys 30&nbsp;s välein
+        </p>
+        <p className="mt-1 text-center">
+          <HarvestStatusBadge />
         </p>
         <p className="mt-3 text-center text-xs">
           <Link

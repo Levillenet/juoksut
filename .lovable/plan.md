@@ -1,48 +1,47 @@
-## Ongelma
+## Tavoite
 
-"Päivän parhaat" -näkymä näyttää Lasyn pm-maastoista vain T8-tuloksen, vaikka tuloslista.com:lla kaikki ikäluokat (T9, P9, T10, P10, T11, P11, T12, P12, T13, P13) ovat jo Official-tilassa ja sisältävät tulokset.
+Käyttäjä näkee, milloin tausta-ajo on viimeksi päivittänyt tietokannan (eli kuinka tuoreita "Päivän parhaat", "Seuran tämän päivän tulokset", "Hauskat tilastot", "Kauden kärki" -näkymien tulokset ovat).
 
-## Juurisyy
+## Lähde
 
-`athlete_results`-taulussa kilpailulle 19248 (Lasyn pm-maastot) on vain 1 rivi (T8). Tausta-harvesteri on viimeksi skannannut kilpailun klo **08:12 UTC**, jolloin vain T8-juoksu oli juostu. Muut sarjat juostiin klo 08:15–09:15 UTC, mutta uutta skannausta ei ole tehty, vaikka kellonaika on jo huomattavasti myöhemmin.
+`harvest_state`-taulun rivissä `id = 'singleton'` on jo sarake `last_run_at`, jonka harvester päivittää jokaisen ajon päätteeksi. Sitä ei tarvitse muuttaa.
 
-Harvesterin **revisit-jono** valitsee kierrätettävät kilpailut näin:
+## Toteutus
 
-```sql
-select competition_id
-from harvest_competitions
-where done = false
-order by last_scanned_at asc
-limit 120
-```
+### 1. Uusi apuri `src/lib/harvest-status.ts`
 
-Tällä hetkellä `done = false` -kilpailuja on **1 270** ja niistä **892** on skannattu kilpailua 19248 *aikaisemmin* (ne ovat kaikki vanhoja, useiden vuosien takaisia kilpailuja, joissa harvestoija odottaa "myöhästyneitä" päivityksiä 365 päivän ajan). Koska revisit-jonon raja on 120 kierrosta kohden, tämän päivän käynnissä olevat kilpailut jäävät jonon päähän ja niitä päivitetään vain noin kerran 6–8 ajossa.
+- Funktio `fetchHarvestStatus(): Promise<{ lastRunAt: string | null }>` joka tekee `supabase.from("harvest_state").select("last_run_at").eq("id","singleton").maybeSingle()`.
+- Funktio `formatRelativeFi(date: Date, now: Date): string` joka palauttaa suomenkielisen suhteellisen ajan: "juuri nyt", "2 min sitten", "1 t sitten", "eilen klo 14:32", "16.5. klo 09:08".
 
-Lopputulos: tämän päivän kilpailut päivittyvät hitaasti, ja samalla "Päivän parhaat" -lista jää vajaaksi.
+### 2. Uusi komponentti `src/components/HarvestStatusBadge.tsx`
 
-## Korjaus
+- Käyttää `useQuery`:a (`queryKey: ["harvest-status"]`, `staleTime: 30_000`, `refetchInterval: 60_000`).
+- Renderöi pienen rivin: "Tietokanta päivitetty: 2 min sitten" + tooltip tarkalla aikaleimalla (lokaaliaika).
+- Hover/aria-label: "Tausta-ajo hakee tuloksia live.tuloslista.com -palvelusta. Päivitetty viimeksi 16.5.2026 klo 14:08."
+- Tyyli: `text-[11px] text-muted-foreground`, sopii nykyiseen tunnelmaan.
 
-Priorisoi revisit-jonossa kilpailut, joiden `competition_date` on lähihistoriaa (tämä päivä tai eilen). Jaetaan revisit-budjetti kahteen osaan saman ajon sisällä:
+### 3. Sijoitus
 
-1. **Tuore jono** (etusijalla): `competition_date >= now() - 2 päivää`, järjestys `last_scanned_at asc`. Tämä takaa, että tämän päivän käynnissä olevat kilpailut päivittyvät joka ajossa.
-2. **Vanha jono** (täytöksi): loput rivit `done = false` -joukosta vanhassa järjestyksessä `last_scanned_at asc`, jotta vanhempia keskeneräisiä ei jätetä kokonaan paitsioon.
+Yksi näkyvä paikka kotinäkymässä riittää, koska sama tausta-ajo kattaa kaikki tausta-driven osiot:
 
-Toteutus tiedostoon `src/routes/api/public/hooks/harvest-results.ts` (vain rivit ~382–393, sen alueen, joka valitsee revisit-kilpailut):
+- `src/routes/index.tsx` (rivi ~448–450): muokataan alalaidan attribuutiorivi muotoon:
+  > "Lähde: live.tuloslista.com · Tietokanta päivitetty 2 min sitten"
 
-- Lisää uusi vakio `FRESH_REVISIT_WINDOW_DAYS = 2` ja jaa `REVISIT_LIMIT` esim. niin että `FRESH_REVISIT_LIMIT = 80` ja jäljelle jäävä budjetti (40) käytetään vanhempiin.
-- Tee kaksi `from("harvest_competitions").select(...)`-kyselyä:
-  1. `done = false AND competition_date >= now() - interval '2 days'`, limit 80, järjestys `last_scanned_at asc`.
-  2. `done = false AND competition_date < now() - interval '2 days'`, limit 40, järjestys `last_scanned_at asc`.
-- Yhdistä molempien id:t deduplikoiden ja lisää nykyiseen `ids`-listaan kuten ennenkin.
+  Tehdään korvaamalla nykyinen tekstirivi komponentilla, joka renderöi attribuution + `<HarvestStatusBadge />`.
 
-Ei muita muutoksia: `harvest_competitions`-taulun rakenne (siellä on jo `competition_date`-sarake), advisory lock, PB-merkintälogiikka ja kursorin etenemissääntö säilyvät ennallaan.
+Sama komponentti renderöidään myös:
+- `src/routes/hauskat-tilastot.tsx` (sivun alalaidassa tai otsikon vieressä).
+- `src/routes/season-leaders.tsx` (otsikon alla).
 
-## Vaikutus käyttäjälle
-
-Seuraavan harvester-ajon jälkeen Lasyn pm-maastot ja muut tämän päivän kilpailut päivittyvät kokonaan, ja "Päivän parhaat" näyttää kaikki ikäluokat (T8, T9, P9, T10, P10, …) heti kun tulokset ilmestyvät tuloslistalle. Vanhempien keskeneräisten kilpailujen kierrätys jatkuu — vain hitaammin kuin nyt.
+Näin käyttäjä saa palautteen tietokannan tuoreudesta riippumatta siitä, mistä näkymästä hän katsoo dataa.
 
 ## Rajaukset
 
-- Ei muutoksia tietokannan rakenteeseen.
-- Ei muutoksia frontendiin (`DailyBestSection`, `daily-best.ts`).
-- Ei muutoksia muiden harvesterien tai cronien aikataulutukseen.
+- Ei muutoksia tietokannan rakenteeseen — `harvest_state.last_run_at` on jo olemassa.
+- Ei muutoksia harvester-koodiin.
+- Ei muutoksia muihin komponentteihin kuin yllä mainittuihin.
+- Ei näytetä kursorin tilaa (next_id/latest_id) — käyttäjälle riittää aikaleima.
+
+## Avoin valinta
+
+Jos haluat, näytän aikaleiman vain kotinäkymässä, en muissa. Kerro jos haluat suppeamman tai laajemman sijoittelun.

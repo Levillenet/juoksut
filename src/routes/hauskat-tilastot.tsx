@@ -25,6 +25,7 @@ import {
 } from "@/lib/fun-stats";
 import { seasonRange, type SeasonKind } from "@/lib/season-stats";
 import { cn } from "@/lib/utils";
+import { HarvestStatusBadge } from "@/components/HarvestStatusBadge";
 
 export const Route = createFileRoute("/hauskat-tilastot")({
   head: () => ({
@@ -178,6 +179,8 @@ function FunStatsPage() {
               <div className="truncate text-[11px] text-muted-foreground">
                 {range.label}
                 {org ? ` · ${org}` : ""}
+                {" · "}
+                <HarvestStatusBadge className="text-[11px] text-muted-foreground" />
               </div>
             </div>
           </div>

@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { loadAllEventLeaders, type LeaderRow } from "@/lib/season-leaders";
 import { seasonRange, type SeasonKind } from "@/lib/season-stats";
 import { cn } from "@/lib/utils";
+import { HarvestStatusBadge } from "@/components/HarvestStatusBadge";
 
 export const Route = createFileRoute("/season-leaders")({
   head: () => ({
@@ -92,6 +93,9 @@ function SeasonLeadersPage() {
       </header>
 
       <div className="mx-auto max-w-3xl space-y-4 px-4 pt-4">
+        <div className="text-right">
+          <HarvestStatusBadge />
+        </div>
         <Tabs value={season} onValueChange={(v) => setSeason(v as SeasonKind)}>
           <TabsList className="grid w-full grid-cols-2">
             {SEASON_OPTIONS.map((o) => (
