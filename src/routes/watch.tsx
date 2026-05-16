@@ -611,7 +611,7 @@ function WatchPage() {
             <div className="rounded-xl border border-dashed bg-card/50 px-6 py-10 text-center">
               <Pin className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                Ei vielä kiinnitettyjä urheilijoita. Hae sukunimellä yltä ja paina <em>Seuraa</em>.
+                Ei vielä kiinnitettyjä urheilijoita. Hae nimellä yltä ja paina <em>Seuraa</em>.
               </p>
             </div>
           ) : (
