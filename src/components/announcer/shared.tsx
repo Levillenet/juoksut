@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, ArrowUp, ArrowDown } from "lucide-react";
 import { detectRecord, RecordBadge } from "@/lib/records";
@@ -111,6 +118,79 @@ export function EventCard({
     });
   }, [allRanked]);
 
+  // FLIP animation: smoothly slide rows when their position in the list changes.
+  const rowRefs = useRef<Map<number, HTMLLIElement>>(new Map());
+  const prevRectsRef = useRef<Map<number, number>>(new Map());
+  const [flashWinnerId, setFlashWinnerId] = useState<number | null>(null);
+  const prevTopIdRef = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    if (!live) return;
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+    const prev = prevRectsRef.current;
+    const next = new Map<number, number>();
+    const animations: Array<{ el: HTMLLIElement; delta: number; isWinner: boolean }> = [];
+
+    // Determine new leader id (rank 1).
+    const newLeader = list.find(
+      (a) => (a.ResultRank ?? (round.Category === "Track" ? null : a.Position)) === 1,
+    );
+    const newLeaderId = newLeader?.AllocId ?? null;
+    const leaderChanged =
+      newLeaderId != null &&
+      prevTopIdRef.current != null &&
+      prevTopIdRef.current !== newLeaderId;
+
+    for (const a of list) {
+      const el = rowRefs.current.get(a.AllocId);
+      if (!el) continue;
+      const top = el.getBoundingClientRect().top;
+      next.set(a.AllocId, top);
+      const before = prev.get(a.AllocId);
+      if (before != null && before !== top) {
+        const delta = before - top;
+        animations.push({
+          el,
+          delta,
+          isWinner: leaderChanged && a.AllocId === newLeaderId,
+        });
+      }
+    }
+
+    prevRectsRef.current = next;
+    if (newLeaderId != null) prevTopIdRef.current = newLeaderId;
+
+    if (prefersReduced || animations.length === 0) return;
+
+    for (const { el, delta, isWinner } of animations) {
+      const keyframes = isWinner
+        ? [
+            { transform: `translateY(${delta}px) scale(1)` },
+            { transform: `translateY(0) scale(1.03)`, offset: 0.6 },
+            { transform: `translateY(0) scale(1)` },
+          ]
+        : [
+            { transform: `translateY(${delta}px)` },
+            { transform: `translateY(0)` },
+          ];
+      el.animate(keyframes, {
+        duration: isWinner ? 750 : 550,
+        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+        fill: "both",
+      });
+    }
+
+    if (leaderChanged && newLeaderId != null) {
+      setFlashWinnerId(newLeaderId);
+      const t = window.setTimeout(() => setFlashWinnerId(null), 1600);
+      return () => window.clearTimeout(t);
+    }
+  }, [list, live, round.Category]);
+
+
   return (
     <div
       className={`overflow-hidden rounded-2xl border bg-card ${
@@ -162,7 +242,15 @@ export function EventCard({
               return (
                 <li
                   key={a.AllocId}
-                  className="grid grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-x-2 rounded-lg bg-muted/40 px-3 py-2 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto] sm:gap-x-3"
+                  ref={(el) => {
+                    if (el) rowRefs.current.set(a.AllocId, el);
+                    else rowRefs.current.delete(a.AllocId);
+                  }}
+                  className={`grid grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-x-2 rounded-lg bg-muted/40 px-3 py-2 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto] sm:gap-x-3 ${
+                    flashWinnerId === a.AllocId
+                      ? "ring-2 ring-primary/70 shadow-lg shadow-primary/20 transition-shadow"
+                      : "transition-shadow"
+                  }`}
                 >
                   <span
                     className={`flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full font-black tabular-nums leading-none ${
