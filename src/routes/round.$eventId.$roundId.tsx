@@ -13,6 +13,7 @@ import {
 } from "@/lib/tuloslista-queries";
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
+import { athleteKey } from "@/lib/watch-store";
 
 export const Route = createFileRoute("/round/$eventId/$roundId")({
   head: () => ({
