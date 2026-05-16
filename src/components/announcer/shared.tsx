@@ -242,7 +242,15 @@ export function EventCard({
               return (
                 <li
                   key={a.AllocId}
-                  className="grid grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-x-2 rounded-lg bg-muted/40 px-3 py-2 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto] sm:gap-x-3"
+                  ref={(el) => {
+                    if (el) rowRefs.current.set(a.AllocId, el);
+                    else rowRefs.current.delete(a.AllocId);
+                  }}
+                  className={`grid grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-x-2 rounded-lg bg-muted/40 px-3 py-2 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto] sm:gap-x-3 ${
+                    flashWinnerId === a.AllocId
+                      ? "ring-2 ring-primary/70 shadow-lg shadow-primary/20 transition-shadow"
+                      : "transition-shadow"
+                  }`}
                 >
                   <span
                     className={`flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full font-black tabular-nums leading-none ${
