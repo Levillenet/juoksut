@@ -5,6 +5,8 @@ import { RecordsBanner } from "@/components/announcer/RecordsBanner";
 import { InProgressSection } from "@/components/announcer/InProgressSection";
 import { CompletedSection } from "@/components/announcer/CompletedSection";
 import { UpcomingSection } from "@/components/announcer/UpcomingSection";
+import { LiveTicker } from "@/components/announcer/LiveTicker";
+import { useFieldLeaderChanges } from "@/hooks/useFieldLeaderChanges";
 
 export const Route = createFileRoute("/announcer/combined")({
   component: AnnouncerCombined,
