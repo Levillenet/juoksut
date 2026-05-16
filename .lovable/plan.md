@@ -1,45 +1,24 @@
-# Kilpailijaseurannan nimihaku laajennetaan koko tietokantaan
+## Tavoite
 
-## Ongelma
+Tervetulodialogi näytetään kerran **kaikille** käyttäjille (myös niille, jotka ovat jo aiemmin kirjautuneet ja sulkeneet sen) seuraavan kirjautumisen yhteydessä. Lisäksi dialogin tekstiin lisätään yhteystieto kehitysasioille ja maininta datalähteestä.
 
-`/watch`-sivun hakukenttä rajautuu nykyisin pelkästään käsillä olevan kilpailun osallistujiin ja vertailee vain sukunimeen. Käyttäjä haluaa lisätä seurantaan tuttuja myös muista seuroista, joten haun pitää löytää kaikki tietokannan urheilijat — etu- tai sukunimellä.
+## Muutokset
 
-## Korjaus (vain `src/routes/watch.tsx`)
+### 1. `src/components/WelcomeDialog.tsx` — nosta storage-versio
 
-### 1. Haku osuu sekä etu- että sukunimeen
-Nykyinen `searchGroups`-suodatus tarkistaa vain `Surname`. Laajenna se kattamaan myös `Firstname` (sama logiikka kuin `AthleteSearch`-komponentissa).
+- Muuta `STORAGE_PREFIX = "welcome.dialog.seen.v1"` → `"welcome.dialog.seen.v2"`.
+- Tämä invalidoi kaikki aiemmat "nähty"-merkinnät, joten dialogi avautuu jokaiselle käyttäjälle uudelleen yhden kerran. Sen jälkeen tallennetaan v2-avain ja dialogi pysyy taas piilossa.
 
-### 2. Lisää tietokantahaku
-Uusi `useQuery`, joka triggeröityy kun haku on ≥ 2 merkkiä (300 ms debounce):
+### 2. `src/components/AboutServiceContent.tsx` — kaksi uutta kappaletta
 
-```ts
-supabase
-  .from("athlete_results")
-  .select("athlete_key, surname, firstname, organization, organization_id")
-  .or(`surname.ilike.%${q}%,firstname.ilike.%${q}%`)
-  .limit(500);
-```
+Lisätään `PARAGRAPHS`-listan loppuun:
 
-Tulokset deduplikoidaan `athlete_key`:n perusteella. Kullekin urheilijalle valitaan tuorein `organization` näkyviin.
+- **Datalähde:** "Järjestelmään tulevat tulokset ja tilastot haetaan live.tuloslista.com-palvelusta ja näytetään vain hieman eri käyttötarkoituksiin sopivammalla tavalla."
+- **Yhteystieto:** "Järjestelmään liittyvissä kehitysasioissa voit olla yhteydessä sähköpostitse: sami.aavikko@gmail.com." Renderöidään `mailto:`-linkkinä, joten AboutServiceContent muutetaan tukemaan myös rikkaampaa sisältöä (esim. yksi kappale renderöidään JSX:nä eikä pelkkänä tekstinä).
 
-### 3. Yhdistetty tuloslista
-Yksi "Hakutulokset"-osio, joka sisältää:
-- **Ensin** tämän kilpailun osumat (säilyttävät nykyisen "X lajia" -badgen)
-- **Sen jälkeen** muut tietokannan osumat (badge "muista kisoista" tai pelkkä seuran nimi)
-- Dedupe `athlete_key`-tasolla: jos sama urheilija on jo kilpailun listalla, älä toista häntä alaosiossa.
+Sama sisältö näkyy automaattisesti sekä popup-dialogissa että `/tietoa-palvelusta`-sivulla, koska molemmat käyttävät `AboutServiceContent`-komponenttia.
 
-Kummassakin tapauksessa rivillä on sama "Seuraa / Seurannassa" -painike kuin nyt.
+## Rajaukset
 
-### 4. UX-yksityiskohdat
-- Placeholder: "Hae nimellä (etu- tai sukunimi)"
-- Latausindikaattori jos tietokantahaku on kesken
-- Maks. esim. 50 nimeä näkyviin, jos enemmän → "Jatka kirjoittamista tarkentaaksesi"
-
-## Pois rajauksesta
-
-- "Lisää seuran urheilijat seurantaan" -osio jätetään nykyiseksi (se on sidottu käsillä olevaan kisaan tarkoituksella).
-- Frontend-only muutos, ei tietokantamuutoksia.
-
-## Tiedostot
-
-- `src/routes/watch.tsx` — haun logiikka ja `Hakutulokset`-osion rendaus
+- Ei tietokantamuutoksia — versiointi hoidetaan pelkällä localStorage-avaimella.
+- Ei muutoksia muihin reitteihin tai komponentteihin.
