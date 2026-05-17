@@ -89,9 +89,13 @@ export async function fetchClubTodayResults(
 
 export type ClubPbMap = Record<string, { text: string; numeric: number }>;
 
-/** Strip leading age-class prefix (e.g. "T11 60m" -> "60m", "M 60m" -> "60m"). */
+/** Strip leading age-class prefix and multi-event prefix (e.g. "M19 10-ottelu Pituus" -> "Pituus"). */
 export function normalizeEventName(name: string): string {
-  return name.replace(/^(?:[MNT]\d*|P\d+)\s+/i, "").trim();
+  return name
+    .replace(/^(?:[MNT]\d*|P\d+)\s+/i, "")
+    .replace(/^\d+-ottelu\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** Best historical result per (athlete_key, normalized event_name). */
