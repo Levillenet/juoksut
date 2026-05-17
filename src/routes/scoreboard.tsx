@@ -278,7 +278,6 @@ function ScoreboardLive() {
   // Detect newly-arrived results to trigger overlay (works even if athlete is
   // outside the visible top N — overlay just animates without a row target).
   const prevResultsRef = useRef<Map<number, string>>(new Map());
-  const initializedRef = useRef(false);
   const [queue, setQueue] = useState<NewResultItem[]>([]);
   const [currentOverlay, setCurrentOverlay] = useState<NewResultItem | null>(null);
 
@@ -292,7 +291,7 @@ function ScoreboardLive() {
         if (!visualState) continue;
         next.set(a.AllocId, visualState.signature);
         const prev = prevResultsRef.current.get(a.AllocId);
-        if (initializedRef.current && prev !== visualState.signature) {
+        if (prev !== undefined && prev !== visualState.signature) {
           newItems.push({
             key: `${a.AllocId}-${visualState.signature}-${Date.now()}`,
             alloc: { ...a, Result: visualState.result ?? visualState.attemptResult },
@@ -304,7 +303,6 @@ function ScoreboardLive() {
       }
     }
     prevResultsRef.current = next;
-    initializedRef.current = true;
     if (newItems.length) setQueue((q) => [...q, ...newItems]);
   }, [ev, round]);
 
