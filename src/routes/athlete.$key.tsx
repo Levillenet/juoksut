@@ -657,6 +657,8 @@ function CompetitionResultRow({
   row: AthleteResultRow;
   athleteKey: string;
   note: AthleteNote | null;
+  otherNotes?: AthleteNote[];
+  labelMap?: Map<string, string>;
   seasonTop: SeasonTopFlag | null;
 }) {
   const queryClient = useQueryClient();
