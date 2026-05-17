@@ -142,7 +142,7 @@ function Card({ item }: { item: NewResultItem }) {
           result={a.Result}
           pb={eff.pb}
           sb={eff.sb}
-          size="md"
+          size="lg"
         />
       )}
     </div>
