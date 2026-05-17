@@ -19,7 +19,7 @@ interface Props {
   onDone: () => void;
 }
 
-const HOLD_MS = 1400;
+const HOLD_MS = 3400;
 const FLY_MS = 700;
 const ENTER_MS = 550;
 
