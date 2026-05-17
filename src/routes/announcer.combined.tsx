@@ -20,7 +20,11 @@ function AnnouncerCombined() {
   const [layout] = useAnnouncerLayout();
 
   const visibleCols = layout.columns.filter((c) => c.visible);
-  const gridTemplate = visibleCols.map((c) => `${c.width}fr`).join(" ");
+  // Chunk into rows of `columnsPerRow` for desktop layout
+  const rows: typeof visibleCols[] = [];
+  for (let i = 0; i < visibleCols.length; i += layout.columnsPerRow) {
+    rows.push(visibleCols.slice(i, i + layout.columnsPerRow));
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-12">
@@ -45,13 +49,20 @@ function AnnouncerCombined() {
                 <ColumnRenderer key={c.id} id={c.id} data={data} />
               ))}
             </div>
-            {/* Desktop: user-configured ratios */}
-            <div
-              className="hidden gap-6 lg:grid"
-              style={{ gridTemplateColumns: gridTemplate }}
-            >
-              {visibleCols.map((c) => (
-                <ColumnRenderer key={c.id} id={c.id} data={data} />
+            {/* Desktop: rows with user-configured ratios */}
+            <div className="hidden flex-col gap-6 lg:flex">
+              {rows.map((row, idx) => (
+                <div
+                  key={idx}
+                  className="grid gap-6"
+                  style={{
+                    gridTemplateColumns: row.map((c) => `${c.width}fr`).join(" "),
+                  }}
+                >
+                  {row.map((c) => (
+                    <ColumnRenderer key={c.id} id={c.id} data={data} />
+                  ))}
+                </div>
               ))}
             </div>
           </>
