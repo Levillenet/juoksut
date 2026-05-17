@@ -31,32 +31,34 @@ export function InProgressSection({
 
   return (
     <section>
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-3 flex items-center gap-2">
         <SectionTitle
           icon={<Activity className="h-4 w-4" />}
           title="Käynnissä"
           count={inProgressVisible.length}
         />
-        <div className="flex gap-1 rounded-full border border-border bg-card p-1 text-xs font-medium">
+        <div className="ml-auto flex shrink-0 gap-0.5 rounded-full border border-border bg-card p-0.5 text-[11px] font-medium">
           <button
             onClick={() => setShowRunning(false)}
-            className={`rounded-full px-3 py-1 transition-colors ${
+            title="Näytä vain kenttälajit"
+            className={`rounded-full px-2 py-0.5 transition-colors ${
               !showRunning
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-secondary"
             }`}
           >
-            Kenttälajit
+            Kenttä
           </button>
           <button
             onClick={() => setShowRunning(true)}
-            className={`rounded-full px-3 py-1 transition-colors ${
+            title="Näytä kaikki lajit"
+            className={`rounded-full px-2 py-0.5 transition-colors ${
               showRunning
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-secondary"
             }`}
           >
-            Kaikki lajit
+            Kaikki
           </button>
         </div>
       </div>
