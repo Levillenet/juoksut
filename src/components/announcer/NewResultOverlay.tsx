@@ -8,6 +8,7 @@ export interface NewResultItem {
   key: string;
   alloc: Allocation;
   eventId: number;
+  eventName?: string;
   eventCategory: string;
   heatIndex: number;
 }
