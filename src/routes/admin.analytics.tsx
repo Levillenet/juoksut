@@ -117,13 +117,18 @@ function Page() {
       Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
     const sortDescObj = <T extends { count: number }>(m: Map<string, T>) =>
       Array.from(m.entries()).sort((a, b) => b[1].count - a[1].count);
+    const byDayUnique: [string, number][] = Array.from(byDayUniqueSets.entries())
+      .map(([d, s]) => [d, s.size] as [string, number])
+      .sort((a, b) => (a[0] < b[0] ? 1 : -1));
     return {
       total: rows.length,
       last24h: last24hCount,
       uniqueUsers: uniqueUsers.size,
+      todayUsers: todayUsers.size,
       byEvent: sortDesc(byEvent),
       byPath: sortDesc(byPath),
       byDay: Array.from(byDay.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1)),
+      byDayUnique,
       byRole: sortDesc(byRole),
       byAthlete: sortDescObj(byAthlete),
       byCompetition: sortDescObj(byCompetition),
