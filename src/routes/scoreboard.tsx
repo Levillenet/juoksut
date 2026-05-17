@@ -495,12 +495,16 @@ function ScoreRow({
   count,
   eventId,
   category,
+  competitionId,
+  eventName,
 }: {
   row: RankedRow;
   displayRank: number;
   count: number;
   eventId: number;
   category: string;
+  competitionId: number;
+  eventName: string;
 }) {
   const vw = useViewportWidth();
   const narrow = vw < 900;
@@ -511,8 +515,13 @@ function ScoreRow({
   const stackName = !narrow && count <= 5;
   const { first, last } = splitName(row.Name ?? "");
 
-  // Detect new PB / SB against captured baseline (falls back to API PB/SB).
-  const eff = effectiveRecord(eventId, row);
+  // Detect new PB / SB against captured baseline (falls back to API PB/SB,
+  // then to the athlete's historical best across age classes).
+  const eff = effectiveRecord(eventId, row, {
+    competitionId,
+    athleteKey: athleteKey(row.Surname, row.Firstname, row.Organization?.Id ?? null),
+    eventName,
+  });
   const recordKind = detectRecord(category, row.best, eff.pb, eff.sb);
 
   const nameBlock = (
