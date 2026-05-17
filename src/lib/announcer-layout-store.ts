@@ -11,9 +11,10 @@ export interface AnnouncerColumnConfig {
 export interface AnnouncerLayout {
   columns: AnnouncerColumnConfig[]; // order is render order
   maxWidth: number; // px, 1000-2400
+  columnsPerRow: 2 | 3; // how many columns side by side on desktop
 }
 
-const KEY = "settings.announcerLayout.v1";
+const KEY = "settings.announcerLayout.v2";
 
 const DEFAULT_LAYOUT: AnnouncerLayout = {
   columns: [
@@ -22,6 +23,7 @@ const DEFAULT_LAYOUT: AnnouncerLayout = {
     { id: "upcoming", visible: true, width: 1 },
   ],
   maxWidth: 1900,
+  columnsPerRow: 3,
 };
 
 export const COLUMN_LABELS: Record<AnnouncerColumnId, string> = {
@@ -53,7 +55,8 @@ function sanitize(raw: unknown): AnnouncerLayout {
       .filter((id): id is AnnouncerColumnId => ids.includes(id as AnnouncerColumnId));
     const ordered = order.length === 3 ? order.map((id) => cols.find((c) => c.id === id)!) : cols;
     const mw = Math.min(2400, Math.max(1000, Number(obj.maxWidth) || DEFAULT_LAYOUT.maxWidth));
-    return { columns: ordered, maxWidth: mw };
+    const cpr: 2 | 3 = obj.columnsPerRow === 2 ? 2 : 3;
+    return { columns: ordered, maxWidth: mw, columnsPerRow: cpr };
   } catch {
     return DEFAULT_LAYOUT;
   }
