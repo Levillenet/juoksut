@@ -106,16 +106,25 @@ export function getCachedBaseline(
 }
 
 /**
- * Resolve effective PB/SB for comparison: baseline takes precedence,
- * fall back to API value if no baseline was captured in time.
+ * Resolve effective PB/SB for comparison: captured baseline takes precedence,
+ * then the source tuloslista PB/SB, then (for PB only) the athlete's own
+ * historical best from athlete_results across all age classes.
  */
 export function effectiveRecord(
   eventId: number,
   alloc: { Id: number; PB: string; SB: string },
+  history?: { competitionId: number; athleteKey: string; eventName: string } | null,
 ): { pb: string; sb: string } {
   const b = getCachedBaseline(eventId, alloc.Id);
+  let pb = b?.pb || alloc.PB || "";
+  if (!pb && history) {
+    // Lazy import to avoid a cycle (history-baseline imports athlete-history).
+    // getHistoricalBest is a synchronous cache read.
+    const { getHistoricalBest } = require("@/lib/history-baseline") as typeof import("@/lib/history-baseline");
+    pb = getHistoricalBest(history.competitionId, history.athleteKey, history.eventName) ?? "";
+  }
   return {
-    pb: b?.pb || alloc.PB || "",
+    pb,
     sb: b?.sb || alloc.SB || "",
   };
 }
