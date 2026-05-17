@@ -190,7 +190,11 @@ export function useAnnouncerData() {
             const prevResult = seen.get(a.AllocId);
             seen.set(a.AllocId, a.Result);
             if (prevResult === a.Result) return;
-            const eff = effectiveRecord(ev.Id, a);
+            const eff = effectiveRecord(ev.Id, a, {
+              competitionId,
+              athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
+              eventName: ev.Name,
+            });
             const rec = detectRecord(ev.EventCategory, a.Result, eff.pb, eff.sb);
             if (!rec) return;
             fresh.push({
