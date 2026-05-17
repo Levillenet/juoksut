@@ -62,51 +62,7 @@ function RoundView() {
     return ranked.sort((a, b) => (a.ResultRank ?? 0) - (b.ResultRank ?? 0));
   }, [heats]);
 
-  // Detect newly-arrived results to trigger the overlay animation.
-  const prevResultsRef = useRef<Map<number, string>>(new Map());
-  const initializedRef = useRef(false);
-  const [queue, setQueue] = useState<NewResultItem[]>([]);
-  const [current, setCurrent] = useState<NewResultItem | null>(null);
 
-  useEffect(() => {
-    if (!data || !round) return;
-    const next = new Map<number, string>();
-    const newItems: NewResultItem[] = [];
-
-    for (const heat of round.Heats) {
-      for (const a of heat.Allocations) {
-        const visualState = getResultVisualState(a);
-        if (!visualState) continue;
-        next.set(a.AllocId, visualState.signature);
-        const prev = prevResultsRef.current.get(a.AllocId);
-        if (initializedRef.current && prev !== visualState.signature) {
-          newItems.push({
-            key: `${a.AllocId}-${visualState.signature}-${Date.now()}`,
-            alloc: { ...a, Result: visualState.result ?? visualState.attemptResult },
-            eventId: eid,
-            eventCategory: data.EventCategory ?? "",
-            heatIndex: heat.Index,
-          });
-        }
-      }
-    }
-
-    prevResultsRef.current = next;
-    initializedRef.current = true;
-    if (newItems.length) {
-      setQueue((q) => [...q, ...newItems]);
-    }
-  }, [data, round, eid]);
-
-  useEffect(() => {
-    if (current || queue.length === 0) return;
-    setCurrent(queue[0]);
-    setQueue((q) => q.slice(1));
-  }, [current, queue]);
-
-  const handleOverlayDone = useCallback(() => {
-    setCurrent(null);
-  }, []);
 
   const trackedRef = useRef<string | null>(null);
 
