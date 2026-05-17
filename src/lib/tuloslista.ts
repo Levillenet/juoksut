@@ -1,5 +1,18 @@
 // Tuloslista live API client. Public, CORS-open, no auth needed.
 const API = "https://cached-public-api.tuloslista.com/live/v1";
+const LIVE_CACHE_BUST_MS = 5_000;
+
+function liveUrl(path: string): string {
+  const url = new URL(`${API}${path}`);
+  url.searchParams.set("_live", String(Math.floor(Date.now() / LIVE_CACHE_BUST_MS)));
+  return url.toString();
+}
+
+async function fetchLiveJson<T>(path: string, errorText: string): Promise<T> {
+  const res = await fetch(liveUrl(path), { cache: "no-store" });
+  if (!res.ok) throw new Error(`${errorText} (${res.status})`);
+  return res.json();
+}
 
 export interface Round {
   Id: number;
@@ -69,24 +82,27 @@ export interface EventResults {
 }
 
 export async function fetchRounds(competitionId: number): Promise<RoundsByDate> {
-  const res = await fetch(`${API}/competition/${competitionId}`);
-  if (!res.ok) throw new Error(`Eräjakojen haku epäonnistui (${res.status})`);
-  return res.json();
+  return fetchLiveJson<RoundsByDate>(
+    `/competition/${competitionId}`,
+    "Eräjakojen haku epäonnistui",
+  );
 }
 
 export async function fetchEvent(competitionId: number, eventId: number): Promise<EventResults> {
-  const res = await fetch(`${API}/results/${competitionId}/${eventId}`);
-  if (!res.ok) throw new Error(`Lajin tietojen haku epäonnistui (${res.status})`);
-  return res.json();
+  return fetchLiveJson<EventResults>(
+    `/results/${competitionId}/${eventId}`,
+    "Lajin tietojen haku epäonnistui",
+  );
 }
 
 export interface CompetitionProperties {
   Competition: { Name: string; Id: number };
 }
 export async function fetchProperties(competitionId: number): Promise<CompetitionProperties> {
-  const res = await fetch(`${API}/competition/${competitionId}/properties`);
-  if (!res.ok) throw new Error(`Kisan tietojen haku epäonnistui (${res.status})`);
-  return res.json();
+  return fetchLiveJson<CompetitionProperties>(
+    `/competition/${competitionId}/properties`,
+    "Kisan tietojen haku epäonnistui",
+  );
 }
 
 /** Extract numeric competition id from URL or raw id input. */

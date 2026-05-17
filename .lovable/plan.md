@@ -1,21 +1,9 @@
-## Ongelma
+Havainto: lähdedatassa kisan 19256 P8 3-ottelu Pituus on jo päivittynyt ja käynnissä, mutta tuotannon kuuluttajanäkymä/ticker näyttää jääneen vanhaan P8 Kuula -viestiin. Korjaus kannattaa tehdä etupään päivityslogiikkaan, ei tietokantaan.
 
-"Hallinnoi linkityksiä" -painike ei navigoi. Edellisessä kierroksessa se vaihdettiin muotoon `Button asChild + Link`, joka ei toimi luotettavasti (Radix Slot + TanStack Link -ketju).
+Suunnitelma:
+1. Muutan kuuluttajan tuloshakujen asetuksia niin aktiiviset lajitulokset haetaan aina varmasti uudelleen 15 sekunnin välein, myös silloin kun näkymä on taustalla tai selaimen fokus ei vaihdu.
+2. Lisään pienen cache-busterin Tuloslista API -hakuihin, jotta selain/CDN ei voi pitää kuuluttajan live-tulosta vanhassa vastauksessa pidempään kuin on tarkoitus.
+3. Päivitän ticker-logiikkaa niin viimeisin näkyvä ticker-viesti ei jää harhaanjohtavasti vanhaan viestiin, kun Käynnissä-listan live-tulos päivittyy.
+4. Varmistan erityisesti P8 3-ottelu Pituus -lajin tilanteen: sen pitää näkyä Käynnissä-osiossa ja kärkikolmikon pitää vastata lähdedataa.
 
-## Korjaus
-
-`src/routes/settings.tsx`: palauta vain `Hallinnoi linkityksiä` -painike alkuperäiseen toimivaan pelkkä-`<Link>` -muotoon:
-
-```tsx
-<Link
-  to="/settings/note-links"
-  className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-secondary"
->
-  <Link2 className="h-4 w-4" />
-  Hallinnoi linkityksiä
-</Link>
-```
-
-`Hallinnoi tiimejä` -osio pysyy ennallaan virkailija-gaten takana (tiimiominaisuus ei ole vielä valmis peruskäyttäjille).
-
-Muu sisältö ja näkyvyyssäännöt eivät muutu.
+Teknisesti muutokset kohdistuvat todennäköisesti tiedostoihin `src/lib/tuloslista.ts`, `src/lib/tuloslista-queries.ts` ja tarvittaessa `src/hooks/useFieldLeaderChanges.ts` / `src/hooks/useAnnouncerData.ts`. Tietokantamuutoksia ei tarvita.

@@ -88,12 +88,20 @@ const getSnapshot = () => state;
 export function pushTickerMessage(
   msg: Omit<TickerMessage, "id" | "timestamp">,
 ) {
+  const previous = state.messages.find(
+    (m) => m.source === msg.source && m.eventId === msg.eventId && m.text === msg.text,
+  );
   const full: TickerMessage = {
     ...msg,
-    id: `${msg.source}-${msg.eventId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    id:
+      previous?.id ??
+      `${msg.source}-${msg.eventId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     timestamp: Date.now(),
   };
-  const nextMessages = [full, ...state.messages].slice(0, MAX_MESSAGES);
+  const nextMessages = [
+    full,
+    ...state.messages.filter((m) => m.id !== full.id),
+  ].slice(0, MAX_MESSAGES);
   state = { ...state, messages: nextMessages };
   writeMessages(nextMessages);
   emit();

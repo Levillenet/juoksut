@@ -31,6 +31,19 @@ function formatDiff(diff: number): string {
   return `${abs.toFixed(2).replace(/\.?0+$/, "")} m`;
 }
 
+function diffToSecond(snap: LeaderSnapshot): string {
+  if (
+    snap.secondNumeric == null ||
+    snap.leaderNumeric == null ||
+    snap.leaderNumeric === snap.secondNumeric
+  ) {
+    return "";
+  }
+  let diffText = ` — ero ${formatDiff(snap.leaderNumeric - snap.secondNumeric)} kakkoseen`;
+  if (snap.secondName) diffText += ` (${snap.secondName})`;
+  return diffText;
+}
+
 function findLeader(ev: EventResults): LeaderSnapshot | null {
   if (ev.EventCategory !== "Field") return null;
   const allocs: Allocation[] = ev.Rounds.flatMap((r) => r.Heats.flatMap((h) => h.Allocations));
@@ -68,6 +81,16 @@ export function useFieldLeaderChanges(details: DetailCache) {
       // First time we see this event: baseline silently.
       if (!initializedRef.current.has(ev.Id)) {
         initializedRef.current.add(ev.Id);
+        const hasLiveRound = ev.Rounds.some((round) => round.Status === "Progress");
+        if (hasLiveRound && snap.leaderResult) {
+          const orgPart = snap.leaderOrg ? ` (${snap.leaderOrg})` : "";
+          pushTickerMessage({
+            text: `${snap.leaderName}${orgPart} johtaa ${ev.Name} -kilpailua: ${snap.leaderResult}${diffToSecond(snap)}`,
+            eventId: ev.Id,
+            eventName: ev.Name,
+            source: "announcer",
+          });
+        }
         return;
       }
 
@@ -87,19 +110,7 @@ export function useFieldLeaderChanges(details: DetailCache) {
       let text: string;
 
       if (leaderChanged) {
-        let diffText = "";
-        if (
-          snap.secondNumeric != null &&
-          snap.leaderNumeric != null &&
-          snap.leaderNumeric !== snap.secondNumeric
-        ) {
-          const diff = snap.leaderNumeric - snap.secondNumeric;
-          diffText = ` — ero ${formatDiff(diff)} kakkoseen`;
-          if (snap.secondName) {
-            diffText += ` (${snap.secondName})`;
-          }
-        }
-        text = `${snap.leaderName}${orgPart} nousi ${ev.Name} -kilpailun kärkeen: ${snap.leaderResult}${diffText}`;
+        text = `${snap.leaderName}${orgPart} nousi ${ev.Name} -kilpailun kärkeen: ${snap.leaderResult}${diffToSecond(snap)}`;
       } else {
         // Same leader, improved.
         text = `${snap.leaderName}${orgPart} paransi ${ev.Name} -kilpailun kärkitulosta: ${snap.leaderResult}`;
