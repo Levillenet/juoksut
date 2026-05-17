@@ -10,6 +10,8 @@ import {
   StickyNote,
   Loader2,
   X,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
@@ -211,6 +213,66 @@ function AthletePage() {
     (n, g) => n + g.items.length,
     0,
   );
+
+  const [allNotesOpen, setAllNotesOpen] = useState(false);
+
+  // Group existing notes by event_name; include competition context from rows
+  const notesByEvent = useMemo(() => {
+    const notes = notesQuery.data;
+    if (!notes || notes.size === 0) return [] as Array<{
+      eventName: string;
+      items: Array<{
+        note: AthleteNote;
+        competitionName: string;
+        competitionDate: string | null;
+        location: string;
+      }>;
+    }>;
+    // Build a lookup: competition_id|event_name|sub_category -> row
+    const rowLookup = new Map<string, AthleteResultRow>();
+    for (const r of rows) {
+      rowLookup.set(
+        `${r.competition_id}|${r.event_name}|${r.sub_category ?? ""}`,
+        r,
+      );
+    }
+    const groupsMap = new Map<
+      string,
+      Array<{
+        note: AthleteNote;
+        competitionName: string;
+        competitionDate: string | null;
+        location: string;
+      }>
+    >();
+    for (const n of notes.values()) {
+      if (!n.note?.trim()) continue;
+      const r = rowLookup.get(
+        `${n.competition_id}|${n.event_name}|${n.sub_category ?? ""}`,
+      );
+      const list = groupsMap.get(n.event_name) ?? [];
+      list.push({
+        note: n,
+        competitionName: r?.competition_name ?? "",
+        competitionDate: r?.competition_date ?? null,
+        location: r?.location ?? "",
+      });
+      groupsMap.set(n.event_name, list);
+    }
+    return Array.from(groupsMap.entries())
+      .map(([eventName, items]) => {
+        items.sort((a, b) =>
+          (b.competitionDate ?? "").localeCompare(a.competitionDate ?? ""),
+        );
+        return { eventName, items };
+      })
+      .sort((a, b) => {
+        if (b.items.length !== a.items.length) return b.items.length - a.items.length;
+        return a.eventName.localeCompare(b.eventName, "fi");
+      });
+  }, [notesQuery.data, rows]);
+
+  const totalNotesCount = notesByEvent.reduce((n, g) => n + g.items.length, 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -435,6 +497,64 @@ function AthletePage() {
                     );
                   })}
                 </ul>
+              </section>
+            )}
+
+            {/* All notes grouped by event */}
+            {totalNotesCount > 0 && (
+              <section className="mb-6">
+                <button
+                  type="button"
+                  onClick={() => setAllNotesOpen((v) => !v)}
+                  className="flex w-full items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2 text-left text-sm font-semibold hover:bg-secondary/50"
+                >
+                  <span className="flex items-center gap-2">
+                    <StickyNote className="h-4 w-4 text-primary" />
+                    Näytä kaikki muistiinpanot ({totalNotesCount})
+                  </span>
+                  {allNotesOpen ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </button>
+                {allNotesOpen && (
+                  <ul className="mt-2 space-y-3">
+                    {notesByEvent.map((g) => (
+                      <li key={g.eventName} className="rounded-lg border bg-card p-3">
+                        <div className="mb-2 flex items-baseline justify-between gap-2">
+                          <h3 className="truncate text-sm font-bold">{g.eventName}</h3>
+                          <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                            {g.items.length} kpl
+                          </span>
+                        </div>
+                        <ul className="space-y-2">
+                          {g.items.map(({ note, competitionName, competitionDate }) => (
+                            <li
+                              key={note.id}
+                              className="rounded-md border bg-background/50 p-2"
+                            >
+                              <div className="mb-1 flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground">
+                                <span className="min-w-0 truncate">
+                                  {competitionName || "—"}
+                                  {note.sub_category && (
+                                    <span> · {note.sub_category}</span>
+                                  )}
+                                </span>
+                                <span className="shrink-0 tabular-nums">
+                                  {fmtDate(competitionDate)}
+                                </span>
+                              </div>
+                              <p className="whitespace-pre-wrap text-xs leading-relaxed text-foreground">
+                                {note.note}
+                              </p>
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </section>
             )}
 
