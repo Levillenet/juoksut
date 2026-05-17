@@ -234,8 +234,12 @@ function Page() {
           <NamedTable data={stats.byCompetition} keyLabel="Kilpailu" />
         </Section>
 
-        <Section title="Päivittäin">
+        <Section title="Päivittäin (tapahtumat)">
           <Table data={stats.byDay} keyLabel="Päivä" />
+        </Section>
+
+        <Section title="Päivittäin (uniikit käyttäjät)">
+          <Table data={stats.byDayUnique} keyLabel="Päivä" />
         </Section>
 
         <Section title="Viimeisimmät tapahtumat (50)">
