@@ -381,6 +381,7 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
       </header>
 
       <main className="mx-auto max-w-2xl px-4 py-4">
+        <NoteLinkInvitesBanner />
         {error && (
           <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
