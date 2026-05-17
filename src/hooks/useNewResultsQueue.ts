@@ -13,7 +13,6 @@ export function useNewResultsQueue(
   liveEventIds: Set<number>,
 ) {
   const prevRef = useRef<Map<number, string>>(new Map());
-  const initializedRef = useRef(false);
   const [queue, setQueue] = useState<NewResultItem[]>([]);
   const [current, setCurrent] = useState<NewResultItem | null>(null);
 
@@ -32,7 +31,7 @@ export function useNewResultsQueue(
           if (!visualState) continue;
           next.set(a.AllocId, visualState.signature);
           const prev = prevRef.current.get(a.AllocId);
-          if (initializedRef.current && prev !== visualState.signature) {
+          if (prev !== undefined && prev !== visualState.signature) {
             newItems.push({
               key: `${a.AllocId}-${visualState.signature}-${Date.now()}`,
               alloc: { ...a, Result: visualState.result ?? visualState.attemptResult },
@@ -51,7 +50,6 @@ export function useNewResultsQueue(
       if (!next.has(k)) next.set(k, v);
     }
     prevRef.current = next;
-    initializedRef.current = true;
     if (newItems.length) setQueue((q) => [...q, ...newItems]);
   }, [details, liveEventIds]);
 
