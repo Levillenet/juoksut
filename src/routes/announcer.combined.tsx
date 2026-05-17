@@ -19,15 +19,11 @@ function AnnouncerCombined() {
     <div className="min-h-screen bg-background text-foreground pb-12">
       <AnnouncerHeader data={data} mode="combined" />
       <RecordsBanner data={data} variant="compact" />
-      <main className="mx-auto max-w-[1600px] px-6 py-6">
+      <main className="mx-auto max-w-[1900px] px-4 py-6 sm:px-6">
         <div className="grid gap-6 lg:grid-cols-3">
-          <div className="space-y-8 lg:col-span-2">
-            <InProgressSection data={data} layout="grid" />
-            <CompletedSection data={data} columns={2} />
-          </div>
-          <aside>
-            <UpcomingSection data={data} limit={20} />
-          </aside>
+          <InProgressSection data={data} layout="grid" />
+          <CompletedSection data={data} columns={1} />
+          <UpcomingSection data={data} limit={20} />
         </div>
         <p className="mt-8 text-center text-xs text-muted-foreground">
           Lähde: live.tuloslista.com · automaattinen päivitys 15&nbsp;s välein
