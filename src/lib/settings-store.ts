@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 const REFRESH_KEY = "settings.refreshIntervalSec";
-const DEFAULT_REFRESH_SEC = 30;
+const DEFAULT_REFRESH_SEC = 15;
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
