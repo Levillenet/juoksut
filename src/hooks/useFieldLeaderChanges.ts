@@ -72,6 +72,18 @@ export function useFieldLeaderChanges(details: DetailCache) {
   useEffect(() => {
     Object.values(details).forEach((ev) => {
       if (ev.EventCategory !== "Field") return;
+      const hasLiveRound = ev.Rounds.some((round) => round.Status === "Progress");
+
+      // If the event is no longer live, purge any prior ticker messages for it
+      // and skip emitting new ones.
+      if (!hasLiveRound) {
+        removeTickerMessagesForEvent(ev.Id, "announcer");
+        const snap0 = findLeader(ev);
+        if (snap0) snapshotsRef.current.set(ev.Id, snap0);
+        initializedRef.current.add(ev.Id);
+        return;
+      }
+
       const snap = findLeader(ev);
       if (!snap) return;
 
