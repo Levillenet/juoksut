@@ -37,7 +37,7 @@ export function InProgressSection({
           title="Käynnissä"
           count={inProgressVisible.length}
         />
-        <div className="ml-auto flex shrink-0 gap-0.5 rounded-full border border-border bg-card p-0.5 text-[11px] font-medium">
+        <div className="flex shrink-0 gap-0.5 rounded-full border border-border bg-card p-0.5 text-[11px] font-medium">
           <button
             onClick={() => setShowRunning(false)}
             title="Näytä vain kenttälajit"
