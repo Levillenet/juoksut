@@ -11,6 +11,8 @@ export interface NewResultItem {
   eventName?: string;
   eventCategory: string;
   heatIndex: number;
+  /** 1-based attempt number for field events, if known. */
+  attemptIndex?: number | null;
 }
 
 interface Props {
