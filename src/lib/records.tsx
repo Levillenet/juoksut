@@ -23,6 +23,9 @@ export function detectRecord(
   if (p != null && better(r, p)) return "PB";
   const s = parsePerf(sb);
   if (s != null && better(r, s)) return "SB";
+  // No prior PB or SB known from the source (common for first-time juniors
+  // in multi-events) — treat the result itself as a personal best.
+  if (p == null && s == null) return "PB";
   return null;
 }
 

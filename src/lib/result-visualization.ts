@@ -5,6 +5,8 @@ export interface ResultVisualState {
   result: string | null;
   attemptSignature: string | null;
   attemptResult: string | null;
+  /** 1-based index of the latest non-empty attempt, if any. */
+  attemptIndex: number | null;
 }
 
 function normalizeResult(value: string | null | undefined): string | null {
@@ -21,12 +23,14 @@ export function getResultVisualState(alloc: Allocation): ResultVisualState | nul
   const attemptParts: string[] = [];
   let attemptSignature: string | null = null;
   let attemptResult: string | null = null;
+  let attemptIndex: number | null = null;
 
   alloc.Attempts?.forEach((attempt, index) => {
     const value = normalizeResult(attempt.Line1);
     if (!value || !isDisplayableAttempt(value)) return;
     attemptParts.push(`${index}:${value}`);
     attemptResult = value;
+    attemptIndex = index + 1;
   });
 
   if (attemptParts.length > 0) {
@@ -40,5 +44,6 @@ export function getResultVisualState(alloc: Allocation): ResultVisualState | nul
     result,
     attemptSignature,
     attemptResult,
+    attemptIndex,
   };
 }

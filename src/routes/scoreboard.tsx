@@ -298,6 +298,7 @@ function ScoreboardLive() {
             eventId: ev.Id,
             eventCategory: ev.EventCategory ?? "",
             heatIndex: heat.Index,
+            attemptIndex: visualState.attemptIndex,
           });
         }
       }
