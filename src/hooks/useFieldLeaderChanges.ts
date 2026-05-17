@@ -81,7 +81,8 @@ export function useFieldLeaderChanges(details: DetailCache) {
       // First time we see this event: baseline silently.
       if (!initializedRef.current.has(ev.Id)) {
         initializedRef.current.add(ev.Id);
-        if (snap.leaderResult) {
+        const hasLiveRound = ev.Rounds.some((round) => round.Status === "Progress");
+        if (hasLiveRound && snap.leaderResult) {
           const orgPart = snap.leaderOrg ? ` (${snap.leaderOrg})` : "";
           pushTickerMessage({
             text: `${snap.leaderName}${orgPart} johtaa ${ev.Name} -kilpailua: ${snap.leaderResult}${diffToSecond(snap)}`,
