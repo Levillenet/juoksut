@@ -20,7 +20,9 @@ export function InProgressSection({
 }) {
   const { inProgressVisible, showRunning, setShowRunning, details, expanded, toggleExpand } =
     data;
-  const cols = columns ?? (layout === "wide" ? 1 : 2);
+  const requestedCols = columns ?? (layout === "wide" ? 1 : 2);
+  // Älä jätä tyhjiä sarakkeita: rajoita sarakemäärä lajien määrään.
+  const cols = (Math.max(1, Math.min(requestedCols, inProgressVisible.length || 1)) as 1 | 2 | 3);
 
   const gridClass =
     cols === 1
