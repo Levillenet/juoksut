@@ -197,6 +197,7 @@ export function EventCard({
 
   return (
     <div
+      data-event-id={round.EventId}
       className={`overflow-hidden rounded-2xl border bg-card ${
         live ? "border-primary/60 ring-1 ring-primary/30" : "border-border"
       }`}
