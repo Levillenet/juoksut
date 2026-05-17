@@ -155,5 +155,5 @@ export function useFieldLeaderChanges(
         source: "announcer",
       });
     });
-  }, [details]);
+  }, [details, liveEventIds]);
 }
