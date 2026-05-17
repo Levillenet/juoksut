@@ -107,6 +107,19 @@ export function pushTickerMessage(
   emit();
 }
 
+export function removeTickerMessagesForEvent(
+  eventId: number,
+  source?: TickerSource,
+) {
+  const nextMessages = state.messages.filter(
+    (m) => !(m.eventId === eventId && (source ? m.source === source : true)),
+  );
+  if (nextMessages.length === state.messages.length) return;
+  state = { ...state, messages: nextMessages };
+  writeMessages(nextMessages);
+  emit();
+}
+
 export function setTickerEnabled(source: TickerSource, enabled: boolean) {
   state = { ...state, enabled: { ...state.enabled, [source]: enabled } };
   try {
