@@ -1,0 +1,1 @@
+SELECT public.mark_pbs_for_competitions(ARRAY[19259,19256,19275,19271,19260]::integer[]);
