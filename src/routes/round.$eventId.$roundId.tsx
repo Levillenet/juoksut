@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LayoutGroup, motion } from "framer-motion";
 import { trackEvent } from "@/lib/analytics";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Wind } from "lucide-react";
@@ -14,6 +15,10 @@ import {
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 import { athleteKey } from "@/lib/watch-store";
+import {
+  NewResultOverlay,
+  type NewResultItem,
+} from "@/components/announcer/NewResultOverlay";
 
 export const Route = createFileRoute("/round/$eventId/$roundId")({
   head: () => ({
