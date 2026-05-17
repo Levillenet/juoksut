@@ -78,6 +78,31 @@ export function NewResultOverlay({ item, onDone }: Props) {
     };
   }, [item, onDone]);
 
+  const isPB = useMemo(() => {
+    if (!item) return false;
+    const eff = effectiveRecord(item.eventId, item.alloc);
+    return detectRecord(item.eventCategory, item.alloc.Result ?? null, eff.pb, eff.sb) === "PB";
+  }, [item]);
+
+  const clapBursts = useMemo(() => {
+    if (!item) return [] as Array<{ id: number; angle: number; distance: number; rotate: number; delay: number; scale: number; emoji: string }>;
+    const count = isPB ? 18 : 12;
+    const emojis = isPB ? ["👏", "🎉", "✨", "👏", "🙌"] : ["👏", "👏", "🙌"];
+    return Array.from({ length: count }, (_, i) => {
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.4;
+      const distance = 220 + Math.random() * 260;
+      return {
+        id: i,
+        angle,
+        distance,
+        rotate: (Math.random() - 0.5) * 540,
+        delay: Math.random() * 0.25,
+        scale: 0.9 + Math.random() * 0.9,
+        emoji: emojis[i % emojis.length],
+      };
+    });
+  }, [item, isPB]);
+
   return (
     <AnimatePresence>
       {item && phase !== "gone" && (
@@ -95,8 +120,41 @@ export function NewResultOverlay({ item, onDone }: Props) {
             animate={{ opacity: phase === "fly" ? 0 : 1 }}
             transition={{ duration: 0.3 }}
           />
+          {phase === "enter" && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              {clapBursts.map((c) => {
+                const dx = Math.cos(c.angle) * c.distance;
+                const dy = Math.sin(c.angle) * c.distance;
+                return (
+                  <motion.span
+                    key={c.id}
+                    className="absolute select-none"
+                    style={{ fontSize: "3rem", lineHeight: 1 }}
+                    initial={{ x: 0, y: 0, opacity: 0, scale: 0.2, rotate: 0 }}
+                    animate={{
+                      x: dx,
+                      y: dy,
+                      opacity: [0, 1, 1, 0],
+                      scale: c.scale,
+                      rotate: c.rotate,
+                    }}
+                    transition={{
+                      duration: 1.8,
+                      delay: c.delay,
+                      ease: [0.16, 1, 0.3, 1],
+                      times: [0, 0.15, 0.7, 1],
+                    }}
+                  >
+                    {c.emoji}
+                  </motion.span>
+                );
+              })}
+            </div>
+          )}
           <motion.div
-            className="relative w-[min(90vw,520px)] rounded-3xl border-2 border-primary bg-card px-8 py-6 shadow-[0_30px_80px_-10px_hsl(var(--primary)/0.6)]"
+            className={`relative w-[min(90vw,520px)] rounded-3xl border-2 ${
+              isPB ? "border-yellow-400" : "border-primary"
+            } bg-card px-8 py-6 shadow-[0_30px_80px_-10px_hsl(var(--primary)/0.6)]`}
             initial={{ scale: 0.25, opacity: 0, rotateX: -25 }}
             animate={
               phase === "enter"
@@ -114,6 +172,16 @@ export function NewResultOverlay({ item, onDone }: Props) {
               ease: phase === "fly" ? [0.7, 0, 0.3, 1] : [0.16, 1, 0.3, 1],
             }}
           >
+            {isPB && (
+              <motion.div
+                className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-yellow-400 px-4 py-1 text-xs font-black uppercase tracking-widest text-black shadow-lg"
+                initial={{ scale: 0, rotate: -8 }}
+                animate={{ scale: 1, rotate: -4 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 400, damping: 12 }}
+              >
+                Uusi ennätys!
+              </motion.div>
+            )}
             <Card item={item} />
           </motion.div>
         </motion.div>
