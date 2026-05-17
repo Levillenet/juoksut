@@ -429,6 +429,8 @@ function ScoreboardLive() {
                 count={visible.length}
                 eventId={ev?.Id ?? 0}
                 category={ev?.EventCategory ?? ""}
+                competitionId={competitionId}
+                eventName={ev?.Name ?? ""}
               />
             ))}
           </ul>
