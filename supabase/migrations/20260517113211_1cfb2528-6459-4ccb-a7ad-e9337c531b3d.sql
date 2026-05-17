@@ -1,0 +1,1 @@
+REINDEX INDEX public.idx_athlete_results_pb_lookup;
