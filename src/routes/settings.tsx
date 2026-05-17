@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate, Outlet, useLocation } from "@tanstack/react-router";
 import { ArrowLeft, Settings as SettingsIcon, MapPin, Database, Lightbulb, Users, Link2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ export const Route = createFileRoute("/settings")({
 
 function SettingsGate() {
   const { role, loading, user } = useAuth();
+  const location = useLocation();
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
@@ -31,6 +32,7 @@ function SettingsGate() {
     );
   }
   if (!role) return <Navigate to="/login" />;
+  if (location.pathname !== "/settings") return <Outlet />;
   const isAdmin = (user?.email ?? "").toLowerCase() === "samiaavikko@gmail.com";
   const showOfficialSections = role === "official" || isAdmin;
   return <SettingsPage showOfficialSections={showOfficialSections} />;
