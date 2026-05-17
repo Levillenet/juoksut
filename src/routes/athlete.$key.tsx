@@ -245,19 +245,21 @@ function AthletePage() {
         location: string;
       }>
     >();
-    for (const n of notes.values()) {
-      if (!n.note?.trim()) continue;
-      const r = rowLookup.get(
-        `${n.competition_id}|${n.event_name}|${n.sub_category ?? ""}`,
-      );
-      const list = groupsMap.get(n.event_name) ?? [];
-      list.push({
-        note: n,
-        competitionName: r?.competition_name ?? "",
-        competitionDate: r?.competition_date ?? null,
-        location: r?.location ?? "",
-      });
-      groupsMap.set(n.event_name, list);
+    for (const noteList of notes.values()) {
+      for (const n of noteList) {
+        if (!n.note?.trim()) continue;
+        const r = rowLookup.get(
+          `${n.competition_id}|${n.event_name}|${n.sub_category ?? ""}`,
+        );
+        const list = groupsMap.get(n.event_name) ?? [];
+        list.push({
+          note: n,
+          competitionName: r?.competition_name ?? "",
+          competitionDate: r?.competition_date ?? null,
+          location: r?.location ?? "",
+        });
+        groupsMap.set(n.event_name, list);
+      }
     }
     return Array.from(groupsMap.entries())
       .map(([eventName, items]) => {
