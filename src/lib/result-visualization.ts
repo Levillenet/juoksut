@@ -18,20 +18,25 @@ function isDisplayableAttempt(value: string): boolean {
 
 export function getResultVisualState(alloc: Allocation): ResultVisualState | null {
   const result = normalizeResult(alloc.Result);
+  const attemptParts: string[] = [];
   let attemptSignature: string | null = null;
   let attemptResult: string | null = null;
 
   alloc.Attempts?.forEach((attempt, index) => {
     const value = normalizeResult(attempt.Line1);
     if (!value || !isDisplayableAttempt(value)) return;
-    attemptSignature = `attempt:${index}:${value}`;
+    attemptParts.push(`${index}:${value}`);
     attemptResult = value;
   });
+
+  if (attemptParts.length > 0) {
+    attemptSignature = `attempts:${attemptParts.join("|")}`;
+  }
 
   if (!result && !attemptResult) return null;
 
   return {
-    signature: `result:${result ?? ""}|${attemptSignature ?? ""}`,
+    signature: `result:${result ?? ""}|rank:${alloc.ResultRank ?? ""}|${attemptSignature ?? ""}`,
     result,
     attemptSignature,
     attemptResult,
