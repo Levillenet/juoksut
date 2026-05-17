@@ -27,6 +27,7 @@ import { Route as PrintIndexRouteImport } from './routes/print.index'
 import { Route as AnnouncerIndexRouteImport } from './routes/announcer.index'
 import { Route as UrheilijaTokenRouteImport } from './routes/urheilija.$token'
 import { Route as SeuraaTokenRouteImport } from './routes/seuraa.$token'
+import { Route as SettingsTeamsRouteImport } from './routes/settings.teams'
 import { Route as PrintWatchedRouteImport } from './routes/print.watched'
 import { Route as PrintClubRouteImport } from './routes/print.club'
 import { Route as AthleteKeyRouteImport } from './routes/athlete.$key'
@@ -129,6 +130,11 @@ const SeuraaTokenRoute = SeuraaTokenRouteImport.update({
   path: '/seuraa/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsTeamsRoute = SettingsTeamsRouteImport.update({
+  id: '/teams',
+  path: '/teams',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const PrintWatchedRoute = PrintWatchedRouteImport.update({
   id: '/watched',
   path: '/watched',
@@ -199,7 +205,7 @@ export interface FileRoutesByFullPath {
   '/scoreboard': typeof ScoreboardRoute
   '/search': typeof SearchRoute
   '/season-leaders': typeof SeasonLeadersRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/tietoa-palvelusta': typeof TietoaPalvelustaRoute
   '/watch': typeof WatchRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -210,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
+  '/settings/teams': typeof SettingsTeamsRoute
   '/seuraa/$token': typeof SeuraaTokenRoute
   '/urheilija/$token': typeof UrheilijaTokenRoute
   '/announcer/': typeof AnnouncerIndexRoute
@@ -228,7 +235,7 @@ export interface FileRoutesByTo {
   '/scoreboard': typeof ScoreboardRoute
   '/search': typeof SearchRoute
   '/season-leaders': typeof SeasonLeadersRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/tietoa-palvelusta': typeof TietoaPalvelustaRoute
   '/watch': typeof WatchRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -239,6 +246,7 @@ export interface FileRoutesByTo {
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
+  '/settings/teams': typeof SettingsTeamsRoute
   '/seuraa/$token': typeof SeuraaTokenRoute
   '/urheilija/$token': typeof UrheilijaTokenRoute
   '/announcer': typeof AnnouncerIndexRoute
@@ -260,7 +268,7 @@ export interface FileRoutesById {
   '/scoreboard': typeof ScoreboardRoute
   '/search': typeof SearchRoute
   '/season-leaders': typeof SeasonLeadersRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/tietoa-palvelusta': typeof TietoaPalvelustaRoute
   '/watch': typeof WatchRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -271,6 +279,7 @@ export interface FileRoutesById {
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
+  '/settings/teams': typeof SettingsTeamsRoute
   '/seuraa/$token': typeof SeuraaTokenRoute
   '/urheilija/$token': typeof UrheilijaTokenRoute
   '/announcer/': typeof AnnouncerIndexRoute
@@ -304,6 +313,7 @@ export interface FileRouteTypes {
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
+    | '/settings/teams'
     | '/seuraa/$token'
     | '/urheilija/$token'
     | '/announcer/'
@@ -333,6 +343,7 @@ export interface FileRouteTypes {
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
+    | '/settings/teams'
     | '/seuraa/$token'
     | '/urheilija/$token'
     | '/announcer'
@@ -364,6 +375,7 @@ export interface FileRouteTypes {
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
+    | '/settings/teams'
     | '/seuraa/$token'
     | '/urheilija/$token'
     | '/announcer/'
@@ -385,7 +397,7 @@ export interface RootRouteChildren {
   ScoreboardRoute: typeof ScoreboardRoute
   SearchRoute: typeof SearchRoute
   SeasonLeadersRoute: typeof SeasonLeadersRoute
-  SettingsRoute: typeof SettingsRoute
+  SettingsRoute: typeof SettingsRouteWithChildren
   TietoaPalvelustaRoute: typeof TietoaPalvelustaRoute
   WatchRoute: typeof WatchRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
@@ -526,6 +538,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SeuraaTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/teams': {
+      id: '/settings/teams'
+      path: '/teams'
+      fullPath: '/settings/teams'
+      preLoaderRoute: typeof SettingsTeamsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/print/watched': {
       id: '/print/watched'
       path: '/watched'
@@ -638,6 +657,18 @@ const PrintRouteChildren: PrintRouteChildren = {
 
 const PrintRouteWithChildren = PrintRoute._addFileChildren(PrintRouteChildren)
 
+interface SettingsRouteChildren {
+  SettingsTeamsRoute: typeof SettingsTeamsRoute
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsTeamsRoute: SettingsTeamsRoute,
+}
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnnouncerRoute: AnnouncerRouteWithChildren,
@@ -650,7 +681,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScoreboardRoute: ScoreboardRoute,
   SearchRoute: SearchRoute,
   SeasonLeadersRoute: SeasonLeadersRoute,
-  SettingsRoute: SettingsRoute,
+  SettingsRoute: SettingsRouteWithChildren,
   TietoaPalvelustaRoute: TietoaPalvelustaRoute,
   WatchRoute: WatchRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,

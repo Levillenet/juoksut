@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
-import { ArrowLeft, Settings as SettingsIcon, MapPin, Database, Lightbulb } from "lucide-react";
+import { ArrowLeft, Settings as SettingsIcon, MapPin, Database, Lightbulb, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
