@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 import { detectRecord } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
+import { loadHistoryBaselineForCompetition } from "@/lib/history-baseline";
+import { athleteKey } from "@/lib/athlete-key";
 import { helsinkiDateKey, type Round, type EventResults } from "@/lib/tuloslista";
 import {
   competitionScheduleQueryOptions,
