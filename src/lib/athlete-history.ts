@@ -125,14 +125,44 @@ export interface EventGroup {
 }
 
 /** Strip age-class prefix ("M17 100m" → "100m", "P9 60m" → "60m") so the
- * same event across age classes groups together in the dashboard chart. */
+ * same event across age classes groups together in the dashboard chart.
+ * Also strips heat / group / schedule garbage that harvesters leave appended
+ * to event names, e.g.:
+ *  - "T10 Pituus - R1+2 10:30, R3+4 n.11:05" → "Pituus"
+ *  - "T10 Pituus (ryhmä 2. klo 17.15)"        → "Pituus"
+ *  - "T10 Korkeus kilpailu 2"                  → "Korkeus"
+ *  - "N30 Pituus Ryhmä 1"                      → "Pituus"
+ */
 export function normalizeEventName(name: string): string {
   if (!name) return "";
-  return name
+  let s = name
     .replace(/^(?:[MNTmnt][0-9]*|[Pp][0-9]+)\s+/, "")
-    .replace(/^[0-9]+-ottelu\s+/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/^[0-9]+-ottelu\s+/i, "");
+  // Drop everything from " - R<digit>" onwards (heat schedules).
+  s = s.replace(/\s*-\s*R\d.*$/i, "");
+  // Drop trailing parenthesised notes.
+  s = s.replace(/\s*\([^)]*\)\s*$/g, "");
+  // Drop trailing "kilpailu N" / "kierros N" / "erä N".
+  s = s.replace(/\s+(?:kilpailu|kierros|erä)\s*\d+\s*$/i, "");
+  // Drop trailing "Ryhmä N".
+  s = s.replace(/\s+ryhmä\s*\d+\s*$/i, "");
+  return s.replace(/\s+/g, " ").trim();
+}
+
+/** Numeric rank for an age class, so the PB selection can prefer the
+ * athlete's most recent (highest) age class. Adults (M/N, plus veterans
+ * M40+/N40+) are treated as the highest tier. Juniors T/P + number map to
+ * their age (T10 → 10, T11 → 11, P14 → 14). */
+export function ageClassRank(ageClass: string | null | undefined): number {
+  if (!ageClass) return 0;
+  const s = ageClass.trim();
+  const m = s.match(/^([MNTPmntp])(\d+)?/);
+  if (!m) return 0;
+  const letter = m[1].toUpperCase();
+  const num = m[2] ? parseInt(m[2], 10) : null;
+  if (letter === "M" || letter === "N") return 999;
+  if (num == null) return 0;
+  return num;
 }
 
 export function groupByEvent(rows: AthleteResultRow[]): EventGroup[] {
@@ -161,11 +191,17 @@ export function groupByEvent(rows: AthleteResultRow[]): EventGroup[] {
     const better = (a: AthleteResultRow, b: AthleteResultRow) =>
       g.lowerBetter ? (a.result_numeric ?? Infinity) < (b.result_numeric ?? Infinity)
                     : (a.result_numeric ?? -Infinity) > (b.result_numeric ?? -Infinity);
+    // Only consider rows from the highest age class the athlete has
+    // competed in for this event — lower age classes are hidden from PBs.
+    const ranked = g.rows.filter((r) => r.result_numeric != null);
+    const maxRank = ranked.reduce((m, r) => Math.max(m, ageClassRank(r.age_class)), 0);
+    const pbCandidates = ranked.filter(
+      (r) => ageClassRank(r.age_class) === maxRank,
+    );
     let best: AthleteResultRow | null = null;
     let bestIn: AthleteResultRow | null = null;
     let bestOut: AthleteResultRow | null = null;
-    for (const r of g.rows) {
-      if (r.result_numeric == null) continue;
+    for (const r of pbCandidates) {
       if (best == null || better(r, best)) best = r;
       const indoor = isIndoorResult(r);
       if (indoor === true) {
