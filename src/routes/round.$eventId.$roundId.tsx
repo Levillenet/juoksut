@@ -180,151 +180,160 @@ function RoundView() {
           </div>
         )}
 
-        <div className="space-y-4">
-          {heats.map((heat) => {
-            const allocs = [...heat.Allocations].sort((a, b) => a.Position - b.Position);
-            return (
-              <section
-                key={heat.Id}
-                className="overflow-hidden rounded-xl border bg-card shadow-sm"
-              >
-                <div className="flex items-center justify-between border-b bg-secondary px-4 py-2">
-                  <h2 className="text-sm font-semibold">
-                    Erä {heat.Index}{" "}
-                    <span className="font-normal text-muted-foreground">
-                      ({allocs.length} kilpailijaa)
-                    </span>
-                  </h2>
-                  {heat.Wind != null && (
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Wind className="h-3 w-3" />
-                      {heat.Wind} m/s
-                    </span>
-                  )}
-                </div>
-                <ol className="divide-y">
-                  {allocs.map((a) => (
-                    <li
-                      key={a.AllocId}
-                      className="flex items-center gap-3 px-4 py-3"
-                    >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-base font-bold tabular-nums text-primary-foreground">
-                        {a.Position}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium leading-tight">
-                          <Link
-                            to="/athlete/$key"
-                            params={{
-                              key: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
-                            }}
-                            className="hover:underline"
-                          >
-                            {a.Name}
-                          </Link>
-                          {a.NotInCompetition && (
-                            <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
-                              ei lisenssiä?
-                            </span>
-                          )}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs tabular-nums text-muted-foreground">
-                        {a.Result ? (
-                          <>
-                            <div className="flex items-center gap-1">
-                              <span className="text-base font-bold tabular-nums text-foreground">
-                                {a.Result}
-                              </span>
-                              {a.ResultRank != null && (
-                                <span className="text-xs text-muted-foreground">
-                                  ({a.ResultRank}.)
-                                </span>
-                              )}
-                            </div>
-                            {(() => {
-                              const eff = effectiveRecord(parseInt(eventId, 10), a);
-                              return (
-                                <RecordBadge
-                                  category={data?.EventCategory ?? ""}
-                                  result={a.Result}
-                                  pb={eff.pb}
-                                  sb={eff.sb}
-                                  size="sm"
-                                />
-                              );
-                            })()}
-                          </>
-                        ) : (
-                          <>
-                            {a.Number && <div>#{a.Number}</div>}
-                            {a.SB && <div>SB {a.SB}</div>}
-                            {!a.SB && a.PB && <div>PB {a.PB}</div>}
-                          </>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            );
-          })}
-        </div>
-
-        {overall.length > 0 && (
-          <section className="mt-6 overflow-hidden rounded-xl border bg-card shadow-sm">
-            <div className="border-b bg-secondary px-4 py-2">
-              <h2 className="text-sm font-semibold">
-                Lopputulokset{" "}
-                <span className="font-normal text-muted-foreground">
-                  ({overall.length} kilpailijaa)
-                </span>
-              </h2>
-            </div>
-            <ol className="divide-y">
-              {overall.map((a) => (
-                <li
-                  key={a.AllocId}
-                  className="flex items-center gap-3 px-4 py-3"
+        <LayoutGroup>
+          <div className="space-y-4">
+            {heats.map((heat) => {
+              const allocs = [...heat.Allocations].sort((a, b) => a.Position - b.Position);
+              return (
+                <section
+                  key={heat.Id}
+                  className="overflow-hidden rounded-xl border bg-card shadow-sm"
                 >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-base font-bold tabular-nums text-primary-foreground">
-                    {a.ResultRank}
+                  <div className="flex items-center justify-between border-b bg-secondary px-4 py-2">
+                    <h2 className="text-sm font-semibold">
+                      Erä {heat.Index}{" "}
+                      <span className="font-normal text-muted-foreground">
+                        ({allocs.length} kilpailijaa)
+                      </span>
+                    </h2>
+                    {heat.Wind != null && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Wind className="h-3 w-3" />
+                        {heat.Wind} m/s
+                      </span>
+                    )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium leading-tight">
-                      {a.Name}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
-                      {" · "}Erä {a._heatIndex}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs tabular-nums">
-                    <span className="text-base font-bold text-foreground">
-                      {a.Result}
-                    </span>
-                    {(() => {
-                      const eff = effectiveRecord(parseInt(eventId, 10), a);
-                      return (
-                        <RecordBadge
-                          category={data?.EventCategory ?? ""}
-                          result={a.Result!}
-                          pb={eff.pb}
-                          sb={eff.sb}
-                          size="sm"
-                        />
-                      );
-                    })()}
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </section>
-        )}
+                  <ol className="divide-y">
+                    {allocs.map((a) => (
+                      <motion.li
+                        key={a.AllocId}
+                        layout="position"
+                        data-alloc-id={`heat-${a.AllocId}`}
+                        className="flex items-center gap-3 px-4 py-3"
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-base font-bold tabular-nums text-primary-foreground">
+                          {a.Position}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium leading-tight">
+                            <Link
+                              to="/athlete/$key"
+                              params={{
+                                key: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
+                              }}
+                              className="hover:underline"
+                            >
+                              {a.Name}
+                            </Link>
+                            {a.NotInCompetition && (
+                              <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
+                                ei lisenssiä?
+                              </span>
+                            )}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs tabular-nums text-muted-foreground">
+                          {a.Result ? (
+                            <>
+                              <div className="flex items-center gap-1">
+                                <span className="text-base font-bold tabular-nums text-foreground">
+                                  {a.Result}
+                                </span>
+                                {a.ResultRank != null && (
+                                  <span className="text-xs text-muted-foreground">
+                                    ({a.ResultRank}.)
+                                  </span>
+                                )}
+                              </div>
+                              {(() => {
+                                const eff = effectiveRecord(parseInt(eventId, 10), a);
+                                return (
+                                  <RecordBadge
+                                    category={data?.EventCategory ?? ""}
+                                    result={a.Result}
+                                    pb={eff.pb}
+                                    sb={eff.sb}
+                                    size="sm"
+                                  />
+                                );
+                              })()}
+                            </>
+                          ) : (
+                            <>
+                              {a.Number && <div>#{a.Number}</div>}
+                              {a.SB && <div>SB {a.SB}</div>}
+                              {!a.SB && a.PB && <div>PB {a.PB}</div>}
+                            </>
+                          )}
+                        </div>
+                      </motion.li>
+                    ))}
+                  </ol>
+                </section>
+              );
+            })}
+          </div>
+
+          {overall.length > 0 && (
+            <section className="mt-6 overflow-hidden rounded-xl border bg-card shadow-sm">
+              <div className="border-b bg-secondary px-4 py-2">
+                <h2 className="text-sm font-semibold">
+                  Lopputulokset{" "}
+                  <span className="font-normal text-muted-foreground">
+                    ({overall.length} kilpailijaa)
+                  </span>
+                </h2>
+              </div>
+              <ol className="divide-y">
+                {overall.map((a) => (
+                  <motion.li
+                    key={a.AllocId}
+                    layout
+                    data-alloc-id={a.AllocId}
+                    className="flex items-center gap-3 px-4 py-3"
+                    transition={{ type: "spring", stiffness: 350, damping: 32 }}
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-base font-bold tabular-nums text-primary-foreground">
+                      {a.ResultRank}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium leading-tight">
+                        {a.Name}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
+                        {" · "}Erä {a._heatIndex}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs tabular-nums">
+                      <span className="text-base font-bold text-foreground">
+                        {a.Result}
+                      </span>
+                      {(() => {
+                        const eff = effectiveRecord(parseInt(eventId, 10), a);
+                        return (
+                          <RecordBadge
+                            category={data?.EventCategory ?? ""}
+                            result={a.Result!}
+                            pb={eff.pb}
+                            sb={eff.sb}
+                            size="sm"
+                          />
+                        );
+                      })()}
+                    </div>
+                  </motion.li>
+                ))}
+              </ol>
+            </section>
+          )}
+        </LayoutGroup>
       </main>
+      <NewResultOverlay item={current} onDone={handleOverlayDone} />
     </div>
   );
 }
+
