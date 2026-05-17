@@ -59,10 +59,13 @@ function Page() {
     const byEvent = new Map<string, number>();
     const byPath = new Map<string, number>();
     const byDay = new Map<string, number>();
+    const byDayUniqueSets = new Map<string, Set<string>>();
     const byRole = new Map<string, number>();
     const byAthlete = new Map<string, { count: number; name: string | null }>();
     const byCompetition = new Map<string, { count: number; name: string | null }>();
     const uniqueUsers = new Set<string>();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayUsers = new Set<string>();
     const last24h = Date.now() - 24 * 3600 * 1000;
     let last24hCount = 0;
     for (const r of rows) {
@@ -71,6 +74,16 @@ function Page() {
       const day = r.created_at.slice(0, 10);
       byDay.set(day, (byDay.get(day) ?? 0) + 1);
       byRole.set(r.role ?? "anon", (byRole.get(r.role ?? "anon") ?? 0) + 1);
+      const visitorId = r.user_id ?? r.user_email ?? r.user_agent ?? null;
+      if (visitorId) {
+        let set = byDayUniqueSets.get(day);
+        if (!set) {
+          set = new Set<string>();
+          byDayUniqueSets.set(day, set);
+        }
+        set.add(visitorId);
+        if (day === todayStr) todayUsers.add(visitorId);
+      }
       if (r.user_id) uniqueUsers.add(r.user_id);
       if (new Date(r.created_at).getTime() >= last24h) last24hCount++;
 
