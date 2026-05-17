@@ -314,6 +314,11 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
               Kisa #{competitionId}
               {updatedAt && ` · päivitetty ${formatClock(updatedAt)}`}
             </p>
+            {user?.email && (
+              <p className="truncate text-[11px] text-muted-foreground">
+                Kirjautunut: <span className="font-medium">{user.email}</span>
+              </p>
+            )}
           </div>
           <h2 className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-lg font-black uppercase tracking-widest text-primary xl:block">
             {isOfficial ? "Toimitsija" : "Päivän lajit"}
