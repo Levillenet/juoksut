@@ -16,10 +16,12 @@ function AnnouncerPlanning() {
   return (
     <div className="min-h-screen bg-background text-foreground pb-12">
       <AnnouncerHeader data={data} mode="planning" />
-      <main className="mx-auto max-w-[1200px] space-y-8 px-4 py-6 sm:px-6">
-        <UpcomingSection data={data} limit="all" />
-        <CompletedSection data={data} columns={1} />
-        <p className="text-center text-xs text-muted-foreground">
+      <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <UpcomingSection data={data} limit="all" />
+          <CompletedSection data={data} columns={1} />
+        </div>
+        <p className="mt-8 text-center text-xs text-muted-foreground">
           Lähde: live.tuloslista.com · automaattinen päivitys 15&nbsp;s välein
         </p>
       </main>
