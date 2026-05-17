@@ -1,19 +1,21 @@
 ## Ongelma
 
-Edellisellä kierroksella `Muistiinpanojen jakaminen` -osio käärittiin `showOfficialSections`-gateen yhdessä `Tiimit`-osion kanssa, joten peruskäyttäjä ei näe sitä enää /settings-sivulla. Etusivulla oleva kortti toimii, mutta käyttäjä odottaa löytävänsä toiminnon myös asetuksista.
+"Hallinnoi linkityksiä" -painike ei navigoi. Edellisessä kierroksessa se vaihdettiin muotoon `Button asChild + Link`, joka ei toimi luotettavasti (Radix Slot + TanStack Link -ketju).
 
 ## Korjaus
 
-`src/routes/settings.tsx`: nosta `Muistiinpanojen jakaminen` -osio gaten ulkopuolelle (kaikkien kirjautuneiden näkyvissä), pidä `Tiimit ja jaetut muistiinpanot` edelleen vain virkailijoille.
+`src/routes/settings.tsx`: palauta vain `Hallinnoi linkityksiä` -painike alkuperäiseen toimivaan pelkkä-`<Link>` -muotoon:
 
-Lopullinen järjestys peruskäyttäjälle:
-1. Päivitystiheys
-2. Muistiinpanojen jakaminen ("Hallinnoi linkityksiä" → /settings/note-links)
-3. Seurojen sijainnit
+```tsx
+<Link
+  to="/settings/note-links"
+  className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-secondary"
+>
+  <Link2 className="h-4 w-4" />
+  Hallinnoi linkityksiä
+</Link>
+```
 
-Virkailijalle/adminille lisäksi:
-4. Tiimit ja jaetut muistiinpanot
-5. Tuloslista API
-6. Kehitysideoita
+`Hallinnoi tiimejä` -osio pysyy ennallaan virkailija-gaten takana (tiimiominaisuus ei ole vielä valmis peruskäyttäjille).
 
-Ei muita muutoksia.
+Muu sisältö ja näkyvyyssäännöt eivät muutu.
