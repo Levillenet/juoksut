@@ -19,7 +19,8 @@ export const Route = createFileRoute("/announcer/planning")({
 
 function AnnouncerPlanning() {
   const data = useAnnouncerData();
-  useFieldLeaderChanges(data.details);
+  const liveEventIds = new Set(data.inProgressVisible.map((r) => r.EventId));
+  useFieldLeaderChanges(data.details, liveEventIds);
   const [layout] = useAnnouncerViewLayout("planning");
 
   const visibleCols = layout.columns.filter((c) => c.visible);
