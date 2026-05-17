@@ -114,6 +114,30 @@ export function AnnouncerLayoutControls() {
           </div>
 
           <div>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-medium">Sarakkeita rinnakkain</span>
+            </div>
+            <div className="flex gap-1 rounded-full border border-border bg-card p-1 text-xs font-medium">
+              {[2, 3].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setLayout({ ...layout, columnsPerRow: n as 2 | 3 })}
+                  className={`flex-1 rounded-full px-3 py-1.5 transition-colors ${
+                    layout.columnsPerRow === n
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-secondary"
+                  }`}
+                >
+                  {n} saraketta
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Ylimääräiset sarakkeet siirtyvät alemmaksi uudelle riville.
+            </p>
+          </div>
+
+          <div>
             <div className="mb-1 flex items-center justify-between">
               <span className="text-sm font-medium">Sivun maksimileveys</span>
               <span className="text-xs tabular-nums text-muted-foreground">
