@@ -500,6 +500,64 @@ function AthletePage() {
               </section>
             )}
 
+            {/* All notes grouped by event */}
+            {totalNotesCount > 0 && (
+              <section className="mb-6">
+                <button
+                  type="button"
+                  onClick={() => setAllNotesOpen((v) => !v)}
+                  className="flex w-full items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2 text-left text-sm font-semibold hover:bg-secondary/50"
+                >
+                  <span className="flex items-center gap-2">
+                    <StickyNote className="h-4 w-4 text-primary" />
+                    Näytä kaikki muistiinpanot ({totalNotesCount})
+                  </span>
+                  {allNotesOpen ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </button>
+                {allNotesOpen && (
+                  <ul className="mt-2 space-y-3">
+                    {notesByEvent.map((g) => (
+                      <li key={g.eventName} className="rounded-lg border bg-card p-3">
+                        <div className="mb-2 flex items-baseline justify-between gap-2">
+                          <h3 className="truncate text-sm font-bold">{g.eventName}</h3>
+                          <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                            {g.items.length} kpl
+                          </span>
+                        </div>
+                        <ul className="space-y-2">
+                          {g.items.map(({ note, competitionName, competitionDate }) => (
+                            <li
+                              key={note.id}
+                              className="rounded-md border bg-background/50 p-2"
+                            >
+                              <div className="mb-1 flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground">
+                                <span className="min-w-0 truncate">
+                                  {competitionName || "—"}
+                                  {note.sub_category && (
+                                    <span> · {note.sub_category}</span>
+                                  )}
+                                </span>
+                                <span className="shrink-0 tabular-nums">
+                                  {fmtDate(competitionDate)}
+                                </span>
+                              </div>
+                              <p className="whitespace-pre-wrap text-xs leading-relaxed text-foreground">
+                                {note.note}
+                              </p>
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
+
             {/* Per-event detailed groups with charts */}
             <section className="mb-6">
               <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
