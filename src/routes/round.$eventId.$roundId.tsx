@@ -66,7 +66,53 @@ function RoundView() {
     return ranked.sort((a, b) => (a.ResultRank ?? 0) - (b.ResultRank ?? 0));
   }, [heats]);
 
-  const trackedRef = useRef<string | null>(null);
+  // Detect newly-arrived results to trigger the overlay animation.
+  const prevResultsRef = useRef<Map<number, string>>(new Map());
+  const initializedRef = useRef(false);
+  const [queue, setQueue] = useState<NewResultItem[]>([]);
+  const [current, setCurrent] = useState<NewResultItem | null>(null);
+
+  useEffect(() => {
+    if (!data || !round) return;
+    const isLive = round.Status === "Progress";
+    const next = new Map<number, string>();
+    const newItems: NewResultItem[] = [];
+
+    for (const heat of round.Heats) {
+      for (const a of heat.Allocations) {
+        if (!a.Result) continue;
+        next.set(a.AllocId, a.Result);
+        const prev = prevResultsRef.current.get(a.AllocId);
+        if (initializedRef.current && isLive && prev !== a.Result) {
+          newItems.push({
+            key: `${a.AllocId}-${a.Result}-${Date.now()}`,
+            alloc: a,
+            eventId: eid,
+            eventCategory: data.EventCategory ?? "",
+            heatIndex: heat.Index,
+          });
+        }
+      }
+    }
+
+    prevResultsRef.current = next;
+    initializedRef.current = true;
+    if (newItems.length) {
+      setQueue((q) => [...q, ...newItems]);
+    }
+  }, [data, round, eid]);
+
+  useEffect(() => {
+    if (current || queue.length === 0) return;
+    setCurrent(queue[0]);
+    setQueue((q) => q.slice(1));
+  }, [current, queue]);
+
+  const handleOverlayDone = useCallback(() => {
+    setCurrent(null);
+  }, []);
+
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const sig = `${competitionId}:${eventId}:${roundId}`;
