@@ -66,6 +66,11 @@ export function useAnnouncerData() {
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    if (!competitionId) return;
+    void loadHistoryBaselineForCompetition(competitionId);
+  }, [competitionId]);
+
   const todayKey = helsinkiDateKey((now ?? new Date()).toISOString());
   const todayRounds = useMemo<Round[]>(() => {
     if (!data) return [];
