@@ -1,0 +1,149 @@
+// Lookup for an athlete's historical best (across all age classes) for a
+// given normalized event. Used by the live announcer/scoreboard so that a
+// new result is only flagged as PB if it actually beats the athlete's
+// historical best — even when the source tuloslista has no PB/SB row
+// (common for juniors).
+
+import { supabase } from "@/integrations/supabase/client";
+import {
+  isLowerBetter,
+  normalizeEventName,
+} from "@/lib/athlete-history";
+
+interface HistoricalBest {
+  resultText: string;
+  resultNumeric: number;
+}
+
+// competitionId -> (`${athleteKey}|${normalizedEvent}` -> best)
+const cache = new Map<number, Map<string, HistoricalBest>>();
+const inflight = new Map<number, Promise<Map<string, HistoricalBest>>>();
+
+function lookupKey(athleteKey: string, normalizedEvent: string): string {
+  return `${athleteKey}|${normalizedEvent.toLowerCase()}`;
+}
+
+const PAGE_SIZE = 1000;
+const HARD_CAP = 50_000;
+
+interface Row {
+  athlete_key: string;
+  event_name: string;
+  event_category: string;
+  sub_category: string;
+  result_text: string;
+  result_numeric: number | null;
+}
+
+async function fetchKeysForCompetition(competitionId: number): Promise<string[]> {
+  const out = new Set<string>();
+  let offset = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("athlete_results")
+      .select("athlete_key")
+      .eq("competition_id", competitionId)
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as { athlete_key: string }[];
+    for (const r of rows) out.add(r.athlete_key);
+    if (rows.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+    if (out.size >= HARD_CAP) break;
+  }
+  return Array.from(out);
+}
+
+async function fetchHistoryForKeys(
+  keys: string[],
+  excludeCompetitionId: number,
+): Promise<Row[]> {
+  if (keys.length === 0) return [];
+  const out: Row[] = [];
+  // Supabase .in() handles ~1000 values comfortably; chunk to be safe.
+  const CHUNK = 500;
+  for (let i = 0; i < keys.length; i += CHUNK) {
+    const chunk = keys.slice(i, i + CHUNK);
+    let offset = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from("athlete_results")
+        .select(
+          "athlete_key, event_name, event_category, sub_category, result_text, result_numeric",
+        )
+        .in("athlete_key", chunk)
+        .neq("competition_id", excludeCompetitionId)
+        .not("result_numeric", "is", null)
+        .range(offset, offset + PAGE_SIZE - 1);
+      if (error) throw error;
+      const rows = (data ?? []) as Row[];
+      out.push(...rows);
+      if (rows.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
+      if (out.length >= HARD_CAP) break;
+    }
+  }
+  return out;
+}
+
+/** Load (or return cached) historical-best lookup for a competition. */
+export async function loadHistoryBaselineForCompetition(
+  competitionId: number,
+): Promise<Map<string, HistoricalBest>> {
+  if (!competitionId) return new Map();
+  const cached = cache.get(competitionId);
+  if (cached) return cached;
+  const pending = inflight.get(competitionId);
+  if (pending) return pending;
+
+  const p = (async () => {
+    try {
+      const keys = await fetchKeysForCompetition(competitionId);
+      const rows = await fetchHistoryForKeys(keys, competitionId);
+      const map = new Map<string, HistoricalBest>();
+      for (const r of rows) {
+        if (r.result_numeric == null) continue;
+        const norm = normalizeEventName(r.event_name);
+        if (!norm) continue;
+        const lower = isLowerBetter(r.event_category, r.sub_category);
+        const k = lookupKey(r.athlete_key, norm);
+        const cur = map.get(k);
+        if (
+          !cur ||
+          (lower
+            ? r.result_numeric < cur.resultNumeric
+            : r.result_numeric > cur.resultNumeric)
+        ) {
+          map.set(k, {
+            resultText: r.result_text,
+            resultNumeric: r.result_numeric,
+          });
+        }
+      }
+      cache.set(competitionId, map);
+      return map;
+    } catch {
+      const empty = new Map<string, HistoricalBest>();
+      cache.set(competitionId, empty);
+      return empty;
+    } finally {
+      inflight.delete(competitionId);
+    }
+  })();
+  inflight.set(competitionId, p);
+  return p;
+}
+
+/** Synchronous lookup from the cached baseline. Returns the result text
+ * (the format detectRecord knows how to parse) or null. */
+export function getHistoricalBest(
+  competitionId: number,
+  athleteKey: string,
+  eventName: string,
+): string | null {
+  const map = cache.get(competitionId);
+  if (!map) return null;
+  const norm = normalizeEventName(eventName);
+  if (!norm) return null;
+  return map.get(lookupKey(athleteKey, norm))?.resultText ?? null;
+}
