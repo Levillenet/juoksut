@@ -128,7 +128,7 @@ function Card({ item }: { item: NewResultItem }) {
   return (
     <div className="flex flex-col items-center gap-3 text-center">
       <span className="text-xs font-bold uppercase tracking-widest text-primary">
-        Uusi tulos · Erä {item.heatIndex}
+        Uusi tulos{item.eventName ? ` · ${item.eventName}` : ""} · Erä {item.heatIndex}
       </span>
       <h2 className="text-3xl font-black leading-tight">{a.Name}</h2>
       <p className="text-sm text-muted-foreground">
