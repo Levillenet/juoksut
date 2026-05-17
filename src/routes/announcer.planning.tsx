@@ -8,10 +8,7 @@ import { UpcomingSection } from "@/components/announcer/UpcomingSection";
 import { LiveTicker } from "@/components/announcer/LiveTicker";
 import { AnnouncerLayoutControls } from "@/components/announcer/AnnouncerLayoutControls";
 import { useFieldLeaderChanges } from "@/hooks/useFieldLeaderChanges";
-import {
-  useAnnouncerViewLayout,
-  type AnnouncerColumnConfig,
-} from "@/lib/announcer-layout-store";
+import { useAnnouncerViewLayout, type AnnouncerColumnConfig } from "@/lib/announcer-layout-store";
 
 export const Route = createFileRoute("/announcer/planning")({
   component: AnnouncerPlanning,
@@ -19,7 +16,8 @@ export const Route = createFileRoute("/announcer/planning")({
 
 function AnnouncerPlanning() {
   const data = useAnnouncerData();
-  useFieldLeaderChanges(data.details);
+  const liveEventIds = new Set(data.inProgressVisible.map((r) => r.EventId));
+  useFieldLeaderChanges(data.details, liveEventIds);
   const [layout] = useAnnouncerViewLayout("planning");
 
   const visibleCols = layout.columns.filter((c) => c.visible);
@@ -31,10 +29,7 @@ function AnnouncerPlanning() {
   return (
     <div className="min-h-screen bg-background text-foreground pb-12">
       <AnnouncerHeader data={data} mode="planning" />
-      <main
-        className="mx-auto px-4 py-6 sm:px-6"
-        style={{ maxWidth: `${layout.maxWidth}px` }}
-      >
+      <main className="mx-auto px-4 py-6 sm:px-6" style={{ maxWidth: `${layout.maxWidth}px` }}>
         <div className="mb-4 flex justify-end">
           <AnnouncerLayoutControls view="planning" showLiveControls />
         </div>
