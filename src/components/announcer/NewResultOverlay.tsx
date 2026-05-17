@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { RecordBadge } from "@/lib/records";
+import { detectRecord, RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
 import type { Allocation } from "@/lib/tuloslista";
 
