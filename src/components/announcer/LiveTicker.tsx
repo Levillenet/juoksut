@@ -187,16 +187,16 @@ export function LiveTicker({
 function MessageRow({ m, unread }: { m: TickerMessage; unread: boolean }) {
   return (
     <li
-      className={`flex items-start gap-2 rounded-md px-3 py-2 text-base ${
+      className={`flex items-start gap-2 rounded-md px-2 py-1 text-xs ${
         unread ? "bg-primary/10" : "bg-muted/40"
       }`}
     >
-      <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
+      <span className="shrink-0 text-[10px] font-semibold tabular-nums text-muted-foreground">
         {formatTime(m.timestamp)}
       </span>
       <p className="min-w-0 flex-1 leading-snug">{m.text}</p>
       {unread && (
-        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
+        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
       )}
     </li>
   );
