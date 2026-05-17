@@ -137,12 +137,12 @@ export function LiveTicker({
             {latest ? (
               <div
                 key={latestKey}
-                className="flex animate-fade-in items-center gap-2 text-base"
+                className="flex animate-fade-in items-center gap-2 text-xl"
               >
-                <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
+                <span className="shrink-0 text-sm font-semibold tabular-nums text-muted-foreground">
                   {formatTime(latest.timestamp)}
                 </span>
-                <p className="truncate font-medium">{latest.text}</p>
+                <p className="truncate font-bold">{latest.text}</p>
               </div>
             ) : (
               <p className="truncate text-sm text-muted-foreground">{empty}</p>
