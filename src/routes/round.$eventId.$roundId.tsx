@@ -19,6 +19,7 @@ import {
   NewResultOverlay,
   type NewResultItem,
 } from "@/components/announcer/NewResultOverlay";
+import { getResultVisualState } from "@/lib/result-visualization";
 
 export const Route = createFileRoute("/round/$eventId/$roundId")({
   head: () => ({
@@ -79,13 +80,14 @@ function RoundView() {
 
     for (const heat of round.Heats) {
       for (const a of heat.Allocations) {
-        if (!a.Result) continue;
-        next.set(a.AllocId, a.Result);
+        const visualState = getResultVisualState(a);
+        if (!visualState) continue;
+        next.set(a.AllocId, visualState.signature);
         const prev = prevResultsRef.current.get(a.AllocId);
-        if (initializedRef.current && prev !== a.Result) {
+        if (initializedRef.current && prev !== visualState.signature) {
           newItems.push({
-            key: `${a.AllocId}-${a.Result}-${Date.now()}`,
-            alloc: a,
+            key: `${a.AllocId}-${visualState.signature}-${Date.now()}`,
+            alloc: { ...a, Result: visualState.result ?? visualState.attemptResult },
             eventId: eid,
             eventCategory: data.EventCategory ?? "",
             heatIndex: heat.Index,
