@@ -353,6 +353,54 @@ export type Database = {
         }
         Relationships: []
       }
+      note_link_invites: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          inviter_user_id: string
+          responded_at: string | null
+          status: Database["public"]["Enums"]["note_link_invite_status"]
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          inviter_user_id: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["note_link_invite_status"]
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          inviter_user_id?: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["note_link_invite_status"]
+        }
+        Relationships: []
+      }
+      note_links: {
+        Row: {
+          created_at: string
+          id: string
+          user_a_id: string
+          user_b_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_a_id: string
+          user_b_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_a_id?: string
+          user_b_id?: string
+        }
+        Relationships: []
+      }
       organization_locations: {
         Row: {
           city: string
@@ -642,9 +690,11 @@ export type Database = {
         Returns: number
       }
       normalize_event_name: { Args: { name: string }; Returns: string }
+      shared_note_owner_ids: { Args: { _user: string }; Returns: string[] }
       shared_team_user_ids: { Args: { _user: string }; Returns: string[] }
     }
     Enums: {
+      note_link_invite_status: "pending" | "accepted" | "declined" | "revoked"
       team_invite_status: "pending" | "accepted" | "declined" | "revoked"
       team_role: "owner" | "coach" | "member"
     }
@@ -774,6 +824,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      note_link_invite_status: ["pending", "accepted", "declined", "revoked"],
       team_invite_status: ["pending", "accepted", "declined", "revoked"],
       team_role: ["owner", "coach", "member"],
     },

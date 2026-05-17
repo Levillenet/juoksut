@@ -75,12 +75,12 @@ export const getTeammateLabels = createServerFn({ method: "POST" })
     }
 
     const { data: shared, error: shErr } = await supabaseAdmin.rpc(
-      "shared_team_user_ids",
+      "shared_note_owner_ids",
       { _user: userId },
     );
     if (shErr) throw shErr;
-    const allowed = new Set<string>((shared ?? []).map((r: { shared_team_user_ids: string } | string) =>
-      typeof r === "string" ? r : r.shared_team_user_ids,
+    const allowed = new Set<string>((shared ?? []).map((r: { shared_note_owner_ids: string } | string) =>
+      typeof r === "string" ? r : r.shared_note_owner_ids,
     ));
 
     const requested = data.userIds.filter((id) => allowed.has(id));
