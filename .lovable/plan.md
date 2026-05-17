@@ -1,32 +1,53 @@
-## Tavoite
+## Ongelma
 
-Kun `/round/$eventId/$roundId` -näkymässä (tapahtumapaikan live) ilmestyy uusi tulos kilpailijalle, sen rivi korostuu hetkeksi näytön keskellä isona "kortti tulee kameraa kohti" -animaationa ja liukuu sitten omalle paikalleen erä- ja lopputuloslistassa.
+Urheilijakortin "Henkilökohtaiset ennätykset" -listassa näkyy kaksi ongelmaa:
+
+1. **Roskaiset lajinimet eivät yhdisty puhtaaseen lajiin.** Esim. `T10 Pituus - R1+2 10:30, R3+4 n.11:05`, `T10 Pituus (ryhmä 2. klo 17.15)` ja `T10 Korkeus kilpailu 2` näkyvät omina PB-rivinä, eivätkä yhdisty `T10 Pituus` / `T10 Korkeus` kanssa, koska `normalizeEventName` strippaa vain ikäluokkaprefiksin — ei eräaikoja, "Ryhmä N"-, "kilpailu N"-, "- R1 ..."- tai sulkulisäyksiä.
+2. **Alemman ikäluokan PB jää näkyviin, vaikka samassa lajissa on ylemmän ikäluokan tulos.** Nykyinen ryhmittely yhdistää eri ikäluokat normalisoidun nimen perusteella, mutta valitsee PB:ksi parhaan tuloksen ikäluokasta riippumatta — käyttäjä haluaa nähdä **ylemmän ikäluokan ennätyksen**, ja alemman ikäluokan vain jos ylemmästä ei ole tulosta.
 
 ## Toteutus
 
-1. **Tunnista uudet tulokset**: lisätään `useRef<Map<allocId, prevResult>>` joka tallentaa edellisen pollauksen tuloksen jokaiselle kilpailijalle. Kun `detailQuery.data` päivittyy ja jonkun `Result` muuttui tyhjästä arvolliseksi (tai parani aiemmasta), merkitään `allocId` "juuri syntyneeksi tulokseksi" lyhyeksi aikaa (esim. 2.5 s). Ensimmäisellä latauksella ei animoida mitään — vain baseline-tallennus.
+### 1. Vahvempi lajinimen normalisointi
 
-2. **Overlay-animaatio**: kun uusi tulos havaitaan, renderöidään fixed-position overlay (`position: fixed; inset: 0; pointer-events: none; z-index: 60`) jossa on iso versio tuloskortista (nimi, seura, tulos, sija, mahdollinen RecordBadge). Animaatio kahdessa vaiheessa:
-   - **Vaihe 1 (0–600 ms)**: kortti ilmestyy keskeltä `scale(0.3) → scale(1.15)`, opacity `0 → 1`, pieni `translateZ`-tyyppinen vaikutelma blur+shadow:lla. Tausta saa tumman puolittain läpinäkyvän tason.
-   - **Vaihe 2 (600–1800 ms)**: kortti pysyy paikoillaan ~1.2 s jotta yleisö ehtii lukea.
-   - **Vaihe 3 (1800–2500 ms)**: kortti animoituu FLIP-tyylillä omalle paikalleen listassa: mitataan kohdesijainnin `getBoundingClientRect()` ja interpoloidaan position/scale/opacity sinne, samalla overlay häipyy.
+`src/lib/athlete-history.ts` → `normalizeEventName`: ikäluokkaprefiksin strippauksen jälkeen siivotaan loppuosa seuraavin säännöin (samassa järjestyksessä):
 
-3. **Listan järjestysmuutos**: kun uusi tulos lisätään, `overall`-järjestys saattaa muuttua. Sallitaan tämä luonnollinen DOM-uudelleenjärjestys, ja käytetään pientä CSS-transitionia listan riveille (`transition: transform 400 ms`) FLIP-tekniikalla niin että muut rivit liukuvat ylös/alas pehmeästi. Käytetään React-tasolla yksinkertaisuuden vuoksi `framer-motion`in `LayoutGroup` + `motion.li layout` molemmissa listoissa (erälistat + lopputuloslista).
+- Leikkaa kaikki ` - R<numero>` -kohdasta alkaen loppuun (kattaa `- R1 18:00`, `- R1+2 10:30, R3+4 n.11:05`).
+- Poista lopussa olevat sulkulausekkeet: ` \([^)]*\)$` (kattaa `(ryhmä 2. klo 17.15)`).
+- Poista lopusta ` (?:kilpailu|kierros|erä)\s*\d+` (kattaa `kilpailu 2`).
+- Poista lopusta ` Ryhmä\s*\d+` (kattaa `Ryhmä 1`).
+- Trimmaa ylimääräiset välit lopuksi.
 
-4. **Useat samanaikaiset tulokset**: jos pollaus tuo monta uutta tulosta yhdellä kertaa, jonotetaan animaatiot peräkkäin (FIFO-queue), jokainen yllä kuvattu 2.5 s sekvenssi. Listan FLIP-liike voi tapahtua rinnakkain.
+Tuloksena `T10 Pituus - R1+2 ...`, `T10 Pituus (ryhmä 2 ...)`, `T10 Pituus Ryhmä 1` → kaikki normalisoituvat muotoon `Pituus` ja yhdistyvät samaan ryhmään.
 
-5. **Sijoittelu**: overlay-kortti keskitetään viewporttiin (`top: 50%; left: 50%; transform: translate(-50%, -50%) scale(...)`). Kohdesijainti haetaan datan attribuutista `data-alloc-id={a.AllocId}` joka lisätään listariveihin (sekä erä- että lopputuloslistassa). Mietitään tilanne jossa kilpailija näkyy molemmissa listoissa: kohteena käytetään lopputuloslistan riviä jos olemassa, muuten erärivi.
+Käytetään sama normalisointi sekä ryhmittelyavaimena että `EventGroup.eventName`-näyttönimenä, jotta UI:ssa ei näy roskaista loppuosaa.
 
-6. **Pois käytöstä**: lisätään pieni asetus / oletus että animaatio toimii vain kun `round.Status === "Progress"` ja sivu on näkyvissä (`document.visibilityState === "visible"`). Reduced motion: jos `prefers-reduced-motion`, overlay vain fade-in/out ilman zoomia ja listan FLIP pois.
+### 2. Ikäluokan priorisointi PB-valinnassa
 
-## Tekniset tiedostot
+Lisätään `src/lib/athlete-history.ts`:ään apuri `ageClassRank(age_class: string): number`:
 
-- `src/routes/round.$eventId.$roundId.tsx` — uusi efekti `prevResultsRef`-vertailulle + animaatiojono + overlay-renderöinti + `data-alloc-id` -attribuutit. Korvataan listojen `<li>` `motion.li`:llä `layout`-propilla.
-- Uusi `src/components/announcer/NewResultOverlay.tsx` — overlay-komponentti (tausta + kortti, hoitaa keyframe-animaation `framer-motion`illa).
-- `framer-motion` lisätään riippuvuuksiin jos ei ole jo (tarkistettava `package.json`; vaihtoehtoisesti voidaan toteuttaa pelkillä Tailwind/CSS-keyframeilla, mutta FLIP-listalle motion on selkeästi yksinkertaisin).
+- Aikuiset `M`/`N` (ilman numeroa) → korkein arvo (esim. 999).
+- `M`/`N` + numero (veteraanit) → korkein arvo (999) — kohdellaan aikuissarjana PB-järjestyksessä; veteraaniluokat eivät syrjäytä aikuis-PB:tä, koska niiden tulokset ovat tyypillisesti aikuis-PB:tä huonompia, ja päinvastoin halutaan samaa kohtelua.
+- `T`/`P` + numero → ikä numerona (esim. `T10` → 10, `T11` → 11).
+- Tuntematon → 0.
+
+`groupByEvent`:n PB-laskennassa (sekä kokonaisen `pb` että `pbIndoor`/`pbOutdoor`):
+
+1. Selvitä ryhmän rivien korkein `ageClassRank`.
+2. Suodata mukaan vain rivit, joiden rank on yhtä suuri kuin korkein.
+3. Valitse näiden joukosta paras tulos `lowerBetter`-säännön mukaan.
+
+Näin esim. jos urheilijalla on `T11 60m` -tulos, `T10 60m` -PB ei enää näy henkilökohtaisten ennätysten listassa. Lajikohtainen kehityshistoria (`group.rows`) säilytetään kokonaisuudessaan — vain PB-valinta priorisoidaan.
+
+### 3. Pieni siisteys
+
+`src/lib/athlete-history.ts`:n `normalizeEventName` on ainoa paikka, jossa nimi normalisoidaan UI:ta varten. SQL-puolen `public.normalize_event_name` (käytössä `mark_pbs_for_competitions`:ssa) jätetään ennalleen — tämä on backend-PB-merkinnän heuristiikkaa eikä vaikuta tämän bugin näkymään, ja sen muuttaminen vaatisi erillisen migraation + ajon.
 
 ## Mitä EI muuteta
 
-- Tulosten haku / polling-logiikka (`useQuery`-asetukset) säilyy ennallaan.
-- Muiden näkymien (combined, planning) animaatiot, ticker-logiikka, asetukset.
-- Olemassa olevat värit / fontit / asettelu — vain animaatio lisätään päälle.
+- Tietokantarivejä tai harvest-logiikkaa ei muokata — alkuperäiset `event_name`-arvot säilytetään raakana, vain UI-puolen normalisointi tiukentuu.
+- "Lajikohtainen kehitys" -listan rivejä ei piiloteta — kaikki historiarivit näkyvät edelleen.
+- Jaettu urheilijakortti (`urheilija.$token.tsx`) ja oma kortti käyttävät samaa `groupByEvent`-funktiota, joten korjaus pätee molempiin automaattisesti.
+
+## Tekniset tiedostot
+
+- `src/lib/athlete-history.ts` — `normalizeEventName` laajennus + `ageClassRank` apuri + `groupByEvent`:n PB-valinta suodattaa korkeimman ikäluokan riveihin.
