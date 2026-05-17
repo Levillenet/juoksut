@@ -28,6 +28,7 @@ import { Route as AnnouncerIndexRouteImport } from './routes/announcer.index'
 import { Route as UrheilijaTokenRouteImport } from './routes/urheilija.$token'
 import { Route as SeuraaTokenRouteImport } from './routes/seuraa.$token'
 import { Route as SettingsTeamsRouteImport } from './routes/settings.teams'
+import { Route as SettingsNoteLinksRouteImport } from './routes/settings.note-links'
 import { Route as PrintWatchedRouteImport } from './routes/print.watched'
 import { Route as PrintClubRouteImport } from './routes/print.club'
 import { Route as AthleteKeyRouteImport } from './routes/athlete.$key'
@@ -135,6 +136,11 @@ const SettingsTeamsRoute = SettingsTeamsRouteImport.update({
   path: '/teams',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsNoteLinksRoute = SettingsNoteLinksRouteImport.update({
+  id: '/note-links',
+  path: '/note-links',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const PrintWatchedRoute = PrintWatchedRouteImport.update({
   id: '/watched',
   path: '/watched',
@@ -216,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
+  '/settings/note-links': typeof SettingsNoteLinksRoute
   '/settings/teams': typeof SettingsTeamsRoute
   '/seuraa/$token': typeof SeuraaTokenRoute
   '/urheilija/$token': typeof UrheilijaTokenRoute
@@ -246,6 +253,7 @@ export interface FileRoutesByTo {
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
+  '/settings/note-links': typeof SettingsNoteLinksRoute
   '/settings/teams': typeof SettingsTeamsRoute
   '/seuraa/$token': typeof SeuraaTokenRoute
   '/urheilija/$token': typeof UrheilijaTokenRoute
@@ -279,6 +287,7 @@ export interface FileRoutesById {
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
+  '/settings/note-links': typeof SettingsNoteLinksRoute
   '/settings/teams': typeof SettingsTeamsRoute
   '/seuraa/$token': typeof SeuraaTokenRoute
   '/urheilija/$token': typeof UrheilijaTokenRoute
@@ -313,6 +322,7 @@ export interface FileRouteTypes {
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
+    | '/settings/note-links'
     | '/settings/teams'
     | '/seuraa/$token'
     | '/urheilija/$token'
@@ -343,6 +353,7 @@ export interface FileRouteTypes {
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
+    | '/settings/note-links'
     | '/settings/teams'
     | '/seuraa/$token'
     | '/urheilija/$token'
@@ -375,6 +386,7 @@ export interface FileRouteTypes {
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
+    | '/settings/note-links'
     | '/settings/teams'
     | '/seuraa/$token'
     | '/urheilija/$token'
@@ -545,6 +557,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsTeamsRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/note-links': {
+      id: '/settings/note-links'
+      path: '/note-links'
+      fullPath: '/settings/note-links'
+      preLoaderRoute: typeof SettingsNoteLinksRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/print/watched': {
       id: '/print/watched'
       path: '/watched'
@@ -658,10 +677,12 @@ const PrintRouteChildren: PrintRouteChildren = {
 const PrintRouteWithChildren = PrintRoute._addFileChildren(PrintRouteChildren)
 
 interface SettingsRouteChildren {
+  SettingsNoteLinksRoute: typeof SettingsNoteLinksRoute
   SettingsTeamsRoute: typeof SettingsTeamsRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsNoteLinksRoute: SettingsNoteLinksRoute,
   SettingsTeamsRoute: SettingsTeamsRoute,
 }
 
