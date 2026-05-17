@@ -86,12 +86,13 @@ function SettingsPage({ showOfficialSections }: { showOfficialSections: boolean 
             sähköpostilla, niin näette toistenne muistiinpanot ristiin. Ei
             vaadi tiimiä.
           </p>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/settings/note-links">
-              <Link2 className="h-4 w-4" />
-              Hallinnoi linkityksiä
-            </Link>
-          </Button>
+          <Link
+            to="/settings/note-links"
+            className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-secondary"
+          >
+            <Link2 className="h-4 w-4" />
+            Hallinnoi linkityksiä
+          </Link>
         </section>
 
         {showOfficialSections && (
