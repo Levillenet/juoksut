@@ -80,6 +80,7 @@ function AnnouncerLive() {
         </p>
       </main>
       <LiveTicker source="announcer" />
+      <NewResultOverlay item={newResult} onDone={newResultDone} />
     </div>
   );
 }
