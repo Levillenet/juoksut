@@ -22,7 +22,7 @@ const MODE_META: Record<AnnouncerMode, { label: string; tone: string }> = {
     tone: "bg-red-500/15 text-red-700 border-red-500/40 dark:text-red-300",
   },
   planning: {
-    label: "SUUNNITTELU",
+    label: "TULOKSET",
     tone: "bg-sky-500/15 text-sky-700 border-sky-500/40 dark:text-sky-300",
   },
 };
@@ -87,12 +87,17 @@ export function AnnouncerHeader({
           </div>
         </div>
         <WakeLockToggle className="hidden sm:inline-flex" />
-        <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
-          <Link to="/announcer" search={{ pick: 1 }}>
-            <LayoutGrid className="h-4 w-4" />
-            Vaihda moodia
-          </Link>
-        </Button>
+        <div className="hidden sm:flex flex-col items-center gap-0.5">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/announcer" search={{ pick: 1 }}>
+              <LayoutGrid className="h-4 w-4" />
+              Vaihda moodia
+            </Link>
+          </Button>
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            Nyt: {meta.label}
+          </span>
+        </div>
         <Button
           variant="ghost"
           size="icon"

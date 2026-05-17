@@ -8,7 +8,7 @@ export const Route = createFileRoute("/announcer")({
       {
         name: "description",
         content:
-          "Kuuluttajan työpöytä: yhdistetty, live- ja suunnittelumoodi, sopiva myös kahdelle tabletille rinnan.",
+          "Kuuluttajan työpöytä: yhdistetty-, live- ja tulosmoodi, sopiva myös kahdelle tabletille rinnan.",
       },
     ],
   }),

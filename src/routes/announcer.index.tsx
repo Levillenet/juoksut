@@ -46,11 +46,11 @@ const MODES: {
   {
     id: "planning",
     to: "/announcer/planning",
-    title: "Suunnittelu-näkymä",
-    badge: "SUUNNITTELU",
+    title: "Tulosnäkymä",
+    badge: "TULOKSET",
     badgeTone: "bg-sky-500/15 text-sky-700 border-sky-500/40 dark:text-sky-300",
     description:
-      "Mitä valmistelen seuraavaksi: koko päivän tulevat lajit ja jo päättyneet kertaukseen.",
+      "Koko päivän tulevat lajit sekä jo päättyneiden lajien lopputulokset.",
     icon: <Clock className="h-6 w-6" />,
   },
 ];
@@ -138,7 +138,7 @@ function AnnouncerPicker() {
 
         <p className="mt-8 text-center text-xs text-muted-foreground">
           Vinkki: avaa kahdella tabletilla — toinen Live-moodissa, toinen
-          Suunnittelu-moodissa.
+          Tulosnäkymässä.
         </p>
       </main>
     </div>
