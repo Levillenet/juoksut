@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
-import { ArrowLeft, Settings as SettingsIcon, MapPin, Database, Lightbulb } from "lucide-react";
+import { ArrowLeft, Settings as SettingsIcon, MapPin, Database, Lightbulb, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
@@ -75,6 +75,21 @@ function SettingsPage() {
               );
             })}
           </div>
+        </section>
+
+        <section className="rounded-xl border bg-card p-4 shadow-sm">
+          <h2 className="mb-1 text-sm font-bold">Tiimit ja jaetut muistiinpanot</h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Luo valmennustiimi ja jaa urheilijakohtaiset muistiinpanot tiimin
+            jäsenten kanssa.
+          </p>
+          <Link
+            to="/settings/teams"
+            className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-secondary"
+          >
+            <Users className="h-4 w-4" />
+            Hallinnoi tiimejä
+          </Link>
         </section>
 
         <section className="rounded-xl border bg-card p-4 shadow-sm">

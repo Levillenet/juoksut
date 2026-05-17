@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface AthleteNote {
   id: string;
+  user_id: string;
   athlete_key: string;
   competition_id: number;
   event_name: string;
@@ -20,18 +21,24 @@ export function noteKey(
   return `${competitionId}|${eventName}|${subCategory ?? ""}`;
 }
 
-/** Fetch all notes belonging to the current user for one athlete. */
+/**
+ * Fetch all notes visible to the current user for one athlete (own + teammates').
+ * Returns a map keyed by competition/event/sub → list of notes (one per author).
+ */
 export async function fetchNotesForAthlete(
   athleteKey: string,
-): Promise<Map<NoteKey, AthleteNote>> {
+): Promise<Map<NoteKey, AthleteNote[]>> {
   const { data, error } = await supabase
     .from("athlete_notes")
-    .select("id, athlete_key, competition_id, event_name, sub_category, note, updated_at")
+    .select("id, user_id, athlete_key, competition_id, event_name, sub_category, note, updated_at")
     .eq("athlete_key", athleteKey);
   if (error) throw error;
-  const map = new Map<NoteKey, AthleteNote>();
+  const map = new Map<NoteKey, AthleteNote[]>();
   for (const n of data ?? []) {
-    map.set(noteKey(n.competition_id, n.event_name, n.sub_category ?? ""), n as AthleteNote);
+    const k = noteKey(n.competition_id, n.event_name, n.sub_category ?? "");
+    const list = map.get(k) ?? [];
+    list.push(n as AthleteNote);
+    map.set(k, list);
   }
   return map;
 }

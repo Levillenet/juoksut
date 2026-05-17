@@ -1,5 +1,8 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useAuth } from "@/lib/auth";
+import { getTeammateLabels } from "@/lib/teams.functions";
 import {
   ArrowLeft,
   Award,
@@ -74,6 +77,8 @@ function fmtDate(iso: string | null): string {
 function AthletePage() {
   const { key } = Route.useParams();
   const router = useRouter();
+  const { user } = useAuth();
+  const myUserId = user?.id ?? "";
   const handleBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.history.back();
@@ -91,6 +96,27 @@ function AthletePage() {
     queryKey: ["athlete-notes", key],
     queryFn: () => fetchNotesForAthlete(key),
   });
+
+  const fetchLabels = useServerFn(getTeammateLabels);
+  const otherUserIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const list of notesQuery.data?.values() ?? []) {
+      for (const n of list) if (n.user_id !== myUserId) set.add(n.user_id);
+    }
+    return Array.from(set);
+  }, [notesQuery.data, myUserId]);
+
+  const labelsQuery = useQuery({
+    queryKey: ["teammate-labels", otherUserIds.sort().join(",")],
+    queryFn: () => fetchLabels({ data: { userIds: otherUserIds } }),
+    enabled: otherUserIds.length > 0,
+    staleTime: 5 * 60_000,
+  });
+  const labelMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const l of labelsQuery.data?.labels ?? []) m.set(l.userId, l.label);
+    return m;
+  }, [labelsQuery.data]);
 
   const rows: AthleteResultRow[] = query.data ?? [];
 
@@ -245,19 +271,21 @@ function AthletePage() {
         location: string;
       }>
     >();
-    for (const n of notes.values()) {
-      if (!n.note?.trim()) continue;
-      const r = rowLookup.get(
-        `${n.competition_id}|${n.event_name}|${n.sub_category ?? ""}`,
-      );
-      const list = groupsMap.get(n.event_name) ?? [];
-      list.push({
-        note: n,
-        competitionName: r?.competition_name ?? "",
-        competitionDate: r?.competition_date ?? null,
-        location: r?.location ?? "",
-      });
-      groupsMap.set(n.event_name, list);
+    for (const noteList of notes.values()) {
+      for (const n of noteList) {
+        if (!n.note?.trim()) continue;
+        const r = rowLookup.get(
+          `${n.competition_id}|${n.event_name}|${n.sub_category ?? ""}`,
+        );
+        const list = groupsMap.get(n.event_name) ?? [];
+        list.push({
+          note: n,
+          competitionName: r?.competition_name ?? "",
+          competitionDate: r?.competition_date ?? null,
+          location: r?.location ?? "",
+        });
+        groupsMap.set(n.event_name, list);
+      }
     }
     return Array.from(groupsMap.entries())
       .map(([eventName, items]) => {
@@ -590,19 +618,24 @@ function AthletePage() {
                       </p>
                     )}
                     <ul className="divide-y divide-border text-xs">
-                      {c.results.map((r) => (
-                        <CompetitionResultRow
-                          key={r.id}
-                          row={r}
-                          athleteKey={key}
-                          note={
-                            notesQuery.data?.get(
-                              noteKey(r.competition_id, r.event_name, r.sub_category ?? ""),
-                            ) ?? null
-                          }
-                          seasonTop={seasonTop.get(r.id) ?? null}
-                        />
-                      ))}
+                      {c.results.map((r) => {
+                        const all = notesQuery.data?.get(
+                          noteKey(r.competition_id, r.event_name, r.sub_category ?? ""),
+                        ) ?? [];
+                        const own = all.find((n) => n.user_id === myUserId) ?? null;
+                        const others = all.filter((n) => n.user_id !== myUserId);
+                        return (
+                          <CompetitionResultRow
+                            key={r.id}
+                            row={r}
+                            athleteKey={key}
+                            note={own}
+                            otherNotes={others}
+                            labelMap={labelMap}
+                            seasonTop={seasonTop.get(r.id) ?? null}
+                          />
+                        );
+                      })}
                     </ul>
                   </li>
                 ))}
@@ -619,11 +652,15 @@ function CompetitionResultRow({
   row,
   athleteKey,
   note,
+  otherNotes = [],
+  labelMap,
   seasonTop,
 }: {
   row: AthleteResultRow;
   athleteKey: string;
   note: AthleteNote | null;
+  otherNotes?: AthleteNote[];
+  labelMap?: Map<string, string>;
   seasonTop: SeasonTopFlag | null;
 }) {
   const queryClient = useQueryClient();
@@ -745,6 +782,21 @@ function CompetitionResultRow({
           </div>
         )}
       </div>
+      {otherNotes.length > 0 && (
+        <ul className="mt-1 space-y-1">
+          {otherNotes.map((n) => (
+            <li
+              key={n.id}
+              className="rounded-md border bg-muted/20 p-1.5 text-[11px]"
+            >
+              <p className="mb-0.5 text-[10px] text-muted-foreground">
+                {labelMap?.get(n.user_id) ?? "Tiimiläinen"}
+              </p>
+              <p className="whitespace-pre-wrap">{n.note}</p>
+            </li>
+          ))}
+        </ul>
+      )}
     </li>
   );
 }
