@@ -392,8 +392,15 @@ function AllocationRow({
   round: Round;
   showRank: "result" | "position";
 }) {
+  const [competitionId] = useCompetitionId();
   const rank = showRank === "result" ? a.ResultRank : a.Position;
-  const eff = a.Result ? effectiveRecord(round.EventId, a) : null;
+  const eff = a.Result
+    ? effectiveRecord(round.EventId, a, {
+        competitionId,
+        athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
+        eventName: round.EventName,
+      })
+    : null;
   const recordKind =
     a.Result && eff ? detectRecord(round.Category, a.Result, eff.pb, eff.sb) : null;
   return (
