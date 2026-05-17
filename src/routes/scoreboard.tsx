@@ -651,6 +651,7 @@ function ScoreRow({
     return (
       <li
         style={heightStyle}
+        data-alloc-id={row.AllocId}
         className={`flex min-h-0 flex-col gap-1.5 overflow-hidden rounded-xl border-2 px-2 py-1.5 ${
           isLeader ? "border-primary bg-primary/10" : "border-border bg-card"
         }`}
@@ -668,6 +669,7 @@ function ScoreRow({
   return (
     <li
       style={heightStyle}
+      data-alloc-id={row.AllocId}
       className={`flex min-h-0 items-center gap-2 overflow-hidden rounded-xl border-2 px-3 py-2 sm:gap-3 sm:px-4 ${
         isLeader ? "border-primary bg-primary/10" : "border-border bg-card"
       }`}
