@@ -120,9 +120,10 @@ export function competitionScheduleQueryOptions(competitionId: number) {
       ]);
       return { rounds: r, name: p?.Competition?.Name ?? "" };
     },
-    staleTime: 10_000,
+    staleTime: 0,
     gcTime: 10 * 60_000,
     refetchInterval: 15_000,
+    refetchIntervalInBackground: true,
     refetchOnWindowFocus: false,
   });
 }
@@ -146,9 +147,10 @@ export function eventDetailsQueryOptions(
       await loadBaselines(competitionId, eventId);
       return ev;
     },
-    staleTime: 10_000,
+    staleTime: 0,
     gcTime: 10 * 60_000,
     refetchInterval: 15_000,
+    refetchIntervalInBackground: true,
     refetchOnWindowFocus: false,
     enabled: Number.isFinite(eventId) && eventId > 0,
   });
