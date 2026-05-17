@@ -52,13 +52,13 @@ export function LiveTicker({
     return (
       <button
         onClick={() => setTickerEnabled(source, true)}
-        className="fixed bottom-3 right-3 z-40 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold shadow-lg hover:bg-secondary"
+        className="fixed bottom-3 right-3 z-40 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold shadow-lg hover:bg-secondary"
         aria-label={`Näytä ${label.toLowerCase()} ticker`}
       >
-        <Eye className="h-3.5 w-3.5" />
+        <Eye className="h-5 w-5" />
         Näytä {label.toLowerCase()} ticker
         {unreadCount > 0 && (
-          <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary-foreground">
+          <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold tabular-nums text-primary-foreground">
             {unreadCount}
           </span>
         )}
@@ -73,8 +73,8 @@ export function LiveTicker({
       <>
         {expanded && (
           <div className="fixed inset-x-0 bottom-12 z-40 border-t border-border bg-card/95 backdrop-blur animate-fade-in">
-            <div className="mx-auto max-h-[40vh] max-w-[1600px] overflow-y-auto px-4 py-3">
-              <ol className="space-y-1.5">
+          <div className="mx-auto max-h-[40vh] max-w-[1600px] overflow-y-auto px-4 py-3">
+            <ol className="space-y-2">
                 {messages.map((m) => (
                   <MessageRow key={m.id} m={m} unread={m.timestamp > lastReadAt} />
                 ))}
@@ -87,17 +87,17 @@ export function LiveTicker({
             setExpanded((v) => !v);
             if (!expanded) markTickerRead(source);
           }}
-          className="fixed bottom-3 right-3 z-40 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold shadow-lg hover:bg-secondary"
+          className="fixed bottom-3 right-3 z-40 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold shadow-lg hover:bg-secondary"
           aria-label={`Näytä ${label.toLowerCase()} historia`}
         >
           {expanded ? (
-            <ChevronDown className="h-3.5 w-3.5" />
+            <ChevronDown className="h-5 w-5" />
           ) : (
-            <ChevronUp className="h-3.5 w-3.5" />
+            <ChevronUp className="h-5 w-5" />
           )}
           {label} historia ({messages.length})
           {!expanded && unreadCount > 0 && (
-            <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary-foreground">
+            <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold tabular-nums text-primary-foreground">
               {unreadCount}
             </span>
           )}
