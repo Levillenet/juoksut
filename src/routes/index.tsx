@@ -343,9 +343,11 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
         </div>
 
         <div className="mx-auto px-4 pb-3 max-w-2xl">
-          <p className="mb-1 text-[11px] font-medium text-muted-foreground">
-            Valitse tästä seurattava kilpailu
-          </p>
+          <div className="mb-2 rounded-lg bg-primary/10 px-3 py-2 text-center">
+            <p className="text-sm font-extrabold uppercase tracking-wider text-primary">
+              Valitse kilpailu live seurantaan tästä
+            </p>
+          </div>
           <CompetitionSwitcher className="w-full" confirmOnChange={isOfficial} />
         </div>
 
