@@ -24,6 +24,7 @@ import { ClubTodaySection } from "@/components/ClubTodaySection";
 import { LiveCompetitionsSection } from "@/components/LiveCompetitionsSection";
 import { SeasonStatsSection } from "@/components/SeasonStatsSection";
 import { Button } from "@/components/ui/button";
+import { NoteLinkInvitesBanner } from "@/components/NoteLinkInvitesBanner";
 import { useRefreshIntervalSec } from "@/lib/settings-store";
 
 export const Route = createFileRoute("/")({
