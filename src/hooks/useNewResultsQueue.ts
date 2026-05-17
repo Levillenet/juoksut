@@ -39,6 +39,7 @@ export function useNewResultsQueue(
               eventName: ev.Name,
               eventCategory: ev.EventCategory ?? "",
               heatIndex: heat.Index,
+              attemptIndex: visualState.attemptIndex,
             });
           }
         }
