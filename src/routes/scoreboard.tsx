@@ -1,8 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Maximize2 } from "lucide-react";
+import {
+  NewResultOverlay,
+  type NewResultItem,
+} from "@/components/announcer/NewResultOverlay";
 
 import {
   competitionScheduleQueryOptions,
