@@ -24,6 +24,7 @@ import { ClubTodaySection } from "@/components/ClubTodaySection";
 import { LiveCompetitionsSection } from "@/components/LiveCompetitionsSection";
 import { SeasonStatsSection } from "@/components/SeasonStatsSection";
 import { Button } from "@/components/ui/button";
+import { NoteLinkInvitesBanner } from "@/components/NoteLinkInvitesBanner";
 import { useRefreshIntervalSec } from "@/lib/settings-store";
 
 export const Route = createFileRoute("/")({
@@ -200,7 +201,7 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
 }
 
 function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const [competitionId] = useCompetitionId();
   const isOfficial = role === "official" && !isAdmin;
   const [data, setData] = useState<RoundsByDate | null>(null);
@@ -313,6 +314,11 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
               Kisa #{competitionId}
               {updatedAt && ` · päivitetty ${formatClock(updatedAt)}`}
             </p>
+            {user?.email && (
+              <p className="truncate text-[11px] text-muted-foreground">
+                Kirjautunut: <span className="font-medium">{user.email}</span>
+              </p>
+            )}
           </div>
           <h2 className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-lg font-black uppercase tracking-widest text-primary xl:block">
             {isOfficial ? "Toimitsija" : "Päivän lajit"}
@@ -375,6 +381,7 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
       </header>
 
       <main className="mx-auto max-w-2xl px-4 py-4">
+        <NoteLinkInvitesBanner />
         {error && (
           <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
