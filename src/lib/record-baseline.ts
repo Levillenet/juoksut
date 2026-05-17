@@ -119,9 +119,6 @@ export function effectiveRecord(
   const b = getCachedBaseline(eventId, alloc.Id);
   let pb = b?.pb || alloc.PB || "";
   if (!pb && history) {
-    // Lazy import to avoid a cycle (history-baseline imports athlete-history).
-    // getHistoricalBest is a synchronous cache read.
-    const { getHistoricalBest } = require("@/lib/history-baseline") as typeof import("@/lib/history-baseline");
     pb = getHistoricalBest(history.competitionId, history.athleteKey, history.eventName) ?? "";
   }
   return {
