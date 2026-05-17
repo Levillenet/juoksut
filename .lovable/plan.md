@@ -1,22 +1,32 @@
-## Ongelma
+## Tavoite
 
-Tickeriin tulee viestejä myös kentälajeista jotka ovat jo päättyneet (lopputulokset olemassa). Esim. "Ella Silvennoinen johtaa T8 3-ottelu Kuula -kilpailua: 4.45" vaikka kisa on jo Official.
+Kun `/round/$eventId/$roundId` -näkymässä (tapahtumapaikan live) ilmestyy uusi tulos kilpailijalle, sen rivi korostuu hetkeksi näytön keskellä isona "kortti tulee kameraa kohti" -animaationa ja liukuu sitten omalle paikalleen erä- ja lopputuloslistassa.
 
-Syy: `useFieldLeaderChanges` käsittelee kaikki `details`-välimuistin kentälajit. Baseline-viesti tarkistaa `hasLiveRound`, mutta:
-1. Ensimmäisellä havainnolla tapahtuma voi olla jo päättynyt — baseline ei pitäisi pushata, ja nykyisin ei pushaakaan ellei ole Progress-erää. Mutta jos detail latautuu juuri kun viimeinen erä on vielä Progress, ja seuraavalla pollauksella status muuttuu Official, edellinen viesti jää tickeriin näkyviin pitkäksi aikaa.
-2. Käyttäjän esimerkissä viesti ilmestyy päättyneestä kisasta — tarkoittaa että `hasLiveRound`-tarkistus joko ei toimi (esim. Round.Status ei ole "Progress" vaan jokin muu välitila) tai välimuistissa oleva data on vanhentunut.
+## Toteutus
 
-## Korjaus
+1. **Tunnista uudet tulokset**: lisätään `useRef<Map<allocId, prevResult>>` joka tallentaa edellisen pollauksen tuloksen jokaiselle kilpailijalle. Kun `detailQuery.data` päivittyy ja jonkun `Result` muuttui tyhjästä arvolliseksi (tai parani aiemmasta), merkitään `allocId` "juuri syntyneeksi tulokseksi" lyhyeksi aikaa (esim. 2.5 s). Ensimmäisellä latauksella ei animoida mitään — vain baseline-tallennus.
 
-1. **Tiukenna ehtoa `useFieldLeaderChanges.ts:ssä`**: ennen kuin pushataan mitään viestiä (baseline, kärjen vaihto, parannus), tarkista että tapahtumassa on aktiivinen erä — eli ainakin yksi `Round` jonka `Status === "Progress"`. Jos kaikki erät ovat `Official` / `Unofficial` / `Final` tms., ohitetaan koko tapahtuma ja päivitetään silti `snapshotsRef`, jotta seuraavalla mahdollisella uudella kierroksella vertailu pelaa.
+2. **Overlay-animaatio**: kun uusi tulos havaitaan, renderöidään fixed-position overlay (`position: fixed; inset: 0; pointer-events: none; z-index: 60`) jossa on iso versio tuloskortista (nimi, seura, tulos, sija, mahdollinen RecordBadge). Animaatio kahdessa vaiheessa:
+   - **Vaihe 1 (0–600 ms)**: kortti ilmestyy keskeltä `scale(0.3) → scale(1.15)`, opacity `0 → 1`, pieni `translateZ`-tyyppinen vaikutelma blur+shadow:lla. Tausta saa tumman puolittain läpinäkyvän tason.
+   - **Vaihe 2 (600–1800 ms)**: kortti pysyy paikoillaan ~1.2 s jotta yleisö ehtii lukea.
+   - **Vaihe 3 (1800–2500 ms)**: kortti animoituu FLIP-tyylillä omalle paikalleen listassa: mitataan kohdesijainnin `getBoundingClientRect()` ja interpoloidaan position/scale/opacity sinne, samalla overlay häipyy.
 
-2. **Suodata tickerin näyttölogiikassa myös vanhat viestit**: `LiveTicker` näyttää viimeisimmän viestin riippumatta siitä onko tapahtuma vielä käynnissä. Lisätään `ticker-store`en mahdollisuus merkitä viesti "stale", ja `useAnnouncerData`-tason efekti poistaa/piilottaa viestit niiden tapahtumien osalta jotka ovat siirtyneet completed-listalle. Vaihtoehtoisesti yksinkertaisempi: kun tapahtuma siirtyy `completedEvents`-listalle, poistetaan kaikki sen `eventId`:hen liittyvät tickerit storesta.
+3. **Listan järjestysmuutos**: kun uusi tulos lisätään, `overall`-järjestys saattaa muuttua. Sallitaan tämä luonnollinen DOM-uudelleenjärjestys, ja käytetään pientä CSS-transitionia listan riveille (`transition: transform 400 ms`) FLIP-tekniikalla niin että muut rivit liukuvat ylös/alas pehmeästi. Käytetään React-tasolla yksinkertaisuuden vuoksi `framer-motion`in `LayoutGroup` + `motion.li layout` molemmissa listoissa (erälistat + lopputuloslista).
 
-Toteutus: lisätään `removeTickerMessagesForEvent(eventId)` `ticker-store.ts`:ään ja kutsutaan sitä `useFieldLeaderChanges` (tai uudessa pienessä hookissa) kun havaitaan että aiemmin seurattu kenttälaji ei enää sisällä yhtään Progress-erää.
+4. **Useat samanaikaiset tulokset**: jos pollaus tuo monta uutta tulosta yhdellä kertaa, jonotetaan animaatiot peräkkäin (FIFO-queue), jokainen yllä kuvattu 2.5 s sekvenssi. Listan FLIP-liike voi tapahtua rinnakkain.
 
-## Tiedostot
+5. **Sijoittelu**: overlay-kortti keskitetään viewporttiin (`top: 50%; left: 50%; transform: translate(-50%, -50%) scale(...)`). Kohdesijainti haetaan datan attribuutista `data-alloc-id={a.AllocId}` joka lisätään listariveihin (sekä erä- että lopputuloslistassa). Mietitään tilanne jossa kilpailija näkyy molemmissa listoissa: kohteena käytetään lopputuloslistan riviä jos olemassa, muuten erärivi.
 
-- `src/hooks/useFieldLeaderChanges.ts` — tiukenna push-ehtoa, kutsu remove-funktiota kun tapahtuma päättyy
-- `src/lib/ticker-store.ts` — lisää `removeTickerMessagesForEvent(eventId, source?)`
+6. **Pois käytöstä**: lisätään pieni asetus / oletus että animaatio toimii vain kun `round.Status === "Progress"` ja sivu on näkyvissä (`document.visibilityState === "visible"`). Reduced motion: jos `prefers-reduced-motion`, overlay vain fade-in/out ilman zoomia ja listan FLIP pois.
 
-Ei muutoksia UI-komponentteihin, asetuksiin tai tulostenhakuun.
+## Tekniset tiedostot
+
+- `src/routes/round.$eventId.$roundId.tsx` — uusi efekti `prevResultsRef`-vertailulle + animaatiojono + overlay-renderöinti + `data-alloc-id` -attribuutit. Korvataan listojen `<li>` `motion.li`:llä `layout`-propilla.
+- Uusi `src/components/announcer/NewResultOverlay.tsx` — overlay-komponentti (tausta + kortti, hoitaa keyframe-animaation `framer-motion`illa).
+- `framer-motion` lisätään riippuvuuksiin jos ei ole jo (tarkistettava `package.json`; vaihtoehtoisesti voidaan toteuttaa pelkillä Tailwind/CSS-keyframeilla, mutta FLIP-listalle motion on selkeästi yksinkertaisin).
+
+## Mitä EI muuteta
+
+- Tulosten haku / polling-logiikka (`useQuery`-asetukset) säilyy ennallaan.
+- Muiden näkymien (combined, planning) animaatiot, ticker-logiikka, asetukset.
+- Olemassa olevat värit / fontit / asettelu — vain animaatio lisätään päälle.
