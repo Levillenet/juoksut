@@ -9,8 +9,6 @@ import { UpcomingSection } from "@/components/announcer/UpcomingSection";
 import { LiveTicker } from "@/components/announcer/LiveTicker";
 import { AnnouncerLayoutControls } from "@/components/announcer/AnnouncerLayoutControls";
 import { useFieldLeaderChanges } from "@/hooks/useFieldLeaderChanges";
-import { useNewResultsQueue } from "@/hooks/useNewResultsQueue";
-import { NewResultOverlay } from "@/components/announcer/NewResultOverlay";
 import {
   useAnnouncerViewLayout,
   type AnnouncerColumnConfig,
@@ -24,10 +22,6 @@ function AnnouncerLive() {
   const data = useAnnouncerData();
   const liveEventIds = new Set(data.inProgressVisible.map((r) => r.EventId));
   useFieldLeaderChanges(data.details, liveEventIds);
-  const { current: newResult, onDone: newResultDone } = useNewResultsQueue(
-    data.details,
-    liveEventIds,
-  );
   const [layout] = useAnnouncerViewLayout("live");
 
   const visibleCols = layout.columns.filter((c) => c.visible);
@@ -80,7 +74,6 @@ function AnnouncerLive() {
         </p>
       </main>
       <LiveTicker source="announcer" />
-      <NewResultOverlay item={newResult} onDone={newResultDone} />
     </div>
   );
 }
