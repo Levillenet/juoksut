@@ -618,19 +618,24 @@ function AthletePage() {
                       </p>
                     )}
                     <ul className="divide-y divide-border text-xs">
-                      {c.results.map((r) => (
-                        <CompetitionResultRow
-                          key={r.id}
-                          row={r}
-                          athleteKey={key}
-                          note={
-                            notesQuery.data?.get(
-                              noteKey(r.competition_id, r.event_name, r.sub_category ?? ""),
-                            ) ?? null
-                          }
-                          seasonTop={seasonTop.get(r.id) ?? null}
-                        />
-                      ))}
+                      {c.results.map((r) => {
+                        const all = notesQuery.data?.get(
+                          noteKey(r.competition_id, r.event_name, r.sub_category ?? ""),
+                        ) ?? [];
+                        const own = all.find((n) => n.user_id === myUserId) ?? null;
+                        const others = all.filter((n) => n.user_id !== myUserId);
+                        return (
+                          <CompetitionResultRow
+                            key={r.id}
+                            row={r}
+                            athleteKey={key}
+                            note={own}
+                            otherNotes={others}
+                            labelMap={labelMap}
+                            seasonTop={seasonTop.get(r.id) ?? null}
+                          />
+                        );
+                      })}
                     </ul>
                   </li>
                 ))}
