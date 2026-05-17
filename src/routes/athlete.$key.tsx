@@ -782,6 +782,21 @@ function CompetitionResultRow({
           </div>
         )}
       </div>
+      {otherNotes.length > 0 && (
+        <ul className="mt-1 space-y-1">
+          {otherNotes.map((n) => (
+            <li
+              key={n.id}
+              className="rounded-md border bg-muted/20 p-1.5 text-[11px]"
+            >
+              <p className="mb-0.5 text-[10px] text-muted-foreground">
+                {labelMap?.get(n.user_id) ?? "Tiimiläinen"}
+              </p>
+              <p className="whitespace-pre-wrap">{n.note}</p>
+            </li>
+          ))}
+        </ul>
+      )}
     </li>
   );
 }
