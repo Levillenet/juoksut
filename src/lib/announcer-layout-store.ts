@@ -168,7 +168,10 @@ async function pushRemote(next: AllSettings) {
     if (!userId) return;
     await supabase
       .from(REMOTE_TABLE)
-      .upsert({ user_id: userId, settings: next as unknown as Record<string, unknown> }, { onConflict: "user_id" });
+      .upsert(
+        { user_id: userId, settings: next as never },
+        { onConflict: "user_id" },
+      );
   } catch {
     /* ignore network errors */
   }
