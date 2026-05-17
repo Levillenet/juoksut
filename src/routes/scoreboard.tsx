@@ -274,6 +274,47 @@ function ScoreboardLive() {
 
   const visible = top === "all" ? rows : rows.slice(0, top);
 
+  // Detect newly-arrived results to trigger overlay (works even if athlete is
+  // outside the visible top N — overlay just animates without a row target).
+  const prevResultsRef = useRef<Map<number, string>>(new Map());
+  const initializedRef = useRef(false);
+  const [queue, setQueue] = useState<NewResultItem[]>([]);
+  const [currentOverlay, setCurrentOverlay] = useState<NewResultItem | null>(null);
+
+  useEffect(() => {
+    if (!ev || !round) return;
+    const isLive = round.Status === "Progress";
+    const next = new Map<number, string>();
+    const newItems: NewResultItem[] = [];
+    for (const heat of round.Heats) {
+      for (const a of heat.Allocations) {
+        if (!a.Result) continue;
+        next.set(a.AllocId, a.Result);
+        const prev = prevResultsRef.current.get(a.AllocId);
+        if (initializedRef.current && isLive && prev !== a.Result) {
+          newItems.push({
+            key: `${a.AllocId}-${a.Result}-${Date.now()}`,
+            alloc: a,
+            eventId: ev.Id,
+            eventCategory: ev.EventCategory ?? "",
+            heatIndex: heat.Index,
+          });
+        }
+      }
+    }
+    prevResultsRef.current = next;
+    initializedRef.current = true;
+    if (newItems.length) setQueue((q) => [...q, ...newItems]);
+  }, [ev, round]);
+
+  useEffect(() => {
+    if (currentOverlay || queue.length === 0) return;
+    setCurrentOverlay(queue[0]);
+    setQueue((q) => q.slice(1));
+  }, [currentOverlay, queue]);
+
+  const handleOverlayDone = useCallback(() => setCurrentOverlay(null), []);
+
   // Wind: prefer first heat's wind; fallback to most recent allocation wind.
   const wind = useMemo<number | null>(() => {
     if (!round) return null;
