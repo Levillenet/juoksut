@@ -283,7 +283,6 @@ function ScoreboardLive() {
 
   useEffect(() => {
     if (!ev || !round) return;
-    const isLive = round.Status === "Progress";
     const next = new Map<number, string>();
     const newItems: NewResultItem[] = [];
     for (const heat of round.Heats) {
@@ -291,7 +290,7 @@ function ScoreboardLive() {
         if (!a.Result) continue;
         next.set(a.AllocId, a.Result);
         const prev = prevResultsRef.current.get(a.AllocId);
-        if (initializedRef.current && isLive && prev !== a.Result) {
+        if (initializedRef.current && prev !== a.Result) {
           newItems.push({
             key: `${a.AllocId}-${a.Result}-${Date.now()}`,
             alloc: a,
