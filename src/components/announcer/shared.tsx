@@ -242,7 +242,13 @@ export function EventCard({
               const rank = a.ResultRank ?? (isTrack ? null : a.Position);
               const badgeValue = isTrack ? a.Position : rank;
               const change = rankChanges.get(a.AllocId);
-              const eff = a.Result ? effectiveRecord(round.EventId, a) : null;
+              const eff = a.Result
+                ? effectiveRecord(round.EventId, a, {
+                    competitionId,
+                    athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
+                    eventName: round.EventName,
+                  })
+                : null;
               const recordKind =
                 a.Result && eff
                   ? detectRecord(round.Category, a.Result, eff.pb, eff.sb)
