@@ -214,6 +214,66 @@ function AthletePage() {
     0,
   );
 
+  const [allNotesOpen, setAllNotesOpen] = useState(false);
+
+  // Group existing notes by event_name; include competition context from rows
+  const notesByEvent = useMemo(() => {
+    const notes = notesQuery.data;
+    if (!notes || notes.size === 0) return [] as Array<{
+      eventName: string;
+      items: Array<{
+        note: AthleteNote;
+        competitionName: string;
+        competitionDate: string | null;
+        location: string;
+      }>;
+    }>;
+    // Build a lookup: competition_id|event_name|sub_category -> row
+    const rowLookup = new Map<string, AthleteResultRow>();
+    for (const r of rows) {
+      rowLookup.set(
+        `${r.competition_id}|${r.event_name}|${r.sub_category ?? ""}`,
+        r,
+      );
+    }
+    const groupsMap = new Map<
+      string,
+      Array<{
+        note: AthleteNote;
+        competitionName: string;
+        competitionDate: string | null;
+        location: string;
+      }>
+    >();
+    for (const n of notes.values()) {
+      if (!n.note?.trim()) continue;
+      const r = rowLookup.get(
+        `${n.competition_id}|${n.event_name}|${n.sub_category ?? ""}`,
+      );
+      const list = groupsMap.get(n.event_name) ?? [];
+      list.push({
+        note: n,
+        competitionName: r?.competition_name ?? "",
+        competitionDate: r?.competition_date ?? null,
+        location: r?.location ?? "",
+      });
+      groupsMap.set(n.event_name, list);
+    }
+    return Array.from(groupsMap.entries())
+      .map(([eventName, items]) => {
+        items.sort((a, b) =>
+          (b.competitionDate ?? "").localeCompare(a.competitionDate ?? ""),
+        );
+        return { eventName, items };
+      })
+      .sort((a, b) => {
+        if (b.items.length !== a.items.length) return b.items.length - a.items.length;
+        return a.eventName.localeCompare(b.eventName, "fi");
+      });
+  }, [notesQuery.data, rows]);
+
+  const totalNotesCount = notesByEvent.reduce((n, g) => n + g.items.length, 0);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
