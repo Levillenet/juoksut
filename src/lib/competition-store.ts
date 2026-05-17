@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "./auth";
+import { supabase } from "@/integrations/supabase/client";
 
 const KEY_BASE = "tuloslista.competitionId";
 const DEFAULT_ID = 19219;
+const META_KEY = "last_competition_id";
 
 function keyFor(role: string | null): string {
   // Eri valinta toimitsija- ja käyttäjäroolille, jotta kirjautuminen
@@ -31,8 +33,18 @@ function getValue(key: string): number {
   return v;
 }
 
+function setValueLocal(key: string, next: number) {
+  valueByKey.set(key, next);
+  try {
+    localStorage.setItem(key, String(next));
+  } catch {
+    /* ignore */
+  }
+  listenersByKey.get(key)?.forEach((l) => l(next));
+}
+
 export function useCompetitionId(): [number, (id: number) => void] {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const key = keyFor(role);
   const [id, setId] = useState<number>(() => getValue(key));
 
@@ -49,14 +61,26 @@ export function useCompetitionId(): [number, (id: number) => void] {
     };
   }, [key]);
 
+  // Hydrate from user metadata when (re)logging in — overrides local default
+  // so the last selected competition follows the user across devices/sessions.
+  useEffect(() => {
+    if (!user) return;
+    const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const raw = meta[META_KEY];
+    const remote = typeof raw === "number" ? raw : typeof raw === "string" ? parseInt(raw, 10) : NaN;
+    if (!Number.isFinite(remote) || remote <= 0) return;
+    if (getValue(key) === remote) return;
+    setValueLocal(key, remote);
+  }, [user, key]);
+
   const update = (next: number) => {
-    valueByKey.set(key, next);
-    try {
-      localStorage.setItem(key, String(next));
-    } catch {
-      /* ignore */
+    setValueLocal(key, next);
+    // Persist per-user so the choice survives logout/login on any device.
+    if (user) {
+      void supabase.auth.updateUser({ data: { [META_KEY]: next } }).catch(() => {
+        /* ignore — local copy still saved */
+      });
     }
-    listenersByKey.get(key)?.forEach((l) => l(next));
   };
 
   return [id, update];
