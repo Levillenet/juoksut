@@ -22,7 +22,7 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsGate() {
-  const { role, loading } = useAuth();
+  const { role, loading, user } = useAuth();
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
@@ -31,10 +31,12 @@ function SettingsGate() {
     );
   }
   if (!role) return <Navigate to="/login" />;
-  return <SettingsPage />;
+  const isAdmin = (user?.email ?? "").toLowerCase() === "samiaavikko@gmail.com";
+  const showOfficialSections = role === "official" || isAdmin;
+  return <SettingsPage showOfficialSections={showOfficialSections} />;
 }
 
-function SettingsPage() {
+function SettingsPage({ showOfficialSections }: { showOfficialSections: boolean }) {
   const [refreshSec, setRefreshSec] = useRefreshIntervalSec();
 
   return (
