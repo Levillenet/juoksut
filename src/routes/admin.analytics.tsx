@@ -59,10 +59,13 @@ function Page() {
     const byEvent = new Map<string, number>();
     const byPath = new Map<string, number>();
     const byDay = new Map<string, number>();
+    const byDayUniqueSets = new Map<string, Set<string>>();
     const byRole = new Map<string, number>();
     const byAthlete = new Map<string, { count: number; name: string | null }>();
     const byCompetition = new Map<string, { count: number; name: string | null }>();
     const uniqueUsers = new Set<string>();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayUsers = new Set<string>();
     const last24h = Date.now() - 24 * 3600 * 1000;
     let last24hCount = 0;
     for (const r of rows) {
@@ -71,6 +74,16 @@ function Page() {
       const day = r.created_at.slice(0, 10);
       byDay.set(day, (byDay.get(day) ?? 0) + 1);
       byRole.set(r.role ?? "anon", (byRole.get(r.role ?? "anon") ?? 0) + 1);
+      const visitorId = r.user_id ?? r.user_email ?? r.user_agent ?? null;
+      if (visitorId) {
+        let set = byDayUniqueSets.get(day);
+        if (!set) {
+          set = new Set<string>();
+          byDayUniqueSets.set(day, set);
+        }
+        set.add(visitorId);
+        if (day === todayStr) todayUsers.add(visitorId);
+      }
       if (r.user_id) uniqueUsers.add(r.user_id);
       if (new Date(r.created_at).getTime() >= last24h) last24hCount++;
 
@@ -104,13 +117,18 @@ function Page() {
       Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
     const sortDescObj = <T extends { count: number }>(m: Map<string, T>) =>
       Array.from(m.entries()).sort((a, b) => b[1].count - a[1].count);
+    const byDayUnique: [string, number][] = Array.from(byDayUniqueSets.entries())
+      .map(([d, s]) => [d, s.size] as [string, number])
+      .sort((a, b) => (a[0] < b[0] ? 1 : -1));
     return {
       total: rows.length,
       last24h: last24hCount,
       uniqueUsers: uniqueUsers.size,
+      todayUsers: todayUsers.size,
       byEvent: sortDesc(byEvent),
       byPath: sortDesc(byPath),
       byDay: Array.from(byDay.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1)),
+      byDayUnique,
       byRole: sortDesc(byRole),
       byAthlete: sortDescObj(byAthlete),
       byCompetition: sortDescObj(byCompetition),
@@ -184,9 +202,10 @@ function Page() {
           </p>
         )}
 
-        <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <StatCard label="Tapahtumia yhteensä" value={stats.total} />
           <StatCard label="Viim. 24h" value={stats.last24h} />
+          <StatCard label="Käyttäjät tänään" value={stats.todayUsers} />
           <StatCard label="Uniikkeja käyttäjiä" value={stats.uniqueUsers} />
           <StatCard label="Päiviä" value={stats.byDay.length} />
         </section>
@@ -215,8 +234,12 @@ function Page() {
           <NamedTable data={stats.byCompetition} keyLabel="Kilpailu" />
         </Section>
 
-        <Section title="Päivittäin">
+        <Section title="Päivittäin (tapahtumat)">
           <Table data={stats.byDay} keyLabel="Päivä" />
+        </Section>
+
+        <Section title="Päivittäin (uniikit käyttäjät)">
+          <Table data={stats.byDayUnique} keyLabel="Päivä" />
         </Section>
 
         <Section title="Viimeisimmät tapahtumat (50)">
