@@ -69,9 +69,6 @@ export function InProgressSection({
       ) : (
         <div className={gridClass}>
           {inProgressVisible.map((r) => {
-            const isOpen = defaultOpen ? !expanded.has(r.EventId) ? true : true : expanded.has(r.EventId);
-            // Simpler: when defaultOpen, treat open=true unless user explicitly collapsed.
-            // For now: defaultOpen forces open and disables individual toggle.
             const open = defaultOpen ? true : expanded.has(r.EventId);
             return (
               <EventCard
