@@ -284,7 +284,7 @@ function RoundView() {
           )}
         </LayoutGroup>
       </main>
-      <NewResultOverlay item={current} onDone={handleOverlayDone} />
+      
     </div>
   );
 }
