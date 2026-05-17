@@ -52,13 +52,13 @@ export function LiveTicker({
     return (
       <button
         onClick={() => setTickerEnabled(source, true)}
-        className="fixed bottom-3 right-3 z-40 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold shadow-lg hover:bg-secondary"
+        className="fixed bottom-3 right-3 z-40 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold shadow-lg hover:bg-secondary"
         aria-label={`Näytä ${label.toLowerCase()} ticker`}
       >
-        <Eye className="h-3.5 w-3.5" />
+        <Eye className="h-5 w-5" />
         Näytä {label.toLowerCase()} ticker
         {unreadCount > 0 && (
-          <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary-foreground">
+          <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold tabular-nums text-primary-foreground">
             {unreadCount}
           </span>
         )}
@@ -73,8 +73,8 @@ export function LiveTicker({
       <>
         {expanded && (
           <div className="fixed inset-x-0 bottom-12 z-40 border-t border-border bg-card/95 backdrop-blur animate-fade-in">
-            <div className="mx-auto max-h-[40vh] max-w-[1600px] overflow-y-auto px-4 py-3">
-              <ol className="space-y-1.5">
+          <div className="mx-auto max-h-[40vh] max-w-[1600px] overflow-y-auto px-4 py-3">
+            <ol className="space-y-2">
                 {messages.map((m) => (
                   <MessageRow key={m.id} m={m} unread={m.timestamp > lastReadAt} />
                 ))}
@@ -87,17 +87,17 @@ export function LiveTicker({
             setExpanded((v) => !v);
             if (!expanded) markTickerRead(source);
           }}
-          className="fixed bottom-3 right-3 z-40 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold shadow-lg hover:bg-secondary"
+          className="fixed bottom-3 right-3 z-40 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold shadow-lg hover:bg-secondary"
           aria-label={`Näytä ${label.toLowerCase()} historia`}
         >
           {expanded ? (
-            <ChevronDown className="h-3.5 w-3.5" />
+            <ChevronDown className="h-5 w-5" />
           ) : (
-            <ChevronUp className="h-3.5 w-3.5" />
+            <ChevronUp className="h-5 w-5" />
           )}
           {label} historia ({messages.length})
           {!expanded && unreadCount > 0 && (
-            <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary-foreground">
+            <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold tabular-nums text-primary-foreground">
               {unreadCount}
             </span>
           )}
@@ -109,14 +109,14 @@ export function LiveTicker({
   return (
     <>
       {expanded && (
-        <div className="fixed inset-x-0 bottom-11 z-40 border-t border-border bg-card/95 backdrop-blur animate-fade-in">
+      <div className="fixed inset-x-0 bottom-14 z-40 border-t border-border bg-card/95 backdrop-blur animate-fade-in">
           <div className="mx-auto max-h-[40vh] max-w-[1600px] overflow-y-auto px-4 py-3">
             {messages.length === 0 ? (
-              <p className="py-4 text-center text-xs text-muted-foreground">
+              <p className="py-4 text-center text-sm text-muted-foreground">
                 Ei viestejä vielä.
               </p>
             ) : (
-              <ol className="space-y-1.5">
+              <ol className="space-y-2">
                 {messages.map((m) => (
                   <MessageRow key={m.id} m={m} unread={m.timestamp > lastReadAt} />
                 ))}
@@ -126,10 +126,10 @@ export function LiveTicker({
         </div>
       )}
 
-      <div className="fixed inset-x-0 bottom-0 z-50 h-11 border-t border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex h-full max-w-[1600px] items-center gap-2 px-3 sm:px-4">
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-primary">
-            <Radio className="h-3 w-3 animate-pulse" />
+      <div className="fixed inset-x-0 bottom-0 z-50 h-14 border-t border-border bg-card/95 backdrop-blur">
+        <div className="mx-auto flex h-full max-w-[1600px] items-center gap-3 px-4 sm:px-6">
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-xs font-black uppercase tracking-widest text-primary">
+            <Radio className="h-4 w-4 animate-pulse" />
             {label}
           </span>
 
@@ -137,15 +137,15 @@ export function LiveTicker({
             {latest ? (
               <div
                 key={latestKey}
-                className="flex animate-fade-in items-center gap-2 text-sm"
+                className="flex animate-fade-in items-center gap-2 text-base"
               >
-                <span className="shrink-0 text-[10px] font-semibold tabular-nums text-muted-foreground">
+                <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
                   {formatTime(latest.timestamp)}
                 </span>
                 <p className="truncate font-medium">{latest.text}</p>
               </div>
             ) : (
-              <p className="truncate text-xs text-muted-foreground">{empty}</p>
+              <p className="truncate text-sm text-muted-foreground">{empty}</p>
             )}
           </div>
 
@@ -154,17 +154,17 @@ export function LiveTicker({
               setExpanded((v) => !v);
               if (!expanded) markTickerRead(source);
             }}
-            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-semibold hover:bg-secondary"
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-semibold hover:bg-secondary"
             aria-label={expanded ? "Sulje historia" : "Avaa historia"}
           >
             {messages.length}
             {expanded ? (
-              <ChevronDown className="h-3.5 w-3.5" />
+              <ChevronDown className="h-5 w-5" />
             ) : (
-              <ChevronUp className="h-3.5 w-3.5" />
+              <ChevronUp className="h-5 w-5" />
             )}
             {!expanded && unreadCount > 0 && (
-              <span className="rounded-full bg-primary px-1 text-[9px] font-bold leading-4 text-primary-foreground">
+              <span className="rounded-full bg-primary px-1.5 text-xs font-bold leading-4 text-primary-foreground">
                 {unreadCount}
               </span>
             )}
@@ -172,11 +172,11 @@ export function LiveTicker({
 
           <button
             onClick={() => setTickerEnabled(source, false)}
-            className="inline-flex shrink-0 items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
+            className="inline-flex shrink-0 items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
             aria-label="Piilota ticker"
             title="Piilota ticker"
           >
-            <EyeOff className="h-4 w-4" />
+            <EyeOff className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -187,16 +187,16 @@ export function LiveTicker({
 function MessageRow({ m, unread }: { m: TickerMessage; unread: boolean }) {
   return (
     <li
-      className={`flex items-start gap-2 rounded-md px-2 py-1.5 text-sm ${
+      className={`flex items-start gap-2 rounded-md px-3 py-2 text-base ${
         unread ? "bg-primary/10" : "bg-muted/40"
       }`}
     >
-      <span className="shrink-0 text-[10px] font-semibold tabular-nums text-muted-foreground">
+      <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
         {formatTime(m.timestamp)}
       </span>
       <p className="min-w-0 flex-1 leading-snug">{m.text}</p>
       {unread && (
-        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
+        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
       )}
     </li>
   );
