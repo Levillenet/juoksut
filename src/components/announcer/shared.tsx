@@ -71,12 +71,15 @@ export function EventCard({
   live = false,
   open = false,
   onToggle,
+  rankLimit = "all",
 }: {
   round: Round;
   detail?: EventResults;
   live?: boolean;
   open?: boolean;
   onToggle?: () => void;
+  /** When open, cap the number of ranked rows shown. "all" = unlimited. */
+  rankLimit?: 5 | 10 | "all";
 }) {
   const top3 = useMemo(() => rankedTop(detail, 3), [detail]);
   const allRanked = useMemo(
@@ -90,7 +93,8 @@ export function EventCard({
         }),
     [detail],
   );
-  const list = open ? allRanked : top3;
+  const openList = rankLimit === "all" ? allRanked : allRanked.slice(0, rankLimit);
+  const list = open ? openList : top3;
 
   const prevRanksRef = useRef<Map<number, number>>(new Map());
   const [rankChanges, setRankChanges] = useState<Map<number, "up" | "down">>(
