@@ -39,9 +39,13 @@ export function NewResultOverlay({ item, onDone }: Props) {
 
     const holdTimer = setTimeout(() => {
       // Measure target DOM location.
-      const el = document.querySelector<HTMLElement>(
-        `[data-alloc-id="${item.alloc.AllocId}"]`,
-      );
+      const el =
+        document.querySelector<HTMLElement>(
+          `[data-alloc-id="${item.alloc.AllocId}"]`,
+        ) ??
+        document.querySelector<HTMLElement>(
+          `[data-alloc-id="heat-${item.alloc.AllocId}"]`,
+        );
       if (el) {
         const rect = el.getBoundingClientRect();
         const cx = window.innerWidth / 2;
