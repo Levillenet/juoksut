@@ -26,6 +26,7 @@ import { RequireRole } from "@/components/RequireRole";
 import { effectiveRecord } from "@/lib/record-baseline";
 import { detectRecord, RecordStar } from "@/lib/records";
 import { WakeLockToggle } from "@/components/WakeLockToggle";
+import { getResultVisualState } from "@/lib/result-visualization";
 
 type TopSize = 3 | 5 | 10 | "all";
 
@@ -287,13 +288,14 @@ function ScoreboardLive() {
     const newItems: NewResultItem[] = [];
     for (const heat of round.Heats) {
       for (const a of heat.Allocations) {
-        if (!a.Result) continue;
-        next.set(a.AllocId, a.Result);
+        const visualState = getResultVisualState(a);
+        if (!visualState) continue;
+        next.set(a.AllocId, visualState.signature);
         const prev = prevResultsRef.current.get(a.AllocId);
-        if (initializedRef.current && prev !== a.Result) {
+        if (initializedRef.current && prev !== visualState.signature) {
           newItems.push({
-            key: `${a.AllocId}-${a.Result}-${Date.now()}`,
-            alloc: a,
+            key: `${a.AllocId}-${visualState.signature}-${Date.now()}`,
+            alloc: { ...a, Result: visualState.result ?? visualState.attemptResult },
             eventId: ev.Id,
             eventCategory: ev.EventCategory ?? "",
             heatIndex: heat.Index,
