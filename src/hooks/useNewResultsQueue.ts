@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DetailCache } from "@/hooks/useAnnouncerData";
 import type { NewResultItem } from "@/components/announcer/NewResultOverlay";
+import { getResultVisualState } from "@/lib/result-visualization";
 
 /**
  * Watches `details` for newly arrived per-athlete results in currently-live
@@ -27,13 +28,14 @@ export function useNewResultsQueue(
 
       for (const heat of liveRound.Heats) {
         for (const a of heat.Allocations) {
-          if (!a.Result) continue;
-          next.set(a.AllocId, a.Result);
+          const visualState = getResultVisualState(a);
+          if (!visualState) continue;
+          next.set(a.AllocId, visualState.signature);
           const prev = prevRef.current.get(a.AllocId);
-          if (initializedRef.current && prev !== a.Result) {
+          if (initializedRef.current && prev !== visualState.signature) {
             newItems.push({
-              key: `${a.AllocId}-${a.Result}-${Date.now()}`,
-              alloc: a,
+              key: `${a.AllocId}-${visualState.signature}-${Date.now()}`,
+              alloc: { ...a, Result: visualState.result ?? visualState.attemptResult },
               eventId: ev.Id,
               eventName: ev.Name,
               eventCategory: ev.EventCategory ?? "",
