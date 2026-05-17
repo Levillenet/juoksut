@@ -8,6 +8,7 @@ export interface NewResultItem {
   key: string;
   alloc: Allocation;
   eventId: number;
+  eventName?: string;
   eventCategory: string;
   heatIndex: number;
 }
@@ -45,6 +46,9 @@ export function NewResultOverlay({ item, onDone }: Props) {
         ) ??
         document.querySelector<HTMLElement>(
           `[data-alloc-id="heat-${item.alloc.AllocId}"]`,
+        ) ??
+        document.querySelector<HTMLElement>(
+          `[data-event-id="${item.eventId}"]`,
         );
       if (el) {
         const rect = el.getBoundingClientRect();
@@ -124,7 +128,7 @@ function Card({ item }: { item: NewResultItem }) {
   return (
     <div className="flex flex-col items-center gap-3 text-center">
       <span className="text-xs font-bold uppercase tracking-widest text-primary">
-        Uusi tulos · Erä {item.heatIndex}
+        Uusi tulos{item.eventName ? ` · ${item.eventName}` : ""} · Erä {item.heatIndex}
       </span>
       <h2 className="text-3xl font-black leading-tight">{a.Name}</h2>
       <p className="text-sm text-muted-foreground">
