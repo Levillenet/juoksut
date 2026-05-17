@@ -202,9 +202,10 @@ function Page() {
           </p>
         )}
 
-        <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <StatCard label="Tapahtumia yhteensä" value={stats.total} />
           <StatCard label="Viim. 24h" value={stats.last24h} />
+          <StatCard label="Käyttäjät tänään" value={stats.todayUsers} />
           <StatCard label="Uniikkeja käyttäjiä" value={stats.uniqueUsers} />
           <StatCard label="Päiviä" value={stats.byDay.length} />
         </section>
