@@ -23,12 +23,7 @@ function AnnouncerCombined() {
   useFieldLeaderChanges(data.details);
   const [layout] = useAnnouncerViewLayout("combined");
 
-  const visibleCols = layout.columns.filter((c) => {
-    if (!c.visible) return false;
-    // Älä varaa saraketilaa tyhjälle Käynnissä-osiolle.
-    if (c.id === "in_progress" && data.inProgressVisible.length === 0) return false;
-    return true;
-  });
+  const visibleCols = layout.columns.filter((c) => c.visible);
   const rows: AnnouncerColumnConfig[][] = [];
   for (let i = 0; i < visibleCols.length; i += layout.columnsPerRow) {
     rows.push(visibleCols.slice(i, i + layout.columnsPerRow));
