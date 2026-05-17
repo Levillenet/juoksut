@@ -204,8 +204,13 @@ export function NewResultOverlay({ item, onDone }: Props) {
 }
 
 function Card({ item }: { item: NewResultItem }) {
+  const [competitionId] = useCompetitionId();
   const a = item.alloc;
-  const eff = effectiveRecord(item.eventId, a);
+  const eff = effectiveRecord(item.eventId, a, {
+    competitionId,
+    athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
+    eventName: item.eventName ?? "",
+  });
   return (
     <div className="flex flex-col items-center gap-3 text-center">
       <span className="text-xs font-bold uppercase tracking-widest text-primary">
