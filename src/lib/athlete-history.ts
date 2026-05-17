@@ -128,7 +128,11 @@ export interface EventGroup {
  * same event across age classes groups together in the dashboard chart. */
 export function normalizeEventName(name: string): string {
   if (!name) return "";
-  return name.replace(/^(?:[MNTmnt][0-9]*|[Pp][0-9]+)\s+/, "").trim();
+  return name
+    .replace(/^(?:[MNTmnt][0-9]*|[Pp][0-9]+)\s+/, "")
+    .replace(/^[0-9]+-ottelu\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function groupByEvent(rows: AthleteResultRow[]): EventGroup[] {
