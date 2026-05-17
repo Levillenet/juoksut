@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { detectRecord, RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
+import { athleteKey } from "@/lib/athlete-key";
+import { useCompetitionId } from "@/lib/competition-store";
 import type { Allocation } from "@/lib/tuloslista";
 
 export interface NewResultItem {
