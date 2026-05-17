@@ -5,6 +5,8 @@ import { seasonRange, type SeasonKind } from "@/lib/season-stats";
 export function normalizeEventName(name: string): string {
   return (name ?? "")
     .replace(/^(?:[MNTmnt][0-9]*|[Pp][0-9]+)\s+/, "")
+    .replace(/^[0-9]+-ottelu\s+/i, "")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
