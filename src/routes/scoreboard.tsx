@@ -24,6 +24,8 @@ import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 import { RequireRole } from "@/components/RequireRole";
 import { effectiveRecord } from "@/lib/record-baseline";
+import { loadHistoryBaselineForCompetition } from "@/lib/history-baseline";
+import { athleteKey } from "@/lib/athlete-key";
 import { detectRecord, RecordStar } from "@/lib/records";
 import { WakeLockToggle } from "@/components/WakeLockToggle";
 import { getResultVisualState } from "@/lib/result-visualization";
