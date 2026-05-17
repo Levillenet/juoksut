@@ -191,11 +191,17 @@ export function groupByEvent(rows: AthleteResultRow[]): EventGroup[] {
     const better = (a: AthleteResultRow, b: AthleteResultRow) =>
       g.lowerBetter ? (a.result_numeric ?? Infinity) < (b.result_numeric ?? Infinity)
                     : (a.result_numeric ?? -Infinity) > (b.result_numeric ?? -Infinity);
+    // Only consider rows from the highest age class the athlete has
+    // competed in for this event — lower age classes are hidden from PBs.
+    const ranked = g.rows.filter((r) => r.result_numeric != null);
+    const maxRank = ranked.reduce((m, r) => Math.max(m, ageClassRank(r.age_class)), 0);
+    const pbCandidates = ranked.filter(
+      (r) => ageClassRank(r.age_class) === maxRank,
+    );
     let best: AthleteResultRow | null = null;
     let bestIn: AthleteResultRow | null = null;
     let bestOut: AthleteResultRow | null = null;
-    for (const r of g.rows) {
-      if (r.result_numeric == null) continue;
+    for (const r of pbCandidates) {
       if (best == null || better(r, best)) best = r;
       const indoor = isIndoorResult(r);
       if (indoor === true) {
