@@ -432,6 +432,7 @@ function ScoreboardLive() {
           </ul>
         )}
       </main>
+      <NewResultOverlay item={currentOverlay} onDone={handleOverlayDone} />
     </div>
   );
 }
