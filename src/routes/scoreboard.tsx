@@ -230,6 +230,11 @@ function ScoreboardLive() {
   const detailQ = useQuery(eventDetailsQueryOptions(competitionId, eventId!));
   const ev = detailQ.data ?? null;
 
+  useEffect(() => {
+    if (!competitionId) return;
+    void loadHistoryBaselineForCompetition(competitionId);
+  }, [competitionId]);
+
   const round = useMemo(
     () => ev?.Rounds.find((r) => r.Id === roundId) ?? ev?.Rounds[0],
     [ev, roundId],
