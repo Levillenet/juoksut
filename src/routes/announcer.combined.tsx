@@ -35,33 +35,26 @@ function AnnouncerCombined() {
         </div>
         {visibleCols.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-            Ei näytettäviä sarakkeita. Avaa “Asettelu” ja valitse vähintään yksi.
+            Ei näytettäviä sarakkeita. Avaa "Asettelu" ja valitse vähintään yksi.
           </p>
         ) : (
-          <div
-            className="grid gap-6"
-            style={{ gridTemplateColumns: `repeat(${visibleCols.length}, minmax(0, 1fr))` }}
-          >
-            {/* Mobile: single column. Desktop: use fr ratios. */}
-            <div className="contents lg:hidden">
+          <>
+            {/* Mobile: stacked */}
+            <div className="flex flex-col gap-6 lg:hidden">
               {visibleCols.map((c) => (
                 <ColumnRenderer key={c.id} id={c.id} data={data} />
               ))}
             </div>
+            {/* Desktop: user-configured ratios */}
             <div
-              className="contents max-lg:hidden"
-              style={{ display: "contents" }}
+              className="hidden gap-6 lg:grid"
+              style={{ gridTemplateColumns: gridTemplate }}
             >
-              <div
-                className="col-span-full hidden lg:grid lg:gap-6"
-                style={{ gridTemplateColumns: gridTemplate }}
-              >
-                {visibleCols.map((c) => (
-                  <ColumnRenderer key={c.id} id={c.id} data={data} />
-                ))}
-              </div>
+              {visibleCols.map((c) => (
+                <ColumnRenderer key={c.id} id={c.id} data={data} />
+              ))}
             </div>
-          </div>
+          </>
         )}
         <p className="mt-8 text-center text-xs text-muted-foreground">
           Lähde: live.tuloslista.com · automaattinen päivitys 15&nbsp;s välein
