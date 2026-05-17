@@ -201,7 +201,7 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
 }
 
 function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const [competitionId] = useCompetitionId();
   const isOfficial = role === "official" && !isAdmin;
   const [data, setData] = useState<RoundsByDate | null>(null);
