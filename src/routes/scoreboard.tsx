@@ -1,8 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Maximize2 } from "lucide-react";
+import {
+  NewResultOverlay,
+  type NewResultItem,
+} from "@/components/announcer/NewResultOverlay";
 
 import {
   competitionScheduleQueryOptions,
@@ -270,6 +274,47 @@ function ScoreboardLive() {
 
   const visible = top === "all" ? rows : rows.slice(0, top);
 
+  // Detect newly-arrived results to trigger overlay (works even if athlete is
+  // outside the visible top N — overlay just animates without a row target).
+  const prevResultsRef = useRef<Map<number, string>>(new Map());
+  const initializedRef = useRef(false);
+  const [queue, setQueue] = useState<NewResultItem[]>([]);
+  const [currentOverlay, setCurrentOverlay] = useState<NewResultItem | null>(null);
+
+  useEffect(() => {
+    if (!ev || !round) return;
+    const isLive = round.Status === "Progress";
+    const next = new Map<number, string>();
+    const newItems: NewResultItem[] = [];
+    for (const heat of round.Heats) {
+      for (const a of heat.Allocations) {
+        if (!a.Result) continue;
+        next.set(a.AllocId, a.Result);
+        const prev = prevResultsRef.current.get(a.AllocId);
+        if (initializedRef.current && isLive && prev !== a.Result) {
+          newItems.push({
+            key: `${a.AllocId}-${a.Result}-${Date.now()}`,
+            alloc: a,
+            eventId: ev.Id,
+            eventCategory: ev.EventCategory ?? "",
+            heatIndex: heat.Index,
+          });
+        }
+      }
+    }
+    prevResultsRef.current = next;
+    initializedRef.current = true;
+    if (newItems.length) setQueue((q) => [...q, ...newItems]);
+  }, [ev, round]);
+
+  useEffect(() => {
+    if (currentOverlay || queue.length === 0) return;
+    setCurrentOverlay(queue[0]);
+    setQueue((q) => q.slice(1));
+  }, [currentOverlay, queue]);
+
+  const handleOverlayDone = useCallback(() => setCurrentOverlay(null), []);
+
   // Wind: prefer first heat's wind; fallback to most recent allocation wind.
   const wind = useMemo<number | null>(() => {
     if (!round) return null;
@@ -387,6 +432,7 @@ function ScoreboardLive() {
           </ul>
         )}
       </main>
+      <NewResultOverlay item={currentOverlay} onDone={handleOverlayDone} />
     </div>
   );
 }
@@ -605,6 +651,7 @@ function ScoreRow({
     return (
       <li
         style={heightStyle}
+        data-alloc-id={row.AllocId}
         className={`flex min-h-0 flex-col gap-1.5 overflow-hidden rounded-xl border-2 px-2 py-1.5 ${
           isLeader ? "border-primary bg-primary/10" : "border-border bg-card"
         }`}
@@ -622,6 +669,7 @@ function ScoreRow({
   return (
     <li
       style={heightStyle}
+      data-alloc-id={row.AllocId}
       className={`flex min-h-0 items-center gap-2 overflow-hidden rounded-xl border-2 px-3 py-2 sm:gap-3 sm:px-4 ${
         isLeader ? "border-primary bg-primary/10" : "border-border bg-card"
       }`}
