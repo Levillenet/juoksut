@@ -69,14 +69,22 @@ function findLeader(ev: EventResults): LeaderSnapshot | null {
   };
 }
 
-export function useFieldLeaderChanges(details: DetailCache) {
+export function useFieldLeaderChanges(
+  details: DetailCache,
+  liveEventIds?: Set<number>,
+) {
   const snapshotsRef = useRef<Map<number, LeaderSnapshot>>(new Map());
   const initializedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
+    if (liveEventIds) {
+      keepOnlyLiveTickerMessages("announcer", liveEventIds);
+    }
     Object.values(details).forEach((ev) => {
       if (ev.EventCategory !== "Field") return;
-      const hasLiveRound = ev.Rounds.some((round) => round.Status === "Progress");
+      const hasLiveRound =
+        ev.Rounds.some((round) => round.Status === "Progress") &&
+        (!liveEventIds || liveEventIds.has(ev.Id));
 
       // If the event is no longer live, purge any prior ticker messages for it
       // and skip emitting new ones.
