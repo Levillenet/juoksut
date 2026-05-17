@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { pushTickerMessage } from "@/lib/ticker-store";
+import { pushTickerMessage, removeTickerMessagesForEvent } from "@/lib/ticker-store";
 import type { Allocation, EventResults } from "@/lib/tuloslista";
 import type { DetailCache } from "@/hooks/useAnnouncerData";
 
