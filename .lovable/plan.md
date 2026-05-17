@@ -1,41 +1,57 @@
-## Muutokset
+## Ongelma
 
-Kaksi pientä UI-muutosta kuuluttajanäkymään. Ei vaikutuksia reititykseen, dataan tai logiikkaan — pelkkiä tekstejä ja yhden labelin lisäys.
+Reitti `/settings/note-links` on olemassa ja "Muistiinpanojen jakaminen" -kortti renderöityy `/settings`-sivulla **kaikille kirjautuneille**, mutta tavallinen käyttäjä (rooli `"user"`, esim. `info@leville.net`) ei pääse `/settings`-sivulle lainkaan:
 
-### 1) Nimeä "Suunnittelu-näkymä" → "Tulosnäkymä"
+`src/routes/index.tsx` rivi 176:
+```tsx
+{showOfficialLinks && (
+  <Link to="/settings" …>Asetukset</Link>
+)}
+```
+ja rivi 66:
+```ts
+const showOfficialLinks = role === "official" || isAdmin;
+```
 
-Käytetään uutta sanaa ja päivitetään selite vastaamaan käyttötarkoitusta (päivän tulevat lajit + lopputulokset). Reitti `/announcer/planning` säilyy ennallaan (ei rikota tallennettuja kirjanmerkkejä eikä `localStorage`-arvoa `"planning"`).
+Siksi kortti ja koko muistiinpanolinkitysominaisuus on käytännössä piilossa peruskäyttäjiltä. DB:ssä ei ole yhtään `note_link_invites`-riviä, mikä vahvistaa ettei kukaan ole päässyt edes lähettämään kutsua.
 
-**`src/routes/announcer.index.tsx`** (moodivalintakortti):
-- `title`: "Suunnittelu-näkymä" → **"Tulosnäkymä"**
-- `badge`: "SUUNNITTELU" → **"TULOKSET"**
-- `description`: → **"Koko päivän tulevat lajit sekä jo päättyneiden lajien lopputulokset."**
-- Alalaidan vinkki: "…toinen Suunnittelu-moodissa." → **"…toinen Tulosnäkymässä."**
+## Korjaus
 
-**`src/components/announcer/AnnouncerHeader.tsx`**:
-- `MODE_META.planning.label`: "SUUNNITTELU" → **"TULOKSET"**
+Tehdään muistiinpanojen jakaminen löydettäväksi peruskäyttäjälle **ilman että avataan koko Asetukset-osio** (siellä on official/admin-tason sisältöä kuten Seurojen sijainnit, Tuloslista API -dokumentaatio).
 
-**`src/routes/announcer.tsx`** (head-meta):
-- Kuvauksessa "…yhdistetty, live- ja suunnittelumoodi…" → **"…yhdistetty-, live- ja tulosmoodi…"**
+### Muutos 1 — Lisää oma painike etusivulle peruskäyttäjille
 
-Sisäinen `Mode`-tyyppi ja reittiavain `"planning"` jätetään muuttamatta — vain käyttäjälle näkyvät tekstit vaihtuvat.
+`src/routes/index.tsx` (samaan painikeruudukkoon kuin "Tulostettava aikataulu"):
 
-### 2) Näytä nykyinen moodi "Vaihda moodia" -painikkeen alla
+Lisää linkki, joka näkyy **aina kun käyttäjä on kirjautunut** (riippumatta roolista):
 
-Tällä hetkellä otsikon vieressä on pieni värillinen badge (LIVE/YHDISTETTY/TULOKSET), mutta se on helppo ohittaa. Lisätään sama tieto myös "Vaihda moodia" -painikkeen alapuolelle, jotta käyttäjä näkee yhdellä silmäyksellä missä moodissa on.
+```tsx
+<Link
+  to="/settings/note-links"
+  className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
+>
+  <div className="text-sm font-semibold leading-tight">Muistiinpanojen jakaminen</div>
+  <div className="mt-0.5 text-[11px] text-muted-foreground">
+    Linkitä tilisi toisen käyttäjän kanssa — näette muistiinpanot ristiin
+  </div>
+</Link>
+```
 
-**`src/components/announcer/AnnouncerHeader.tsx`**:
-- Käärytään `Vaihda moodia` -painike (desktop-variantti) pieneen `flex flex-col items-center` -kontaineriin.
-- Painikkeen alle pieni teksti, esim.:
-  ```
-  <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-    Nyt: {meta.label}
-  </span>
-  ```
-- Mobiilivariantti (pelkkä ikoni, `sm:hidden`) jätetään ennalleen — siellä tila on ahdas ja moodibadge näkyy jo otsikon vieressä.
+Sijoitetaan ennen `showOfficialLinks`-gateattua Asetukset-painiketta, ilman gateä.
+
+### Muutos 2 — Lisää "Takaisin"-linkki suoraan etusivulle myös /settings/note-links -sivulta
+
+Jo nyt sivulla on otsikossa `ArrowLeft`-painike — tarkistetaan että se vie `/`-juureen (ei `/settings`), jotta peruskäyttäjä, joka tulee suoralinkillä, ei eksy Asetukset-sivulle, johon hänellä ei normaalisti ole pääsyä.
+
+`src/routes/settings.note-links.tsx`: jos paluulinkki on tällä hetkellä `/settings`, vaihdetaan kohteeksi `/`.
+
+### Mitä EI muuteta
+
+- `/settings`-sivun pääsyä ei avata peruskäyttäjille — siellä on edelleen virkailija-/admin-sisältöä.
+- Itse `/settings/note-links`-sivu on jo tarkoitettu kaikille kirjautuneille käyttäjille (RLS sallii kuka tahansa lähettää/vastaanottaa kutsuja), joten sen oma auth-gate riittää.
+- Kortti `/settings`-sivulla pysyy ennallaan virkailijoita varten.
 
 ## Toteutusjärjestys
 
-1. Päivitä `AnnouncerHeader.tsx` (label + "Nyt:"-rivi).
-2. Päivitä `announcer.index.tsx` (kortin teksti, badge, kuvaus, vinkki).
-3. Päivitä `announcer.tsx` head-kuvaus.
+1. Lisää uusi painike `src/routes/index.tsx`-sivun toimintoruudukkoon (ennen Asetukset-painiketta, ei gateä).
+2. Tarkista ja korjaa paluulinkki `src/routes/settings.note-links.tsx` → `/`.
