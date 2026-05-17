@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useAnnouncerData } from "@/hooks/useAnnouncerData";
+import type { ReactNode } from "react";
+import { useAnnouncerData, type AnnouncerData } from "@/hooks/useAnnouncerData";
 import { AnnouncerHeader } from "@/components/announcer/AnnouncerHeader";
 import { RecordsBanner } from "@/components/announcer/RecordsBanner";
 import { InProgressSection } from "@/components/announcer/InProgressSection";
@@ -8,7 +9,10 @@ import { UpcomingSection } from "@/components/announcer/UpcomingSection";
 import { LiveTicker } from "@/components/announcer/LiveTicker";
 import { AnnouncerLayoutControls } from "@/components/announcer/AnnouncerLayoutControls";
 import { useFieldLeaderChanges } from "@/hooks/useFieldLeaderChanges";
-import { useAnnouncerLayout } from "@/lib/announcer-layout-store";
+import {
+  useAnnouncerViewLayout,
+  type AnnouncerColumnConfig,
+} from "@/lib/announcer-layout-store";
 
 export const Route = createFileRoute("/announcer/combined")({
   component: AnnouncerCombined,
@@ -17,11 +21,10 @@ export const Route = createFileRoute("/announcer/combined")({
 function AnnouncerCombined() {
   const data = useAnnouncerData();
   useFieldLeaderChanges(data.details);
-  const [layout] = useAnnouncerLayout();
+  const [layout] = useAnnouncerViewLayout("combined");
 
   const visibleCols = layout.columns.filter((c) => c.visible);
-  // Chunk into rows of `columnsPerRow` for desktop layout
-  const rows: typeof visibleCols[] = [];
+  const rows: AnnouncerColumnConfig[][] = [];
   for (let i = 0; i < visibleCols.length; i += layout.columnsPerRow) {
     rows.push(visibleCols.slice(i, i + layout.columnsPerRow));
   }
@@ -35,21 +38,19 @@ function AnnouncerCombined() {
         style={{ maxWidth: `${layout.maxWidth}px` }}
       >
         <div className="mb-4 flex justify-end">
-          <AnnouncerLayoutControls />
+          <AnnouncerLayoutControls view="combined" showLiveControls />
         </div>
         {visibleCols.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-            Ei näytettäviä sarakkeita. Avaa "Asettelu" ja valitse vähintään yksi.
+            Ei näytettäviä osioita. Avaa "Asettelu" ja valitse vähintään yksi.
           </p>
         ) : (
           <>
-            {/* Mobile: stacked */}
             <div className="flex flex-col gap-6 lg:hidden">
               {visibleCols.map((c) => (
-                <ColumnRenderer key={c.id} id={c.id} data={data} />
+                <ColumnRenderer key={c.id} id={c.id} data={data} layout={layout} />
               ))}
             </div>
-            {/* Desktop: rows with user-configured ratios */}
             <div className="hidden flex-col gap-6 lg:flex">
               {rows.map((row, idx) => (
                 <div
@@ -60,7 +61,7 @@ function AnnouncerCombined() {
                   }}
                 >
                   {row.map((c) => (
-                    <ColumnRenderer key={c.id} id={c.id} data={data} />
+                    <ColumnRenderer key={c.id} id={c.id} data={data} layout={layout} />
                   ))}
                 </div>
               ))}
@@ -79,11 +80,23 @@ function AnnouncerCombined() {
 function ColumnRenderer({
   id,
   data,
+  layout,
 }: {
   id: "in_progress" | "completed" | "upcoming";
-  data: ReturnType<typeof useAnnouncerData>;
-}) {
-  if (id === "in_progress") return <InProgressSection data={data} layout="grid" />;
+  data: AnnouncerData;
+  layout: ReturnType<typeof useAnnouncerViewLayout>[0];
+}): ReactNode {
+  if (id === "in_progress") {
+    return (
+      <InProgressSection
+        data={data}
+        layout="grid"
+        columns={layout.liveColumns}
+        limit={layout.liveLimit}
+        defaultOpen={layout.liveDefaultOpen}
+      />
+    );
+  }
   if (id === "completed") return <CompletedSection data={data} columns={1} />;
   return <UpcomingSection data={data} limit={20} />;
 }

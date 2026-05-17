@@ -50,6 +50,24 @@ export type Database = {
         }
         Relationships: []
       }
+      announcer_settings: {
+        Row: {
+          settings: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          settings?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          settings?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       athlete_notes: {
         Row: {
           athlete_key: string
