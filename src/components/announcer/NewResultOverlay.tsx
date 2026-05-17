@@ -82,11 +82,20 @@ export function NewResultOverlay({ item, onDone }: Props) {
     };
   }, [item, onDone]);
 
+  const [competitionId] = useCompetitionId();
   const isPB = useMemo(() => {
     if (!item) return false;
-    const eff = effectiveRecord(item.eventId, item.alloc);
+    const eff = effectiveRecord(item.eventId, item.alloc, {
+      competitionId,
+      athleteKey: athleteKey(
+        item.alloc.Surname,
+        item.alloc.Firstname,
+        item.alloc.Organization?.Id ?? null,
+      ),
+      eventName: item.eventName ?? "",
+    });
     return detectRecord(item.eventCategory, item.alloc.Result ?? null, eff.pb, eff.sb) === "PB";
-  }, [item]);
+  }, [item, competitionId]);
 
   const clapBursts = useMemo(() => {
     if (!item) return [] as Array<{ id: number; angle: number; distance: number; rotate: number; delay: number; scale: number; emoji: string }>;
