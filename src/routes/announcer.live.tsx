@@ -9,6 +9,8 @@ import { UpcomingSection } from "@/components/announcer/UpcomingSection";
 import { LiveTicker } from "@/components/announcer/LiveTicker";
 import { AnnouncerLayoutControls } from "@/components/announcer/AnnouncerLayoutControls";
 import { useFieldLeaderChanges } from "@/hooks/useFieldLeaderChanges";
+import { useNewResultsQueue } from "@/hooks/useNewResultsQueue";
+import { NewResultOverlay } from "@/components/announcer/NewResultOverlay";
 import {
   useAnnouncerViewLayout,
   type AnnouncerColumnConfig,
