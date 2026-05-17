@@ -24,6 +24,10 @@ function AnnouncerLive() {
   const data = useAnnouncerData();
   const liveEventIds = new Set(data.inProgressVisible.map((r) => r.EventId));
   useFieldLeaderChanges(data.details, liveEventIds);
+  const { current: newResult, onDone: newResultDone } = useNewResultsQueue(
+    data.details,
+    liveEventIds,
+  );
   const [layout] = useAnnouncerViewLayout("live");
 
   const visibleCols = layout.columns.filter((c) => c.visible);
