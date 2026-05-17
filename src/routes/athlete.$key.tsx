@@ -652,6 +652,8 @@ function CompetitionResultRow({
   row,
   athleteKey,
   note,
+  otherNotes = [],
+  labelMap,
   seasonTop,
 }: {
   row: AthleteResultRow;
