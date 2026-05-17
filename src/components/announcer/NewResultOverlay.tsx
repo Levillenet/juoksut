@@ -46,6 +46,9 @@ export function NewResultOverlay({ item, onDone }: Props) {
         ) ??
         document.querySelector<HTMLElement>(
           `[data-alloc-id="heat-${item.alloc.AllocId}"]`,
+        ) ??
+        document.querySelector<HTMLElement>(
+          `[data-event-id="${item.eventId}"]`,
         );
       if (el) {
         const rect = el.getBoundingClientRect();
