@@ -20,7 +20,8 @@ export const Route = createFileRoute("/announcer/live")({
 
 function AnnouncerLive() {
   const data = useAnnouncerData();
-  useFieldLeaderChanges(data.details);
+  const liveEventIds = new Set(data.inProgressVisible.map((r) => r.EventId));
+  useFieldLeaderChanges(data.details, liveEventIds);
   const [layout] = useAnnouncerViewLayout("live");
 
   const visibleCols = layout.columns.filter((c) => c.visible);
