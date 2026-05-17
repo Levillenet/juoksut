@@ -79,37 +79,35 @@ function SettingsPage({ showOfficialSections }: { showOfficialSections: boolean 
           </div>
         </section>
 
-        {showOfficialSections && (
-          <>
-            <section className="rounded-xl border bg-card p-4 shadow-sm">
-              <h2 className="mb-1 text-sm font-bold">Muistiinpanojen jakaminen</h2>
-              <p className="mb-3 text-xs text-muted-foreground">
-                Yksinkertainen 1-1-jako: linkitä tilisi toisen käyttäjän kanssa
-                sähköpostilla, niin näette toistenne muistiinpanot ristiin. Ei
-                vaadi tiimiä.
-              </p>
-              <Button asChild variant="outline" size="sm">
-                <Link to="/settings/note-links">
-                  <Link2 className="h-4 w-4" />
-                  Hallinnoi linkityksiä
-                </Link>
-              </Button>
-            </section>
+        <section className="rounded-xl border bg-card p-4 shadow-sm">
+          <h2 className="mb-1 text-sm font-bold">Muistiinpanojen jakaminen</h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Yksinkertainen 1-1-jako: linkitä tilisi toisen käyttäjän kanssa
+            sähköpostilla, niin näette toistenne muistiinpanot ristiin. Ei
+            vaadi tiimiä.
+          </p>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/settings/note-links">
+              <Link2 className="h-4 w-4" />
+              Hallinnoi linkityksiä
+            </Link>
+          </Button>
+        </section>
 
-            <section className="rounded-xl border bg-card p-4 shadow-sm">
-              <h2 className="mb-1 text-sm font-bold">Tiimit ja jaetut muistiinpanot</h2>
-              <p className="mb-3 text-xs text-muted-foreground">
-                Luo valmennustiimi ja jaa urheilijakohtaiset muistiinpanot tiimin
-                jäsenten kanssa.
-              </p>
-              <Button asChild variant="outline" size="sm">
-                <Link to="/settings/teams">
-                  <Users className="h-4 w-4" />
-                  Hallinnoi tiimejä
-                </Link>
-              </Button>
-            </section>
-          </>
+        {showOfficialSections && (
+          <section className="rounded-xl border bg-card p-4 shadow-sm">
+            <h2 className="mb-1 text-sm font-bold">Tiimit ja jaetut muistiinpanot</h2>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Luo valmennustiimi ja jaa urheilijakohtaiset muistiinpanot tiimin
+              jäsenten kanssa.
+            </p>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/settings/teams">
+                <Users className="h-4 w-4" />
+                Hallinnoi tiimejä
+              </Link>
+            </Button>
+          </section>
         )}
 
         <section className="rounded-xl border bg-card p-4 shadow-sm">
