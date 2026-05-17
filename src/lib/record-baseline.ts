@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getHistoricalBest } from "@/lib/history-baseline";
 import type { Allocation } from "@/lib/tuloslista";
 
 export interface Baseline {
