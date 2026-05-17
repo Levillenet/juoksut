@@ -103,7 +103,7 @@ function NoteLinksPage() {
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <Button variant="ghost" size="icon" asChild aria-label="Takaisin">
-            <Link to="/settings">
+            <Link to="/">
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
