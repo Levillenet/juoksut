@@ -83,6 +83,7 @@ export function EventCard({
   /** When open, cap the number of ranked rows shown. "all" = unlimited. */
   rankLimit?: 5 | 10 | "all";
 }) {
+  const [competitionId] = useCompetitionId();
   const top3 = useMemo(() => rankedTop(detail, 3), [detail]);
   const allRanked = useMemo(
     () =>
