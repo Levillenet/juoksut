@@ -96,19 +96,28 @@ export function CompetitionSwitcher({
               Ei kisoja tällä aikavälillä
             </SelectItem>
           )}
-          {groups.map((g) => (
-            <SelectGroup key={g.key}>
-              <SelectLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                {g.label}
-              </SelectLabel>
-              {g.items.map((c) => (
-                <SelectItem key={c.Id} value={String(c.Id)}>
-                  {c.Name}
-                  {c.Location ? ` · ${c.Location}` : ""}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          ))}
+          {groups.map((g) => {
+            const isToday = g.key === todayKey;
+            return (
+              <SelectGroup key={g.key}>
+                <SelectLabel
+                  className={
+                    isToday
+                      ? "sticky top-0 z-10 bg-primary px-2 py-1.5 text-sm font-extrabold uppercase tracking-wide text-primary-foreground"
+                      : "bg-muted/60 px-2 py-1 text-xs font-bold uppercase tracking-wide text-foreground"
+                  }
+                >
+                  {g.label}
+                </SelectLabel>
+                {g.items.map((c) => (
+                  <SelectItem key={c.Id} value={String(c.Id)}>
+                    {c.Name}
+                    {c.Location ? ` · ${c.Location}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            );
+          })}
         </SelectContent>
       </Select>
 
