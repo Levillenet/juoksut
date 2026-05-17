@@ -120,6 +120,19 @@ export function removeTickerMessagesForEvent(
   emit();
 }
 
+export function keepOnlyLiveTickerMessages(
+  source: TickerSource,
+  liveEventIds: Set<number>,
+) {
+  const nextMessages = state.messages.filter(
+    (m) => m.source !== source || liveEventIds.has(m.eventId),
+  );
+  if (nextMessages.length === state.messages.length) return;
+  state = { ...state, messages: nextMessages };
+  writeMessages(nextMessages);
+  emit();
+}
+
 export function setTickerEnabled(source: TickerSource, enabled: boolean) {
   state = { ...state, enabled: { ...state.enabled, [source]: enabled } };
   try {
