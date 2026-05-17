@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { detectRecord, RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
+import { athleteKey } from "@/lib/athlete-key";
+import { useCompetitionId } from "@/lib/competition-store";
 import type { Allocation } from "@/lib/tuloslista";
 
 export interface NewResultItem {
@@ -80,11 +82,20 @@ export function NewResultOverlay({ item, onDone }: Props) {
     };
   }, [item, onDone]);
 
+  const [competitionId] = useCompetitionId();
   const isPB = useMemo(() => {
     if (!item) return false;
-    const eff = effectiveRecord(item.eventId, item.alloc);
+    const eff = effectiveRecord(item.eventId, item.alloc, {
+      competitionId,
+      athleteKey: athleteKey(
+        item.alloc.Surname,
+        item.alloc.Firstname,
+        item.alloc.Organization?.Id ?? null,
+      ),
+      eventName: item.eventName ?? "",
+    });
     return detectRecord(item.eventCategory, item.alloc.Result ?? null, eff.pb, eff.sb) === "PB";
-  }, [item]);
+  }, [item, competitionId]);
 
   const clapBursts = useMemo(() => {
     if (!item) return [] as Array<{ id: number; angle: number; distance: number; rotate: number; delay: number; scale: number; emoji: string }>;
@@ -193,8 +204,13 @@ export function NewResultOverlay({ item, onDone }: Props) {
 }
 
 function Card({ item }: { item: NewResultItem }) {
+  const [competitionId] = useCompetitionId();
   const a = item.alloc;
-  const eff = effectiveRecord(item.eventId, a);
+  const eff = effectiveRecord(item.eventId, a, {
+    competitionId,
+    athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
+    eventName: item.eventName ?? "",
+  });
   return (
     <div className="flex flex-col items-center gap-3 text-center">
       <span className="text-xs font-bold uppercase tracking-widest text-primary">

@@ -10,6 +10,8 @@ import { Link } from "@tanstack/react-router";
 import { ChevronDown, ArrowUp, ArrowDown } from "lucide-react";
 import { detectRecord, RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
+import { athleteKey } from "@/lib/athlete-key";
+import { useCompetitionId } from "@/lib/competition-store";
 import {
   formatTime,
   type Round,
@@ -81,6 +83,7 @@ export function EventCard({
   /** When open, cap the number of ranked rows shown. "all" = unlimited. */
   rankLimit?: 5 | 10 | "all";
 }) {
+  const [competitionId] = useCompetitionId();
   const top3 = useMemo(() => rankedTop(detail, 3), [detail]);
   const allRanked = useMemo(
     () =>
@@ -239,7 +242,13 @@ export function EventCard({
               const rank = a.ResultRank ?? (isTrack ? null : a.Position);
               const badgeValue = isTrack ? a.Position : rank;
               const change = rankChanges.get(a.AllocId);
-              const eff = a.Result ? effectiveRecord(round.EventId, a) : null;
+              const eff = a.Result
+                ? effectiveRecord(round.EventId, a, {
+                    competitionId,
+                    athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
+                    eventName: round.EventName,
+                  })
+                : null;
               const recordKind =
                 a.Result && eff
                   ? detectRecord(round.Category, a.Result, eff.pb, eff.sb)
@@ -383,8 +392,15 @@ function AllocationRow({
   round: Round;
   showRank: "result" | "position";
 }) {
+  const [competitionId] = useCompetitionId();
   const rank = showRank === "result" ? a.ResultRank : a.Position;
-  const eff = a.Result ? effectiveRecord(round.EventId, a) : null;
+  const eff = a.Result
+    ? effectiveRecord(round.EventId, a, {
+        competitionId,
+        athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
+        eventName: round.EventName,
+      })
+    : null;
   const recordKind =
     a.Result && eff ? detectRecord(round.Category, a.Result, eff.pb, eff.sb) : null;
   return (

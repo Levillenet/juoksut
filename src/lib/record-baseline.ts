@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getHistoricalBest } from "@/lib/history-baseline";
 import type { Allocation } from "@/lib/tuloslista";
 
 export interface Baseline {
@@ -106,16 +107,22 @@ export function getCachedBaseline(
 }
 
 /**
- * Resolve effective PB/SB for comparison: baseline takes precedence,
- * fall back to API value if no baseline was captured in time.
+ * Resolve effective PB/SB for comparison: captured baseline takes precedence,
+ * then the source tuloslista PB/SB, then (for PB only) the athlete's own
+ * historical best from athlete_results across all age classes.
  */
 export function effectiveRecord(
   eventId: number,
   alloc: { Id: number; PB: string; SB: string },
+  history?: { competitionId: number; athleteKey: string; eventName: string } | null,
 ): { pb: string; sb: string } {
   const b = getCachedBaseline(eventId, alloc.Id);
+  let pb = b?.pb || alloc.PB || "";
+  if (!pb && history) {
+    pb = getHistoricalBest(history.competitionId, history.athleteKey, history.eventName) ?? "";
+  }
   return {
-    pb: b?.pb || alloc.PB || "",
+    pb,
     sb: b?.sb || alloc.SB || "",
   };
 }

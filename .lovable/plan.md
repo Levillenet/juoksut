@@ -1,53 +1,53 @@
 ## Ongelma
 
-Urheilijakortin "Henkilökohtaiset ennätykset" -listassa näkyy kaksi ongelmaa:
+Live-näkymässä (kuuluttaja, scoreboard, NewResultOverlay) tulos merkitään PB:ksi aina kun lähdedata (tuloslista) ei sisällä urheilijalle PB- eikä SB-arvoa. Tämä on yleistä nuorilla. `detectRecord` `src/lib/records.tsx`:ssä palauttaa silloin aina `"PB"`, vaikka urheilijalla on jo aiemmista kilpailuista parempia tuloksia samassa lajissa (mahdollisesti eri ikäluokassa, esim. T10 → T11 pituus).
 
-1. **Roskaiset lajinimet eivät yhdisty puhtaaseen lajiin.** Esim. `T10 Pituus - R1+2 10:30, R3+4 n.11:05`, `T10 Pituus (ryhmä 2. klo 17.15)` ja `T10 Korkeus kilpailu 2` näkyvät omina PB-rivinä, eivätkä yhdisty `T10 Pituus` / `T10 Korkeus` kanssa, koska `normalizeEventName` strippaa vain ikäluokkaprefiksin — ei eräaikoja, "Ryhmä N"-, "kilpailu N"-, "- R1 ..."- tai sulkulisäyksiä.
-2. **Alemman ikäluokan PB jää näkyviin, vaikka samassa lajissa on ylemmän ikäluokan tulos.** Nykyinen ryhmittely yhdistää eri ikäluokat normalisoidun nimen perusteella, mutta valitsee PB:ksi parhaan tuloksen ikäluokasta riippumatta — käyttäjä haluaa nähdä **ylemmän ikäluokan ennätyksen**, ja alemman ikäluokan vain jos ylemmästä ei ole tulosta.
+Tavoitetila: PB-vertailun pohjana käytetään urheilijan **koko historian paras tulos samassa normalisoidussa lajissa**, ikäluokasta riippumatta. Jos historiasta ei löydy mitään, tulosta ei merkitä PB:ksi ennen kuin samassa kilpailussa tulee parempi tulos (eli aidosti ensimmäinen tulos lajissa ei saa tähteä).
 
 ## Toteutus
 
-### 1. Vahvempi lajinimen normalisointi
+### 1. Poistetaan virheellinen "tyhjä = PB" -fallback
 
-`src/lib/athlete-history.ts` → `normalizeEventName`: ikäluokkaprefiksin strippauksen jälkeen siivotaan loppuosa seuraavin säännöin (samassa järjestyksessä):
+`src/lib/records.tsx` → `detectRecord`: poistetaan `if (p == null && s == null) return "PB"`. PB/SB merkitään vain kun on jokin pohja, jota vastaan verrata.
 
-- Leikkaa kaikki ` - R<numero>` -kohdasta alkaen loppuun (kattaa `- R1 18:00`, `- R1+2 10:30, R3+4 n.11:05`).
-- Poista lopussa olevat sulkulausekkeet: ` \([^)]*\)$` (kattaa `(ryhmä 2. klo 17.15)`).
-- Poista lopusta ` (?:kilpailu|kierros|erä)\s*\d+` (kattaa `kilpailu 2`).
-- Poista lopusta ` Ryhmä\s*\d+` (kattaa `Ryhmä 1`).
-- Trimmaa ylimääräiset välit lopuksi.
+### 2. Historiapohjainen PB-baseline samaan kilpailuun
 
-Tuloksena `T10 Pituus - R1+2 ...`, `T10 Pituus (ryhmä 2 ...)`, `T10 Pituus Ryhmä 1` → kaikki normalisoituvat muotoon `Pituus` ja yhdistyvät samaan ryhmään.
+Lisätään uusi moduuli `src/lib/history-baseline.ts`, joka tarjoaa cache-pohjaisen lookupin (`athlete_key + normalizedEvent → best historical result_text`):
 
-Käytetään sama normalisointi sekä ryhmittelyavaimena että `EventGroup.eventName`-näyttönimenä, jotta UI:ssa ei näy roskaista loppuosaa.
+- `loadHistoryBaselineForCompetition(competitionId)`: hakee `athlete_results`-taulusta yhdellä kyselyllä kaikki rivit, joilla on `competition_id` = nykyinen kilpailu, ja niiden pohjalta listan kilpailun urheilijoista (`athlete_key`-joukko). Toisella kyselyllä haetaan kaikki samojen `athlete_key`ien aiemmat tulokset (`competition_id <> nykyinen`, `result_numeric IS NOT NULL`). Rivit ryhmitellään `athleteKey | normalizeEventName(event_name)` -avaimella ja jokaisesta valitaan paras `lowerBetter`-säännön mukaisesti (`isLowerBetter` löytyy `athlete-history.ts`:stä). Tulos: `Map<string, { resultText: string; resultNumeric: number }>` muistissa.
+- `getHistoricalBest(athleteKey, eventName, category, subCategory) → string | null` palauttaa cachatun parhaan tuloksen tekstinä (jota detectRecord parsii).
+- Cache invalidoituu kilpailun vaihtuessa.
 
-### 2. Ikäluokan priorisointi PB-valinnassa
+### 3. Liitetään baseline `effectiveRecord`-polkuun
 
-Lisätään `src/lib/athlete-history.ts`:ään apuri `ageClassRank(age_class: string): number`:
+`src/lib/record-baseline.ts` → `effectiveRecord`:
+- Lisätään parametriksi `athleteKey?: string` ja `eventName?: string`, `category?: string`, `subCategory?: string`.
+- Päättelyjärjestys PB:lle: `record_baseline.pb` (jo otettu kilpailun alussa) → `alloc.PB` (lähdedatan PB) → `getHistoricalBest(...)` (oma historia). Sama logiikka SB:lle (vain `record_baseline.sb` → `alloc.SB`; historiaa ei käytetä SB:lle koska se on kausikohtainen ja vaatisi erillisen rajauksen — voidaan jättää myöhempään).
 
-- Aikuiset `M`/`N` (ilman numeroa) → korkein arvo (esim. 999).
-- `M`/`N` + numero (veteraanit) → korkein arvo (999) — kohdellaan aikuissarjana PB-järjestyksessä; veteraaniluokat eivät syrjäytä aikuis-PB:tä, koska niiden tulokset ovat tyypillisesti aikuis-PB:tä huonompia, ja päinvastoin halutaan samaa kohtelua.
-- `T`/`P` + numero → ikä numerona (esim. `T10` → 10, `T11` → 11).
-- Tuntematon → 0.
+### 4. Kutsupaikkojen päivitys
 
-`groupByEvent`:n PB-laskennassa (sekä kokonaisen `pb` että `pbIndoor`/`pbOutdoor`):
+Kaikki `effectiveRecord`-kutsut saavat lisäparametrit. Allokaatiossa nimi/seura ovat valmiina, joten `athleteKey = \`${a.Surname}|${a.Firstname}|${a.Organization?.Id ?? ""}\`` lasketaan paikallisesti (vastaa harvest-puolen `athleteKey`-funktiota — pieni utility `src/lib/athlete-key.ts` jota molemmat käyttävät).
 
-1. Selvitä ryhmän rivien korkein `ageClassRank`.
-2. Suodata mukaan vain rivit, joiden rank on yhtä suuri kuin korkein.
-3. Valitse näiden joukosta paras tulos `lowerBetter`-säännön mukaan.
+Päivitettävät tiedostot:
+- `src/hooks/useAnnouncerData.ts` (rivi 191)
+- `src/routes/scoreboard.tsx` (rivi 512)
+- `src/components/announcer/shared.tsx` (rivit 245, 389)
+- `src/components/announcer/NewResultOverlay.tsx` (rivi 86)
 
-Näin esim. jos urheilijalla on `T11 60m` -tulos, `T10 60m` -PB ei enää näy henkilökohtaisten ennätysten listassa. Lajikohtainen kehityshistoria (`group.rows`) säilytetään kokonaisuudessaan — vain PB-valinta priorisoidaan.
+### 5. Baseline-lataus kilpailun yhteydessä
 
-### 3. Pieni siisteys
-
-`src/lib/athlete-history.ts`:n `normalizeEventName` on ainoa paikka, jossa nimi normalisoidaan UI:ta varten. SQL-puolen `public.normalize_event_name` (käytössä `mark_pbs_for_competitions`:ssa) jätetään ennalleen — tämä on backend-PB-merkinnän heuristiikkaa eikä vaikuta tämän bugin näkymään, ja sen muuttaminen vaatisi erillisen migraation + ajon.
-
-## Mitä EI muuteta
-
-- Tietokantarivejä tai harvest-logiikkaa ei muokata — alkuperäiset `event_name`-arvot säilytetään raakana, vain UI-puolen normalisointi tiukentuu.
-- "Lajikohtainen kehitys" -listan rivejä ei piiloteta — kaikki historiarivit näkyvät edelleen.
-- Jaettu urheilijakortti (`urheilija.$token.tsx`) ja oma kortti käyttävät samaa `groupByEvent`-funktiota, joten korjaus pätee molempiin automaattisesti.
+`useAnnouncerData`:ssa (ja `scoreboard.tsx`:ssä) lisätään `useEffect`, joka kutsuu `loadHistoryBaselineForCompetition(competitionId)` kun kilpailu vaihtuu. Kun lataus on valmis, `effectiveRecord`-kutsut hyödyntävät cachea automaattisesti.
 
 ## Tekniset tiedostot
 
-- `src/lib/athlete-history.ts` — `normalizeEventName` laajennus + `ageClassRank` apuri + `groupByEvent`:n PB-valinta suodattaa korkeimman ikäluokan riveihin.
+- `src/lib/records.tsx` — poistetaan tyhjä-PB-fallback.
+- `src/lib/history-baseline.ts` — uusi: cache + Supabase-haku + lookup.
+- `src/lib/record-baseline.ts` — `effectiveRecord` huomioi historiapohjaisen PB:n.
+- `src/lib/athlete-key.ts` — uusi pieni jaettu utility (sama formaatti kuin harvesterissa).
+- `src/hooks/useAnnouncerData.ts`, `src/routes/scoreboard.tsx`, `src/components/announcer/{shared,NewResultOverlay}.tsx` — kutsupaikkojen päivitys + baseline-lataus.
+
+## Mitä EI muuteta
+
+- Urheilijakortin PB-listaa (`groupByEvent`) ei kosketa — se käyttää jo `ageClassRank`-suodatusta korkeimpaan ikäluokkaan.
+- `was_pb`-kenttää tai SQL-puolen `mark_pbs_for_competitions`-funktiota ei muuteta.
+- SB-laskentaan ei lisätä historia-fallbackia tässä vaiheessa (vaatisi kauden rajauksen).

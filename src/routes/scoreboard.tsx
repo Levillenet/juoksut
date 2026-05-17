@@ -24,6 +24,8 @@ import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 import { RequireRole } from "@/components/RequireRole";
 import { effectiveRecord } from "@/lib/record-baseline";
+import { loadHistoryBaselineForCompetition } from "@/lib/history-baseline";
+import { athleteKey } from "@/lib/athlete-key";
 import { detectRecord, RecordStar } from "@/lib/records";
 import { WakeLockToggle } from "@/components/WakeLockToggle";
 import { getResultVisualState } from "@/lib/result-visualization";
@@ -228,6 +230,11 @@ function ScoreboardLive() {
   const detailQ = useQuery(eventDetailsQueryOptions(competitionId, eventId!));
   const ev = detailQ.data ?? null;
 
+  useEffect(() => {
+    if (!competitionId) return;
+    void loadHistoryBaselineForCompetition(competitionId);
+  }, [competitionId]);
+
   const round = useMemo(
     () => ev?.Rounds.find((r) => r.Id === roundId) ?? ev?.Rounds[0],
     [ev, roundId],
@@ -427,6 +434,8 @@ function ScoreboardLive() {
                 count={visible.length}
                 eventId={ev?.Id ?? 0}
                 category={ev?.EventCategory ?? ""}
+                competitionId={competitionId}
+                eventName={ev?.Name ?? ""}
               />
             ))}
           </ul>
@@ -491,12 +500,16 @@ function ScoreRow({
   count,
   eventId,
   category,
+  competitionId,
+  eventName,
 }: {
   row: RankedRow;
   displayRank: number;
   count: number;
   eventId: number;
   category: string;
+  competitionId: number;
+  eventName: string;
 }) {
   const vw = useViewportWidth();
   const narrow = vw < 900;
@@ -507,8 +520,13 @@ function ScoreRow({
   const stackName = !narrow && count <= 5;
   const { first, last } = splitName(row.Name ?? "");
 
-  // Detect new PB / SB against captured baseline (falls back to API PB/SB).
-  const eff = effectiveRecord(eventId, row);
+  // Detect new PB / SB against captured baseline (falls back to API PB/SB,
+  // then to the athlete's historical best across age classes).
+  const eff = effectiveRecord(eventId, row, {
+    competitionId,
+    athleteKey: athleteKey(row.Surname, row.Firstname, row.Organization?.Id ?? null),
+    eventName,
+  });
   const recordKind = detectRecord(category, row.best, eff.pb, eff.sb);
 
   const nameBlock = (

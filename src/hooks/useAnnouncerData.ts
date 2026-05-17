@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 import { detectRecord } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
+import { loadHistoryBaselineForCompetition } from "@/lib/history-baseline";
+import { athleteKey } from "@/lib/athlete-key";
 import { helsinkiDateKey, type Round, type EventResults } from "@/lib/tuloslista";
 import {
   competitionScheduleQueryOptions,
@@ -63,6 +65,11 @@ export function useAnnouncerData() {
     const t = setInterval(() => setNow(new Date()), 10_000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    if (!competitionId) return;
+    void loadHistoryBaselineForCompetition(competitionId);
+  }, [competitionId]);
 
   const todayKey = helsinkiDateKey((now ?? new Date()).toISOString());
   const todayRounds = useMemo<Round[]>(() => {
@@ -188,7 +195,11 @@ export function useAnnouncerData() {
             const prevResult = seen.get(a.AllocId);
             seen.set(a.AllocId, a.Result);
             if (prevResult === a.Result) return;
-            const eff = effectiveRecord(ev.Id, a);
+            const eff = effectiveRecord(ev.Id, a, {
+              competitionId,
+              athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
+              eventName: ev.Name,
+            });
             const rec = detectRecord(ev.EventCategory, a.Result, eff.pb, eff.sb);
             if (!rec) return;
             fresh.push({
