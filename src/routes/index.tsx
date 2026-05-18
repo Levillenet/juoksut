@@ -384,6 +384,33 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
             <LiveCompetitionsSection />
             <SeasonStatsSection />
 
+            {/* LOHKO 3 — Päivän lajit */}
+            <section className="pt-2">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-lg font-black uppercase tracking-widest text-primary">
+                  Päivän lajit
+                </h2>
+              </div>
+
+              {dates.length > 1 && (
+                <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
+                  {dates.map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setActiveDate(d)}
+                      className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+                        d === activeDate
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+
             {loading && !data && (
               <div className="py-12 text-center text-sm text-muted-foreground">Ladataan…</div>
             )}
