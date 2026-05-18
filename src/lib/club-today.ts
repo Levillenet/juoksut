@@ -36,7 +36,7 @@ export async function fetchTodayClubs(
   const { startISO, endISO } = helsinkiDayBounds(new Date());
   let query = supabase
     .from("athlete_results")
-    .select("organization, organization_id, athlete_key")
+    .select("organization, organization_id, athlete_key, event_name, event_category, sub_category")
     .gte("competition_date", startISO)
     .lt("competition_date", endISO)
     .not("organization_id", "is", null);
@@ -50,8 +50,12 @@ export async function fetchTodayClubs(
     organization: string;
     organization_id: number | null;
     athlete_key: string;
+    event_name: string;
+    event_category: string;
+    sub_category: string;
   }>) {
     if (r.organization_id == null) continue;
+    if (isRoadOrCrossCountry(r)) continue;
     if (!map.has(r.organization_id)) {
       map.set(r.organization_id, {
         id: r.organization_id,
