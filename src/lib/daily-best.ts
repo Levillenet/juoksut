@@ -150,7 +150,8 @@ export async function fetchDailyBestForAthletes(
   // Step 1: per (competition, event, age) keep the official winner (lowest
   // result_rank from tuloslista).
   const perCompetition = new Map<string, DailyBestRow>();
-  for (const row of (all ?? []) as DailyBestRow[]) {
+  const allRows = ((all ?? []) as DailyBestRow[]).filter((r) => !isRoadOrCrossCountry(r));
+  for (const row of allRows) {
     const k = `${row.competition_id}|${row.event_name}|${row.age_class}`;
     const cur = perCompetition.get(k);
     if (!cur) {
