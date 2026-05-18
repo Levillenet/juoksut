@@ -89,7 +89,7 @@ export async function fetchClubTodayResults(
   }
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []) as ClubTodayRow[];
+  return ((data ?? []) as ClubTodayRow[]).filter((r) => !isRoadOrCrossCountry(r));
 }
 
 export type ClubPbMap = Record<string, { text: string; numeric: number }>;
