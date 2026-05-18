@@ -114,7 +114,7 @@ export async function fetchClubPbs(
   // group by normalized name in memory.
   const { data, error } = await supabase
     .from("athlete_results")
-    .select("athlete_key, event_name, event_category, result_text, result_numeric")
+    .select("athlete_key, event_name, event_category, sub_category, result_text, result_numeric")
     .in("athlete_key", athleteKeys)
     .not("result_numeric", "is", null)
     .limit(10000);
@@ -124,10 +124,12 @@ export async function fetchClubPbs(
     athlete_key: string;
     event_name: string;
     event_category: string;
+    sub_category: string;
     result_text: string;
     result_numeric: number;
   }>) {
     if (r.result_numeric == null) continue;
+    if (isRoadOrCrossCountry(r)) continue;
     const key = `${r.athlete_key}|${normalizeEventName(r.event_name)}`;
     const lower = r.event_category === "Track";
     const cur = map[key];
