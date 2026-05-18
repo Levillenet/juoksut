@@ -1,11 +1,19 @@
-// Tuloslista live API client. Public, CORS-open, no auth needed.
-const API = "https://cached-public-api.tuloslista.com/live/v1";
-const LIVE_CACHE_BUST_MS = 5_000;
+// Tuloslista live API client.
+//
+// Selaimessa: kutsuu omaa välikerrosta /api/public/tuloslista/live/v1/...,
+// joka cachettaa ja koalisoi pyynnöt Cloudflare Worker -reunalla
+// (ks. src/lib/tuloslista-proxy.ts).
+//
+// SSR:ssä (TanStack Start Worker-renderissä): kutsuu suoraan originia,
+// koska reuna-Workerista käsin proxy-reitin kutsuminen olisi turha hyppy.
+const PROXY_PATH = "/api/public/tuloslista/live/v1";
+const ORIGIN = "https://cached-public-api.tuloslista.com/live/v1";
 
 function liveUrl(path: string): string {
-  const url = new URL(`${API}${path}`);
-  url.searchParams.set("_live", String(Math.floor(Date.now() / LIVE_CACHE_BUST_MS)));
-  return url.toString();
+  if (typeof window !== "undefined") {
+    return `${PROXY_PATH}${path}`;
+  }
+  return `${ORIGIN}${path}`;
 }
 
 async function fetchLiveJson<T>(path: string, errorText: string): Promise<T> {
