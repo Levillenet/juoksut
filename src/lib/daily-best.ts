@@ -4,6 +4,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { isLowerBetter } from "./athlete-history";
+import { isRoadOrCrossCountry } from "./event-filters";
 
 export interface DailyBestRow {
   event_name: string;
@@ -92,7 +93,8 @@ export async function fetchDailyBest(ageClasses: string[]): Promise<DailyBestRow
     .lt("competition_date", endISO)
     .not("result_numeric", "is", null);
   if (error) throw error;
-  return reduceBest(data as DailyBestRow[]);
+  const filtered = (data as DailyBestRow[]).filter((r) => !isRoadOrCrossCountry(r));
+  return reduceBest(filtered);
 }
 
 /**
@@ -119,15 +121,18 @@ export async function fetchDailyBestForAthletes(
 
   const result: Record<string, DailyBestRow[]> = {};
   if (!own || own.length === 0) return result;
+  const ownFiltered = (own as { athlete_key: string; event_name: string; age_class: string; sub_category: string; event_category: string; result_text: string; result_numeric: number | null }[])
+    .filter((r) => !isRoadOrCrossCountry(r));
+  if (ownFiltered.length === 0) return result;
 
   // Collect distinct (event, age) pairs to fetch
   const pairs = new Set<string>();
-  for (const r of own) {
+  for (const r of ownFiltered) {
     const key = `${r.event_name}|${r.age_class}`;
     pairs.add(key);
   }
-  const eventNames = Array.from(new Set(own.map((r) => r.event_name)));
-  const ageClasses = Array.from(new Set(own.map((r) => r.age_class).filter(Boolean) as string[]));
+  const eventNames = Array.from(new Set(ownFiltered.map((r) => r.event_name)));
+  const ageClasses = Array.from(new Set(ownFiltered.map((r) => r.age_class).filter(Boolean) as string[]));
 
   // 2. Fetch all rows for those events/ages today
   const { data: all, error: e2 } = await supabase
@@ -145,7 +150,8 @@ export async function fetchDailyBestForAthletes(
   // Step 1: per (competition, event, age) keep the official winner (lowest
   // result_rank from tuloslista).
   const perCompetition = new Map<string, DailyBestRow>();
-  for (const row of (all ?? []) as DailyBestRow[]) {
+  const allRows = ((all ?? []) as DailyBestRow[]).filter((r) => !isRoadOrCrossCountry(r));
+  for (const row of allRows) {
     const k = `${row.competition_id}|${row.event_name}|${row.age_class}`;
     const cur = perCompetition.get(k);
     if (!cur) {
@@ -174,7 +180,7 @@ export async function fetchDailyBestForAthletes(
   }
 
   // 3. Attach the best for each athlete's (event, age) pair
-  for (const r of own as { athlete_key: string; event_name: string; age_class: string }[]) {
+  for (const r of ownFiltered) {
     const k = `${r.event_name}|${r.age_class}`;
     const best = bestByPair.get(k);
     if (!best) continue;

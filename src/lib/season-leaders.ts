@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { seasonRange, type SeasonKind } from "@/lib/season-stats";
+import { isRoadOrCrossCountry } from "@/lib/event-filters";
 
 /** Strip leading age-class prefix like "M14 ", "N ", "P11 " for grouping. */
 export function normalizeEventName(name: string): string {
@@ -63,6 +64,7 @@ interface RawRow {
   age_class: string;
   event_name: string;
   event_category: string;
+  sub_category: string;
   result_text: string;
   result_numeric: number | null;
   wind: number | null;
@@ -92,7 +94,7 @@ async function fetchSeasonRows(
     let q = supabase
       .from("athlete_results")
       .select(
-        "athlete_key, surname, firstname, organization, organization_id, age_class, event_name, event_category, result_text, result_numeric, wind, competition_id, competition_name, competition_date",
+        "athlete_key, surname, firstname, organization, organization_id, age_class, event_name, event_category, sub_category, result_text, result_numeric, wind, competition_id, competition_name, competition_date",
       )
       .gte("competition_date", range.from.toISOString())
       .lt("competition_date", range.to.toISOString())
@@ -101,7 +103,7 @@ async function fetchSeasonRows(
     if (ageClass) q = q.eq("age_class", ageClass);
     const { data, error } = await q;
     if (error) throw error;
-    const rows = (data ?? []) as RawRow[];
+    const rows = ((data ?? []) as RawRow[]).filter((r) => !isRoadOrCrossCountry(r));
     out.push(...rows);
     if (rows.length < PAGE_SIZE) break;
     offset += PAGE_SIZE;
@@ -143,13 +145,14 @@ async function fetchSeasonEvents(season: SeasonKind): Promise<LeaderEventOption[
   while (true) {
     const { data, error } = await supabase
       .from("athlete_results")
-      .select("event_name, event_category")
+      .select("event_name, event_category, sub_category")
       .gte("competition_date", range.from.toISOString())
       .lt("competition_date", range.to.toISOString())
       .not("result_numeric", "is", null)
       .range(offset, offset + PAGE_SIZE - 1);
     if (error) throw error;
-    const rows = (data ?? []) as { event_name: string | null; event_category: string | null }[];
+    const rows = ((data ?? []) as { event_name: string | null; event_category: string | null; sub_category: string | null }[])
+      .filter((r) => !isRoadOrCrossCountry(r));
     for (const r of rows) {
       if (!r.event_name) continue;
       const k = eventKey(r.event_name);

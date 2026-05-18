@@ -3,6 +3,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { helsinkiDayBounds } from "./daily-best";
+import { isRoadOrCrossCountry } from "./event-filters";
 
 export interface ClubTodayRow {
   athlete_key: string;
@@ -35,7 +36,7 @@ export async function fetchTodayClubs(
   const { startISO, endISO } = helsinkiDayBounds(new Date());
   let query = supabase
     .from("athlete_results")
-    .select("organization, organization_id, athlete_key")
+    .select("organization, organization_id, athlete_key, event_name, event_category, sub_category")
     .gte("competition_date", startISO)
     .lt("competition_date", endISO)
     .not("organization_id", "is", null);
@@ -49,8 +50,12 @@ export async function fetchTodayClubs(
     organization: string;
     organization_id: number | null;
     athlete_key: string;
+    event_name: string;
+    event_category: string;
+    sub_category: string;
   }>) {
     if (r.organization_id == null) continue;
+    if (isRoadOrCrossCountry(r)) continue;
     if (!map.has(r.organization_id)) {
       map.set(r.organization_id, {
         id: r.organization_id,
@@ -84,7 +89,7 @@ export async function fetchClubTodayResults(
   }
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []) as ClubTodayRow[];
+  return ((data ?? []) as ClubTodayRow[]).filter((r) => !isRoadOrCrossCountry(r));
 }
 
 export type ClubPbMap = Record<string, { text: string; numeric: number }>;
@@ -109,7 +114,7 @@ export async function fetchClubPbs(
   // group by normalized name in memory.
   const { data, error } = await supabase
     .from("athlete_results")
-    .select("athlete_key, event_name, event_category, result_text, result_numeric")
+    .select("athlete_key, event_name, event_category, sub_category, result_text, result_numeric")
     .in("athlete_key", athleteKeys)
     .not("result_numeric", "is", null)
     .limit(10000);
@@ -119,10 +124,12 @@ export async function fetchClubPbs(
     athlete_key: string;
     event_name: string;
     event_category: string;
+    sub_category: string;
     result_text: string;
     result_numeric: number;
   }>) {
     if (r.result_numeric == null) continue;
+    if (isRoadOrCrossCountry(r)) continue;
     const key = `${r.athlete_key}|${normalizeEventName(r.event_name)}`;
     const lower = r.event_category === "Track";
     const cur = map[key];

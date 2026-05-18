@@ -6,6 +6,7 @@ import { helsinkiDayBounds } from "./daily-best";
 import { isLowerBetter } from "./athlete-history";
 import { normalizeEventName } from "./season-leaders";
 import { seasonRange } from "./season-stats";
+import { isRoadOrCrossCountry } from "./event-filters";
 
 export interface TodayStats {
   competitions: number;
@@ -45,7 +46,7 @@ async function fetchTodayRows(): Promise<TodayRow[]> {
       .lt("competition_date", endISO)
       .range(offset, offset + PAGE - 1);
     if (error) throw error;
-    const rows = (data ?? []) as TodayRow[];
+    const rows = ((data ?? []) as TodayRow[]).filter((r) => !isRoadOrCrossCountry(r));
     out.push(...rows);
     if (rows.length < PAGE) break;
     offset += PAGE;
@@ -88,7 +89,7 @@ async function fetchSeasonPriorBests(
       .not("result_numeric", "is", null)
       .range(offset, offset + PAGE - 1);
     if (error) throw error;
-    const rows = (data ?? []) as PriorRow[];
+    const rows = ((data ?? []) as PriorRow[]).filter((r) => !isRoadOrCrossCountry(r));
     for (const r of rows) {
       if (r.result_numeric == null) continue;
       const key = `${normalizeEventName(r.event_name)}|${r.age_class}`;
