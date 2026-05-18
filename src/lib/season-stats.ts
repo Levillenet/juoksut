@@ -142,6 +142,7 @@ interface ResultRow {
   location: string;
   event_name: string;
   event_category: string;
+  sub_category: string;
   result_rank: number | null;
   was_pb: boolean;
   age_class: string;
