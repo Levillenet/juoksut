@@ -3,6 +3,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { helsinkiDayBounds } from "./daily-best";
+import { isRoadOrCrossCountry } from "./event-filters";
 
 export interface ClubTodayRow {
   athlete_key: string;
