@@ -64,6 +64,7 @@ interface RawRow {
   age_class: string;
   event_name: string;
   event_category: string;
+  sub_category: string;
   result_text: string;
   result_numeric: number | null;
   wind: number | null;
