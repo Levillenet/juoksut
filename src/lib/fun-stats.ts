@@ -10,6 +10,7 @@ import {
   estimateHoursAtVenue,
   type SeasonKind,
 } from "./season-stats";
+import { isRoadOrCrossCountry } from "./event-filters";
 
 const ATTEMPTS_PER_FIELD = 4;
 
