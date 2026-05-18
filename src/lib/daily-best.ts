@@ -93,7 +93,8 @@ export async function fetchDailyBest(ageClasses: string[]): Promise<DailyBestRow
     .lt("competition_date", endISO)
     .not("result_numeric", "is", null);
   if (error) throw error;
-  return reduceBest(data as DailyBestRow[]);
+  const filtered = (data as DailyBestRow[]).filter((r) => !isRoadOrCrossCountry(r));
+  return reduceBest(filtered);
 }
 
 /**
