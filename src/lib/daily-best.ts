@@ -127,12 +127,12 @@ export async function fetchDailyBestForAthletes(
 
   // Collect distinct (event, age) pairs to fetch
   const pairs = new Set<string>();
-  for (const r of own) {
+  for (const r of ownFiltered) {
     const key = `${r.event_name}|${r.age_class}`;
     pairs.add(key);
   }
-  const eventNames = Array.from(new Set(own.map((r) => r.event_name)));
-  const ageClasses = Array.from(new Set(own.map((r) => r.age_class).filter(Boolean) as string[]));
+  const eventNames = Array.from(new Set(ownFiltered.map((r) => r.event_name)));
+  const ageClasses = Array.from(new Set(ownFiltered.map((r) => r.age_class).filter(Boolean) as string[]));
 
   // 2. Fetch all rows for those events/ages today
   const { data: all, error: e2 } = await supabase
