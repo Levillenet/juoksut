@@ -46,7 +46,7 @@ async function fetchTodayRows(): Promise<TodayRow[]> {
       .lt("competition_date", endISO)
       .range(offset, offset + PAGE - 1);
     if (error) throw error;
-    const rows = (data ?? []) as TodayRow[];
+    const rows = ((data ?? []) as TodayRow[]).filter((r) => !isRoadOrCrossCountry(r));
     out.push(...rows);
     if (rows.length < PAGE) break;
     offset += PAGE;
