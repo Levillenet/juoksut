@@ -94,7 +94,7 @@ async function fetchSeasonRows(
     let q = supabase
       .from("athlete_results")
       .select(
-        "athlete_key, surname, firstname, organization, organization_id, age_class, event_name, event_category, result_text, result_numeric, wind, competition_id, competition_name, competition_date",
+        "athlete_key, surname, firstname, organization, organization_id, age_class, event_name, event_category, sub_category, result_text, result_numeric, wind, competition_id, competition_name, competition_date",
       )
       .gte("competition_date", range.from.toISOString())
       .lt("competition_date", range.to.toISOString())
@@ -103,7 +103,7 @@ async function fetchSeasonRows(
     if (ageClass) q = q.eq("age_class", ageClass);
     const { data, error } = await q;
     if (error) throw error;
-    const rows = (data ?? []) as RawRow[];
+    const rows = ((data ?? []) as RawRow[]).filter((r) => !isRoadOrCrossCountry(r));
     out.push(...rows);
     if (rows.length < PAGE_SIZE) break;
     offset += PAGE_SIZE;
