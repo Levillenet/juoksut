@@ -181,7 +181,7 @@ export async function fetchSeasonStats(
     let query = supabase
       .from("athlete_results")
       .select(
-        "athlete_key, surname, firstname, organization, organization_id, competition_id, competition_date, location, event_name, event_category, result_rank, was_pb, age_class",
+        "athlete_key, surname, firstname, organization, organization_id, competition_id, competition_date, location, event_name, event_category, sub_category, result_rank, was_pb, age_class",
       )
       .in("athlete_key", chunk)
       .gte("competition_date", range.from.toISOString())
@@ -189,7 +189,8 @@ export async function fetchSeasonStats(
       .limit(1000);
     const { data, error } = await query;
     if (error) throw error;
-    all.push(...((data ?? []) as ResultRow[]));
+    const rows = ((data ?? []) as ResultRow[]).filter((r) => !isRoadOrCrossCountry(r));
+    all.push(...rows);
   }
 
   // Ikäluokat (kaikki kauden esiintymät seuratuille urheilijoille)
