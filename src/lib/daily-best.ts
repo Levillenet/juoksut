@@ -121,6 +121,9 @@ export async function fetchDailyBestForAthletes(
 
   const result: Record<string, DailyBestRow[]> = {};
   if (!own || own.length === 0) return result;
+  const ownFiltered = (own as { athlete_key: string; event_name: string; age_class: string; sub_category: string; event_category: string; result_text: string; result_numeric: number | null }[])
+    .filter((r) => !isRoadOrCrossCountry(r));
+  if (ownFiltered.length === 0) return result;
 
   // Collect distinct (event, age) pairs to fetch
   const pairs = new Set<string>();
