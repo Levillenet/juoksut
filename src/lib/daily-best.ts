@@ -4,6 +4,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { isLowerBetter } from "./athlete-history";
+import { isRoadOrCrossCountry } from "./event-filters";
 
 export interface DailyBestRow {
   event_name: string;
