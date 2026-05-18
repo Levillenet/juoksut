@@ -89,7 +89,7 @@ async function fetchSeasonPriorBests(
       .not("result_numeric", "is", null)
       .range(offset, offset + PAGE - 1);
     if (error) throw error;
-    const rows = (data ?? []) as PriorRow[];
+    const rows = ((data ?? []) as PriorRow[]).filter((r) => !isRoadOrCrossCountry(r));
     for (const r of rows) {
       if (r.result_numeric == null) continue;
       const key = `${normalizeEventName(r.event_name)}|${r.age_class}`;
