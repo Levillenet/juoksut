@@ -1,53 +1,66 @@
-## Ongelma
 
-Live-näkymässä (kuuluttaja, scoreboard, NewResultOverlay) tulos merkitään PB:ksi aina kun lähdedata (tuloslista) ei sisällä urheilijalle PB- eikä SB-arvoa. Tämä on yleistä nuorilla. `detectRecord` `src/lib/records.tsx`:ssä palauttaa silloin aina `"PB"`, vaikka urheilijalla on jo aiemmista kilpailuista parempia tuloksia samassa lajissa (mahdollisesti eri ikäluokassa, esim. T10 → T11 pituus).
+# Etusivun yläosan selkeytys
 
-Tavoitetila: PB-vertailun pohjana käytetään urheilijan **koko historian paras tulos samassa normalisoidussa lajissa**, ikäluokasta riippumatta. Jos historiasta ei löydy mitään, tulosta ei merkitä PB:ksi ennen kuin samassa kilpailussa tulee parempi tulos (eli aidosti ensimmäinen tulos lajissa ei saa tähteä).
+Tällä hetkellä header (`src/routes/index.tsx`, rivit 302–383) niputtaa yhteen otsikon, kilpailuvalitsimen, päävalikon ja päiväkartat. Visuaalisesti ne sulautuvat yhdeksi möhkäleeksi koska kaikki ovat saman `border-b`-headerin sisällä ilman erottavia välejä tai kortteja.
 
-## Toteutus
+## Tavoite
 
-### 1. Poistetaan virheellinen "tyhjä = PB" -fallback
+Kolme selkeästi erottuvaa lohkoa pinottuna:
 
-`src/lib/records.tsx` → `detectRecord`: poistetaan `if (p == null && s == null) return "PB"`. PB/SB merkitään vain kun on jokin pohja, jota vastaan verrata.
+```
+┌─ Header (logo, kisan nimi, päivitä, kirjaudu ulos) ────────┐
+└────────────────────────────────────────────────────────────┘
 
-### 2. Historiapohjainen PB-baseline samaan kilpailuun
+┌─ LOHKO 1: Kilpailun valinta (oma kortti) ──────────────────┐
+│  Pieni otsikko: "Aktiivinen kilpailu"                      │
+│  [CompetitionSwitcher  ▼]                                  │
+└────────────────────────────────────────────────────────────┘
 
-Lisätään uusi moduuli `src/lib/history-baseline.ts`, joka tarjoaa cache-pohjaisen lookupin (`athlete_key + normalizedEvent → best historical result_text`):
+┌─ LOHKO 2: Päävalikko (oma kortti) ─────────────────────────┐
+│  [ AVAA VALIKKO ▾ ]                                        │
+│  (auki: NavCards-ruudukko)                                 │
+└────────────────────────────────────────────────────────────┘
 
-- `loadHistoryBaselineForCompetition(competitionId)`: hakee `athlete_results`-taulusta yhdellä kyselyllä kaikki rivit, joilla on `competition_id` = nykyinen kilpailu, ja niiden pohjalta listan kilpailun urheilijoista (`athlete_key`-joukko). Toisella kyselyllä haetaan kaikki samojen `athlete_key`ien aiemmat tulokset (`competition_id <> nykyinen`, `result_numeric IS NOT NULL`). Rivit ryhmitellään `athleteKey | normalizeEventName(event_name)` -avaimella ja jokaisesta valitaan paras `lowerBetter`-säännön mukaisesti (`isLowerBetter` löytyy `athlete-history.ts`:stä). Tulos: `Map<string, { resultText: string; resultNumeric: number }>` muistissa.
-- `getHistoricalBest(athleteKey, eventName, category, subCategory) → string | null` palauttaa cachatun parhaan tuloksen tekstinä (jota detectRecord parsii).
-- Cache invalidoituu kilpailun vaihtuessa.
+┌─ LOHKO 3: Päivän lajit (otsikko + päiväkartat) ────────────┐
+│  "Päivän lajit" + [ti] [ke] [to] …                         │
+└────────────────────────────────────────────────────────────┘
+```
 
-### 3. Liitetään baseline `effectiveRecord`-polkuun
+## Muutokset
 
-`src/lib/record-baseline.ts` → `effectiveRecord`:
-- Lisätään parametriksi `athleteKey?: string` ja `eventName?: string`, `category?: string`, `subCategory?: string`.
-- Päättelyjärjestys PB:lle: `record_baseline.pb` (jo otettu kilpailun alussa) → `alloc.PB` (lähdedatan PB) → `getHistoricalBest(...)` (oma historia). Sama logiikka SB:lle (vain `record_baseline.sb` → `alloc.SB`; historiaa ei käytetä SB:lle koska se on kausikohtainen ja vaatisi erillisen rajauksen — voidaan jättää myöhempään).
+Vain `src/routes/index.tsx`. Ei muutoksia muihin komponentteihin, ei logiikkamuutoksia.
 
-### 4. Kutsupaikkojen päivitys
+### 1. Sticky-header kevyemmäksi
+Headeriin jää vain logo, kisan nimi, päivitysaikaleima, kirjautuneen sähköposti sekä Päivitä- ja Kirjaudu-napit. Kilpailuvalitsin, AVAA VALIKKO -nappi ja päiväkartat **siirtyvät pois headerista** omiksi lohkoiksi pääsisällön yläosaan. Tämä myös vapauttaa pystytilaa kun käyttäjä rullaa.
 
-Kaikki `effectiveRecord`-kutsut saavat lisäparametrit. Allokaatiossa nimi/seura ovat valmiina, joten `athleteKey = \`${a.Surname}|${a.Firstname}|${a.Organization?.Id ?? ""}\`` lasketaan paikallisesti (vastaa harvest-puolen `athleteKey`-funktiota — pieni utility `src/lib/athlete-key.ts` jota molemmat käyttävät).
+### 2. Lohko 1 — Kilpailun valinta
+Oma `section` `<main>`in alussa, omana korttina (`rounded-xl border bg-card p-4`). Sisältö:
+- Pieni yläotsikko `"Aktiivinen kilpailu"` (`text-xs uppercase tracking-wider text-muted-foreground`)
+- `CompetitionSwitcher` (sama komponentti, sama `confirmOnChange={isOfficial}`)
+- Pieni apuvihje alle: "Vaihto vaikuttaa vain sinun näkymääsi"
 
-Päivitettävät tiedostot:
-- `src/hooks/useAnnouncerData.ts` (rivi 191)
-- `src/routes/scoreboard.tsx` (rivi 512)
-- `src/components/announcer/shared.tsx` (rivit 245, 389)
-- `src/components/announcer/NewResultOverlay.tsx` (rivi 86)
+Nykyinen voimakas oranssi "Valitse kilpailu live seurantaan tästä" -laatikko (rivit 346–350) korvautuu rauhallisemmalla otsikolla — kortin reunat tekevät jo selväksi että tämä on oma toimintonsa.
 
-### 5. Baseline-lataus kilpailun yhteydessä
+### 3. Lohko 2 — Päävalikko
+Oma kortti heti kilpailuvalinnan alle. Sisältö:
+- AVAA/PIILOTA VALIKKO -nappi (sama logiikka, sama localStorage-tila `NAVCARDS_COLLAPSED_KEY`)
+- Auki: `NavCards` renderöidään kortin sisään
+- Napin punainen ulkoasu vaihdetaan neutraalimpaan (primary-väri) jotta se ei näytä virhetilalta — punaisen voi varata vain destruktiivisille napeille
 
-`useAnnouncerData`:ssa (ja `scoreboard.tsx`:ssä) lisätään `useEffect`, joka kutsuu `loadHistoryBaselineForCompetition(competitionId)` kun kilpailu vaihtuu. Kun lataus on valmis, `effectiveRecord`-kutsut hyödyntävät cachea automaattisesti.
+### 4. Lohko 3 — Päivän lajit
+Säilyy nykyisellä paikalla mutta saa selkeän otsikon `<h2>Päivän lajit</h2>` ja sen viereen päiväkartat (rivit 366–382 siirtyvät headerista tähän). Vain `!isOfficial`-haarassa kuten nytkin.
 
-## Tekniset tiedostot
+### 5. Pieniä siivouksia
+- Poistetaan headerista `text-lg PÄIVÄN LAJIT` -vesileima (rivit 323–325) — uusi `<h2>` lohkossa 3 hoitaa saman.
+- `max-w-2xl`-leveys säilyy kaikissa lohkoissa, joten visuaalinen rytmi pysyy.
 
-- `src/lib/records.tsx` — poistetaan tyhjä-PB-fallback.
-- `src/lib/history-baseline.ts` — uusi: cache + Supabase-haku + lookup.
-- `src/lib/record-baseline.ts` — `effectiveRecord` huomioi historiapohjaisen PB:n.
-- `src/lib/athlete-key.ts` — uusi pieni jaettu utility (sama formaatti kuin harvesterissa).
-- `src/hooks/useAnnouncerData.ts`, `src/routes/scoreboard.tsx`, `src/components/announcer/{shared,NewResultOverlay}.tsx` — kutsupaikkojen päivitys + baseline-lataus.
+## Tekninen huomio
 
-## Mitä EI muuteta
+`navCollapsed`-tila ja sen `localStorage`-persistenssi siirtyvät loogisesti samaan paikkaan kuin uusi Lohko 2. `useRefreshIntervalSec`, `load()`, päiväkartat ja lajilista pysyvät täysin ennallaan. Ei muutoksia tyyppeihin, dataan eikä reititykseen.
 
-- Urheilijakortin PB-listaa (`groupByEvent`) ei kosketa — se käyttää jo `ageClassRank`-suodatusta korkeimpaan ikäluokkaan.
-- `was_pb`-kenttää tai SQL-puolen `mark_pbs_for_competitions`-funktiota ei muuteta.
-- SB-laskentaan ei lisätä historia-fallbackia tässä vaiheessa (vaatisi kauden rajauksen).
+## Mitä EI muuteta tässä
+
+- NavCards-korttien sisältö, ikonit, värit, järjestys (eri tehtävä)
+- TodayStats / DailyBest / ClubToday / SeasonStats -järjestys (eri tehtävä)
+- Header-yläpalkin logo/kirjautumisnapit
+- Mikään muu reitti

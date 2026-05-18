@@ -300,7 +300,7 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
-        <div className="relative mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <img
             src={logo}
             alt="Lahden Ahkera"
@@ -320,9 +320,6 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
               </p>
             )}
           </div>
-          <h2 className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-lg font-black uppercase tracking-widest text-primary xl:block">
-            {isOfficial ? "Toimitsija" : "Päivän lajit"}
-          </h2>
           <Button
             variant="ghost"
             size="icon"
@@ -341,51 +338,40 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
             <LogOut className="h-5 w-5" />
           </Button>
         </div>
+      </header>
 
-        <div className="mx-auto px-4 pb-3 max-w-2xl">
-          <div className="mb-2 rounded-lg bg-primary/10 px-3 py-2 text-center">
-            <p className="text-sm font-extrabold uppercase tracking-wider text-primary">
-              Valitse kilpailu live seurantaan tästä
-            </p>
-          </div>
+      <main className="mx-auto max-w-2xl space-y-4 px-4 py-4">
+        {/* LOHKO 1 — Aktiivinen kilpailu */}
+        <section className="rounded-xl border bg-card p-4 shadow-sm">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Aktiivinen kilpailu
+          </p>
           <CompetitionSwitcher className="w-full" confirmOnChange={isOfficial} />
-        </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Vaihto vaikuttaa vain sinun näkymääsi.
+          </p>
+        </section>
 
-        <div className="mx-auto max-w-2xl px-4 pb-2">
+        {/* LOHKO 2 — Päävalikko */}
+        <section className="rounded-xl border bg-card p-4 shadow-sm">
           <button
             type="button"
             onClick={() => setNavCollapsed((v) => !v)}
-            className="flex w-full items-center justify-center rounded-lg border-2 border-red-500/60 bg-card px-3 py-2 text-lg font-bold tracking-widest text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+            className="flex w-full items-center justify-center rounded-lg border-2 border-primary/40 bg-primary/5 px-3 py-2 text-base font-bold uppercase tracking-widest text-primary hover:bg-primary/10"
             aria-expanded={!navCollapsed}
           >
-            {navCollapsed ? "AVAA VALIKKO" : "PIILOTA VALIKKO"}
+            {navCollapsed ? "Avaa valikko ▾" : "Piilota valikko ▴"}
           </button>
-        </div>
-        {!navCollapsed && <NavCards role={role} isAdmin={isAdmin} />}
+          {!navCollapsed && (
+            <div className="mt-3">
+              <NavCards role={role} isAdmin={isAdmin} />
+            </div>
+          )}
+        </section>
 
-        {!isOfficial && dates.length > 1 && (
-          <div className="mx-auto flex max-w-2xl gap-2 overflow-x-auto px-4 pb-3">
-            {dates.map((d) => (
-              <button
-                key={d}
-                onClick={() => setActiveDate(d)}
-                className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium transition-colors ${
-                  d === activeDate
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-secondary"
-                }`}
-              >
-                {d}
-              </button>
-            ))}
-          </div>
-        )}
-      </header>
-
-      <main className="mx-auto max-w-2xl px-4 py-4">
         <NoteLinkInvitesBanner />
         {error && (
-          <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         )}
@@ -397,6 +383,33 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
             <ClubTodaySection excludeCompetitionId={competitionId} />
             <LiveCompetitionsSection />
             <SeasonStatsSection />
+
+            {/* LOHKO 3 — Päivän lajit */}
+            <section className="pt-2">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-lg font-black uppercase tracking-widest text-primary">
+                  Päivän lajit
+                </h2>
+              </div>
+
+              {dates.length > 1 && (
+                <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
+                  {dates.map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setActiveDate(d)}
+                      className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+                        d === activeDate
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
 
             {loading && !data && (
               <div className="py-12 text-center text-sm text-muted-foreground">Ladataan…</div>
