@@ -6,6 +6,7 @@ import { helsinkiDayBounds } from "./daily-best";
 import { isLowerBetter } from "./athlete-history";
 import { normalizeEventName } from "./season-leaders";
 import { seasonRange } from "./season-stats";
+import { isRoadOrCrossCountry } from "./event-filters";
 
 export interface TodayStats {
   competitions: number;
