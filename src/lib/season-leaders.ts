@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { seasonRange, type SeasonKind } from "@/lib/season-stats";
+import { isRoadOrCrossCountry } from "@/lib/event-filters";
 
 /** Strip leading age-class prefix like "M14 ", "N ", "P11 " for grouping. */
 export function normalizeEventName(name: string): string {
