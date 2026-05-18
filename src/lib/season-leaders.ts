@@ -145,13 +145,14 @@ async function fetchSeasonEvents(season: SeasonKind): Promise<LeaderEventOption[
   while (true) {
     const { data, error } = await supabase
       .from("athlete_results")
-      .select("event_name, event_category")
+      .select("event_name, event_category, sub_category")
       .gte("competition_date", range.from.toISOString())
       .lt("competition_date", range.to.toISOString())
       .not("result_numeric", "is", null)
       .range(offset, offset + PAGE_SIZE - 1);
     if (error) throw error;
-    const rows = (data ?? []) as { event_name: string | null; event_category: string | null }[];
+    const rows = ((data ?? []) as { event_name: string | null; event_category: string | null; sub_category: string | null }[])
+      .filter((r) => !isRoadOrCrossCountry(r));
     for (const r of rows) {
       if (!r.event_name) continue;
       const k = eventKey(r.event_name);
