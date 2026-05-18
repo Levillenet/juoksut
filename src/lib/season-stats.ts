@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { isRoadOrCrossCountry } from "./event-filters";
 
 export type SeasonKind = "year" | "summer" | "winter" | "outdoor" | "indoor";
 
