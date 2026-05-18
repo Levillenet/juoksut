@@ -55,7 +55,7 @@ async function fetchSeasonRowsForAgeClass(
     const { data, error } = await supabase
       .from("athlete_results")
       .select(
-        "athlete_key, surname, firstname, event_name, result_text, result_numeric, competition_date",
+        "athlete_key, surname, firstname, event_name, event_category, sub_category, result_text, result_numeric, competition_date",
       )
       .eq("age_class", ageClass)
       .gte("competition_date", range.from.toISOString())
@@ -63,7 +63,8 @@ async function fetchSeasonRowsForAgeClass(
       .not("result_numeric", "is", null)
       .range(offset, offset + PAGE_SIZE - 1);
     if (error) throw error;
-    const rows = (data ?? []) as LeaderRow[];
+    const rows = ((data ?? []) as (LeaderRow & { event_category?: string; sub_category?: string })[])
+      .filter((r) => !isRoadOrCrossCountry(r));
     out.push(...rows);
     if (rows.length < PAGE_SIZE) break;
     offset += PAGE_SIZE;
