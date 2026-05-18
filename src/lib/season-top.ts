@@ -5,6 +5,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { isIndoorResult, normalizeEventName, type AthleteResultRow } from "@/lib/athlete-history";
 import { seasonRange, type SeasonKind } from "@/lib/season-stats";
+import { isRoadOrCrossCountry } from "@/lib/event-filters";
 
 export interface SeasonTopFlag {
   /** Tulos oli kauden ykkönen sen kilpailupäivänään (mahd. myöhemmin ohitettu). */
