@@ -180,7 +180,7 @@ export async function fetchDailyBestForAthletes(
   }
 
   // 3. Attach the best for each athlete's (event, age) pair
-  for (const r of own as { athlete_key: string; event_name: string; age_class: string }[]) {
+  for (const r of ownFiltered) {
     const k = `${r.event_name}|${r.age_class}`;
     const best = bestByPair.get(k);
     if (!best) continue;
