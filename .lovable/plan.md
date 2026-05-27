@@ -1,87 +1,49 @@
+## Tavoite
 
-# Maantie- ja maastojuoksut piiloon kaikkialta
+Kun seurattu urheilija saa eräjaon kilpailussa, urheilijan rata- ja erätieto näkyy aikataulussa lähes heti, ja muutoksesta ilmoitetaan käyttäjälle.
 
-## Tunnistus
+## Muutokset
 
-Tietokannan rivien tarkistus näytti että nämä lajit esiintyvät kolmessa muodossa:
+### 1. Nopeampi tausta-päivitys aikataululle
 
-| Tapaus | event_category | sub_category | event_name |
-|---|---|---|---|
-| Selkeät | `Street` | `Run` | (mikä tahansa) — ~3 900 riviä |
-| Väärin tagatut Track | `Track` | `Run` / `Walk` | sisältää "maantie" tai "maasto" |
-| Väärin tagattu viesti | `Relay` | `Sprint` | "8x1km maastoviesti" |
+`src/lib/tuloslista-queries.ts` — `competitionIndexQueryOptions`:
+- `refetchInterval`: **60 s → 20 s** (aiemmin liian harva, koska tällä haetaan kaikkien lajien event-detaljit)
+- `staleTime`: 30 s → 10 s, jotta `router.invalidate()` ja palaaminen sivulle ei käytä vanhaa cachea
+- `refetchIntervalInBackground`: jätetään pois (vältetään turhaa kuormitusta, jos välilehti taustalla)
 
-Lisäksi live-API:n `SubCategory`-arvoissa esiintyvät `RoadRun` ja `CrossCountry` (joista koodin `translateSub` jo tietää).
+Vaikutus: heti kun erät jaetaan, /watch, /seuraa ja /print/watched näyttävät "Eräjako tekemättä" → "Erä N · Rata M" enintään 20 s viiveellä.
 
-## Yhteinen apufunktio
+### 2. Ilmoitus eräjaosta seuratulle urheilijalle
 
-Uusi `src/lib/event-filters.ts`:
+Uusi hook `src/hooks/useWatchedAllocationChanges.ts`:
+- Pitää `useRef`-mapissa per (urheilija, round.Id) edellisen tilan: `enrollment` tai `allocated`.
+- Initialisoi ensimmäisellä havainnolla hiljaa (ettei vanha enrollment laukaise heti viestiä).
+- Kun tila muuttuu `enrollment → allocated` (= `fromEnrollment: true` → `false`), kutsuu `pushTickerMessage`:
+  ```
+  "{Etunimi Sukunimi} sai eräjaon lajissa {EventName}: Erä N · Rata M"
+  ```
+- Jos round on Field-laji, muoto: "… Järj. M" (jos Position annettu) tai pelkkä "… eräjako tehty".
+- `source: "watched"`, `eventId`/`eventName` ticker-kontekstiin (klikkaus avaa erän).
 
-```ts
-const ROAD_CROSS_RX = /maantie|maasto|cross[- ]?country|road\s*run/i;
+Hookin käyttö:
+- `src/routes/watch.tsx`: lisätään `useWatchedAllocationChanges(index, watched)` samaan kohtaan kuin nykyinen `useWatchedFieldChanges`.
+- Pääsivulla (`src/routes/index.tsx`) ei ole tällä hetkellä `index`-dataa käytössä; ei lisätä erikseen, koska viesti tulee `LiveTicker`-virtaan joka on globaali ja näkyy joka tapauksessa kun käyttäjä on /watch-sivulla.
 
-export function isRoadOrCrossCountry(r: {
-  event_category?: string | null;
-  sub_category?: string | null;
-  event_name?: string | null;
-}): boolean {
-  if ((r.event_category ?? "") === "Street") return true;
-  const sub = r.sub_category ?? "";
-  if (sub === "RoadRun" || sub === "CrossCountry") return true;
-  return ROAD_CROSS_RX.test(r.event_name ?? "");
-}
+### 3. (Pieni siivous) — varmistetaan että ticker-viesti näkyy myös toastissa
 
-// Live-API Round-muoto
-export function isRoadOrCrossCountryRound(r: {
-  Category?: string;
-  SubCategory?: string;
-  EventName?: string;
-  Name?: string;
-}): boolean {
-  return isRoadOrCrossCountry({
-    event_category: r.Category,
-    sub_category: r.SubCategory,
-    event_name: r.EventName ?? r.Name,
-  });
-}
-```
+Tarkistetaan että `pushTickerMessage` source: "watched" -viestit näytetään `sonner`-toastilla (`toast.success` tms.), kuten muutkin watched-tapahtumat. Jos jo tehty, ei muutoksia; jos ei, lisätään `ticker-store.ts`:ään sonner-kutsu watched-lähteelle.
 
-## Mihin sovelletaan
+## Mitä ei muuteta
 
-Strategia: **suodatus lukuhetkellä**. Harvesteri jatkaa kaiken keräämistä — vain UI ja tilastot piilottavat. Näin asetus voidaan myöhemmin perua yhdestä paikasta.
+- `competitionScheduleQueryOptions` (announcer-näkymä) — sillä on jo 15 s refetch.
+- Enrollment-synteettisten rivien generointi: pidetään ennallaan, vaihtuu automaattisesti oikeisiin alloceihin kun event-detail palauttaa heat-allocationsit.
+- Field-lajien sija/tulos-ilmoitukset (`useWatchedFieldChanges`) — pysyvät erillisinä.
 
-### Tilasto- ja koostelibit (Supabase-luvut)
-Lisää `import` ja `.filter(r => !isRoadOrCrossCountry(r))` heti datan saannin jälkeen:
-- `src/lib/today-stats.ts`
-- `src/lib/daily-best.ts`
-- `src/lib/club-today.ts`
-- `src/lib/season-stats.ts`
-- `src/lib/season-top.ts`
-- `src/lib/season-leaders.ts` (sekä rivien suodatus että lajilistan koonti)
-- `src/lib/fun-stats.ts`
-- `src/lib/history-baseline.ts` (estää live-overlayn nostamasta maantietuloksia ennätyksiksi)
-- `src/lib/athlete-history.ts`
+## Tekninen yhteenveto
 
-### Urheilijaprofiili (käyttäjä valitsi A — kokonaan pois)
-- `src/routes/athlete.$key.tsx`
-- `src/routes/urheilija.$token.tsx`
-
-Suodatetaan `athlete_results`-rivit ennen ryhmittelyä ja PB-listausta.
-
-### Live-näkymät (Round / EventResults — Tuloslista-API)
-- `src/routes/index.tsx` — päivän lajit -listan `runs`
-- `src/routes/announcer.combined.tsx`, `announcer.live.tsx`, `announcer.planning.tsx` — eräluettelot
-- `src/hooks/useAnnouncerData.ts` jos sieltä menee rounds-listan kautta
-- `src/routes/running-ops.tsx` — juoksulajien operointi
-- `src/routes/watch.tsx` — seurattujen tulokset
-- `src/routes/round.$eventId.$roundId.tsx` — jos käyttäjä avaa suoran linkin: näytetään ystävällinen ilmoitus "Tämä laji on rajattu pois palvelusta" + paluu etusivulle
-
-### Ei muuteta
-- Harvesteri (`src/routes/api/public/hooks/harvest-results.ts`) — data säilyy
-- `record_baseline` ja `athlete_results` -taulut — ei migraatioita, ei poistoja
-- `src/routes/scoreboard.tsx` — vain kenttälajit
-- Print-näkymät — käyttävät samoja libejä, suodatus periytyy automaattisesti
-
-## Tekninen huomio
-
-Yksittäisten libien sisällä haetut rivit on jo tyypitetty omilla interfaceilla joissa on `event_category`, `sub_category` ja `event_name` — `isRoadOrCrossCountry` toimii niihin suoraan. Live-puolella käytetään Round-varianttia. Ei tietokantamuutoksia.
+| Tiedosto | Muutos |
+|---|---|
+| `src/lib/tuloslista-queries.ts` | `refetchInterval: 20_000`, `staleTime: 10_000` |
+| `src/hooks/useWatchedAllocationChanges.ts` | **uusi** — havaitsee enrollment→allocation -siirtymän, lähettää ticker-viestin |
+| `src/routes/watch.tsx` | kutsutaan uutta hookia |
+| `src/lib/ticker-store.ts` *(tarpeen mukaan)* | varmistetaan sonner-toast watched-viesteille |
