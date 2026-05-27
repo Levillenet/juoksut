@@ -66,14 +66,14 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
   const isOfficial = role === "official" && !isAdmin;
   const showOfficialLinks = role === "official" || isAdmin;
   return (
-    <div className="mx-auto grid max-w-2xl gap-2 px-4 pb-3 sm:grid-cols-2">
+    <div className="mx-auto grid max-w-2xl gap-3 px-4 pb-3 sm:grid-cols-2">
       {isAdmin && (
         <Link
           to="/admin/analytics"
-          className="rounded-xl border-2 border-amber-500/60 bg-amber-50 px-4 py-2.5 text-center hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950/60 sm:col-span-2"
+          className="rounded-xl border-2 border-accent-warm-border bg-accent-warm px-4 py-3 text-center text-accent-warm-foreground hover:opacity-90 sm:col-span-2"
         >
-          <div className="text-sm font-semibold leading-tight">Admin · Käyttöanalytiikka</div>
-          <div className="mt-0.5 text-[11px] text-muted-foreground">
+          <div className="text-sm font-semibold leading-snug">Admin · Käyttöanalytiikka</div>
+          <div className="mt-0.5 text-[11px] opacity-80">
             Sivuston käyttötilastot ja CSV-vienti (vain sinulle)
           </div>
         </Link>
@@ -114,10 +114,10 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
       {role === "user" && (
         <Link
           to="/hauskat-tilastot"
-          className="rounded-xl border-2 border-amber-500/40 bg-amber-50/60 px-4 py-2.5 text-center hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
+          className="rounded-xl border-2 border-accent-warm-border bg-accent-warm px-4 py-3 text-center text-accent-warm-foreground hover:opacity-90"
         >
-          <div className="text-sm font-semibold leading-tight">🎉 Hauskat tilastot</div>
-          <div className="mt-0.5 text-[11px] text-muted-foreground">
+          <div className="text-sm font-semibold leading-snug">🎉 Hauskat tilastot</div>
+          <div className="mt-0.5 text-[11px] opacity-80">
             Leikkimieliset kausimittarit seuratuille urheilijoille
           </div>
         </Link>
@@ -167,9 +167,9 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
       </Link>
       <Link
         to="/print"
-        className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
+        className="rounded-xl border-2 border-primary/30 bg-card px-4 py-3 text-center hover:bg-secondary"
       >
-        <div className="text-sm font-semibold leading-tight">Tulostettava aikataulu</div>
+        <div className="text-sm font-semibold leading-snug">Kilpailun aikataulu</div>
         <div className="mt-0.5 text-[11px] text-muted-foreground">
           Kisan lajit, seuran urheilijat tai omien lasten aikataulu PDF:ksi
         </div>
@@ -357,7 +357,7 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
           <button
             type="button"
             onClick={() => setNavCollapsed((v) => !v)}
-            className="flex w-full items-center justify-center rounded-lg border-2 border-primary/40 bg-primary/5 px-3 py-2 text-base font-bold uppercase tracking-widest text-primary hover:bg-primary/10"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary/30 bg-card px-3 py-2.5 text-base font-semibold text-foreground transition-colors hover:bg-secondary"
             aria-expanded={!navCollapsed}
           >
             {navCollapsed ? "Avaa valikko ▾" : "Piilota valikko ▴"}
@@ -387,7 +387,7 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
             {/* LOHKO 3 — Päivän lajit */}
             <section className="pt-2">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-lg font-black uppercase tracking-widest text-primary">
+                <h2 className="text-lg font-bold tracking-tight text-foreground">
                   Päivän lajit
                 </h2>
               </div>
