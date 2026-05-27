@@ -74,19 +74,54 @@ export function competitionIndexQueryOptions(
             for (const round of ev.Rounds) {
               const matchingRound =
                 allRounds.find((r) => r.Id === round.Id) ?? {
-                  ...allRounds.find((r) => r.EventId === eid)!,
+                  ...allRounds.find((r) => r.EventName === ev.Name)!,
                   Id: round.Id,
                   BeginDateTimeWithTZ: round.BeginDateTimeWithTZ,
                   Name: round.Name,
                   Status: round.Status,
                 };
-              for (const heat of round.Heats) {
-                for (const alloc of heat.Allocations) {
+              const roundHasAllocs = round.Heats.some(
+                (h) => h.Allocations.length > 0,
+              );
+              if (roundHasAllocs) {
+                for (const heat of round.Heats) {
+                  for (const alloc of heat.Allocations) {
+                    collected.push({
+                      round: matchingRound,
+                      alloc,
+                      heatIndex: heat.Index,
+                      heatBegin: round.BeginDateTimeWithTZ,
+                    });
+                  }
+                }
+              } else if (ev.Enrollments && ev.Enrollments.length > 0) {
+                // No heat allocations yet — synthesize entries from enrollments
+                // so watched athletes still see the event in their schedule.
+                for (const e of ev.Enrollments) {
+                  if (e.NotInCompetition) continue;
                   collected.push({
                     round: matchingRound,
-                    alloc,
-                    heatIndex: heat.Index,
+                    alloc: {
+                      Id: e.Id,
+                      AllocId: e.Id,
+                      Position: 0,
+                      Number: e.Number,
+                      TeamName: "",
+                      Name: e.Name,
+                      Firstname: e.Firstname,
+                      Surname: e.Surname,
+                      NotInCompetition: false,
+                      PB: e.PB ?? "",
+                      SB: e.SB ?? "",
+                      Result: null,
+                      ResultRank: null,
+                      HeatRank: null,
+                      Wind: null,
+                      Organization: e.Organization,
+                    },
+                    heatIndex: 0,
                     heatBegin: round.BeginDateTimeWithTZ,
+                    fromEnrollment: true,
                   });
                 }
               }
