@@ -33,6 +33,21 @@ function saveOrgId(id: number | null) {
   }
 }
 
+function helsinkiTodayYmd(): string {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Helsinki",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return fmt.format(new Date());
+}
+
+function ymdToDate(ymd: string): Date {
+  // Noon UTC lands on the same calendar day in Helsinki (UTC+2/+3).
+  return new Date(`${ymd}T12:00:00Z`);
+}
+
 export function ClubTodaySection({
   excludeCompetitionId,
 }: {
@@ -40,16 +55,19 @@ export function ClubTodaySection({
 } = {}) {
   const [orgId, setOrgId] = useState<number | null>(() => loadOrgId());
   const [open, setOpen] = useState(true);
+  const [dateYmd, setDateYmd] = useState<string>(() => helsinkiTodayYmd());
+  const isToday = dateYmd === helsinkiTodayYmd();
+  const selectedDate = useMemo(() => ymdToDate(dateYmd), [dateYmd]);
 
   const clubsQuery = useQuery({
-    queryKey: ["club-today", "clubs", excludeCompetitionId ?? 0],
-    queryFn: () => fetchTodayClubs(excludeCompetitionId),
+    queryKey: ["club-today", "clubs", excludeCompetitionId ?? 0, dateYmd],
+    queryFn: () => fetchTodayClubs(excludeCompetitionId, selectedDate),
     staleTime: 5 * 60_000,
   });
 
   const resultsQuery = useQuery({
-    queryKey: ["club-today", "results", orgId ?? 0, excludeCompetitionId ?? 0],
-    queryFn: () => fetchClubTodayResults(orgId!, excludeCompetitionId),
+    queryKey: ["club-today", "results", orgId ?? 0, excludeCompetitionId ?? 0, dateYmd],
+    queryFn: () => fetchClubTodayResults(orgId!, excludeCompetitionId, selectedDate),
     enabled: orgId != null,
     staleTime: 60_000,
   });
