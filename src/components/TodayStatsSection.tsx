@@ -71,7 +71,7 @@ export function TodayStatsSection() {
           <span className="text-[11px] text-destructive">Tilastoja ei voitu ladata</span>
         )}
       </div>
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
         <StatTile
           icon={<Activity className="h-5 w-5" />}
           label="Kisoja"

@@ -174,7 +174,7 @@ function PrintClubPage() {
             <select
               value={org || ""}
               onChange={(e) => setOrg(parseInt(e.target.value, 10) || 0)}
-              className="h-10 w-full appearance-none rounded-md border border-input bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="h-12 w-full appearance-none rounded-lg border border-input bg-background pl-9 pr-3 text-base focus:outline-none focus:ring-2 focus:ring-ring sm:h-10 sm:text-sm"
               aria-label="Valitse seura"
               disabled={clubs.length === 0}
             >
