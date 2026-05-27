@@ -32,6 +32,7 @@ export function CompetitionSwitcher({
   const [competitionId, setCompetitionId] = useCompetitionId();
   const { list, loading } = useCompetitionsWindow(7, 21);
   const [pending, setPending] = useState<number | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
   const todayKey = helsinkiDateKey(new Date().toISOString());
   const groups = useMemo(() => {
