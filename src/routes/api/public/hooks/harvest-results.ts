@@ -247,7 +247,7 @@ async function flush(rows: Row[]) {
   }
 }
 
-async function harvestRange(ids: number[]) {
+async function harvestRange(ids: number[], latestIdHint: number) {
   let scanned = 0;
   let existed = 0;
   let revisited = 0;
@@ -264,6 +264,12 @@ async function harvestRange(ids: number[]) {
   }> = [];
 
   const cutoffMs = Date.now() - REVISIT_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+  // Päivitä latestId-arvio jo skannauksen aikana, jotta uusin nähty ID
+  // huomioidaan permanent-gap-päätöksessä saman ajon sisällä.
+  let runningLatestId = latestIdHint;
+  for (const id of ids) {
+    if (id > runningLatestId) runningLatestId = id;
+  }
 
   // Process IDs in chunks of CONCURRENCY in source order, so that if we
   // bail out on rate-limit we know exactly which IDs were attempted.
@@ -287,14 +293,22 @@ async function harvestRange(ids: number[]) {
         if (v.existed) {
           existed++;
           if (v.rowsAdded > 0) touchedCompIds.add(id);
+          if (id > runningLatestId) runningLatestId = id;
         }
         // Päätä onko tämä kisa "done" — eli ei tarvitse palata.
         // Pidetään revisit-tilassa myös jo tuloksellisia kisoja, koska
         // alkuerien jälkeen voi tulla finaali (tai uusia kierroksia), ja
         // upsert valitsee parhaan tuloksen per urheilija/laji uudelleen.
+        //
+        // Ei-olemassaolevat ID:t merkitään done=true VAIN jos ne ovat
+        // selvästi taakse jääneitä (id < latest - NONEXIST_PERMANENT_GAP).
+        // Tuoreille ei-olemassaoleville pidetään done=false, jotta ne
+        // probetaan uudelleen kun kisan tulokset ehkä julkaistaan.
         const dateMs = v.competitionDate ? Date.parse(v.competitionDate) : NaN;
         const tooOldToRevisit = Number.isFinite(dateMs) && dateMs < cutoffMs;
-        const done = !v.existed || tooOldToRevisit;
+        const isPermanentGap =
+          !v.existed && id < runningLatestId - NONEXIST_PERMANENT_GAP;
+        const done = isPermanentGap || tooOldToRevisit;
         scanRecords.push({
           competition_id: id,
           competition_date: v.competitionDate,
