@@ -137,9 +137,9 @@ export function competitionIndexQueryOptions(
       await Promise.all(Array.from({ length: CONCURRENCY }, worker));
       return { name: props?.Competition?.Name ?? "", entries: collected };
     },
-    staleTime: 30_000,
+    staleTime: 10_000,
     gcTime: 10 * 60_000,
-    refetchInterval: 60_000,
+    refetchInterval: 20_000,
     refetchOnWindowFocus: false,
   });
 }

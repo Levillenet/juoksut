@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { fetchDailyBestForAthletes } from "@/lib/daily-best";
 import { LiveTicker } from "@/components/announcer/LiveTicker";
 import { useWatchedFieldChanges } from "@/hooks/useWatchedFieldChanges";
+import { useWatchedAllocationChanges } from "@/hooks/useWatchedAllocationChanges";
 
 import { RequireRole } from "@/components/RequireRole";
 
@@ -74,6 +75,7 @@ function WatchPage() {
   const loading = indexQuery.isFetching;
 
   useWatchedFieldChanges(index, watched);
+  useWatchedAllocationChanges(index, watched);
 
   const hasActiveWatchedField = useMemo(() => {
     if (!index || watched.length === 0) return false;
