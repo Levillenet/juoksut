@@ -30,7 +30,9 @@ const REVISIT_MAX_AGE_DAYS = 365; // kuinka kauan palataan kisoihin (alkuerä→
 // tuloksia ei ole vielä syötetty). Pidetään tällaiset revisit-tilassa kunnes
 // ID jää selvästi taakse uusimmasta nähdystä ID:stä.
 const NONEXIST_PERMANENT_GAP = 300; // jos id < latest_id - tämä, merkitään lopullisesti done
-const NONEXIST_REVISIT_LIMIT = 40;  // tuoreiden ei-olemassaolevien ID:iden uudelleenprobeja per ajo
+const NONEXIST_REVISIT_LIMIT = 120; // tuoreiden ei-olemassaolevien ID:iden uudelleenprobeja per ajo
+const NONEXIST_NEAR_TODAY_LIMIT = 20; // priorisoitu probe lähellä tämän päivän olemassa olevia ID:itä
+const NONEXIST_NEAR_TODAY_RADIUS = 100; // ±ID-säde tämän päivän olemassa olevien kisojen ympärillä
 const CONCURRENCY = 5;       // parallel competitions per chunk
 const HARD_MAX_ID = 30000;   // safety ceiling
 const FLOOR_ID = 16456;      // tuloslista API:n vanhin saatavilla oleva kisa (5.1.2025)
@@ -403,7 +405,34 @@ async function run(request: Request): Promise<Response> {
       // ei ole vielä julkaistu. Probetaan uudestaan jos ID on lähellä uusinta
       // nähtyä (eli ei selvästi taakse jäänyt aukko).
       const nonexistFloor = Math.max(FLOOR_ID, latestId - NONEXIST_PERMANENT_GAP);
-      const [freshRes, staleRes, nonexistRes] = await Promise.all([
+      // Priorisoitu probe: ID:t jotka ovat ±NONEXIST_NEAR_TODAY_RADIUS päässä
+      // viime ~2 vrk:n aikana skannattujen, OLEMASSA OLEVIEN kisojen ID:istä.
+      // Näin tämän päivän "puuttuvat" ID:t (kuten Hyvän Tuulen Kisat 19355,
+      // jonka ympärillä oli 19394–19427 olemassa) skannataan joka ajossa.
+      const todayCutoff = new Date(
+        Date.now() - 2 * 24 * 60 * 60 * 1000,
+      ).toISOString();
+      const { data: nearTodayAnchors } = await supabaseAdmin
+        .from("harvest_competitions")
+        .select("competition_id")
+        .eq("exists_in_source", true)
+        .gte("last_scanned_at", todayCutoff)
+        .order("competition_id", { ascending: false })
+        .limit(20);
+      let nearTodayMin = Number.POSITIVE_INFINITY;
+      let nearTodayMax = Number.NEGATIVE_INFINITY;
+      for (const a of (nearTodayAnchors ?? []) as Array<{ competition_id: number }>) {
+        if (a.competition_id < nearTodayMin) nearTodayMin = a.competition_id;
+        if (a.competition_id > nearTodayMax) nearTodayMax = a.competition_id;
+      }
+      const hasNearToday = Number.isFinite(nearTodayMin) && Number.isFinite(nearTodayMax);
+      const nearTodayLo = hasNearToday
+        ? Math.max(FLOOR_ID, nearTodayMin - NONEXIST_NEAR_TODAY_RADIUS)
+        : 0;
+      const nearTodayHi = hasNearToday
+        ? nearTodayMax + NONEXIST_NEAR_TODAY_RADIUS
+        : 0;
+      const [freshRes, staleRes, nonexistRes, nearTodayRes] = await Promise.all([
         supabaseAdmin
           .from("harvest_competitions")
           .select("competition_id")
@@ -429,12 +458,23 @@ async function run(request: Request): Promise<Response> {
           .gte("competition_id", nonexistFloor)
           .order("last_scanned_at", { ascending: true })
           .limit(NONEXIST_REVISIT_LIMIT),
+        hasNearToday
+          ? supabaseAdmin
+              .from("harvest_competitions")
+              .select("competition_id")
+              .eq("exists_in_source", false)
+              .gte("competition_id", nearTodayLo)
+              .lte("competition_id", nearTodayHi)
+              .order("last_scanned_at", { ascending: true })
+              .limit(NONEXIST_NEAR_TODAY_LIMIT)
+          : Promise.resolve({ data: [] as Array<{ competition_id: number }> }),
       ]);
       const existing = new Set(ids);
       const revisitRows = [
         ...((freshRes.data ?? []) as Array<{ competition_id: number }>),
         ...((staleRes.data ?? []) as Array<{ competition_id: number }>),
         ...((nonexistRes.data ?? []) as Array<{ competition_id: number }>),
+        ...((nearTodayRes.data ?? []) as Array<{ competition_id: number }>),
       ];
       for (const r of revisitRows) {
         if (!existing.has(r.competition_id)) {
