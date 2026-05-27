@@ -474,6 +474,7 @@ async function run(request: Request): Promise<Response> {
         ...((freshRes.data ?? []) as Array<{ competition_id: number }>),
         ...((staleRes.data ?? []) as Array<{ competition_id: number }>),
         ...((nonexistRes.data ?? []) as Array<{ competition_id: number }>),
+        ...((nearTodayRes.data ?? []) as Array<{ competition_id: number }>),
       ];
       for (const r of revisitRows) {
         if (!existing.has(r.competition_id)) {
