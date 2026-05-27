@@ -399,11 +399,16 @@ async function run(request: Request): Promise<Response> {
         Date.now() - FRESH_REVISIT_WINDOW_DAYS * 24 * 60 * 60 * 1000,
       ).toISOString();
       const staleLimit = Math.max(0, REVISIT_LIMIT - FRESH_REVISIT_LIMIT);
-      const [freshRes, staleRes] = await Promise.all([
+      // Tuoreet ei-olemassaolevat ID:t: kisa-ID on jo varattu mutta tuloksia
+      // ei ole vielä julkaistu. Probetaan uudestaan jos ID on lähellä uusinta
+      // nähtyä (eli ei selvästi taakse jäänyt aukko).
+      const nonexistFloor = Math.max(FLOOR_ID, latestId - NONEXIST_PERMANENT_GAP);
+      const [freshRes, staleRes, nonexistRes] = await Promise.all([
         supabaseAdmin
           .from("harvest_competitions")
           .select("competition_id")
           .eq("done", false)
+          .eq("exists_in_source", true)
           .gte("competition_date", freshCutoff)
           .order("last_scanned_at", { ascending: true })
           .limit(FRESH_REVISIT_LIMIT),
@@ -412,15 +417,24 @@ async function run(request: Request): Promise<Response> {
               .from("harvest_competitions")
               .select("competition_id")
               .eq("done", false)
+              .eq("exists_in_source", true)
               .lt("competition_date", freshCutoff)
               .order("last_scanned_at", { ascending: true })
               .limit(staleLimit)
           : Promise.resolve({ data: [] as Array<{ competition_id: number }> }),
+        supabaseAdmin
+          .from("harvest_competitions")
+          .select("competition_id")
+          .eq("exists_in_source", false)
+          .gte("competition_id", nonexistFloor)
+          .order("last_scanned_at", { ascending: true })
+          .limit(NONEXIST_REVISIT_LIMIT),
       ]);
       const existing = new Set(ids);
       const revisitRows = [
         ...((freshRes.data ?? []) as Array<{ competition_id: number }>),
         ...((staleRes.data ?? []) as Array<{ competition_id: number }>),
+        ...((nonexistRes.data ?? []) as Array<{ competition_id: number }>),
       ];
       for (const r of revisitRows) {
         if (!existing.has(r.competition_id)) {
@@ -430,7 +444,7 @@ async function run(request: Request): Promise<Response> {
       }
     }
 
-    const result = await harvestRange(ids);
+    const result = await harvestRange(ids, latestId);
 
     // Advance cursor only as far as we actually attempted (so a rate-limit
     // bailout retries the unprocessed IDs on the next run).
