@@ -84,11 +84,23 @@ export function CompetitionSwitcher({
 
   return (
     <>
-      <Select value={String(competitionId)} onValueChange={handleChange}>
+      <Select
+        value={String(competitionId)}
+        onValueChange={handleChange}
+        onOpenChange={(open) => {
+          if (!open) return;
+          requestAnimationFrame(() => {
+            const root = contentRef.current;
+            if (!root) return;
+            const el = root.querySelector<HTMLElement>('[data-today="true"]');
+            if (el) el.scrollIntoView({ block: "start" });
+          });
+        }}
+      >
         <SelectTrigger className={className} aria-label="Valitse kisa">
           <SelectValue placeholder={loading ? "Ladataan…" : "Valitse kisa"} />
         </SelectTrigger>
-        <SelectContent className="max-h-[70vh]">
+        <SelectContent ref={contentRef} className="max-h-[70vh]">
           {!inList && (
             <SelectItem value={String(competitionId)}>Kisa #{competitionId}</SelectItem>
           )}
@@ -102,6 +114,7 @@ export function CompetitionSwitcher({
             return (
               <SelectGroup key={g.key}>
                 <SelectLabel
+                  data-today={isToday ? "true" : undefined}
                   className={
                     isToday
                       ? "sticky top-0 z-10 bg-primary px-2 py-1.5 text-sm font-extrabold uppercase tracking-wide text-primary-foreground"
