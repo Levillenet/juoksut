@@ -29,11 +29,12 @@ export interface ClubOption {
   athletes: number;
 }
 
-/** Distinct organizations that have at least one result today, optionally excluding a competition. */
+/** Distinct organizations that have at least one result on the given date, optionally excluding a competition. */
 export async function fetchTodayClubs(
   excludeCompetitionId?: number | null,
+  date?: Date,
 ): Promise<ClubOption[]> {
-  const { startISO, endISO } = helsinkiDayBounds(new Date());
+  const { startISO, endISO } = helsinkiDayBounds(date ?? new Date());
   let query = supabase
     .from("athlete_results")
     .select("organization, organization_id, athlete_key, event_name, event_category, sub_category")
@@ -70,12 +71,13 @@ export async function fetchTodayClubs(
     .sort((a, b) => a.name.localeCompare(b.name, "fi"));
 }
 
-/** All of today's results for athletes from the given organization, optionally excluding a competition. */
+/** All of the given date's results for athletes from the given organization, optionally excluding a competition. */
 export async function fetchClubTodayResults(
   organizationId: number,
   excludeCompetitionId?: number | null,
+  date?: Date,
 ): Promise<ClubTodayRow[]> {
-  const { startISO, endISO } = helsinkiDayBounds(new Date());
+  const { startISO, endISO } = helsinkiDayBounds(date ?? new Date());
   let query = supabase
     .from("athlete_results")
     .select(
