@@ -35,9 +35,9 @@ export function NoteLinkInvitesBanner() {
   if (received.length === 0) return null;
 
   return (
-    <section className="mb-4 rounded-xl border-2 border-amber-500/60 bg-amber-50 px-4 py-3 dark:bg-amber-950/40">
+    <section className="mb-4 rounded-xl border-2 border-accent-warm-border bg-accent-warm px-4 py-3 text-accent-warm-foreground">
       <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-        <Link2 className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+        <Link2 className="h-4 w-4" />
         Saapuneet linkityspyynnöt ({received.length})
       </div>
       <ul className="space-y-2">
