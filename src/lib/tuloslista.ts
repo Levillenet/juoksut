@@ -77,6 +77,19 @@ export interface RoundDetailRound {
   Heats: Heat[];
 }
 
+export interface Enrollment {
+  Id: number;
+  Confirmed: boolean;
+  NotInCompetition: boolean;
+  Number: string | null;
+  Name: string;
+  Firstname: string;
+  Surname: string;
+  PB: string;
+  SB: string;
+  Organization: { Name: string; NameShort: string; Id: number };
+}
+
 export interface EventResults {
   Id: number;
   Name: string;
@@ -87,6 +100,7 @@ export interface EventResults {
   EventType: { Name: string; Length: number };
   EnrCount: number;
   Rounds: RoundDetailRound[];
+  Enrollments?: Enrollment[];
 }
 
 export async function fetchRounds(competitionId: number): Promise<RoundsByDate> {

@@ -218,11 +218,13 @@ function PrintWatchedPage() {
                                 </span>
                               )}
                               <span className="text-xs text-muted-foreground">
-                                {isRun
-                                  ? `Erä ${e.heatIndex}${e.alloc.Position != null ? ` · Rata ${e.alloc.Position}` : ""}`
-                                  : e.alloc.Position != null
-                                    ? `Järj. ${e.alloc.Position}`
-                                    : ""}
+                                {e.fromEnrollment
+                                  ? "Eräjako tekemättä"
+                                  : isRun
+                                    ? `Erä ${e.heatIndex}${e.alloc.Position ? ` · Rata ${e.alloc.Position}` : ""}`
+                                    : e.alloc.Position
+                                      ? `Järj. ${e.alloc.Position}`
+                                      : ""}
                               </span>
                             </li>
                           ))}

@@ -228,11 +228,18 @@ function SharedWatchPage() {
                               </p>
                               <p className="truncate text-xs text-muted-foreground">
                                 {e.round.Name}
-                                {isRun && `${e.round.Name ? " · " : ""}Erä ${e.heatIndex}`}
-                                {e.alloc.Position != null &&
-                                  (isRun
-                                    ? ` · Rata ${e.alloc.Position}`
-                                    : ` · Järj. ${e.alloc.Position}`)}
+                                {e.fromEnrollment
+                                  ? `${e.round.Name ? " · " : ""}Eräjako tekemättä`
+                                  : (
+                                    <>
+                                      {isRun && `${e.round.Name ? " · " : ""}Erä ${e.heatIndex}`}
+                                      {e.alloc.Position
+                                        ? isRun
+                                          ? ` · Rata ${e.alloc.Position}`
+                                          : ` · Järj. ${e.alloc.Position}`
+                                        : ""}
+                                    </>
+                                  )}
                               </p>
                             </div>
                             <div className="shrink-0 text-right">
