@@ -207,30 +207,6 @@ export function ClubTodaySection({
               Palaa tähän päivään
             </button>
           )}
-            <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <select
-              value={orgId ?? ""}
-              onChange={(e) =>
-                setOrgId(e.target.value ? parseInt(e.target.value, 10) : null)
-              }
-              className="h-10 w-full appearance-none rounded-md border border-input bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              aria-label="Valitse seura"
-              disabled={clubs.length === 0}
-            >
-              <option value="">
-                {clubsQuery.isLoading
-                  ? "Ladataan seuroja…"
-                  : clubs.length === 0
-                    ? "Ei seuroja tänään"
-                    : `Valitse seura (${clubs.length})`}
-              </option>
-              {clubs.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.athletes})
-                </option>
-              ))}
-            </select>
-          </div>
 
           {orgId == null ? (
             <p className="text-xs text-muted-foreground">
