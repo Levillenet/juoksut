@@ -75,6 +75,7 @@ function WatchPage() {
   const loading = indexQuery.isFetching;
 
   useWatchedFieldChanges(index, watched);
+  useWatchedAllocationChanges(index, watched);
 
   const hasActiveWatchedField = useMemo(() => {
     if (!index || watched.length === 0) return false;
