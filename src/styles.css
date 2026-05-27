@@ -145,16 +145,31 @@
 @layer base {
   * {
     border-color: var(--color-border);
+    -webkit-tap-highlight-color: transparent;
   }
 
   html {
     font-family: 'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-feature-settings: 'tnum' 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --foreground: oklch(0.05 0 0);
+    --muted-foreground: oklch(0.22 0.03 258);
+    --border: oklch(0.65 0.02 255);
+    --input: oklch(0.62 0.02 255);
+    --ring: oklch(0.38 0.20 28);
   }
 }
 
