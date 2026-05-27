@@ -216,7 +216,7 @@ export function ClubTodaySection({
             <p className="text-xs text-muted-foreground">Ladataan…</p>
           ) : grouped.length === 0 ? (
             <p className="text-xs text-muted-foreground">
-              Ei vielä tuloksia valitusta seurasta tänään.
+              {isToday ? "Ei vielä tuloksia valitusta seurasta tänään." : "Ei tuloksia valitusta seurasta tältä päivältä."}
             </p>
           ) : (
             <>
