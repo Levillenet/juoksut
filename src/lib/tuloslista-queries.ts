@@ -74,7 +74,7 @@ export function competitionIndexQueryOptions(
             for (const round of ev.Rounds) {
               const matchingRound =
                 allRounds.find((r) => r.Id === round.Id) ?? {
-                  ...allRounds.find((r) => r.EventName === ev.Name)!,
+                  ...allRounds.find((r) => r.EventId === eid)!,
                   Id: round.Id,
                   BeginDateTimeWithTZ: round.BeginDateTimeWithTZ,
                   Name: round.Name,
