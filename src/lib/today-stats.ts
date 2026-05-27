@@ -1,5 +1,6 @@
 // Aggregated "today" counters for the home-page hero stats panel.
-// All data comes from the harvested athlete_results table; no scraping here.
+// Competition count comes from the live competition list; events/athletes/PBs
+// from harvested athlete_results.
 
 import { supabase } from "@/integrations/supabase/client";
 import { helsinkiDayBounds } from "./daily-best";
@@ -7,6 +8,7 @@ import { isLowerBetter } from "./athlete-history";
 import { normalizeEventName } from "./season-leaders";
 import { seasonRange } from "./season-stats";
 import { isRoadOrCrossCountry } from "./event-filters";
+import { fetchCompetitionList, filterToday } from "./competition-list";
 
 export interface TodayStats {
   competitions: number;
