@@ -15,6 +15,8 @@ export interface IndexedEntry {
   alloc: Allocation;
   heatIndex: number;
   heatBegin: string;
+  /** True when this entry is synthesized from Enrollments (no heat allocation yet). */
+  fromEnrollment?: boolean;
 }
 
 export interface CompetitionIndex {
