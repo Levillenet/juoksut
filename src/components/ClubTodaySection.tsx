@@ -147,7 +147,9 @@ export function ClubTodaySection({
       >
         <Building2 className="h-4 w-4 text-primary" />
         <h2 className="flex-1 text-sm font-bold">
-          Seuran urheilijat tänään{excludeCompetitionId != null ? " muissa kisoissa" : ""}
+          {isToday
+            ? `Seuran urheilijat tänään${excludeCompetitionId != null ? " muissa kisoissa" : ""}`
+            : `Seuran urheilijoiden suorituksia${excludeCompetitionId != null ? " muissa kisoissa" : ""}`}
         </h2>
         {open ? (
           <ChevronUp className="h-4 w-4" />
@@ -158,7 +160,53 @@ export function ClubTodaySection({
 
       {open && (
         <div className="border-t px-4 py-3">
-          <div className="relative mb-3">
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row">
+            <div className="relative sm:flex-1">
+              <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <select
+                value={orgId ?? ""}
+                onChange={(e) =>
+                  setOrgId(e.target.value ? parseInt(e.target.value, 10) : null)
+                }
+                className="h-10 w-full appearance-none rounded-md border border-input bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                aria-label="Valitse seura"
+                disabled={clubs.length === 0}
+              >
+                <option value="">
+                  {clubsQuery.isLoading
+                    ? "Ladataan seuroja…"
+                    : clubs.length === 0
+                      ? (isToday ? "Ei seuroja tänään" : "Ei seuroja päivälle")
+                      : `Valitse seura (${clubs.length})`}
+                </option>
+                {clubs.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.athletes})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="relative sm:w-44">
+              <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="date"
+                value={dateYmd}
+                max={helsinkiTodayYmd()}
+                onChange={(e) => setDateYmd(e.target.value || helsinkiTodayYmd())}
+                className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                aria-label="Valitse päivämäärä"
+              />
+            </div>
+          </div>
+          {!isToday && (
+            <button
+              type="button"
+              onClick={() => setDateYmd(helsinkiTodayYmd())}
+              className="mb-3 text-xs text-primary hover:underline"
+            >
+              Palaa tähän päivään
+            </button>
+          )}
             <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <select
               value={orgId ?? ""}
