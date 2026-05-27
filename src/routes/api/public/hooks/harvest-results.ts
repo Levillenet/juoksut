@@ -30,7 +30,9 @@ const REVISIT_MAX_AGE_DAYS = 365; // kuinka kauan palataan kisoihin (alkuerä→
 // tuloksia ei ole vielä syötetty). Pidetään tällaiset revisit-tilassa kunnes
 // ID jää selvästi taakse uusimmasta nähdystä ID:stä.
 const NONEXIST_PERMANENT_GAP = 300; // jos id < latest_id - tämä, merkitään lopullisesti done
-const NONEXIST_REVISIT_LIMIT = 40;  // tuoreiden ei-olemassaolevien ID:iden uudelleenprobeja per ajo
+const NONEXIST_REVISIT_LIMIT = 120; // tuoreiden ei-olemassaolevien ID:iden uudelleenprobeja per ajo
+const NONEXIST_NEAR_TODAY_LIMIT = 20; // priorisoitu probe lähellä tämän päivän olemassa olevia ID:itä
+const NONEXIST_NEAR_TODAY_RADIUS = 100; // ±ID-säde tämän päivän olemassa olevien kisojen ympärillä
 const CONCURRENCY = 5;       // parallel competitions per chunk
 const HARD_MAX_ID = 30000;   // safety ceiling
 const FLOOR_ID = 16456;      // tuloslista API:n vanhin saatavilla oleva kisa (5.1.2025)
