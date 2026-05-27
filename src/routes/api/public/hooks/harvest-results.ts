@@ -25,6 +25,12 @@ const REVISIT_LIMIT = 120;   // tuloksellisten/tuloksettomien kisojen uudelleent
 const FRESH_REVISIT_LIMIT = 80;   // näistä budjetoidaan tämän päivän + eilisen kisoille
 const FRESH_REVISIT_WINDOW_DAYS = 2;
 const REVISIT_MAX_AGE_DAYS = 365; // kuinka kauan palataan kisoihin (alkuerä→finaali voi täydentyä myöhemmin)
+// Kun haravoidaan ID joka ei vielä ole tuloslista.com:ssa, sitä saatetaan
+// julkaista myöhemmin (esim. tämän päivän kisa, jolle ID on jo varattu mutta
+// tuloksia ei ole vielä syötetty). Pidetään tällaiset revisit-tilassa kunnes
+// ID jää selvästi taakse uusimmasta nähdystä ID:stä.
+const NONEXIST_PERMANENT_GAP = 300; // jos id < latest_id - tämä, merkitään lopullisesti done
+const NONEXIST_REVISIT_LIMIT = 40;  // tuoreiden ei-olemassaolevien ID:iden uudelleenprobeja per ajo
 const CONCURRENCY = 5;       // parallel competitions per chunk
 const HARD_MAX_ID = 30000;   // safety ceiling
 const FLOOR_ID = 16456;      // tuloslista API:n vanhin saatavilla oleva kisa (5.1.2025)
@@ -241,7 +247,7 @@ async function flush(rows: Row[]) {
   }
 }
 
-async function harvestRange(ids: number[]) {
+async function harvestRange(ids: number[], latestIdHint: number) {
   let scanned = 0;
   let existed = 0;
   let revisited = 0;
@@ -258,6 +264,12 @@ async function harvestRange(ids: number[]) {
   }> = [];
 
   const cutoffMs = Date.now() - REVISIT_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+  // Päivitä latestId-arvio jo skannauksen aikana, jotta uusin nähty ID
+  // huomioidaan permanent-gap-päätöksessä saman ajon sisällä.
+  let runningLatestId = latestIdHint;
+  for (const id of ids) {
+    if (id > runningLatestId) runningLatestId = id;
+  }
 
   // Process IDs in chunks of CONCURRENCY in source order, so that if we
   // bail out on rate-limit we know exactly which IDs were attempted.
@@ -281,14 +293,22 @@ async function harvestRange(ids: number[]) {
         if (v.existed) {
           existed++;
           if (v.rowsAdded > 0) touchedCompIds.add(id);
+          if (id > runningLatestId) runningLatestId = id;
         }
         // Päätä onko tämä kisa "done" — eli ei tarvitse palata.
         // Pidetään revisit-tilassa myös jo tuloksellisia kisoja, koska
         // alkuerien jälkeen voi tulla finaali (tai uusia kierroksia), ja
         // upsert valitsee parhaan tuloksen per urheilija/laji uudelleen.
+        //
+        // Ei-olemassaolevat ID:t merkitään done=true VAIN jos ne ovat
+        // selvästi taakse jääneitä (id < latest - NONEXIST_PERMANENT_GAP).
+        // Tuoreille ei-olemassaoleville pidetään done=false, jotta ne
+        // probetaan uudelleen kun kisan tulokset ehkä julkaistaan.
         const dateMs = v.competitionDate ? Date.parse(v.competitionDate) : NaN;
         const tooOldToRevisit = Number.isFinite(dateMs) && dateMs < cutoffMs;
-        const done = !v.existed || tooOldToRevisit;
+        const isPermanentGap =
+          !v.existed && id < runningLatestId - NONEXIST_PERMANENT_GAP;
+        const done = isPermanentGap || tooOldToRevisit;
         scanRecords.push({
           competition_id: id,
           competition_date: v.competitionDate,
@@ -379,11 +399,16 @@ async function run(request: Request): Promise<Response> {
         Date.now() - FRESH_REVISIT_WINDOW_DAYS * 24 * 60 * 60 * 1000,
       ).toISOString();
       const staleLimit = Math.max(0, REVISIT_LIMIT - FRESH_REVISIT_LIMIT);
-      const [freshRes, staleRes] = await Promise.all([
+      // Tuoreet ei-olemassaolevat ID:t: kisa-ID on jo varattu mutta tuloksia
+      // ei ole vielä julkaistu. Probetaan uudestaan jos ID on lähellä uusinta
+      // nähtyä (eli ei selvästi taakse jäänyt aukko).
+      const nonexistFloor = Math.max(FLOOR_ID, latestId - NONEXIST_PERMANENT_GAP);
+      const [freshRes, staleRes, nonexistRes] = await Promise.all([
         supabaseAdmin
           .from("harvest_competitions")
           .select("competition_id")
           .eq("done", false)
+          .eq("exists_in_source", true)
           .gte("competition_date", freshCutoff)
           .order("last_scanned_at", { ascending: true })
           .limit(FRESH_REVISIT_LIMIT),
@@ -392,15 +417,24 @@ async function run(request: Request): Promise<Response> {
               .from("harvest_competitions")
               .select("competition_id")
               .eq("done", false)
+              .eq("exists_in_source", true)
               .lt("competition_date", freshCutoff)
               .order("last_scanned_at", { ascending: true })
               .limit(staleLimit)
           : Promise.resolve({ data: [] as Array<{ competition_id: number }> }),
+        supabaseAdmin
+          .from("harvest_competitions")
+          .select("competition_id")
+          .eq("exists_in_source", false)
+          .gte("competition_id", nonexistFloor)
+          .order("last_scanned_at", { ascending: true })
+          .limit(NONEXIST_REVISIT_LIMIT),
       ]);
       const existing = new Set(ids);
       const revisitRows = [
         ...((freshRes.data ?? []) as Array<{ competition_id: number }>),
         ...((staleRes.data ?? []) as Array<{ competition_id: number }>),
+        ...((nonexistRes.data ?? []) as Array<{ competition_id: number }>),
       ];
       for (const r of revisitRows) {
         if (!existing.has(r.competition_id)) {
@@ -410,7 +444,7 @@ async function run(request: Request): Promise<Response> {
       }
     }
 
-    const result = await harvestRange(ids);
+    const result = await harvestRange(ids, latestId);
 
     // Advance cursor only as far as we actually attempted (so a rate-limit
     // bailout retries the unprocessed IDs on the next run).
