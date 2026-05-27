@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useCompetitionsWindow } from "@/lib/competition-list";
 import { useCompetitionId } from "@/lib/competition-store";
 import { helsinkiDateKey } from "@/lib/tuloslista";
