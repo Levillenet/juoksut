@@ -1,32 +1,61 @@
-## Tilanne
+## Tavoite
 
-"Hyvän Tuulen Kisat 1" on tuloslistassa ID:llä **19355** — ei siis tämän päivän ID-alueella (19394–19427) kuten muut. Sen riviksi tuli `done=true, exists_in_source=false` jo **21.5.** (kuusi päivää sitten, kun kisaa ei ollut vielä syötetty tuloslistaan). Eilisen fiksi kyllä laittaisi tämän revisit-jonoon, mutta jonossa on **437 tuoretta ei-olemassaolevaa ID:tä** ja revisit-budjetti on vain 40/ajo → täysi kierros kestää ~22 min, joten 19355 ei vielä ehtinyt vuorollaan.
+Maksimoi UI:n luettavuus auringonpaisteessa puhelimella, ilman erillistä kytkintä — muutokset toimivat myös sisällä ja nostavat metatekstit WCAG AA -tasolle.
 
-**Tein heti manuaalisen haravoinnin** ID:lle 19355 → 208 tulosta, 165 urheilijaa tallennettu. Lahden Ahkeran ja muiden seurojen edustajat näkyvät nyt.
+## Muutokset (vain `src/styles.css`)
 
-## Mitä korjaan vielä
+### `:root` (vaalea teema)
 
-Jotta vastaavat tapaukset poimitaan jatkossa minuuteissa, ei tunneissa:
+| Token | Nyt | Uusi |
+|---|---|---|
+| `--background` | 0.985 0.005 250 | **1 0 0** (puhdas valkoinen) |
+| `--foreground` | 0.18 0.04 260 | **0.12 0.04 260** |
+| `--muted-foreground` | 0.45 0.03 258 | **0.32 0.03 258** |
+| `--border` | 0.929 0.013 255 | **0.82 0.015 255** |
+| `--input` | 0.929 0.013 255 | **0.78 0.015 255** |
+| `--ring` | 0.704 0.04 256 | **0.45 0.18 28** |
+| `--primary` | 0.55 0.21 28 | **0.48 0.22 28** |
+| `--secondary` | 0.96 0.01 250 | **0.93 0.01 250** |
+| `--muted` | 0.95 0.01 250 | **0.92 0.01 250** |
+| `--accent` | 0.92 0.05 90 | **0.88 0.10 85** |
+| `--accent-warm-border` | 0.82 0.12 80 | **0.70 0.16 80** |
+| `--destructive` | 0.577 0.245 27 | **0.50 0.24 27** |
+| `--card-foreground`, `--popover-foreground`, `--secondary-foreground`, `--accent-foreground` | nykyiset | linjataan **0.12 0.04 260**:een |
+| `--sidebar-foreground`, `--sidebar-accent-foreground` | nykyiset | tummennetaan vastaavasti |
 
-### `src/routes/api/public/hooks/harvest-results.ts`
+### `.dark` (tumma teema, pieni viilaus)
 
-1. **Nosta `NONEXIST_REVISIT_LIMIT` 40 → 120.**
-   Täysi kierros 437 ID:n yli laskee ~22 min → ~7 min (cron pyörii 2 min välein).
+- `--muted-foreground`: 0.704 → **0.78**
+- `--border`: 1 0 0 / 10% -tyylinen → hieman erottuvampi (jos arvo on opaakki, nostetaan luminanssia ~0.05)
 
-2. **Priorisoi tämän päivän kisojen lähistöä.**
-   Lisätään pieni lisäkysely (limit 20), joka hakee `exists_in_source=false` -rivit, joiden `competition_id` on lähellä viimeisimpiä _olemassa olevia_ tämän/eilisen päivän kisoja (±100). Näin tuoreen kisapäivän "puuttuvat" ID:t (kuten 19355 olisi ollut) skannataan joka ajossa, vaikka koko jonossa olisi satoja ID:itä.
+### Globaalit `@layer base` -lisäykset
 
-### Manuaalinen siivous
+```css
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+  * { -webkit-tap-highlight-color: transparent; }
+}
 
-Ei tarpeellista — uusi revisit-kysely ei suodata `done`-lipulla, joten 437 historiarivi käydään automaattisesti läpi. Ei muutoksia tietokantaan.
+@media (prefers-contrast: more) {
+  :root {
+    --foreground: oklch(0.05 0 0);
+    --muted-foreground: oklch(0.22 0.03 258);
+    --border: oklch(0.65 0.02 255);
+    --input: oklch(0.62 0.02 255);
+  }
+}
+```
 
 ## Mitä EI muuteta
 
-- Cron-aikataulua (jo 2 min)
-- `NONEXIST_PERMANENT_GAP=300` ikkunaa
-- Mitään käyttöliittymäkomponenttia
-- Liiketoimintalogiikkaa
+- Komponentteja, layoutteja, fontteja
+- Toiminnallisuuksia, reittejä, kuuluttaja-/live-näkymiä
+- Asetuksia (ei uutta kytkintä)
 
 ## Vahvistus toteutuksen jälkeen
 
-Avaa etusivu → "Hyvän Tuulen Kisat 1" pitäisi nyt näkyä päivän kisoissa, ja seuran urheilijoissa Lahden Ahkeran edustajat (jos siellä kilpaili).
+Avaan etusivun mobiili-viewportilla (390×844) ja varmistan visuaalisesti, että:
+- Leipäteksti, otsikot ja metatekstit erottuvat selvästi
+- Korttien rajat näkyvät
+- Punainen primary-painike säilyy elinvoimaisena
