@@ -19,7 +19,7 @@ type Filter = "running" | "all";
 export const Route = createFileRoute("/print/")({
   head: () => ({
     meta: [
-      { title: "Tulostettava aikataulu" },
+      { title: "Kilpailun aikataulu" },
       {
         name: "description",
         content: "Tulostettava ja mobiilioptimoitu kilpailun aikataulu.",
@@ -80,7 +80,7 @@ function PrintPage() {
           </Button>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-semibold leading-tight">
-              Tulostettava aikataulu
+              Kilpailun aikataulu
             </h1>
             <p className="truncate text-xs text-muted-foreground">
               {name || `Kisa #${competitionId}`}
@@ -88,32 +88,40 @@ function PrintPage() {
           </div>
           <Button onClick={() => window.print()} size="sm" className="gap-2">
             <Printer className="h-4 w-4" />
-            Tulosta / Tallenna PDF
+            <span className="hidden sm:inline">Tulosta / Tallenna PDF</span>
+            <span className="sm:hidden">PDF</span>
           </Button>
-        </div>
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-2 px-4 pb-3">
-          <div className="flex gap-1 rounded-full border bg-background p-1 text-xs font-semibold">
-            {(["running", "all"] as Filter[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`rounded-full px-3 py-1 transition-colors ${
-                  filter === f
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-secondary"
-                }`}
-              >
-                {f === "running" ? "Vain juoksulajit" : "Kaikki lajit"}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Vinkki: tulostusikkunassa valitse <strong>"Tallenna PDF-tiedostona"</strong>.
-          </p>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-6 print:py-2">
+      <main className="mx-auto max-w-3xl px-4 py-4 print:py-2">
+        <div className="mb-5 rounded-xl border bg-card p-4 shadow-sm print:hidden">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Lajisuodatus
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex w-full gap-2 sm:w-auto">
+              {(["running", "all"] as Filter[]).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors sm:flex-none ${
+                    filter === f
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "border border-border bg-background text-foreground hover:bg-secondary"
+                  }`}
+                >
+                  {f === "running" ? "Vain juoksulajit" : "Kaikki lajit"}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground sm:text-right">
+              Vinkki: tulostusikkunassa valitse{" "}
+              <strong className="font-semibold">"Tallenna PDF-tiedostona"</strong>.
+            </p>
+          </div>
+        </div>
+
         <div className="mb-6 hidden print:block">
           <h1 className="text-xl font-bold">{name || `Kisa #${competitionId}`}</h1>
           <p className="text-sm text-muted-foreground">
