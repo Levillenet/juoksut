@@ -94,7 +94,7 @@ function PrintPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-4 print:py-2">
+      <main className="mx-auto max-w-3xl px-4 py-4 print:py-2 print-schedule">
         <div className="mb-5 rounded-xl border bg-card p-4 shadow-sm print:hidden">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Lajisuodatus
@@ -122,7 +122,7 @@ function PrintPage() {
           </div>
         </div>
 
-        <div className="mb-6 hidden print:block">
+        <div className="mb-6 hidden print:block print-title">
           <h1 className="text-xl font-bold">{name || `Kisa #${competitionId}`}</h1>
           <p className="text-sm text-muted-foreground">
             {filter === "running" ? "Juoksulajien aikataulu" : "Kilpailun aikataulu"}
@@ -148,12 +148,13 @@ function PrintPage() {
               <tbody>
                 {g.runs.map((r) => (
                   <tr key={r.Id} className="border-b border-border/50 align-top">
-                    <td className="w-14 py-2 pr-2 font-bold tabular-nums">
+                    <td className="time w-14 py-2 pr-2 font-bold tabular-nums">
                       {formatTime(r.BeginDateTimeWithTZ)}
                     </td>
-                    <td className="py-2">
-                      <div className="font-semibold leading-tight">{r.EventName}</div>
-                      <div className="text-xs text-muted-foreground">
+                    <td className="event py-2">
+                      <span className="font-semibold leading-tight">{r.EventName}</span>
+                      <span className="sub"> · {r.Name}</span>
+                      <div className="text-xs text-muted-foreground print:hidden">
                         {r.Name}
                       </div>
                     </td>
@@ -164,7 +165,7 @@ function PrintPage() {
           </section>
         ))}
 
-        <p className="mt-8 text-center text-xs text-muted-foreground print:mt-4">
+        <p className="mt-8 text-center text-xs text-muted-foreground print:mt-4 print-footer">
           Lähde: live.tuloslista.com · Tulostettu {new Date().toLocaleString("fi-FI")}
         </p>
       </main>
