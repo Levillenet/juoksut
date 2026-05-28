@@ -157,16 +157,28 @@ async function processCompetition(
     // Lajilla voi olla useita kierroksia (alkuerät + loppukilpailu/A-/B-finaali)
     // saman event_id:n alla. API palauttaa Rounds-listan kronologisesti.
     //
-    // Track: tulokseksi tulee VIIMEISIN kierros, jolla urheilijalla on tulos
-    // — eli loppukilpailun/finaalin aika, vaikka alkuerässä olisi juossut
-    // nopeammin. Jos urheilija jää alkuerään, jää alkuerän aika. A/B-finaali
-    // ratkeaa automaattisesti: urheilija esiintyy vain toisen finaalin
-    // allokoinneissa.
+    // Track: pidetään urheilijan PARAS numeerinen aika kaikista kierroksista.
+    // Jos paras tuli muusta kierroksesta kuin viimeisestä (esim. alkuerä,
+    // kun loppukilpailussa DNS), talletetaan kierroksen nimi
+    // (result_round_name) jotta UI voi näyttää sen.
+    // Jos kellään ei ollut numeerista tulosta missään kierroksessa, käytetään
+    // viimeisen kierroksen riviä (esim. DNS).
     //
-    // Muut kategoriat (Field, Throw, Combined…): pidetään paras numeerinen.
-    const bestForEvent = new Map<string, Row>();
+    // Muut kategoriat (Field, Throw, Combined…): pidetään paras numeerinen
+    // (vanha logiikka), result_round_name jää tyhjäksi.
     const isTrack = category === "Track";
-    for (const r of ev.Rounds ?? []) {
+    type Tracked = {
+      latest: Row;
+      latestRoundIdx: number;
+      best: Row | null;
+      bestRoundIdx: number;
+      bestRoundName: string;
+    };
+    const tracked = new Map<string, Tracked>();
+    const rounds = ev.Rounds ?? [];
+    for (let rIdx = 0; rIdx < rounds.length; rIdx++) {
+      const r = rounds[rIdx];
+      const roundName = r.Name ?? "";
       for (const h of r.Heats ?? []) {
         for (const a of h.Allocations ?? []) {
           if (!a.Surname || !a.Firstname || !a.Result) continue;
@@ -191,35 +203,56 @@ async function processCompetition(
             result_rank: a.ResultRank ?? null,
             wind: parseWind(a.Wind),
             age_class: ageClass,
+            result_round_name: "",
           };
-          const prev = bestForEvent.get(key);
+          const prev = tracked.get(key);
           if (!prev) {
-            bestForEvent.set(key, row);
+            tracked.set(key, {
+              latest: row,
+              latestRoundIdx: rIdx,
+              best: row.result_numeric != null ? row : null,
+              bestRoundIdx: row.result_numeric != null ? rIdx : -1,
+              bestRoundName: row.result_numeric != null ? roundName : "",
+            });
             continue;
           }
-          let replace = false;
-          if (isTrack) {
-            // Juoksut: myöhin kierros voittaa aina (Rounds on kronologinen).
-            replace = true;
-          } else {
-            const a1 = row.result_numeric;
-            const a0 = prev.result_numeric;
-            if (a1 != null && a0 != null) {
-              replace = a1 > a0;
-            } else if (a1 != null && a0 == null) {
-              replace = true;
-            } else if (a1 == null && a0 == null) {
-              replace = true;
+          // latest = viimeisin kierros
+          if (rIdx >= prev.latestRoundIdx) {
+            prev.latest = row;
+            prev.latestRoundIdx = rIdx;
+          }
+          // best = paras numeerinen (Track: pienin aika; muut: suurin tulos)
+          if (row.result_numeric != null) {
+            const cur = prev.best?.result_numeric ?? null;
+            let better = false;
+            if (cur == null) better = true;
+            else if (isTrack) better = row.result_numeric < cur;
+            else better = row.result_numeric > cur;
+            if (better) {
+              prev.best = row;
+              prev.bestRoundIdx = rIdx;
+              prev.bestRoundName = roundName;
             }
           }
-          if (replace) bestForEvent.set(key, row);
         }
       }
     }
-    for (const row of bestForEvent.values()) {
-      pending.push(row);
+    for (const t of tracked.values()) {
+      let out: Row;
+      if (isTrack && t.best) {
+        out = { ...t.best };
+        // Lisää erän nimi vain jos paras tuli muusta kuin viimeisestä kierroksesta
+        out.result_round_name =
+          t.bestRoundIdx !== t.latestRoundIdx ? t.bestRoundName : "";
+      } else if (!isTrack && t.best) {
+        out = { ...t.best, result_round_name: "" };
+      } else {
+        out = { ...t.latest, result_round_name: "" };
+      }
+      pending.push(out);
       rowsAdded++;
     }
+
   }
   return { existed: true, rowsAdded, competitionDate };
 }
