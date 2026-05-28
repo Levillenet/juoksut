@@ -230,4 +230,22 @@
   .print-schedule td.event { font-weight: 600; }
   .print-schedule td.event .sub { font-weight: 400; color: #444; }
   .print-schedule .print-footer { column-span: all; margin-top: 4mm; font-size: 8pt; color: #555; text-align: center; }
+
+  /* Landscape: 4 columns, fits on one A4 sheet (foldable booklet) */
+  .print-schedule.print-landscape {
+    column-count: 4;
+    column-gap: 6mm;
+    column-rule: 1px solid #ddd;
+    font-size: 8.25pt;
+    line-height: 1.18;
+  }
+  .print-schedule.print-landscape h2 {
+    font-size: 9pt;
+    margin: 0 0 0.8mm 0;
+  }
+  .print-schedule.print-landscape section { margin: 0 0 2mm 0; }
+  .print-schedule.print-landscape td { padding: 0.35mm 0.8mm !important; }
+  .print-schedule.print-landscape td.time { width: 3em; }
+  .print-schedule.print-landscape .print-title h1 { font-size: 11pt; }
+  .print-schedule.print-landscape .print-title p { font-size: 8pt; }
 }

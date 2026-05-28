@@ -1,47 +1,70 @@
-# Tiivistetty tulostus: Kilpailun aikataulu
+## Tulostussuunta: pysty / vaaka
 
-Muutokset koskevat vain `/print` -sivun **tulostusnäkymää** (`@media print`). Ruudulla näkyvä versio pysyy ennallaan.
+Lisätään `/print`-sivulle valinta tulostussuunnalle ja optimoidaan vaaka-asettelu neljälle sarakkeelle, jotta 109 lajia mahtuu yhdelle taitettavalle A4-arkille.
 
-## Ongelmat nyt
-1. **Tyhjä ensimmäinen sivu** — sticky-header (`position: sticky` + `backdrop`) ja suodatinkortti vievät tilaa myös tulostuksessa, vaikka `print:hidden` piilottaa ne. Tausta-`backdrop` ja `main`-paddingit jättävät silti pystytilaa → ensimmäinen sivu jää käytännössä tyhjäksi.
-2. **Yksi laji per rivi** koko leveydellä → paljon hukkatilaa, monta sivua.
-3. Päivä-otsikot ja `Name` -alarivi vievät turhan paljon korkeutta.
+### UI-muutokset (`src/routes/print.index.tsx`)
 
-## Ratkaisu
+- Lajisuodattimen viereen uusi segmenttivalinta: **Pysty (2 saraketta)** / **Vaaka (4 saraketta)**. Oletus: Vaaka (koska kompaktimpi).
+- Tila `orientation: "portrait" | "landscape"` säilytetään `localStorage`issa (`print-orientation`) muiden asetusten tapaan.
+- Annetaan `<main>`-elementille luokka `print-schedule print-portrait` tai `print-schedule print-landscape` valinnan mukaan.
+- Lisätään vihje: "Valitse tulostusikkunassa sama suunta (pysty/vaaka). Vaakaan mahtuu 4 saraketta — voit taittaa A4:n keskeltä pieneksi vihkoseksi."
 
-### 1. Kahden sarakkeen tulostusasettelu (CSS columns)
-Käytetään CSS `column-count: 2` -ominaisuutta `<main>`-elementissä **vain tulostuksessa**. Tällöin:
-- Selain täyttää ensin vasemman sarakkeen ylhäältä alas, sitten oikean → luonteva lukujärjestys.
-- Päiväosiot (`<section>`) saavat `break-inside: avoid` ettei päivä katkea sarakkeen keskellä, mutta jos päivä on isompi kuin sarake, se saa silti katketa rivin kohdalta (rivit on jo `tr { page-break-inside: avoid }`).
-- 109 lajia mahtuu arviolta **2–3 A4-sivulle** aiemman 5–6 sijaan.
+### CSS-muutokset (`src/styles.css`)
 
-### 2. Tiiviimpi typografia tulostuksessa
-- Perusfonttikoko `10pt` (nyt 14–16px → ~11pt) ja `line-height: 1.25`.
-- Aikasarake `width: 3.2em`, kellonaika lihavoitu, lajinimi tavallinen.
-- Yhdistetään `EventName` + `Name` samalle riville: `1500 m · M16 alkuerä 2` muodossa. Nykyinen kaksirivinen rakenne puolittuu.
-- Pienempi `<h2>` päivä-otsikko (12pt, ohuempi alaviiva), `margin-top: 0` ensimmäisellä.
+Erotetaan `@page`-säännöt suunnan mukaan käyttämällä erillisiä `@media print` -lohkoja yhdistettynä luokkavalitsimeen `:has(.print-landscape)` rungossa:
 
-### 3. Sivunhallinta
-- `@page { size: A4; margin: 10mm 10mm 12mm 10mm; }` — kapeammat marginaalit.
-- `main { padding: 0 !important; }` ja `header { display: none }` tulostuksessa → poistaa tyhjän ensisivun.
-- Tulostusotsikko (kisan nimi + päivä) pysyy yhden rivin korkuisena yläreunassa.
-- Alaviite `Lähde: …` vain viimeisellä sivulla luonnollisesti.
+```css
+@media print {
+  /* Yhteiset säännöt (kuten nyt) — fontit, värit, jne. */
+}
 
-### 4. Suodatin: pidetään
-"Vain juoksulajit / Kaikki lajit" -valinta toimii kuten ennen. "Kaikki lajit" hyötyy 2-sarakkeesta eniten.
+/* Pysty: 2 saraketta (nykyinen käyttäytyminen) */
+@media print {
+  body:has(.print-portrait) { /* trigger */ }
+  @page { size: A4 portrait; margin: 10mm; }
+  .print-portrait { column-count: 2; column-gap: 8mm; }
+}
 
-### Ei kirjasta (booklet) tässä vaiheessa
-Booklet (taitettava A5-kirjanen) vaatisi sivujen järjestelyä (1,4 | 2,3 …) jota selainten tulostus ei natiivisti tee — pitäisi generoida PDF palvelinpuolella. Jätetään tämän vaiheen ulkopuolelle; mainitsen jos haluat sen myöhemmin erillisenä toteutuksena.
+/* Vaaka: 4 saraketta */
+@media print {
+  @page { size: A4 landscape; margin: 8mm 8mm 10mm 8mm; }
+  .print-landscape {
+    column-count: 4;
+    column-gap: 6mm;
+    font-size: 8.5pt;
+    line-height: 1.2;
+  }
+  .print-landscape td { padding: 0.4mm 1mm !important; }
+  .print-landscape td.time { width: 3em; }
+  .print-landscape h2 { font-size: 9.5pt; }
+}
+```
 
-## Tekniset muutokset
+Huom: `@page size` on CSS:n globaali — ei voi vaihtaa kesken sivun. Ratkaisu: kirjoitetaan kaksi `@page`-sääntöä eri `@media print` -lohkoihin, jotka ovat ehdollisia `:has()`-valitsimella `<html>`/`<body>`-tasolla, TAI yksinkertaisemmin: asetetaan `<html>`-tasolle data-attribuutti `data-print-orientation` ja käytetään sitä CSS:ssä. Tämä on tuettu kaikissa moderneissa selaimissa (Chrome, Edge, Safari) jotka osaavat `@page`-sääntöjen päättelyn DOM-tilan perusteella.
 
-**Tiedostot:**
-- `src/styles.css` — laajennetaan `@media print`-lohkoa: `@page`, `column-count: 2`, kompaktit fontti- ja marginaalisäännöt luokalla esim. `.print-schedule`.
-- `src/routes/print.index.tsx` — lisätään `print-schedule` -luokka `<main>`-elementtiin ja yhdistetään `EventName` + `Name` samalle riville (yksi `<td>`). Otsikkoblokki (`hidden print:block`) pysyy mutta tiivistetään.
+**Tekninen detalji:** Asetetaan komponentissa `useEffect`-koukulla `document.documentElement.dataset.printOrientation = orientation` ja CSS:ssä:
 
-Ei muutoksia muihin reitteihin (`print.club`, `print.watched`) ellet halua saman kohtelun myös niille — kerro jos halutaan.
+```css
+@media print {
+  html[data-print-orientation="landscape"] @page { size: A4 landscape; }
+  html[data-print-orientation="portrait"]  @page { size: A4 portrait; }
+}
+```
 
-## Lopputulos
-- Ei tyhjää ensisivua.
-- ~2–3 sivua aiemman 5–6 sijaan.
-- Selkeä, helppolukuinen kaksipalstainen aikataulu A4:lle.
+Jos `html[...] @page` ei kelpaa kaikissa selaimissa, fallback: kirjoitetaan dynaamisesti `<style id="print-page-style">@page { size: A4 landscape }</style>` `<head>`iin valinnan mukaan ja päivitetään se kun käyttäjä vaihtaa suuntaa. Tämä on luotettavin tapa.
+
+### Vaaka-asettelun mitoitus
+
+A4 vaaka = 297×210 mm. Marginaalit 8mm → tehollinen leveys 281mm. 4 saraketta × 6mm gap = 18mm → sarakeleveys ~65mm. Riittää aika (3em ≈ 12mm) + lajinimi.
+
+109 lajia × ~5mm rivikorkeus = ~545mm sarakekorkeutta yhteensä. Jaettuna 4 sarakkeelle = ~136mm/sarake. Mahtuu hyvin 192mm korkeuteen → **yksi A4-arkki vaakana**, joka voidaan taittaa keskeltä A5-vihkoseksi.
+
+### Lopputulos
+
+- Yksi valinta: Pysty (2 saraketta, 2–3 sivua) tai Vaaka (4 saraketta, ~1 sivu).
+- Vaaka mahdollistaa A4-arkin taittamisen pieneksi taskuun mahtuvaksi vihkoseksi.
+- Valinta säilyy seuraavalla käyntikerralla.
+
+### Tiedostot
+- `src/routes/print.index.tsx` — suuntavalinta + dynaaminen `@page`-tyyli headiin
+- `src/styles.css` — `.print-landscape`-säännöt
