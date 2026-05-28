@@ -255,6 +255,7 @@ export function ClubTodaySection({
                                 {r.age_class && ` · ${r.age_class}`}
                                 {r.result_rank != null && ` · sija ${r.result_rank}`}
                                 {pb && ` · PB ${pb.text}`}
+                                {r.result_round_name && ` · ${r.result_round_name}`}
                               </p>
                             </div>
                             {r.was_pb && (
