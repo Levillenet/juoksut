@@ -13,9 +13,9 @@ import {
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 import { PrintTabs } from "@/components/PrintTabs";
+import { usePrintOrientation, type Orientation } from "@/hooks/usePrintOrientation";
 
 type Filter = "running" | "all";
-type Orientation = "portrait" | "landscape";
 
 export const Route = createFileRoute("/print/")({
   head: () => ({
@@ -32,35 +32,7 @@ export const Route = createFileRoute("/print/")({
 
 function PrintPage() {
   const [competitionId] = useCompetitionId();
-  const [orientation, setOrientation] = useState<Orientation>(() => {
-    if (typeof window === "undefined") return "landscape";
-    const stored = window.localStorage.getItem("print-orientation");
-    return stored === "portrait" ? "portrait" : "landscape";
-  });
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("print-orientation", orientation);
-    const id = "print-page-size-style";
-    let el = document.getElementById(id) as HTMLStyleElement | null;
-    if (!el) {
-      el = document.createElement("style");
-      el.id = id;
-      document.head.appendChild(el);
-    }
-    const margin = orientation === "landscape" ? "8mm 8mm 10mm 8mm" : "10mm 10mm 12mm 10mm";
-    el.textContent = `@page { size: A4 ${orientation}; margin: ${margin}; }`;
-    return () => {
-      // keep style across re-renders; only remove on unmount
-    };
-  }, [orientation]);
-
-  useEffect(() => {
-    return () => {
-      const el = document.getElementById("print-page-size-style");
-      if (el) el.remove();
-    };
-  }, []);
+  const { orientation, setOrientation } = usePrintOrientation();
   const [data, setData] = useState<RoundsByDate | null>(null);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
