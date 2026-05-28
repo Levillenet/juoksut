@@ -32,6 +32,10 @@ const inflight = new Map<string, Promise<string | null>>();
 const circuitOpenUntil = new Map<string, number>();
 const CIRCUIT_OPEN_MS = 60_000;
 
+// Upstream-fetchin aikakatkaisu. Pidetään selvästi alle Cloudflare Workersin
+// hang-detectionin (~30 s), jotta CF ei tapa pyyntöä 502:lla.
+const UPSTREAM_TIMEOUT_MS = 8_000;
+
 interface CachedEnvelope {
   body: string;
   cachedAt: number;
