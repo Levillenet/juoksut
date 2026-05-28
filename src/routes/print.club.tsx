@@ -7,7 +7,6 @@ import {
   formatTime,
   helsinkiDateKey,
   isRunningEvent,
-  translateSub,
 } from "@/lib/tuloslista";
 import { useCompetitionId } from "@/lib/competition-store";
 import {
@@ -16,6 +15,7 @@ import {
 } from "@/lib/tuloslista-queries";
 import { Button } from "@/components/ui/button";
 import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
+import { PrintTabs } from "@/components/PrintTabs";
 
 export const Route = createFileRoute("/print/club")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -194,6 +194,8 @@ function PrintClubPage() {
           </div>
         </div>
       </header>
+
+      <PrintTabs />
 
       <main className="mx-auto max-w-3xl px-4 py-6 print:py-2">
         <div className="mb-6">

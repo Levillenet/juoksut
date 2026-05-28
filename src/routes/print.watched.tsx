@@ -7,7 +7,6 @@ import {
   formatTime,
   helsinkiDateKey,
   isRunningEvent,
-  translateSub,
 } from "@/lib/tuloslista";
 import { useCompetitionId } from "@/lib/competition-store";
 import {
@@ -18,6 +17,7 @@ import { useWatchedAthletes } from "@/lib/watch-store";
 import { Button } from "@/components/ui/button";
 import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
 import { RequireRole } from "@/components/RequireRole";
+import { PrintTabs } from "@/components/PrintTabs";
 
 export const Route = createFileRoute("/print/watched")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -142,6 +142,8 @@ function PrintWatchedPage() {
           <CompetitionSwitcher className="w-full" />
         </div>
       </header>
+
+      <PrintTabs />
 
       <main className="mx-auto max-w-3xl px-4 py-6 print:py-2">
         <div className="mb-6">
