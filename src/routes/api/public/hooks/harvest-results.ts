@@ -125,6 +125,7 @@ type Row = {
   result_rank: number | null;
   wind: number | null;
   age_class: string;
+  result_round_name: string;
 };
 
 async function processCompetition(
