@@ -356,7 +356,7 @@ function WatchPage() {
               aria-label="Sukunimi"
             />
           </div>
-          {loading && progress.total > 0 && (
+          {indexQuery.isLoading && progress.total > 0 && (
             <p className="mt-2 text-xs text-muted-foreground">
               Ladataan osallistujatietoja… {progress.done}/{progress.total}
             </p>
