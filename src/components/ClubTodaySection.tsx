@@ -253,9 +253,12 @@ export function ClubTodaySection({
                               <p className="truncate text-[11px] text-muted-foreground">
                                 {r.event_name}
                                 {r.age_class && ` · ${r.age_class}`}
-                                {r.result_rank != null && ` · sija ${r.result_rank}`}
+                                {r.result_rank != null && r.result_round_name
+                                  ? ` · ${r.result_round_name} sija ${r.result_rank}`
+                                  : r.result_rank != null
+                                    ? ` · sija ${r.result_rank}`
+                                    : null}
                                 {pb && ` · PB ${pb.text}`}
-                                {r.result_round_name && ` · ${r.result_round_name}`}
                               </p>
                             </div>
                             {r.was_pb && (
