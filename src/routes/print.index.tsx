@@ -124,7 +124,7 @@ function PrintPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-4 print:py-2 print-schedule">
+      <main className={`mx-auto max-w-3xl px-4 py-4 print:py-2 print-schedule print-${orientation}`}>
         <div className="mb-5 rounded-xl border bg-card p-4 shadow-sm print:hidden">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Lajisuodatus
@@ -145,12 +145,40 @@ function PrintPage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          <p className="mt-4 mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Tulostussuunta
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex w-full gap-2 sm:w-auto">
+              {(["landscape", "portrait"] as Orientation[]).map((o) => (
+                <button
+                  key={o}
+                  onClick={() => setOrientation(o)}
+                  className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors sm:flex-none ${
+                    orientation === o
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "border border-border bg-background text-foreground hover:bg-secondary"
+                  }`}
+                >
+                  {o === "landscape" ? "Vaaka (4 saraketta)" : "Pysty (2 saraketta)"}
+                </button>
+              ))}
+            </div>
             <p className="text-[11px] text-muted-foreground sm:text-right">
-              Vinkki: tulostusikkunassa valitse{" "}
-              <strong className="font-semibold">"Tallenna PDF-tiedostona"</strong>.
+              {orientation === "landscape"
+                ? "Mahtuu yhdelle A4:lle — taittele keskeltä vihkoseksi."
+                : "Tiivis 2-sarakkeinen aikataulu."}
             </p>
           </div>
+
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            Vinkki: tulostusikkunassa valitse{" "}
+            <strong className="font-semibold">"Tallenna PDF-tiedostona"</strong> ja sama suunta.
+          </p>
         </div>
+
 
         <div className="mb-6 hidden print:block print-title">
           <h1 className="text-xl font-bold">{name || `Kisa #${competitionId}`}</h1>
