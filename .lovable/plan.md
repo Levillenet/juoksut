@@ -1,29 +1,44 @@
-## Tavoite
+## Ongelma
 
-Etusivun "Seuran urheilijat tänään" -listalla sijoituksen pitää näyttää, missä kierroksessa se on saavutettu. Nyt lukee "sija 5 · PB 10,77 · Alkuerät" — pitää lukea "Alkuerät sija 5 · PB 10,77", jotta on selvää että sija 5 on alkueristä eikä loppukilpailusta.
+N 100m Hyvän Tuulen Kisat 1: Emma Koponen näkyy "Alkuerät sija 6 · 12,58", vaikka hän juoksi loppukilpailussa sijalle 7. Harvesteri valitsee tällä hetkellä **parhaan** numeerisen ajan kaikista kierroksista, joten alkuerien nopeampi 12,58 voittaa loppukilpailun hitaamman ajan — ja virallinen finaalisijoitus katoaa.
 
-## Muutos
+## Korjaus
 
-Tiedosto: `src/components/ClubTodaySection.tsx` (rivit 256–258)
+`src/routes/api/public/hooks/harvest-results.ts` — Track-lajien (`isTrack`) valintalogiikkaan (rivit ~240–254). Vaihdetaan sääntö:
 
-Korvataan rivit niin että `result_round_name` näkyy `sija`-merkinnän edessä:
+1. **Käytä viimeisintä kierrosta**, jos siinä on numeerinen tulos (finaali on virallinen).
+2. Jos viimeisin on ei-numeerinen (DNS/DNF/DQ), käytä parasta numeerista aikaisemmista kierroksista ja merkitse `result_round_name` siitä erästä (tämä on alkuperäinen Tobias-tapaus).
+3. Jos missään kierroksessa ei ole numeerista, käytä viimeisintä riviä (esim. pelkkä DNS).
+
+Käytännössä:
 
 ```
-{r.result_round_name && r.result_rank != null
-  ? ` · ${r.result_round_name} sija ${r.result_rank}`
-  : r.result_rank != null
-    ? ` · sija ${r.result_rank}`
-    : null}
-{pb && ` · PB ${pb.text}`}
+if (isTrack) {
+  const latestNumeric = t.latest.result_numeric != null;
+  if (latestNumeric) {
+    out = { ...t.latest };
+    // Näytä erän nimi jos kilpailussa oli useita kierroksia ja viimeisin EI ole "varsinainen" tulos?
+    // → ei, älä näytä round_namea kun latest on numeerinen — sijoitus on jo finaalin sija
+    out.result_round_name = "";
+  } else if (t.best) {
+    // Viimeinen kierros DNS/DNF → varaudutaan paras aiempi + erän nimi
+    out = { ...t.best };
+    out.result_round_name = t.bestRoundName;
+  } else {
+    out = { ...t.latest, result_round_name: "" };
+  }
+}
 ```
 
-Eli:
-- Jos kierroksen nimi on tallessa (esim. "Alkuerät") JA sija on tiedossa → "· Alkuerät sija 5"
-- Jos vain sija tiedossa (loppukilpailu, normaalitilanne) → "· sija 5" (entinen näkymä)
-- Loppukilpailussa `result_round_name` on tyhjä, joten esitys ei muutu muille riveille
+## Vaikutukset
+
+- **Emma Koponen N 100m**: näyttää nyt finaalin sijan 7 (oikea virallinen tulos).
+- **Tobias Moreno M 100m**: edelleen "Alkuerät sija 5 · 10,87" koska loppukilpailussa DNS → fallback paras alkuerästä toimii.
+- PB-laskenta (`mark_pbs_for_competitions`) on jo erillinen: se käy läpi **kaikki rivit** (kaikki kierrokset) eikä riipu tästä valinnasta, joten alkuerien nopeampi aika rekisteröityy edelleen PB:ksi jos se sellainen on.
+
+⚠️ Huom: tällä hetkellä `athlete_results`-taulussa on jo *parhaan kierroksen* rivi per (urheilija, laji, kisa). Harvesteri **upsertaa** seuraavalla ajollaan saman avaimen päälle, joten Emma Koposen rivi päivittyy automaattisesti finaalitulokseksi kun kisa tulee uudelleen revisit-skannaukseen (mikä tapahtuu joka ajossa lähipäivien kisoille). Migraatiota tai backfilliä ei tarvita.
 
 ## Mitä ei muuteta
 
-- Tietokantaa eikä harvesteria — data on jo oikein (Tobiaksen rivillä `result_round_name = "Alkuerät"`, `result_rank = 5`)
-- Tulosteita (print.*) eikä muita näkymiä
-- PB-logiikkaa
+- UI (`ClubTodaySection.tsx`) — näyttää edelleen `result_round_name` jos se on tallessa.
+- PB-logiikka, tulosteet, tietokantaskeema.
