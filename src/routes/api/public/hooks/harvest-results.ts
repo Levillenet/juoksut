@@ -66,7 +66,7 @@ interface EventShape {
   EventCategory?: string;
   EventSubCategory?: string;
   BeginDateTimeWithTZ?: string;
-  Rounds: { Heats: { Allocations: Allocation[] }[] }[];
+  Rounds: { Name?: string; Heats: { Allocations: Allocation[] }[] }[];
 }
 
 interface RoundsByDateShape {
