@@ -7,12 +7,12 @@ import {
   fetchProperties,
   isRunningEvent,
   formatTime,
-  translateSub,
   type Round,
   type RoundsByDate,
 } from "@/lib/tuloslista";
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
+import { PrintTabs } from "@/components/PrintTabs";
 
 type Filter = "running" | "all";
 type Orientation = "portrait" | "landscape";
@@ -116,13 +116,10 @@ function PrintPage() {
               {name || `Kisa #${competitionId}`}
             </p>
           </div>
-          <Button onClick={() => window.print()} size="sm" className="gap-2">
-            <Printer className="h-4 w-4" />
-            <span className="hidden sm:inline">Tulosta / Tallenna PDF</span>
-            <span className="sm:hidden">PDF</span>
-          </Button>
         </div>
       </header>
+
+      <PrintTabs />
 
       <main className={`mx-auto max-w-3xl px-4 py-4 print:py-2 print-schedule print-${orientation}`}>
         <div className="mb-5 rounded-xl border bg-card p-4 shadow-sm print:hidden">
@@ -166,11 +163,18 @@ function PrintPage() {
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground sm:text-right">
-              {orientation === "landscape"
-                ? "Mahtuu yhdelle A4:lle — taittele keskeltä vihkoseksi."
-                : "Tiivis 2-sarakkeinen aikataulu."}
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-[11px] text-muted-foreground">
+                {orientation === "landscape"
+                  ? "Mahtuu yhdelle A4:lle — taittele keskeltä vihkoseksi."
+                  : "Tiivis 2-sarakkeinen aikataulu."}
+              </p>
+              <Button onClick={() => window.print()} size="sm" className="gap-2 shrink-0">
+                <Printer className="h-4 w-4" />
+                <span className="hidden sm:inline">Tulosta / PDF</span>
+                <span className="sm:hidden">PDF</span>
+              </Button>
+            </div>
           </div>
 
           <p className="mt-3 text-[11px] text-muted-foreground">
