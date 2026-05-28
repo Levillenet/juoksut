@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Search as SearchIcon, RefreshCw, Pin, X, UserPlus, Building2, Trophy, Share2, Copy, Check, Trash2 } from "lucide-react";
@@ -64,11 +64,15 @@ function WatchPage() {
   const [query, setQuery] = useState<string>("");
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
+  const hasIndexData = useRef(false);
   const indexQuery = useQuery(
-    competitionIndexQueryOptions(competitionId, (done, total) =>
-      setProgress({ done, total }),
-    ),
+    competitionIndexQueryOptions(competitionId, (done, total) => {
+      if (!hasIndexData.current) setProgress({ done, total });
+    }),
   );
+  useEffect(() => {
+    if (indexQuery.data) hasIndexData.current = true;
+  }, [indexQuery.data]);
 
   const index: IndexedEntry[] | null = indexQuery.data?.entries ?? null;
   const name = indexQuery.data?.name ?? "";
@@ -356,7 +360,7 @@ function WatchPage() {
               aria-label="Sukunimi"
             />
           </div>
-          {loading && progress.total > 0 && (
+          {indexQuery.isLoading && progress.total > 0 && (
             <p className="mt-2 text-xs text-muted-foreground">
               Ladataan osallistujatietoja… {progress.done}/{progress.total}
             </p>
