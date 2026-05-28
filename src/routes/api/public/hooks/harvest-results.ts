@@ -239,12 +239,18 @@ async function processCompetition(
     }
     for (const t of tracked.values()) {
       let out: Row;
-      if (isTrack && t.best) {
-        out = { ...t.best };
-        // Lisää erän nimi vain jos paras tuli muusta kuin viimeisestä kierroksesta
-        out.result_round_name =
-          t.bestRoundIdx !== t.latestRoundIdx ? t.bestRoundName : "";
-      } else if (!isTrack && t.best) {
+      if (isTrack) {
+        // Track: suosi viimeisintä kierrosta (loppukilpailu on virallinen
+        // sijoitus). Vain jos viimeinen on ei-numeerinen (DNS/DNF/DQ),
+        // pudottaudu parhaaseen aiempaan kierrokseen ja näytä sen nimi.
+        if (t.latest.result_numeric != null) {
+          out = { ...t.latest, result_round_name: "" };
+        } else if (t.best) {
+          out = { ...t.best, result_round_name: t.bestRoundName };
+        } else {
+          out = { ...t.latest, result_round_name: "" };
+        }
+      } else if (t.best) {
         out = { ...t.best, result_round_name: "" };
       } else {
         out = { ...t.latest, result_round_name: "" };
