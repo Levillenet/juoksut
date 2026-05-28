@@ -1,44 +1,30 @@
-## Ongelma
+# Korjaa 502-virheet tuloslista-proxyn aikataulukutsuissa
 
-N 100m Hyvän Tuulen Kisat 1: Emma Koponen näkyy "Alkuerät sija 6 · 12,58", vaikka hän juoksi loppukilpailussa sijalle 7. Harvesteri valitsee tällä hetkellä **parhaan** numeerisen ajan kaikista kierroksista, joten alkuerien nopeampi 12,58 voittaa loppukilpailun hitaamman ajan — ja virallinen finaalisijoitus katoaa.
+## Oireet (lokeista)
+- Edge palauttaa `502` polulle `GET /api/public/tuloslista/live/v1/competition/19401`.
+- Cloudflare-virhe: *"The Workers runtime canceled this request because it detected that your Worker's code had hung"*.
+- Tapahtuu toistuvasti samalle kisalle (19401) → upstream `cached-public-api.tuloslista.com` palauttaa hyvin hitaasti tai jää roikkumaan.
 
-## Korjaus
+## Juurisyy
+`src/lib/tuloslista-proxy.ts` → `fetchFromOrigin` tekee `fetch(originUrl, …)` ilman `AbortController`-aikakatkaisua. Hidas/jumittunut upstream pitää koko Worker-isolaatin odotuksessa, ja CF tappaa pyynnön ~30 s kohdalla → 502. Circuit breaker reagoi vain statuksiin 429/503, ei timeoutiin, joten breaker ei avaudu ja seuraavat pyynnöt päätyvät samaan jumiin.
 
-`src/routes/api/public/hooks/harvest-results.ts` — Track-lajien (`isTrack`) valintalogiikkaan (rivit ~240–254). Vaihdetaan sääntö:
+## Muutos
+Yksi tiedosto: `src/lib/tuloslista-proxy.ts`.
 
-1. **Käytä viimeisintä kierrosta**, jos siinä on numeerinen tulos (finaali on virallinen).
-2. Jos viimeisin on ei-numeerinen (DNS/DNF/DQ), käytä parasta numeerista aikaisemmista kierroksista ja merkitse `result_round_name` siitä erästä (tämä on alkuperäinen Tobias-tapaus).
-3. Jos missään kierroksessa ei ole numeerista, käytä viimeisintä riviä (esim. pelkkä DNS).
+1. Lisää `UPSTREAM_TIMEOUT_MS = 8000` (selvästi alle CF:n hang-katkaisun).
+2. `fetchFromOrigin`:
+   - Luo `AbortController`, käynnistä `setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)`.
+   - Välitä `signal` `fetch`-kutsuun, siivoa timer `finally`-lohkossa.
+   - `catch`-haarassa: jos virhe on `AbortError` tai verkko-/fetch-virhe, kirjaa varoitus ja **avaa circuit breakeriin** `circuitOpenUntil.set(path, Date.now() + CIRCUIT_OPEN_MS)`, palauta `null`. Näin seuraavat pyynnöt 60 s ajan palauttavat stalen heti eivätkä jää odottamaan.
+3. Pidä nykyiset 429/503-haarat ennallaan.
 
-Käytännössä:
-
-```
-if (isTrack) {
-  const latestNumeric = t.latest.result_numeric != null;
-  if (latestNumeric) {
-    out = { ...t.latest };
-    // Näytä erän nimi jos kilpailussa oli useita kierroksia ja viimeisin EI ole "varsinainen" tulos?
-    // → ei, älä näytä round_namea kun latest on numeerinen — sijoitus on jo finaalin sija
-    out.result_round_name = "";
-  } else if (t.best) {
-    // Viimeinen kierros DNS/DNF → varaudutaan paras aiempi + erän nimi
-    out = { ...t.best };
-    out.result_round_name = t.bestRoundName;
-  } else {
-    out = { ...t.latest, result_round_name: "" };
-  }
-}
-```
-
-## Vaikutukset
-
-- **Emma Koponen N 100m**: näyttää nyt finaalin sijan 7 (oikea virallinen tulos).
-- **Tobias Moreno M 100m**: edelleen "Alkuerät sija 5 · 10,87" koska loppukilpailussa DNS → fallback paras alkuerästä toimii.
-- PB-laskenta (`mark_pbs_for_competitions`) on jo erillinen: se käy läpi **kaikki rivit** (kaikki kierrokset) eikä riipu tästä valinnasta, joten alkuerien nopeampi aika rekisteröityy edelleen PB:ksi jos se sellainen on.
-
-⚠️ Huom: tällä hetkellä `athlete_results`-taulussa on jo *parhaan kierroksen* rivi per (urheilija, laji, kisa). Harvesteri **upsertaa** seuraavalla ajollaan saman avaimen päälle, joten Emma Koposen rivi päivittyy automaattisesti finaalitulokseksi kun kisa tulee uudelleen revisit-skannaukseen (mikä tapahtuu joka ajossa lähipäivien kisoille). Migraatiota tai backfilliä ei tarvita.
+## Toiminta korjauksen jälkeen
+- Hidas upstream → keskeytetään 8 s kohdalla.
+- Jos cachessa on stale, käyttäjä saa sen (`x-tl-cache: stale-error`).
+- Jos ei stalea, vastaus on `503 Upstream unavailable` (ei enää CF-502 SSR-hangia).
+- Circuit pysyy auki 60 s, joten Worker ei polta resursseja saman jumittavan upstreamin uudelleenyrityksiin.
 
 ## Mitä ei muuteta
-
-- UI (`ClubTodaySection.tsx`) — näyttää edelleen `result_round_name` jos se on tallessa.
-- PB-logiikka, tulosteet, tietokantaskeema.
+- TTL-konfiguraatioita ei kosketa.
+- Reittitiedostoja (`src/routes/api/public/tuloslista/...`) ei muuteta.
+- Front-endin React Query -logiikkaa ei muuteta — proxy-vastausten muoto pysyy samana.

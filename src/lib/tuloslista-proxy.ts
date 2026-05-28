@@ -32,6 +32,10 @@ const inflight = new Map<string, Promise<string | null>>();
 const circuitOpenUntil = new Map<string, number>();
 const CIRCUIT_OPEN_MS = 60_000;
 
+// Upstream-fetchin aikakatkaisu. Pidetään selvästi alle Cloudflare Workersin
+// hang-detectionin (~30 s), jotta CF ei tapa pyyntöä 502:lla.
+const UPSTREAM_TIMEOUT_MS = 8_000;
+
 interface CachedEnvelope {
   body: string;
   cachedAt: number;
@@ -131,12 +135,15 @@ async function fetchFromOrigin(
   ttlOf: (body: string) => TtlConfig,
   path: string,
 ): Promise<string | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
     const res = await fetch(originUrl, {
       headers: {
         "user-agent": "juoksut-proxy/1.0 (+https://tulokset.online)",
         accept: "application/json",
       },
+      signal: controller.signal,
     });
     if (res.status === 429 || res.status === 503) {
       console.warn(`[tl-proxy] origin ${res.status} ${path} — circuit open ${CIRCUIT_OPEN_MS}ms`);
@@ -169,8 +176,22 @@ async function fetchFromOrigin(
     }
     return body;
   } catch (e) {
-    console.error(`[tl-proxy] fetch error ${path}`, e);
+    const aborted =
+      (e instanceof Error && e.name === "AbortError") ||
+      controller.signal.aborted;
+    if (aborted) {
+      console.warn(
+        `[tl-proxy] origin timeout ${UPSTREAM_TIMEOUT_MS}ms ${path} — circuit open ${CIRCUIT_OPEN_MS}ms`,
+      );
+    } else {
+      console.error(`[tl-proxy] fetch error ${path}`, e);
+    }
+    // Avaa breaker myös timeoutille ja verkkovirheille, jottei Worker jää
+    // jumiin samaan hitaaseen upstreamiin.
+    circuitOpenUntil.set(path, Date.now() + CIRCUIT_OPEN_MS);
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
