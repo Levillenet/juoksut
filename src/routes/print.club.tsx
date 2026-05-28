@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Printer, Building2 } from "lucide-react";
 
@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
 import { PrintTabs } from "@/components/PrintTabs";
+import { usePrintOrientation, type Orientation } from "@/hooks/usePrintOrientation";
 
 export const Route = createFileRoute("/print/club")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -41,6 +42,7 @@ function PrintClubPage() {
   const [competitionId] = useCompetitionId();
   const { org, auto } = Route.useSearch();
   const navigate = useNavigate();
+  const { orientation, setOrientation } = usePrintOrientation();
   const indexQuery = useQuery(competitionIndexQueryOptions(competitionId));
 
   const entries: IndexedEntry[] = indexQuery.data?.entries ?? [];
@@ -197,7 +199,47 @@ function PrintClubPage() {
 
       <PrintTabs />
 
-      <main className="mx-auto max-w-3xl px-4 py-6 print:py-2">
+      <main className={`mx-auto max-w-3xl px-4 py-6 print:py-2 print-schedule print-${orientation}`}>
+        <div className="mb-5 rounded-xl border bg-card p-4 shadow-sm print:hidden">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Tulostussuunta
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex w-full gap-2 sm:w-auto">
+              {(["landscape", "portrait"] as Orientation[]).map((o) => (
+                <button
+                  key={o}
+                  onClick={() => setOrientation(o)}
+                  className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors sm:flex-none ${
+                    orientation === o
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "border border-border bg-background text-foreground hover:bg-secondary"
+                  }`}
+                >
+                  {o === "landscape" ? "Vaaka (4 saraketta)" : "Pysty (2 saraketta)"}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3">
+              <p className="text-[11px] text-muted-foreground">
+                {orientation === "landscape"
+                  ? "Mahtuu yhdelle A4:lle — taittele keskeltä vihkoseksi."
+                  : "Tiivis 2-sarakkeinen aikataulu."}
+              </p>
+              <Button onClick={() => window.print()} size="sm" className="gap-2 shrink-0" disabled={!org || grouped.length === 0}>
+                <Printer className="h-4 w-4" />
+                <span className="hidden sm:inline">Tulosta / PDF</span>
+                <span className="sm:hidden">PDF</span>
+              </Button>
+            </div>
+          </div>
+
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            Vinkki: tulostusikkunassa valitse{" "}
+            <strong className="font-semibold">"Tallenna PDF-tiedostona"</strong> ja sama suunta.
+          </p>
+        </div>
+
         <div className="mb-6">
           <h1 className="text-xl font-bold print:text-lg">
             {compName || `Kisa #${competitionId}`}
