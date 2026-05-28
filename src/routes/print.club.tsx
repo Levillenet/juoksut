@@ -300,11 +300,11 @@ function PrintClubPage() {
                                 {e.alloc.Surname} {e.alloc.Firstname}
                               </span>
                               {e.alloc.Number && (
-                                <span className="text-xs tabular-nums text-muted-foreground">
+                                <span className="text-xs tabular-nums text-muted-foreground print:hidden">
                                   #{e.alloc.Number}
                                 </span>
                               )}
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-xs text-muted-foreground print:hidden">
                                 {isRun
                                   ? `Erä ${e.heatIndex}${e.alloc.Position != null ? ` · Rata ${e.alloc.Position}` : ""}`
                                   : e.alloc.Position != null
