@@ -64,11 +64,15 @@ function WatchPage() {
   const [query, setQuery] = useState<string>("");
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
+  const hasIndexData = useRef(false);
   const indexQuery = useQuery(
-    competitionIndexQueryOptions(competitionId, (done, total) =>
-      setProgress({ done, total }),
-    ),
+    competitionIndexQueryOptions(competitionId, (done, total) => {
+      if (!hasIndexData.current) setProgress({ done, total });
+    }),
   );
+  useEffect(() => {
+    if (indexQuery.data) hasIndexData.current = true;
+  }, [indexQuery.data]);
 
   const index: IndexedEntry[] | null = indexQuery.data?.entries ?? null;
   const name = indexQuery.data?.name ?? "";
