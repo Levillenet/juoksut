@@ -1,37 +1,47 @@
-# Miksi näin tapahtuu
+# Tiivistetty tulostus: Kilpailun aikataulu
 
-`Seuranta`-sivu (`/watch` ja `/seuraa/$token`) käyttää `competitionIndexQueryOptions`-kyselyä, joka:
+Muutokset koskevat vain `/print` -sivun **tulostusnäkymää** (`@media print`). Ruudulla näkyvä versio pysyy ennallaan.
 
-1. Hakee kisan **kaikki lajit** yksitellen (kisassa ~109 lajia → 109 HTTP-kutsua).
-2. Päivittää edistymislaskurin `onProgress(done, total)` jokaisen lajin jälkeen → siksi näet "0/109 → 109/109".
-3. **Toistaa tämän koko operaation 20 sekunnin välein** (`refetchInterval: 20_000` rivillä 142), koska jokainen polling-kierros käynnistää koko `queryFn`:n alusta.
+## Ongelmat nyt
+1. **Tyhjä ensimmäinen sivu** — sticky-header (`position: sticky` + `backdrop`) ja suodatinkortti vievät tilaa myös tulostuksessa, vaikka `print:hidden` piilottaa ne. Tausta-`backdrop` ja `main`-paddingit jättävät silti pystytilaa → ensimmäinen sivu jää käytännössä tyhjäksi.
+2. **Yksi laji per rivi** koko leveydellä → paljon hukkatilaa, monta sivua.
+3. Päivä-otsikot ja `Name` -alarivi vievät turhan paljon korkeutta.
 
-Eli mitään ei oikeasti "ladata uudelleen tyhjästä" — välimuistissa oleva data säilyy ruudulla — mutta laskuri-UI näkyy aina kun taustapäivitys käy.
+## Ratkaisu
 
-# Korjaus (vain `src/routes/watch.tsx` + `src/lib/tuloslista-queries.ts`)
+### 1. Kahden sarakkeen tulostusasettelu (CSS columns)
+Käytetään CSS `column-count: 2` -ominaisuutta `<main>`-elementissä **vain tulostuksessa**. Tällöin:
+- Selain täyttää ensin vasemman sarakkeen ylhäältä alas, sitten oikean → luonteva lukujärjestys.
+- Päiväosiot (`<section>`) saavat `break-inside: avoid` ettei päivä katkea sarakkeen keskellä, mutta jos päivä on isompi kuin sarake, se saa silti katketa rivin kohdalta (rivit on jo `tr { page-break-inside: avoid }`).
+- 109 lajia mahtuu arviolta **2–3 A4-sivulle** aiemman 5–6 sijaan.
 
-**1. Pidennä polling-intervalli 20s → 60s** (`tuloslista-queries.ts` rivi 142).
-Watch-näkymässä ei tarvita 20 sekunnin tarkkuutta; tulosrivit silti elävät kun avaat yksittäisen erän (`eventDetailsQueryOptions` polling 15s pysyy ennallaan).
+### 2. Tiiviimpi typografia tulostuksessa
+- Perusfonttikoko `10pt` (nyt 14–16px → ~11pt) ja `line-height: 1.25`.
+- Aikasarake `width: 3.2em`, kellonaika lihavoitu, lajinimi tavallinen.
+- Yhdistetään `EventName` + `Name` samalle riville: `1500 m · M16 alkuerä 2` muodossa. Nykyinen kaksirivinen rakenne puolittuu.
+- Pienempi `<h2>` päivä-otsikko (12pt, ohuempi alaviiva), `margin-top: 0` ensimmäisellä.
 
-**2. Näytä "Ladataan osallistujatietoja… X/Y" vain ensilatauksessa.**
-Watch-sivulla (`src/routes/watch.tsx` rivit ~359-361) ehto on tällä hetkellä `loading && progress.total > 0`. Vaihdetaan siten, että laskuri näkyy vain kun dataa ei vielä ole välimuistissa:
-```
-{indexQuery.isLoading && progress.total > 0 && (...)}
-```
-(`isLoading` on `true` vain ennen ensimmäistä onnistunutta hakua; `isFetching` on `true` myös taustapäivityksissä — sitä emme halua näyttää.)
+### 3. Sivunhallinta
+- `@page { size: A4; margin: 10mm 10mm 12mm 10mm; }` — kapeammat marginaalit.
+- `main { padding: 0 !important; }` ja `header { display: none }` tulostuksessa → poistaa tyhjän ensisivun.
+- Tulostusotsikko (kisan nimi + päivä) pysyy yhden rivin korkuisena yläreunassa.
+- Alaviite `Lähde: …` vain viimeisellä sivulla luonnollisesti.
 
-**3. Vaimennetaan myös taustakierroksen progress-päivitykset**, jotta laskuri ei "kilautakaan" hetkellisesti uudelleenrenderissä. Lisätään `onProgress`-kutsuun ehto: päivitä `setProgress` vain jos edellinen tila oli `{0,0}` tai data puuttuu. Yksinkertaisin tapa: nollaa `progress` `useEffect`illa kun `indexQuery.data` on olemassa.
+### 4. Suodatin: pidetään
+"Vain juoksulajit / Kaikki lajit" -valinta toimii kuten ennen. "Kaikki lajit" hyötyy 2-sarakkeesta eniten.
 
-Vaihtoehtoisesti: ohitetaan `onProgress` kokonaan kun `queryClient` palauttaa cachen — mutta yo. ratkaisu riittää.
+### Ei kirjasta (booklet) tässä vaiheessa
+Booklet (taitettava A5-kirjanen) vaatisi sivujen järjestelyä (1,4 | 2,3 …) jota selainten tulostus ei natiivisti tee — pitäisi generoida PDF palvelinpuolella. Jätetään tämän vaiheen ulkopuolelle; mainitsen jos haluat sen myöhemmin erillisenä toteutuksena.
 
-# Mitä EI muuteta
+## Tekniset muutokset
 
-- `eventDetailsQueryOptions` (avoinna olevan erän live-polling) pysyy 15 s.
-- Datalogiikka, RLS, layout — ei muutoksia.
-- Jaettu `/seuraa/$token`-sivu saa saman hyödyn automaattisesti (käyttää samaa kyselyä).
+**Tiedostot:**
+- `src/styles.css` — laajennetaan `@media print`-lohkoa: `@page`, `column-count: 2`, kompaktit fontti- ja marginaalisäännöt luokalla esim. `.print-schedule`.
+- `src/routes/print.index.tsx` — lisätään `print-schedule` -luokka `<main>`-elementtiin ja yhdistetään `EventName` + `Name` samalle riville (yksi `<td>`). Otsikkoblokki (`hidden print:block`) pysyy mutta tiivistetään.
 
-# Lopputulos
+Ei muutoksia muihin reitteihin (`print.club`, `print.watched`) ellet halua saman kohtelun myös niille — kerro jos halutaan.
 
-- Taustapäivitys käy 60 s välein, ei 20 s.
-- Käyttäjä ei näe "Ladataan 0/109 → 109/109" -laskuria muulloin kuin kun sivu avataan ensimmäistä kertaa.
-- Tulokset päivittyvät yhä taustalla; vain UI-häiriö poistuu.
+## Lopputulos
+- Ei tyhjää ensisivua.
+- ~2–3 sivua aiemman 5–6 sijaan.
+- Selkeä, helppolukuinen kaksipalstainen aikataulu A4:lle.
