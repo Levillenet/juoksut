@@ -1,74 +1,37 @@
-## Tavoite
+# Miksi näin tapahtuu
 
-Mobiilikäytössä (alle 768 px leveys) leipätekstit, metatekstit ja pienet UI-elementit ovat liian pieniä. Nostetaan perustekstikoot järkevästi ilman, että desktop-näkymä muuttuu tai layout rikkoutuu.
+`Seuranta`-sivu (`/watch` ja `/seuraa/$token`) käyttää `competitionIndexQueryOptions`-kyselyä, joka:
 
-## Lähestymistapa
+1. Hakee kisan **kaikki lajit** yksitellen (kisassa ~109 lajia → 109 HTTP-kutsua).
+2. Päivittää edistymislaskurin `onProgress(done, total)` jokaisen lajin jälkeen → siksi näet "0/109 → 109/109".
+3. **Toistaa tämän koko operaation 20 sekunnin välein** (`refetchInterval: 20_000` rivillä 142), koska jokainen polling-kierros käynnistää koko `queryFn`:n alusta.
 
-Tehdään muutos **yhdessä paikassa**: `src/styles.css`. Ei kosketa komponentteja — Tailwindin `text-sm`, `text-xs` jne. saavat mobiilissa hieman isomman renderöinnin globaalin base-kokoasetuksen kautta.
+Eli mitään ei oikeasti "ladata uudelleen tyhjästä" — välimuistissa oleva data säilyy ruudulla — mutta laskuri-UI näkyy aina kun taustapäivitys käy.
 
-## Muutokset `src/styles.css`
+# Korjaus (vain `src/routes/watch.tsx` + `src/lib/tuloslista-queries.ts`)
 
-### 1. Nosta html-perusfonttikokoa mobiilissa
+**1. Pidennä polling-intervalli 20s → 60s** (`tuloslista-queries.ts` rivi 142).
+Watch-näkymässä ei tarvita 20 sekunnin tarkkuutta; tulosrivit silti elävät kun avaat yksittäisen erän (`eventDetailsQueryOptions` polling 15s pysyy ennallaan).
 
-Tailwindin `rem`-pohjaiset koot (text-xs = 0.75rem, text-sm = 0.875rem, text-base = 1rem) skaalautuvat automaattisesti, kun `html { font-size }` muuttuu.
-
-```css
-@layer base {
-  html {
-    font-size: 16px; /* desktop pysyy ennallaan */
-  }
-}
-
-@media (max-width: 767px) {
-  html {
-    font-size: 17.5px; /* ~+9 % kaikkiin rem-pohjaisiin teksteihin */
-  }
-}
+**2. Näytä "Ladataan osallistujatietoja… X/Y" vain ensilatauksessa.**
+Watch-sivulla (`src/routes/watch.tsx` rivit ~359-361) ehto on tällä hetkellä `loading && progress.total > 0`. Vaihdetaan siten, että laskuri näkyy vain kun dataa ei vielä ole välimuistissa:
 ```
-
-Tämä tekee mobiilissa:
-- `text-xs` (12 → 13.1 px)
-- `text-sm` (14 → 15.3 px) ← yleisin leipäteksti
-- `text-base` (16 → 17.5 px)
-- otsikot skaalautuvat samassa suhteessa
-
-### 2. Nosta erikseen `text-xs`-luokan minimi mobiilissa
-
-Pienimmät metatekstit (esim. aikaleimat, sekundääritiedot) ovat usein `text-xs`. Varmistetaan että ne ovat vähintään 13 px mobiilissa — alle sen luettavuus auringossa kärsii. Yllä oleva skaalaus hoitaa tämän jo, mutta lisätään varmistus:
-
-```css
-@media (max-width: 767px) {
-  .text-xs { font-size: 0.8125rem; line-height: 1.15rem; } /* 13 px */
-}
+{indexQuery.isLoading && progress.total > 0 && (...)}
 ```
+(`isLoading` on `true` vain ennen ensimmäistä onnistunutta hakua; `isFetching` on `true` myös taustapäivityksissä — sitä emme halua näyttää.)
 
-### 3. Hieman tiukempi line-height mobiilissa otsikoille
+**3. Vaimennetaan myös taustakierroksen progress-päivitykset**, jotta laskuri ei "kilautakaan" hetkellisesti uudelleenrenderissä. Lisätään `onProgress`-kutsuun ehto: päivitä `setProgress` vain jos edellinen tila oli `{0,0}` tai data puuttuu. Yksinkertaisin tapa: nollaa `progress` `useEffect`illa kun `indexQuery.data` on olemassa.
 
-Estetään että kasvaneet otsikot vievät liikaa pystytilaa:
+Vaihtoehtoisesti: ohitetaan `onProgress` kokonaan kun `queryClient` palauttaa cachen — mutta yo. ratkaisu riittää.
 
-```css
-@media (max-width: 767px) {
-  h1, h2, h3 { line-height: 1.2; }
-}
-```
+# Mitä EI muuteta
 
-## Mitä EI muuteta
+- `eventDetailsQueryOptions` (avoinna olevan erän live-polling) pysyy 15 s.
+- Datalogiikka, RLS, layout — ei muutoksia.
+- Jaettu `/seuraa/$token`-sivu saa saman hyödyn automaattisesti (käyttää samaa kyselyä).
 
-- Komponenttitiedostot, Tailwind-luokat, layout, värit
-- Desktop-näkymä (kaikki muutokset `max-width: 767px` -median takana)
-- Fonttiperhe
+# Lopputulos
 
-## Riskit ja niiden hallinta
-
-- **Rivivaihdot/ylivuoto:** 9 % kasvu on maltillinen; testaan etusivun ja tuloslistan mobiilissa (390×844).
-- **Painikkeiden korkeus** kasvaa hieman → parempi kosketuskohde, ei haitta.
-- **Taulukot:** tarkistan että tuloslistan taulukko ei ala vierittämään vaakaan. Jos näin käy, kavennetaan ratkaisua koskemaan vain `body`-tasoa eikä taulukkosolujen sisältöä.
-
-## Vahvistus toteutuksen jälkeen
-
-Avaan mobiili-viewportilla:
-- Etusivu (`/`)
-- Tuloslista (round/eventid -näkymä)
-- Hauskat tilastot
-
-Vertaan visuaalisesti ennen/jälkeen ja varmistan ettei mikään rikkoudu.
+- Taustapäivitys käy 60 s välein, ei 20 s.
+- Käyttäjä ei näe "Ladataan 0/109 → 109/109" -laskuria muulloin kuin kun sivu avataan ensimmäistä kertaa.
+- Tulokset päivittyvät yhä taustalla; vain UI-häiriö poistuu.
