@@ -122,6 +122,7 @@ export type Database = {
           organization_id: number | null
           result_numeric: number | null
           result_rank: number | null
+          result_round_name: string
           result_text: string
           sub_category: string
           surname: string
@@ -145,6 +146,7 @@ export type Database = {
           organization_id?: number | null
           result_numeric?: number | null
           result_rank?: number | null
+          result_round_name?: string
           result_text?: string
           sub_category?: string
           surname: string
@@ -168,6 +170,7 @@ export type Database = {
           organization_id?: number | null
           result_numeric?: number | null
           result_rank?: number | null
+          result_round_name?: string
           result_text?: string
           sub_category?: string
           surname?: string

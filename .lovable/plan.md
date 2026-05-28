@@ -1,70 +1,62 @@
-## Tulostussuunta: pysty / vaaka
+## Ongelma
 
-Lisätään `/print`-sivulle valinta tulostussuunnalle ja optimoidaan vaaka-asettelu neljälle sarakkeelle, jotta 109 lajia mahtuu yhdelle taitettavalle A4-arkille.
+Tobias jäi finaalissa DNS, vaikka juoksi alkuerässä 10,87. Nykyinen harvesteri (Track: "viimeisin kierros voittaa") tallentaa pelkän DNS:n eikä alkuerän aikaa, joten etusivun "Seuran urheilijat tänään" -listassa näkyy vain DNS.
 
-### UI-muutokset (`src/routes/print.index.tsx`)
+## Tavoite
 
-- Lajisuodattimen viereen uusi segmenttivalinta: **Pysty (2 saraketta)** / **Vaaka (4 saraketta)**. Oletus: Vaaka (koska kompaktimpi).
-- Tila `orientation: "portrait" | "landscape"` säilytetään `localStorage`issa (`print-orientation`) muiden asetusten tapaan.
-- Annetaan `<main>`-elementille luokka `print-schedule print-portrait` tai `print-schedule print-landscape` valinnan mukaan.
-- Lisätään vihje: "Valitse tulostusikkunassa sama suunta (pysty/vaaka). Vaakaan mahtuu 4 saraketta — voit taittaa A4:n keskeltä pieneksi vihkoseksi."
+Track-lajeissa näytetään kisan **paras aika** ja **missä erässä** se juostiin (Alkuerä, Välierä, A-finaali, B-finaali, Loppukilpailu…). Erä-merkintä näytetään aina kun se on muu kuin loppukilpailu/finaali — eli aina kun "virallinen" lopputulos ei ole tämä rivi.
 
-### CSS-muutokset (`src/styles.css`)
+Tobiaksen tapaus: pää-tulokseksi tulee `10,87` ja sen alle pieni teksti `Alkuerät`.
 
-Erotetaan `@page`-säännöt suunnan mukaan käyttämällä erillisiä `@media print` -lohkoja yhdistettynä luokkavalitsimeen `:has(.print-landscape)` rungossa:
+## Ratkaisu
 
-```css
-@media print {
-  /* Yhteiset säännöt (kuten nyt) — fontit, värit, jne. */
-}
+### 1. Tietokanta (migraatio)
 
-/* Pysty: 2 saraketta (nykyinen käyttäytyminen) */
-@media print {
-  body:has(.print-portrait) { /* trigger */ }
-  @page { size: A4 portrait; margin: 10mm; }
-  .print-portrait { column-count: 2; column-gap: 8mm; }
-}
+Lisätään `athlete_results`-tauluun yksi sarake:
 
-/* Vaaka: 4 saraketta */
-@media print {
-  @page { size: A4 landscape; margin: 8mm 8mm 10mm 8mm; }
-  .print-landscape {
-    column-count: 4;
-    column-gap: 6mm;
-    font-size: 8.5pt;
-    line-height: 1.2;
-  }
-  .print-landscape td { padding: 0.4mm 1mm !important; }
-  .print-landscape td.time { width: 3em; }
-  .print-landscape h2 { font-size: 9.5pt; }
-}
+```sql
+ALTER TABLE public.athlete_results
+  ADD COLUMN result_round_name text NOT NULL DEFAULT '';
 ```
 
-Huom: `@page size` on CSS:n globaali — ei voi vaihtaa kesken sivun. Ratkaisu: kirjoitetaan kaksi `@page`-sääntöä eri `@media print` -lohkoihin, jotka ovat ehdollisia `:has()`-valitsimella `<html>`/`<body>`-tasolla, TAI yksinkertaisemmin: asetetaan `<html>`-tasolle data-attribuutti `data-print-orientation` ja käytetään sitä CSS:ssä. Tämä on tuettu kaikissa moderneissa selaimissa (Chrome, Edge, Safari) jotka osaavat `@page`-sääntöjen päättelyn DOM-tilan perusteella.
+- `''` = sama kuin "loppukilpailu" → ei näytetä erikseen
+- Muu arvo (`Alkuerät`, `A-finaali`, `B-finaali`, `Välierä`, …) → näytetään tulosrivin alla
 
-**Tekninen detalji:** Asetetaan komponentissa `useEffect`-koukulla `document.documentElement.dataset.printOrientation = orientation` ja CSS:ssä:
+Ei uusia GRANTeja tarvita (sarake olemassa olevaan tauluun).
 
-```css
-@media print {
-  html[data-print-orientation="landscape"] @page { size: A4 landscape; }
-  html[data-print-orientation="portrait"]  @page { size: A4 portrait; }
-}
-```
+### 2. Harvesteri (`src/routes/api/public/hooks/harvest-results.ts`)
 
-Jos `html[...] @page` ei kelpaa kaikissa selaimissa, fallback: kirjoitetaan dynaamisesti `<style id="print-page-style">@page { size: A4 landscape }</style>` `<head>`iin valinnan mukaan ja päivitetään se kun käyttäjä vaihtaa suuntaa. Tämä on luotettavin tapa.
+Track-haaran nykyinen "myöhin kierros voittaa" -looppi vaihdetaan seuraavaan:
 
-### Vaaka-asettelun mitoitus
+1. Käydään kaikki kierrokset & erät läpi, kerätään urheilijakohtaisesti **paras numeerinen aika**. Talletetaan sen kierroksen `round.Name`.
+2. Jos urheilijalla ei ole yhtään numeerista tulosta koko lajissa → pidetään nykyinen logiikka (viimeisin kierros voittaa, esim. DNS), `result_round_name = ''`.
+3. `result_round_name` täytetään vain jos kierros on **muu kuin viimeisin** (eli paras aika EI tullut finaalista/loppukilpailusta). Muuten jätetään tyhjäksi.
+4. `result_rank` otetaan siltä kierrokselta, jolta valittu tulos on (alkuerässä = `HeatRank`/`ResultRank` heatin sisällä; käytetään `ResultRank`-arvoa joka API:ssa on jo asetettu).
 
-A4 vaaka = 297×210 mm. Marginaalit 8mm → tehollinen leveys 281mm. 4 saraketta × 6mm gap = 18mm → sarakeleveys ~65mm. Riittää aika (3em ≈ 12mm) + lajinimi.
+Field/Throw/Combined: ei muutoksia.
 
-109 lajia × ~5mm rivikorkeus = ~545mm sarakekorkeutta yhteensä. Jaettuna 4 sarakkeelle = ~136mm/sarake. Mahtuu hyvin 192mm korkeuteen → **yksi A4-arkki vaakana**, joka voidaan taittaa keskeltä A5-vihkoseksi.
+Vanhat rivit täydentyvät kun harvesteri revisitoi kisan (tuoreet kisat revisitoidaan automaattisesti tuoreusikkunassa).
 
-### Lopputulos
+### 3. Luku- ja näyttökerros
 
-- Yksi valinta: Pysty (2 saraketta, 2–3 sivua) tai Vaaka (4 saraketta, ~1 sivu).
-- Vaaka mahdollistaa A4-arkin taittamisen pieneksi taskuun mahtuvaksi vihkoseksi.
-- Valinta säilyy seuraavalla käyntikerralla.
+**`src/lib/club-today.ts`**
+- Lisätään `result_round_name` `ClubTodayRow`-tyyppiin ja `fetchClubTodayResults`-selectin sarakkeisiin.
 
-### Tiedostot
-- `src/routes/print.index.tsx` — suuntavalinta + dynaaminen `@page`-tyyli headiin
-- `src/styles.css` — `.print-landscape`-säännöt
+**`src/components/ClubTodaySection.tsx`**
+- Tulosrivin yhteyteen pieni vihje, kun `r.result_round_name` ei ole tyhjä — esim. lisätään meta-rivin loppuun `· ${r.result_round_name}` (samalla tyylillä kuin `· sija 5 · PB 10,77`). Näin Tobiaksella näkyy:
+  `M 100m · M · sija 5 · PB 10,77 · Alkuerät` ja päätulokseksi `10,87`.
+
+Mitään muuta näkymää (tulosteet, athlete-sivu, jaetut linkit) ei muuteta tällä kierroksella.
+
+### 4. Mitä EI muuteta
+
+- `was_pb`-laskenta (`mark_pbs_for_competitions`): toimii edelleen `result_numeric`-arvon perusteella, joten nyt myös alkuerän PB tunnistetaan oikein.
+- RLS-policyt, GRANTit, muut taulut.
+- Print-näkymät ja athlete-historiakomponentit.
+
+## Tiedostot
+
+- Migraatio: yksi uusi sarake `athlete_results`
+- `src/routes/api/public/hooks/harvest-results.ts` — Track-haaran logiikka
+- `src/lib/club-today.ts` — tyyppi + select
+- `src/components/ClubTodaySection.tsx` — erä-merkintä meta-riville
