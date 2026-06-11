@@ -112,12 +112,7 @@ export function matchYagCalling(
 ): YagCallingMatch[] {
   // Esilaske entry-avaimet
   const indexed = entries.map((e) => {
-    const sarja = sarjaFromRound(
-      // Round-tyypistä puuttuu suoraan gender/age — käytetään EventName-prefixiä
-      // tai round-objektin kenttiä jos saatavilla
-      (e.round as unknown as { Gender?: string }).Gender ?? "",
-      (e.round as unknown as { Age?: string }).Age ?? "",
-    );
+    const sarja = sarjaFromRound(e.round.Gender, e.round.Age);
     const date = helsinkiDateKey(e.heatBegin);
     const disc = disciplineKey(`${e.round.EventName} ${e.round.Name ?? ""}`);
     return { entry: e, sarja, date, disc };
