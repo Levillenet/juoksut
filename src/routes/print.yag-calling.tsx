@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Printer, Users } from "lucide-react";
+import { ArrowLeft, Download, Users } from "lucide-react";
 
 import { competitionIndexQueryOptions } from "@/lib/tuloslista-queries";
 import { useWatchedAthletes } from "@/lib/watch-store";
 import { matchYagCalling } from "@/lib/yag-calling-match";
+import { downloadYagCallingPdf } from "@/lib/yag-calling-pdf";
 import { YAG_COMPETITION_ID } from "@/data/yag-calling";
 import { Button } from "@/components/ui/button";
 import { RequireRole } from "@/components/RequireRole";
