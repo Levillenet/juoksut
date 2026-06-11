@@ -1,14 +1,19 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
+import { useCompetitionId } from "@/lib/competition-store";
+import { YAG_COMPETITION_ID } from "@/data/yag-calling";
 
 export function PrintTabs() {
   const { role } = useAuth();
   const { pathname } = useLocation();
+  const [competitionId] = useCompetitionId();
+  const isYag = competitionId === YAG_COMPETITION_ID;
 
   const tabs: Array<{ to: string; label: string; show: boolean }> = [
     { to: "/print", label: "Kilpailun aikataulu", show: true },
     { to: "/print/club", label: "Seuran urheilijat", show: true },
     { to: "/print/watched", label: "Omat urheilijat", show: role === "user" },
+    { to: "/print/yag-calling", label: "YAG Calling", show: role === "user" || isYag },
   ];
 
   return (
