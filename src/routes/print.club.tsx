@@ -299,9 +299,14 @@ function PrintClubPage() {
                               <span className="font-medium">
                                 {e.alloc.Surname} {e.alloc.Firstname}
                               </span>
-                              {e.alloc.Number && (
-                                <span className="text-xs tabular-nums text-muted-foreground print:hidden">
-                                  #{e.alloc.Number}
+                              {e.alloc.PB && (
+                                <span className="text-xs tabular-nums text-muted-foreground">
+                                  <span className="font-semibold">PB</span> {e.alloc.PB}
+                                </span>
+                              )}
+                              {e.alloc.SB && (
+                                <span className="text-xs tabular-nums text-muted-foreground">
+                                  <span className="font-semibold">SB</span> {e.alloc.SB}
                                 </span>
                               )}
                               <span className="text-xs text-muted-foreground print:hidden">
