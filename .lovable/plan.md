@@ -1,54 +1,43 @@
-# Tavoite
+# Lataa PDF -toiminto YAG Calling -näkymään
 
-Kun urheilijan erää **ei ole vielä julkaistu** tuloslistassa (entry `heatIndex === 0`), älä toista urheilijaa jokaisella saman lajin erä-rivillä. Näytä urheilija **kerran** ja listaa rivillä koko lajin calling-aikataulu (kaikki erien calling-ajat ja erä-numerot PDF:n mukaan).
+Muutetaan nykyiset "Tulosta / PDF" -painikkeet "Lataa PDF" -painikkeiksi, jotka generoivat PDF-tiedoston suoraan ja lataavat sen käyttäjän laitteelle ilman selaimen tulostusikkunaa.
 
-Kun erä **on julkaistu** (`heatIndex > 0`), näytä urheilija vain hänen omalla erärivillään kuten nyt.
+## Toteutus
 
-# Muutokset
+**1. Lisätään PDF-kirjasto**
+- `jspdf` + `jspdf-autotable` taulukkojen layoutiin (kevyt, toimii selaimessa, ei vaadi serveriä).
 
-## 1. `src/lib/yag-calling-match.ts`
+**2. Uusi apufunktio `src/lib/yag-calling-pdf.ts`**
+- Ottaa parametreinaan: `grouped` (päiväkohtaiset rivit), `compName`, `orientation`, `mode`, `orgName`/`watchedCount`.
+- Rakentaa PDF:n:
+  - Otsikko: kisan nimi + "Calling-aikataulu"
+  - Alaotsikko: "Seurannassa olevien urheilijoiden lähdöt" / "Seuran X urheilijoiden lähdöt"
+  - Päivä-osio per päivämäärä (DATE_LABEL)
+  - Taulukko: Calling | Kentälle | Alkaa | Sarja / Laji + urheilijat | Erä | Paikka
+  - Julkaisemattomat erät: listataan kaikki erän ajat samalle riville (kuten nyt UI:ssa)
+  - Alatunniste: lähde + tulostusaikaleima + sivunumero
+- Sivun koko A4, orientaatio käyttäjän valinnan mukaan, marginaalit kuten `usePrintOrientation` (~8mm/10mm).
+- Tallennus: `doc.save("yag-calling-<mode>-<aikaleima>.pdf")` → lataus sekä työpöydällä että mobiilissa.
 
-Muuta paluutyyppi ja matchausta niin että jokainen entry merkitään joko *julkaistuksi* (sidottu yhteen erään) tai *julkaisemattomaksi* (sidottu lajiin, ei yksittäiseen erään).
+**3. Päivitetään `src/routes/print.yag-calling.tsx`**
+- Lisätään `handleDownload`, joka kutsuu uutta apufunktiota.
+- Vaihdetaan molempien painikkeiden teksti "Tulosta / PDF" → "Lataa PDF" (mobiili: "Lataa").
+- Vaihdetaan ikoni `Printer` → `Download` (lucide-react).
+- Poistetaan `window.print()` -kutsu ja `auto`-haun automaattinen `window.print()` → korvataan automaattisella latauksella jos `?auto=1`.
+- Painikkeet pysyvät disabloituina jos `grouped.length === 0`.
 
-Uusi tyyppi:
+**4. Säilytetään muuttumattomana**
+- Näytön layout ja suodattimet (Seurannassa / Oma seura, seuravalitsin).
+- Suuntavalitsin (Pysty/Vaaka) — vaikuttaa nyt vain PDF:n orientaatioon, ei selaimen tulostukseen.
+- Print-tabit, muut printtinäkymät (`print.club`, `print.watched`) ei mukana — käyttäjä pyysi vain YAG-näkymän.
 
-```ts
-export interface YagCallingMatch {
-  row: YagCallingRow;          // edustava rivi (julkaisemattomille = lajin 1. erä)
-  heatNumber: number | null;   // julkaistuille erä; julkaisemattomille null
-  entries: IndexedEntry[];     // urheilijat tällä rivillä
-  // Vain julkaisemattomille: koko lajin kaikkien erien calling-tiedot
-  allHeats?: Array<{ heat: number | null; calling: string; alkaa: string; kentalle: string; paikka: string }>;
-}
-```
+## Tekniset yksityiskohdat
 
-Logiikka:
-1. Ryhmittele PDF-rivit lajiavaimella `${date}|${sarja}|${disc}` → `heatRows[]`.
-2. Ryhmittele entryt samalla avaimella.
-3. Jokaiselle lajiryhmälle:
-   - **Julkaistut entryt** (`heatIndex > 0`): jaa heatRow-riveille `heatIndex === parseHeat(row.laji)` mukaan kuten nyt.
-   - **Julkaisemattomat entryt** (`heatIndex === 0`): laita kaikki **yhdelle** matchille jonka `row` = lajin ensimmäinen erärivi (varhaisin calling-aika), `heatNumber = null`, `allHeats` = kaikkien lajin erärivien calling/alkaa/erä-tiedot aikajärjestyksessä.
-   - Jos lajilla on PDF:ssä vain yksi rivi (ei erä-merkintää), käyttäydy kuten nyt — ei muutosta.
+- Fontti: jsPDF:n oletus Helvetica riittää (suomenkieliset perusmerkit ä, ö toimivat WinAnsi-koodauksella).
+- Tiedostonimi: `yag-calling-watched-2026-06-11.pdf` tai `yag-calling-<seurannimi-slug>-<pvm>.pdf`.
+- Riippuvuus asennetaan `bun add jspdf jspdf-autotable` -komennolla rakennusvaiheessa.
 
-## 2. `src/routes/print.yag-calling.tsx`
-
-`tbody`-rendauksessa:
-- Jos `m.heatNumber != null` → näytä erä-sarakkeessa numero kuten nyt.
-- Jos `m.allHeats` on annettu → erä-sarakkeessa lyhyt teksti `Erät 1–N (ei vielä julkaistu)` ja **Calling**-sarakkeessa pinottu lista kaikkien erien calling-ajoista, esim.
-
-  ```
-  09:30  Erä 1
-  10:00  Erä 2
-  10:30  Erä 3
-  ```
-
-  Vastaavasti **Kentälle**/**Alkaa**-sarakkeet pinotaan (tai näytetään ensimmäisen erän aika ja merkintä "+ N erää"). Käytetään pinottua listaa, jotta käyttäjä näkee kaikki erien ajat.
-- Ryhmittelyssä (`grouped`) julkaisemattoman matchin lajitteluavain = sen edustavan rivin `calling`-aika (= varhaisin), jolloin se sijoittuu päivän aikajärjestykseen.
-
-## 3. Ei muutoksia
-
-`src/data/yag-calling.ts`, `print.club`, `print.watched`, navigaatio.
-
-# Tekninen huomio
-
-`heatIndex` tulee tuloslistasta: jos eräjako on julkaistu, jokainen entry on sidottu erään. Saman urheilijan voi olla useissa lajeissa, joten ryhmittely tehdään lajiavaimella eikä urheilijakohtaisesti — sama urheilija voi siis edelleen näkyä esim. pituushypyn yhdellä rivillä ja 100m:n yhdellä rivillä.
+## Tiedostot
+- **Uusi**: `src/lib/yag-calling-pdf.ts`
+- **Muokataan**: `src/routes/print.yag-calling.tsx`
+- **package.json**: lisätään `jspdf`, `jspdf-autotable`
