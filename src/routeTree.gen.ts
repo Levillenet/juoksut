@@ -29,6 +29,7 @@ import { Route as UrheilijaTokenRouteImport } from './routes/urheilija.$token'
 import { Route as SeuraaTokenRouteImport } from './routes/seuraa.$token'
 import { Route as SettingsTeamsRouteImport } from './routes/settings.teams'
 import { Route as SettingsNoteLinksRouteImport } from './routes/settings.note-links'
+import { Route as PrintYagCallingRouteImport } from './routes/print.yag-calling'
 import { Route as PrintWatchedRouteImport } from './routes/print.watched'
 import { Route as PrintClubRouteImport } from './routes/print.club'
 import { Route as AthleteKeyRouteImport } from './routes/athlete.$key'
@@ -144,6 +145,11 @@ const SettingsNoteLinksRoute = SettingsNoteLinksRouteImport.update({
   path: '/note-links',
   getParentRoute: () => SettingsRoute,
 } as any)
+const PrintYagCallingRoute = PrintYagCallingRouteImport.update({
+  id: '/yag-calling',
+  path: '/yag-calling',
+  getParentRoute: () => PrintRoute,
+} as any)
 const PrintWatchedRoute = PrintWatchedRouteImport.update({
   id: '/watched',
   path: '/watched',
@@ -243,6 +249,7 @@ export interface FileRoutesByFullPath {
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
+  '/print/yag-calling': typeof PrintYagCallingRoute
   '/settings/note-links': typeof SettingsNoteLinksRoute
   '/settings/teams': typeof SettingsTeamsRoute
   '/seuraa/$token': typeof SeuraaTokenRoute
@@ -277,6 +284,7 @@ export interface FileRoutesByTo {
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
+  '/print/yag-calling': typeof PrintYagCallingRoute
   '/settings/note-links': typeof SettingsNoteLinksRoute
   '/settings/teams': typeof SettingsTeamsRoute
   '/seuraa/$token': typeof SeuraaTokenRoute
@@ -314,6 +322,7 @@ export interface FileRoutesById {
   '/athlete/$key': typeof AthleteKeyRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
+  '/print/yag-calling': typeof PrintYagCallingRoute
   '/settings/note-links': typeof SettingsNoteLinksRoute
   '/settings/teams': typeof SettingsTeamsRoute
   '/seuraa/$token': typeof SeuraaTokenRoute
@@ -352,6 +361,7 @@ export interface FileRouteTypes {
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
+    | '/print/yag-calling'
     | '/settings/note-links'
     | '/settings/teams'
     | '/seuraa/$token'
@@ -386,6 +396,7 @@ export interface FileRouteTypes {
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
+    | '/print/yag-calling'
     | '/settings/note-links'
     | '/settings/teams'
     | '/seuraa/$token'
@@ -422,6 +433,7 @@ export interface FileRouteTypes {
     | '/athlete/$key'
     | '/print/club'
     | '/print/watched'
+    | '/print/yag-calling'
     | '/settings/note-links'
     | '/settings/teams'
     | '/seuraa/$token'
@@ -605,6 +617,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsNoteLinksRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/print/yag-calling': {
+      id: '/print/yag-calling'
+      path: '/yag-calling'
+      fullPath: '/print/yag-calling'
+      preLoaderRoute: typeof PrintYagCallingRouteImport
+      parentRoute: typeof PrintRoute
+    }
     '/print/watched': {
       id: '/print/watched'
       path: '/watched'
@@ -727,12 +746,14 @@ const AnnouncerRouteWithChildren = AnnouncerRoute._addFileChildren(
 interface PrintRouteChildren {
   PrintClubRoute: typeof PrintClubRoute
   PrintWatchedRoute: typeof PrintWatchedRoute
+  PrintYagCallingRoute: typeof PrintYagCallingRoute
   PrintIndexRoute: typeof PrintIndexRoute
 }
 
 const PrintRouteChildren: PrintRouteChildren = {
   PrintClubRoute: PrintClubRoute,
   PrintWatchedRoute: PrintWatchedRoute,
+  PrintYagCallingRoute: PrintYagCallingRoute,
   PrintIndexRoute: PrintIndexRoute,
 }
 
