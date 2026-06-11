@@ -9,11 +9,21 @@ import { helsinkiDateKey } from "./tuloslista";
 import type { YagCallingRow } from "@/data/yag-calling";
 import { YAG_CALLING_ROWS } from "@/data/yag-calling";
 
+export interface YagCallingHeatInfo {
+  heat: number | null;
+  calling: string;
+  alkaa: string;
+  kentalle: string;
+  paikka: string;
+}
+
 export interface YagCallingMatch {
   row: YagCallingRow;
   entries: IndexedEntry[];
-  /** Erä numero PDF:stä jos kyseessä rata-erä */
+  /** Erä numero kun entryt on sidottu yhteen erään, muuten null. */
   heatNumber: number | null;
+  /** Vain julkaisemattomille: koko lajin kaikkien erien calling-tiedot. */
+  allHeats?: YagCallingHeatInfo[];
 }
 
 interface SarjaKey {
@@ -36,6 +46,10 @@ function sarjaFromRound(gender: string, age: string): SarjaKey | null {
 
 function sarjaEq(a: SarjaKey, b: SarjaKey): boolean {
   return a.boy === b.boy && a.age === b.age;
+}
+
+function sarjaKey(s: SarjaKey): string {
+  return `${s.boy ? "M" : "N"}${s.age}`;
 }
 
 /**
@@ -103,6 +117,13 @@ function callingDateKey(iso: string): string {
   return `${d}.${m}.${y}`;
 }
 
+interface PdfGroup {
+  date: string;
+  sarja: SarjaKey;
+  disc: string;
+  rows: YagCallingRow[]; // aikajärjestyksessä
+}
+
 /**
  * Palauttaa calling-rivit (aikajärjestyksessä) joihin annetut entryt
  * matchaavat. Jokainen rivi sisältää listan urheilijoita.
@@ -110,6 +131,24 @@ function callingDateKey(iso: string): string {
 export function matchYagCalling(
   entries: IndexedEntry[],
 ): YagCallingMatch[] {
+  // Ryhmittele PDF-rivit laji-avaimella (date|sarja|disc)
+  const pdfGroups = new Map<string, PdfGroup>();
+  for (const row of YAG_CALLING_ROWS) {
+    const sarja = parseSarja(row.sarja);
+    if (!sarja) continue;
+    const disc = disciplineKey(row.laji);
+    const key = `${row.date}|${sarjaKey(sarja)}|${disc}`;
+    let g = pdfGroups.get(key);
+    if (!g) {
+      g = { date: row.date, sarja, disc, rows: [] };
+      pdfGroups.set(key, g);
+    }
+    g.rows.push(row);
+  }
+  for (const g of pdfGroups.values()) {
+    g.rows.sort((a, b) => a.calling.localeCompare(b.calling));
+  }
+
   // Esilaske entry-avaimet
   const indexed = entries.map((e) => {
     const sarja = sarjaFromRound(e.round.Gender, e.round.Age);
@@ -119,28 +158,66 @@ export function matchYagCalling(
   });
 
   const out: YagCallingMatch[] = [];
-  for (const row of YAG_CALLING_ROWS) {
-    const rowSarja = parseSarja(row.sarja);
-    if (!rowSarja) continue;
-    const rowDate = callingDateKey(row.date);
-    const rowDisc = disciplineKey(row.laji);
-    const heat = parseHeat(row.laji);
 
-    const matched: IndexedEntry[] = [];
-    for (const ix of indexed) {
-      if (!ix.sarja) continue;
-      if (!sarjaEq(ix.sarja, rowSarja)) continue;
-      if (ix.date !== rowDate) continue;
-      if (ix.disc !== rowDisc) continue;
-      // Jos rivissä erä-numero ja entryllä on heatIndex>0, niiden tulee täsmätä
-      if (heat != null && ix.entry.heatIndex > 0 && ix.entry.heatIndex !== heat) {
-        continue;
+  for (const g of pdfGroups.values()) {
+    const rowDate = callingDateKey(g.date);
+    // Entryt jotka kuuluvat tähän lajiryhmään
+    const groupEntries = indexed.filter(
+      (ix) =>
+        ix.sarja &&
+        sarjaEq(ix.sarja, g.sarja) &&
+        ix.date === rowDate &&
+        ix.disc === g.disc,
+    );
+
+    if (groupEntries.length === 0) continue;
+
+    const hasHeatSplit = g.rows.length > 1 && g.rows.some((r) => parseHeat(r.laji) != null);
+
+    if (!hasHeatSplit) {
+      // Yksi rivi tai ei erä-jakoa: kaikki entryt samalle riville
+      for (const row of g.rows) {
+        out.push({
+          row,
+          entries: groupEntries.map((x) => x.entry),
+          heatNumber: parseHeat(row.laji),
+        });
       }
-      matched.push(ix.entry);
+      continue;
     }
-    if (matched.length > 0) {
-      out.push({ row, entries: matched, heatNumber: heat });
+
+    // Erä-jaettu laji: erottele julkaistut ja julkaisemattomat
+    const published = groupEntries.filter((x) => x.entry.heatIndex > 0);
+    const unpublished = groupEntries.filter((x) => x.entry.heatIndex === 0);
+
+    // Julkaistut: jaa erän mukaan
+    for (const row of g.rows) {
+      const heat = parseHeat(row.laji);
+      const matched = published
+        .filter((x) => heat == null || x.entry.heatIndex === heat)
+        .map((x) => x.entry);
+      if (matched.length > 0) {
+        out.push({ row, entries: matched, heatNumber: heat });
+      }
+    }
+
+    // Julkaisemattomat: yksi rivi, edustava = ensimmäinen erä, allHeats = kaikki
+    if (unpublished.length > 0) {
+      const allHeats: YagCallingHeatInfo[] = g.rows.map((r) => ({
+        heat: parseHeat(r.laji),
+        calling: r.calling,
+        alkaa: r.alkaa,
+        kentalle: r.kentalle,
+        paikka: r.paikka,
+      }));
+      out.push({
+        row: g.rows[0],
+        entries: unpublished.map((x) => x.entry),
+        heatNumber: null,
+        allHeats,
+      });
     }
   }
+
   return out;
 }
