@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Printer, Users } from "lucide-react";
@@ -18,17 +18,24 @@ const DATE_LABEL: Record<string, string> = {
   "2026-06-14": "Sunnuntai 14.6.2026",
 };
 
+type Mode = "watched" | "club";
+
 export const Route = createFileRoute("/print/yag-calling")({
   validateSearch: (search: Record<string, unknown>) => ({
     auto: search.auto === "1" || search.auto === 1 || search.auto === true,
+    mode: (search.mode === "club" ? "club" : "watched") as Mode,
+    org:
+      typeof search.org === "string"
+        ? parseInt(search.org, 10) || 0
+        : Number(search.org) || 0,
   }),
   head: () => ({
     meta: [
-      { title: "YAG Calling-aikataulu – seuratut urheilijat" },
+      { title: "YAG Calling-aikataulu" },
       {
         name: "description",
         content:
-          "Seurattujen urheilijoiden Calling room -aikataulu YAG Espoo 2026 -kisalle.",
+          "Calling room -aikataulu YAG Espoo 2026 -kisaan seurannassa olevien tai valitun seuran urheilijoiden osalta.",
       },
     ],
   }),
@@ -40,7 +47,8 @@ export const Route = createFileRoute("/print/yag-calling")({
 });
 
 function YagCallingPage() {
-  const { auto } = Route.useSearch();
+  const { auto, mode, org } = Route.useSearch();
+  const navigate = useNavigate({ from: "/print/yag-calling" });
   const { list: watched } = useWatchedAthletes();
   const { orientation, setOrientation } = usePrintOrientation();
   const indexQuery = useQuery(competitionIndexQueryOptions(YAG_COMPETITION_ID));
@@ -58,16 +66,41 @@ function YagCallingPage() {
     [watched],
   );
 
-  const matches = useMemo(() => {
-    if (watchedKeys.size === 0) return [];
-    const filtered = entries.filter((e) => {
-      const k = `${e.alloc.Surname}|${e.alloc.Firstname}|${e.alloc.Organization?.Id ?? ""}`;
-      return watchedKeys.has(k);
-    });
-    return matchYagCalling(filtered);
-  }, [entries, watchedKeys]);
+  // Lista seuroista YAG-kisan urheilijoista
+  const clubs = useMemo(() => {
+    const map = new Map<number, { id: number; name: string; athletes: Set<string> }>();
+    for (const e of entries) {
+      const id = e.alloc.Organization?.Id;
+      if (id == null) continue;
+      const nm = e.alloc.Organization?.Name ?? "";
+      if (!map.has(id)) map.set(id, { id, name: nm, athletes: new Set() });
+      map.get(id)!.athletes.add(`${e.alloc.Surname}|${e.alloc.Firstname}`);
+    }
+    return Array.from(map.values())
+      .map((c) => ({ id: c.id, name: c.name, athletes: c.athletes.size }))
+      .sort((a, b) => a.name.localeCompare(b.name, "fi"));
+  }, [entries]);
 
-  // Group by date
+  const orgName = useMemo(() => {
+    const c = clubs.find((x) => x.id === org);
+    return c?.name ?? "";
+  }, [clubs, org]);
+
+  const matches = useMemo(() => {
+    let filtered: typeof entries = [];
+    if (mode === "watched") {
+      if (watchedKeys.size === 0) return [];
+      filtered = entries.filter((e) => {
+        const k = `${e.alloc.Surname}|${e.alloc.Firstname}|${e.alloc.Organization?.Id ?? ""}`;
+        return watchedKeys.has(k);
+      });
+    } else {
+      if (!org) return [];
+      filtered = entries.filter((e) => (e.alloc.Organization?.Id ?? -1) === org);
+    }
+    return matchYagCalling(filtered);
+  }, [entries, watchedKeys, mode, org]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, typeof matches>();
     for (const m of matches) {
@@ -89,6 +122,19 @@ function YagCallingPage() {
       return () => clearTimeout(t);
     }
   }, [auto, indexQuery.isLoading, grouped.length]);
+
+  const setMode = (m: Mode) =>
+    navigate({ search: (prev) => ({ ...prev, mode: m }) });
+  const setOrg = (id: number) =>
+    navigate({ search: (prev) => ({ ...prev, org: id }) });
+
+  const headerSub =
+    mode === "watched"
+      ? `${watched.length} urheilijaa seurannassa · ${compName}`
+      : orgName
+        ? `${orgName} · ${compName}`
+        : `Valitse seura · ${compName}`;
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
