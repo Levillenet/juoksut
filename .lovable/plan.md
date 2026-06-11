@@ -1,43 +1,19 @@
-# Lataa PDF -toiminto YAG Calling -näkymään
+## Tavoite
+Mobiilissa (esim. 374px) `/print`-näkymien yläpalkin välilehdet ("Kilpailun aikataulu", "Seuran urheilijat", "Omat urheilijat", "YAG Calling") näkyvät kerralla ilman vaakasuuntaista skrollausta. Pöytäkoneella ulkoasu säilyy ennallaan.
 
-Muutetaan nykyiset "Tulosta / PDF" -painikkeet "Lataa PDF" -painikkeiksi, jotka generoivat PDF-tiedoston suoraan ja lataavat sen käyttäjän laitteelle ilman selaimen tulostusikkunaa.
+## Muutos: `src/components/PrintTabs.tsx`
 
-## Toteutus
+1. Lisää jokaiselle välilehdelle lyhyt mobiililabel ja näytä se alle `sm`-breakpointin, pitkä label `sm:` alkaen.
+   - "Kilpailun aikataulu" → mobiilissa "Aikataulu"
+   - "Seuran urheilijat" → "Seura"
+   - "Omat urheilijat" → "Omat"
+   - "YAG Calling" → "YAG"
+2. Vaihda rivin layout mobiilissa tasajakoiseksi gridiksi (yksi sarake per näkyvä välilehti) niin että koko leveys käytetään eikä mitään leikkaudu. `sm:` alkaen palautetaan nykyinen `flex gap-2 overflow-x-auto` (säilyttää nykyisen tyylin isommilla näytöillä).
+   - Mobiili: `grid` jossa `grid-template-columns: repeat(<näkyvien määrä>, minmax(0,1fr))`, pieni `gap-1.5`, ei `overflow`.
+3. Pienennä mobiilipillerien paddingia ja fonttia jotta ne mahtuvat: `px-2 py-1.5 text-[12px]`, `sm:px-4 sm:py-2 sm:text-sm`. Poista `shrink-0` mobiilissa (ei tarvita gridissä) ja `truncate` napin sisälle varmuudeksi.
+4. Aktiivisuuslogiikka ja roolifiltteröinti säilyvät täysin ennallaan.
 
-**1. Lisätään PDF-kirjasto**
-- `jspdf` + `jspdf-autotable` taulukkojen layoutiin (kevyt, toimii selaimessa, ei vaadi serveriä).
-
-**2. Uusi apufunktio `src/lib/yag-calling-pdf.ts`**
-- Ottaa parametreinaan: `grouped` (päiväkohtaiset rivit), `compName`, `orientation`, `mode`, `orgName`/`watchedCount`.
-- Rakentaa PDF:n:
-  - Otsikko: kisan nimi + "Calling-aikataulu"
-  - Alaotsikko: "Seurannassa olevien urheilijoiden lähdöt" / "Seuran X urheilijoiden lähdöt"
-  - Päivä-osio per päivämäärä (DATE_LABEL)
-  - Taulukko: Calling | Kentälle | Alkaa | Sarja / Laji + urheilijat | Erä | Paikka
-  - Julkaisemattomat erät: listataan kaikki erän ajat samalle riville (kuten nyt UI:ssa)
-  - Alatunniste: lähde + tulostusaikaleima + sivunumero
-- Sivun koko A4, orientaatio käyttäjän valinnan mukaan, marginaalit kuten `usePrintOrientation` (~8mm/10mm).
-- Tallennus: `doc.save("yag-calling-<mode>-<aikaleima>.pdf")` → lataus sekä työpöydällä että mobiilissa.
-
-**3. Päivitetään `src/routes/print.yag-calling.tsx`**
-- Lisätään `handleDownload`, joka kutsuu uutta apufunktiota.
-- Vaihdetaan molempien painikkeiden teksti "Tulosta / PDF" → "Lataa PDF" (mobiili: "Lataa").
-- Vaihdetaan ikoni `Printer` → `Download` (lucide-react).
-- Poistetaan `window.print()` -kutsu ja `auto`-haun automaattinen `window.print()` → korvataan automaattisella latauksella jos `?auto=1`.
-- Painikkeet pysyvät disabloituina jos `grouped.length === 0`.
-
-**4. Säilytetään muuttumattomana**
-- Näytön layout ja suodattimet (Seurannassa / Oma seura, seuravalitsin).
-- Suuntavalitsin (Pysty/Vaaka) — vaikuttaa nyt vain PDF:n orientaatioon, ei selaimen tulostukseen.
-- Print-tabit, muut printtinäkymät (`print.club`, `print.watched`) ei mukana — käyttäjä pyysi vain YAG-näkymän.
-
-## Tekniset yksityiskohdat
-
-- Fontti: jsPDF:n oletus Helvetica riittää (suomenkieliset perusmerkit ä, ö toimivat WinAnsi-koodauksella).
-- Tiedostonimi: `yag-calling-watched-2026-06-11.pdf` tai `yag-calling-<seurannimi-slug>-<pvm>.pdf`.
-- Riippuvuus asennetaan `bun add jspdf jspdf-autotable` -komennolla rakennusvaiheessa.
-
-## Tiedostot
-- **Uusi**: `src/lib/yag-calling-pdf.ts`
-- **Muokataan**: `src/routes/print.yag-calling.tsx`
-- **package.json**: lisätään `jspdf`, `jspdf-autotable`
+## Tekninen yhteenveto
+- Vain `PrintTabs.tsx` muuttuu — ei muutoksia reitteihin, dataan, eikä muihin print-sivuihin.
+- Mobiilissa käytetään dynaamista grid-tyyliä (`style={{ gridTemplateColumns: \`repeat(${visible.length}, minmax(0,1fr))\` }}`) jotta ratkaisu toimii sekä 3 että 4 näkyvälle välilehdelle (rooli/kisa vaikuttaa).
+- Ei uusia riippuvuuksia.
