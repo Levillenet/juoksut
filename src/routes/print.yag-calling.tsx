@@ -150,7 +150,7 @@ function YagCallingPage() {
               YAG Calling-aikataulu
             </h1>
             <p className="truncate text-xs text-muted-foreground">
-              {watched.length} urheilijaa seurannassa · {compName}
+              {headerSub}
             </p>
           </div>
           <Button
