@@ -124,9 +124,9 @@ function YagCallingPage() {
   }, [auto, indexQuery.isLoading, grouped.length]);
 
   const setMode = (m: Mode) =>
-    navigate({ search: (prev) => ({ ...prev, mode: m }) });
+    navigate({ search: (prev: { auto: boolean; mode: Mode; org: number }) => ({ ...prev, mode: m }) });
   const setOrg = (id: number) =>
-    navigate({ search: (prev) => ({ ...prev, org: id }) });
+    navigate({ search: (prev: { auto: boolean; mode: Mode; org: number }) => ({ ...prev, org: id }) });
 
   const headerSub =
     mode === "watched"
