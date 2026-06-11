@@ -399,11 +399,6 @@ function YagCallingPage() {
                                   {e.alloc.Organization.NameShort}
                                 </span>
                               )}
-                              {e.alloc.Number && (
-                                <span className="ml-1 tabular-nums text-muted-foreground">
-                                  #{e.alloc.Number}
-                                </span>
-                              )}
                             </li>
                           ))}
                         </ul>

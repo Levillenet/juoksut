@@ -97,7 +97,7 @@ export function downloadYagCallingPdf(opts: YagPdfOptions) {
           const parts = [`${e.alloc.Surname} ${e.alloc.Firstname}`];
           if (e.alloc.Organization?.NameShort)
             parts.push(e.alloc.Organization.NameShort);
-          if (e.alloc.Number) parts.push(`#${e.alloc.Number}`);
+          
           return parts.join(" ");
         })
         .join("\n");
