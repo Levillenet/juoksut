@@ -1,30 +1,31 @@
-# Korjaa 502-virheet tuloslista-proxyn aikataulukutsuissa
+## Tavoite
 
-## Oireet (lokeista)
-- Edge palauttaa `502` polulle `GET /api/public/tuloslista/live/v1/competition/19401`.
-- Cloudflare-virhe: *"The Workers runtime canceled this request because it detected that your Worker's code had hung"*.
-- Tapahtuu toistuvasti samalle kisalle (19401) → upstream `cached-public-api.tuloslista.com` palauttaa hyvin hitaasti tai jää roikkumaan.
+Tällä hetkellä `/print/yag-calling` näyttää vain seurannassa olevien urheilijoiden Calling-aikataulun. Lisätään mahdollisuus tulostaa sama aikataulu valitulle seuralle — samaan tyyliin kuin `/print/club` toimii kilpailun aikatauluille.
 
-## Juurisyy
-`src/lib/tuloslista-proxy.ts` → `fetchFromOrigin` tekee `fetch(originUrl, …)` ilman `AbortController`-aikakatkaisua. Hidas/jumittunut upstream pitää koko Worker-isolaatin odotuksessa, ja CF tappaa pyynnön ~30 s kohdalla → 502. Circuit breaker reagoi vain statuksiin 429/503, ei timeoutiin, joten breaker ei avaudu ja seuraavat pyynnöt päätyvät samaan jumiin.
+## Toteutus
 
-## Muutos
-Yksi tiedosto: `src/lib/tuloslista-proxy.ts`.
+**1. `src/routes/print.yag-calling.tsx`**
 
-1. Lisää `UPSTREAM_TIMEOUT_MS = 8000` (selvästi alle CF:n hang-katkaisun).
-2. `fetchFromOrigin`:
-   - Luo `AbortController`, käynnistä `setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)`.
-   - Välitä `signal` `fetch`-kutsuun, siivoa timer `finally`-lohkossa.
-   - `catch`-haarassa: jos virhe on `AbortError` tai verkko-/fetch-virhe, kirjaa varoitus ja **avaa circuit breakeriin** `circuitOpenUntil.set(path, Date.now() + CIRCUIT_OPEN_MS)`, palauta `null`. Näin seuraavat pyynnöt 60 s ajan palauttavat stalen heti eivätkä jää odottamaan.
-3. Pidä nykyiset 429/503-haarat ennallaan.
+- Lisätään `validateSearch`iin `org` (numero, oletus 0) ja `mode` (`"watched" | "club"`, oletus `"watched"`).
+- Sivun yläosaan kompakti valitsin (samaan boxiin kuin tulostussuunta):
+  - Kaksi pilleripainiketta: **Seurannassa** / **Oma seura**.
+  - Kun *Oma seura* valittuna, alle ilmestyy seuran pudotusvalikko (sama logiikka kuin `/print/club`:ssa: kerätään seurat YAG-kisan entryistä, näytetään urheilijamäärä).
+- Suodatuslogiikka:
+  - `mode === "watched"` → nykyinen `watchedKeys`-suodatus.
+  - `mode === "club"` ja `org > 0` → suodata `entries` siten että `alloc.Organization?.Id === org`.
+- Tämän jälkeen ajetaan `matchYagCalling(filtered)` samalla tavalla.
+- Otsikkoteksti ja "Ei lähtöjä" -viesti mukautuvat tilan mukaan ("Seurattujen lähdöt" / "Seuran *X* lähdöt").
+- `auto`-print-efekti toimii kummassakin moodissa.
 
-## Toiminta korjauksen jälkeen
-- Hidas upstream → keskeytetään 8 s kohdalla.
-- Jos cachessa on stale, käyttäjä saa sen (`x-tl-cache: stale-error`).
-- Jos ei stalea, vastaus on `503 Upstream unavailable` (ei enää CF-502 SSR-hangia).
-- Circuit pysyy auki 60 s, joten Worker ei polta resursseja saman jumittavan upstreamin uudelleenyrityksiin.
+**2. `src/components/PrintTabs.tsx`**
+
+- Ei muutoksia. Sama `YAG Calling` -välilehti vie samaan reittiin; valinta tapahtuu sivun sisällä.
+
+**3. Roolit**
+
+- Sivu pidetään `RequireRole allow={["user"]}` -takana (kuten nyt). Vaihtoehtoisesti voisin avata seura-moodin myös `official`-roolille, mutta pidän nykyisen rajauksen ellei toisin pyydetä.
 
 ## Mitä ei muuteta
-- TTL-konfiguraatioita ei kosketa.
-- Reittitiedostoja (`src/routes/api/public/tuloslista/...`) ei muuteta.
-- Front-endin React Query -logiikkaa ei muuteta — proxy-vastausten muoto pysyy samana.
+
+- `src/data/yag-calling.ts` (PDF-pohjainen data) ja `src/lib/yag-calling-match.ts` (täsmäyslogiikka) pysyvät ennallaan.
+- `/print/club` ja `/print/watched` jatkavat nykyisellään.
