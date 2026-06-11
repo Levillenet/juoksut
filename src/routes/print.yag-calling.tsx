@@ -315,8 +315,9 @@ function YagCallingPage() {
               </thead>
               <tbody>
                 {g.rows.map((m, idx) => {
-                  // Yritä saada erä-numero tuloslista-entryistä jos kaikilla
-                  // sama heatIndex, muuten PDF:stä.
+                  const isUnpublished = m.allHeats != null;
+                  // Erä julkaistuille: tuloslistasta jos yksiselitteinen,
+                  // muutoin PDF:stä.
                   const heatFromEntries = (() => {
                     const set = new Set(
                       m.entries.map((e) => e.heatIndex).filter((h) => h > 0),
@@ -331,12 +332,45 @@ function YagCallingPage() {
                       className="border-b border-border/50 align-top"
                     >
                       <td className="py-2 pr-2 font-semibold tabular-nums">
-                        {m.row.calling}
+                        {isUnpublished ? (
+                          <ul className="space-y-0.5">
+                            {m.allHeats!.map((h, i) => (
+                              <li key={i} className="whitespace-nowrap">
+                                {h.calling}
+                                {h.heat != null && (
+                                  <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                    erä {h.heat}
+                                  </span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          m.row.calling
+                        )}
                       </td>
                       <td className="py-2 pr-2 tabular-nums text-muted-foreground">
-                        {m.row.kentalle}
+                        {isUnpublished ? (
+                          <ul className="space-y-0.5">
+                            {m.allHeats!.map((h, i) => (
+                              <li key={i}>{h.kentalle}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          m.row.kentalle
+                        )}
                       </td>
-                      <td className="py-2 pr-2 tabular-nums">{m.row.alkaa}</td>
+                      <td className="py-2 pr-2 tabular-nums">
+                        {isUnpublished ? (
+                          <ul className="space-y-0.5">
+                            {m.allHeats!.map((h, i) => (
+                              <li key={i}>{h.alkaa}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          m.row.alkaa
+                        )}
+                      </td>
                       <td className="py-2 pr-2">
                         <div className="font-semibold leading-tight">
                           {m.row.sarja} {m.row.laji.replace(/\s*\(erä\s*\d+\)/, "")}
@@ -362,12 +396,40 @@ function YagCallingPage() {
                         </ul>
                       </td>
                       <td className="py-2 pr-2 tabular-nums">
-                        {erä != null ? erä : <span className="text-muted-foreground">–</span>}
+                        {isUnpublished ? (
+                          <span className="text-xs text-muted-foreground">
+                            ei vielä
+                            <br />
+                            julkaistu
+                          </span>
+                        ) : erä != null ? (
+                          erä
+                        ) : (
+                          <span className="text-muted-foreground">–</span>
+                        )}
                       </td>
-                      <td className="py-2">{m.row.paikka}</td>
+                      <td className="py-2">
+                        {isUnpublished ? (
+                          (() => {
+                            const places = Array.from(
+                              new Set(m.allHeats!.map((h) => h.paikka)),
+                            );
+                            return places.length === 1 ? places[0] : (
+                              <ul className="space-y-0.5">
+                                {m.allHeats!.map((h, i) => (
+                                  <li key={i}>{h.paikka}</li>
+                                ))}
+                              </ul>
+                            );
+                          })()
+                        ) : (
+                          m.row.paikka
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
+
               </tbody>
             </table>
           </section>
