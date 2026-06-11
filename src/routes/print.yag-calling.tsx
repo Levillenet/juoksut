@@ -170,6 +170,49 @@ function YagCallingPage() {
       <main
         className={`mx-auto max-w-3xl px-4 py-6 print:py-2 print-schedule print-${orientation}`}
       >
+        <div className="mb-4 rounded-xl border bg-card p-4 shadow-sm print:hidden">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Näytä
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {([
+              { v: "watched", label: "Seurannassa" },
+              { v: "club", label: "Oma seura" },
+            ] as const).map((o) => (
+              <button
+                key={o.v}
+                onClick={() => setMode(o.v)}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                  mode === o.v
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "border border-border bg-background text-foreground hover:bg-secondary"
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          {mode === "club" && (
+            <div className="mt-3">
+              <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                Valitse seura
+              </label>
+              <select
+                value={org || ""}
+                onChange={(e) => setOrg(parseInt(e.target.value, 10) || 0)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">— Valitse —</option>
+                {clubs.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.athletes})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
         <div className="mb-5 rounded-xl border bg-card p-4 shadow-sm print:hidden">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Tulostussuunta
@@ -211,11 +254,15 @@ function YagCallingPage() {
             {compName} — Calling-aikataulu
           </h1>
           <p className="text-sm text-muted-foreground">
-            Vain seurannassa olevien urheilijoiden lähdöt
+            {mode === "watched"
+              ? "Seurannassa olevien urheilijoiden lähdöt"
+              : orgName
+                ? `Seuran ${orgName} urheilijoiden lähdöt`
+                : "Valitse seura nähdäksesi lähdöt"}
           </p>
         </div>
 
-        {watched.length === 0 && (
+        {mode === "watched" && watched.length === 0 && (
           <p className="py-12 text-center text-sm text-muted-foreground print:hidden">
             <Users className="mx-auto mb-2 h-6 w-6 opacity-60" />
             Ei urheilijoita seurannassa. Lisää urheilijoita{" "}
@@ -226,17 +273,29 @@ function YagCallingPage() {
           </p>
         )}
 
-        {watched.length > 0 && indexQuery.isLoading && entries.length === 0 && (
+        {mode === "club" && !org && !indexQuery.isLoading && (
+          <p className="py-12 text-center text-sm text-muted-foreground print:hidden">
+            Valitse seura yllä olevasta valikosta.
+          </p>
+        )}
+
+        {indexQuery.isLoading && entries.length === 0 && (
           <p className="py-12 text-center text-sm text-muted-foreground">
             Ladataan…
           </p>
         )}
 
-        {watched.length > 0 && !indexQuery.isLoading && grouped.length === 0 && (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            Seuratuilla ei ole lähtöjä YAG-kisassa.
-          </p>
-        )}
+        {!indexQuery.isLoading &&
+          ((mode === "watched" && watched.length > 0) ||
+            (mode === "club" && org > 0)) &&
+          grouped.length === 0 && (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              {mode === "watched"
+                ? "Seuratuilla ei ole lähtöjä YAG-kisassa."
+                : "Tällä seuralla ei ole lähtöjä YAG-kisassa."}
+            </p>
+          )}
+
 
         {grouped.map((g) => (
           <section key={g.date} className="mb-6 break-inside-avoid">
