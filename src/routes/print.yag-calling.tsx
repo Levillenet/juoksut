@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Printer, Users } from "lucide-react";
+import { ArrowLeft, Download, Users } from "lucide-react";
 
 import { competitionIndexQueryOptions } from "@/lib/tuloslista-queries";
 import { useWatchedAthletes } from "@/lib/watch-store";
 import { matchYagCalling } from "@/lib/yag-calling-match";
+import { downloadYagCallingPdf } from "@/lib/yag-calling-pdf";
 import { YAG_COMPETITION_ID } from "@/data/yag-calling";
 import { Button } from "@/components/ui/button";
 import { RequireRole } from "@/components/RequireRole";
@@ -116,12 +117,24 @@ function YagCallingPage() {
       }));
   }, [matches]);
 
+  const handleDownload = useCallback(() => {
+    if (grouped.length === 0) return;
+    downloadYagCallingPdf({
+      grouped,
+      compName,
+      orientation,
+      mode,
+      orgName,
+      watchedCount: watched.length,
+    });
+  }, [grouped, compName, orientation, mode, orgName, watched.length]);
+
   useEffect(() => {
     if (auto && !indexQuery.isLoading && grouped.length > 0) {
-      const t = setTimeout(() => window.print(), 400);
+      const t = setTimeout(() => handleDownload(), 400);
       return () => clearTimeout(t);
     }
-  }, [auto, indexQuery.isLoading, grouped.length]);
+  }, [auto, indexQuery.isLoading, grouped.length, handleDownload]);
 
   const setMode = (m: Mode) =>
     navigate({ search: (prev: { auto: boolean; mode: Mode; org: number }) => ({ ...prev, mode: m }) });
@@ -154,13 +167,13 @@ function YagCallingPage() {
             </p>
           </div>
           <Button
-            onClick={() => window.print()}
+            onClick={handleDownload}
             size="sm"
             className="gap-2"
             disabled={grouped.length === 0}
           >
-            <Printer className="h-4 w-4" />
-            Tulosta / PDF
+            <Download className="h-4 w-4" />
+            Lataa PDF
           </Button>
         </div>
       </header>
@@ -234,14 +247,14 @@ function YagCallingPage() {
               ))}
             </div>
             <Button
-              onClick={() => window.print()}
+              onClick={handleDownload}
               size="sm"
               className="gap-2 shrink-0"
               disabled={grouped.length === 0}
             >
-              <Printer className="h-4 w-4" />
-              <span className="hidden sm:inline">Tulosta / PDF</span>
-              <span className="sm:hidden">PDF</span>
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Lataa PDF</span>
+              <span className="sm:hidden">Lataa</span>
             </Button>
           </div>
           <p className="mt-3 text-[11px] text-muted-foreground">
