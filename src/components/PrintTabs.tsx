@@ -13,7 +13,7 @@ export function PrintTabs() {
     { to: "/print", label: "Kilpailun aikataulu", show: true },
     { to: "/print/club", label: "Seuran urheilijat", show: true },
     { to: "/print/watched", label: "Omat urheilijat", show: role === "user" },
-    { to: "/print/yag-calling", label: "YAG Calling", show: role === "user" && isYag },
+    { to: "/print/yag-calling", label: "YAG Calling", show: role === "user" || isYag },
   ];
 
   return (
