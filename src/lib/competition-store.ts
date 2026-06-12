@@ -105,5 +105,23 @@ export function useCompetitionId(): [number, (id: number) => void] {
     }
   };
 
+  // YAG-viikonlopun automaattinen aktivointi (kerran per rooli/laite).
+  useEffect(() => {
+    try {
+      const today = helsinkiDateISO();
+      if (today < YAG_AUTO.start || today > YAG_AUTO.end) return;
+      const flagKey = `${YAG_AUTO.flagKey}.${role ?? "anon"}`;
+      if (localStorage.getItem(flagKey)) return;
+      localStorage.setItem(flagKey, today);
+      if (getValue(key) !== YAG_AUTO.id) {
+        update(YAG_AUTO.id);
+      }
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role, user]);
+
   return [id, update];
 }
+
