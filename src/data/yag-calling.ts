@@ -238,6 +238,69 @@ export const YAG_CALLING_ROWS: YagCallingRow[] = [
   },
   {
     "date": "2026-06-12",
+    "calling": "12:41–12:51",
+    "kentalle": "12:53",
+    "alkaa": "13:07",
+    "sarja": "T13",
+    "laji": "200m (erä 5)",
+    "paikka": "–"
+  },
+  {
+    "date": "2026-06-12",
+    "calling": "12:44–12:54",
+    "kentalle": "12:56",
+    "alkaa": "13:10",
+    "sarja": "T13",
+    "laji": "200m (erä 6)",
+    "paikka": "–"
+  },
+  {
+    "date": "2026-06-12",
+    "calling": "12:47–12:57",
+    "kentalle": "12:59",
+    "alkaa": "13:13",
+    "sarja": "T13",
+    "laji": "200m (erä 7)",
+    "paikka": "–"
+  },
+  {
+    "date": "2026-06-12",
+    "calling": "12:50–13:00",
+    "kentalle": "13:02",
+    "alkaa": "13:16",
+    "sarja": "T13",
+    "laji": "200m (erä 8)",
+    "paikka": "–"
+  },
+  {
+    "date": "2026-06-12",
+    "calling": "12:53–13:03",
+    "kentalle": "13:05",
+    "alkaa": "13:19",
+    "sarja": "T13",
+    "laji": "200m (erä 9)",
+    "paikka": "–"
+  },
+  {
+    "date": "2026-06-12",
+    "calling": "12:56–13:06",
+    "kentalle": "13:08",
+    "alkaa": "13:22",
+    "sarja": "T13",
+    "laji": "200m (erä 10)",
+    "paikka": "–"
+  },
+  {
+    "date": "2026-06-12",
+    "calling": "12:59–13:09",
+    "kentalle": "13:11",
+    "alkaa": "13:25",
+    "sarja": "T13",
+    "laji": "200m (erä 11)",
+    "paikka": "–"
+  },
+  {
+    "date": "2026-06-12",
     "calling": "12:53–13:03",
     "kentalle": "13:05",
     "alkaa": "13:35",
