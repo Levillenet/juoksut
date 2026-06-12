@@ -258,14 +258,37 @@ function SharedWatchPage() {
                                 {STATUS_LABEL[e.round.Status]}
                               </span>
                               {e.alloc.Result && (
-                                <p className="mt-1 text-sm font-bold tabular-nums">
-                                  {e.alloc.Result}
-                                  {e.alloc.ResultRank != null && (
-                                    <span className="ml-1 text-xs font-normal text-muted-foreground">
-                                      ({e.alloc.ResultRank}.)
-                                    </span>
+                                <>
+                                  <p className="mt-1 text-sm font-bold tabular-nums">
+                                    {e.alloc.Result}
+                                    {e.alloc.ResultRank != null && (
+                                      <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                        ({e.alloc.ResultRank}.)
+                                      </span>
+                                    )}
+                                  </p>
+                                  {competitionId != null && (
+                                    <div className="mt-1 flex justify-end">
+                                      {(() => {
+                                        const eff = effectiveRecord(e.round.EventId, e.alloc, {
+                                          competitionId,
+                                          athleteKey: athlete.key,
+                                          eventName: e.round.EventName,
+                                        });
+                                        return (
+                                          <RecordBadge
+                                            category={e.round.Category}
+                                            result={e.alloc.Result}
+                                            pb={eff.pb}
+                                            sb={eff.sb}
+                                            size="sm"
+                                            layout="row"
+                                          />
+                                        );
+                                      })()}
+                                    </div>
                                   )}
-                                </p>
+                                </>
                               )}
                             </div>
                           </Link>
