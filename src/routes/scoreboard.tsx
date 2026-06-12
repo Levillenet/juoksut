@@ -668,7 +668,7 @@ function ScoreRow({
         {row.Organization?.Name ?? row.Organization?.NameShort ?? ""}
         {row.SB ? (
           <span className="ml-2">
-            <span className="opacity-60">SP</span>{" "}
+            <span className="opacity-60">SB</span>{" "}
             <span className="font-semibold tabular-nums">{row.SB}</span>
           </span>
         ) : null}
