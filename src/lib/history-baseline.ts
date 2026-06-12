@@ -227,3 +227,34 @@ export function getHistoricalSeasonBest(
   if (!norm) return null;
   return map.get(lookupKey(athleteKey, norm))?.sb?.resultText ?? null;
 }
+
+/** React hook: loads (or returns cached) historical baseline and re-renders
+ * the calling component once the data is ready. Returns `dataUpdatedAt`
+ * which can be included in `useMemo` deps to recompute derived rows. */
+export function useHistoryBaseline(competitionId: number | null | undefined) {
+  const q = useQuery({
+    queryKey: ["history-baseline", competitionId ?? 0],
+    queryFn: () => loadHistoryBaselineForCompetition(competitionId!),
+    enabled: !!competitionId,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+  return { dataUpdatedAt: q.dataUpdatedAt, isLoading: q.isLoading };
+}
+
+export function useSharedHistoryBaseline(
+  token: string | null | undefined,
+  competitionId: number | null | undefined,
+) {
+  const q = useQuery({
+    queryKey: ["history-baseline-shared", token ?? "", competitionId ?? 0],
+    queryFn: () =>
+      loadHistoryBaselineForSharedWatch(token!, competitionId!),
+    enabled: !!token && !!competitionId,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+  return { dataUpdatedAt: q.dataUpdatedAt, isLoading: q.isLoading };
+}
