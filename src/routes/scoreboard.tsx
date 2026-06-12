@@ -467,7 +467,7 @@ function ScoreboardLive() {
         </Button>
       </header>
 
-      <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-2 sm:p-3">
+      <main className={`flex flex-col p-2 sm:p-3 ${scrollMode ? "" : "min-h-0 flex-1 overflow-hidden"}`}>
         {detailQ.isLoading && (
           <div className="flex flex-1 items-center justify-center text-2xl text-muted-foreground">
             Ladataan…
@@ -481,7 +481,7 @@ function ScoreboardLive() {
         )}
 
         {visible.length > 0 && (
-          <ul className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden">
+          <ul className={`flex flex-col gap-1.5 ${scrollMode ? "" : "min-h-0 flex-1 overflow-hidden"}`}>
             {visible.map((row, idx) => (
               <ScoreRow
                 key={row.AllocId}
@@ -492,6 +492,7 @@ function ScoreboardLive() {
                 category={ev?.EventCategory ?? ""}
                 competitionId={competitionId}
                 eventName={ev?.Name ?? ""}
+                scrollMode={scrollMode}
               />
             ))}
           </ul>
