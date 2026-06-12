@@ -419,7 +419,7 @@ async function harvestRange(ids: number[], latestIdHint: number) {
     const results = await Promise.allSettled(
       chunk.map(async (id) => {
         await jitter();
-        return processCompetition(id, pending);
+        return processCompetition(id, pending, pendingLegs);
       }),
     );
     const nowIso = new Date().toISOString();
