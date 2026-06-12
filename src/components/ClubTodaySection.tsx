@@ -195,7 +195,7 @@ export function ClubTodaySection({
                 disabled={clubs.length === 0}
               >
                 <option value="">
-                  {clubsQuery.isLoading
+                  {isLoadingClubs
                     ? "Ladataan seuroja…"
                     : clubs.length === 0
                       ? (isToday ? "Ei seuroja tänään" : "Ei seuroja päivälle")
