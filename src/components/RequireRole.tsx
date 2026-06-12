@@ -7,6 +7,10 @@ interface Props {
   children: ReactNode;
 }
 
+const ANNOUNCER_ALLOWLIST = new Set<string>([
+  "matti.hannikainen.84@gmail.com",
+]);
+
 export function RequireRole({ allow, children }: Props) {
   const { role, user, loading } = useAuth();
   if (loading) {
@@ -17,7 +21,12 @@ export function RequireRole({ allow, children }: Props) {
     );
   }
   if (!role) return <Navigate to="/login" />;
-  const isAdmin = (user?.email ?? "").toLowerCase() === "samiaavikko@gmail.com";
-  if (!allow.includes(role) && !isAdmin) return <Navigate to="/" />;
+  const email = (user?.email ?? "").toLowerCase();
+  const isAdmin = email === "samiaavikko@gmail.com";
+  const isAnnouncerAllowed =
+    ANNOUNCER_ALLOWLIST.has(email) && allow.includes("official");
+  if (!allow.includes(role) && !isAdmin && !isAnnouncerAllowed) {
+    return <Navigate to="/" />;
+  }
   return <>{children}</>;
 }
