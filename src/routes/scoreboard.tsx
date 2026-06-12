@@ -32,16 +32,25 @@ import { getResultVisualState } from "@/lib/result-visualization";
 
 type TopSize = 3 | 5 | 10;
 
+type HeatSel = "all" | number;
+
 interface SearchParams {
   eventId?: number;
   roundId?: number;
   top: TopSize;
+  heat: HeatSel;
 }
 
 function parseTop(v: unknown): TopSize {
   if (v === 3 || v === "3") return 3;
   if (v === 5 || v === "5") return 5;
   return 10;
+}
+
+function parseHeat(v: unknown): HeatSel {
+  if (v == null || v === "all") return "all";
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) && n > 0 ? n : "all";
 }
 
 export const Route = createFileRoute("/scoreboard")({
@@ -59,6 +68,7 @@ export const Route = createFileRoute("/scoreboard")({
     eventId: typeof s.eventId === "number" ? s.eventId : s.eventId ? Number(s.eventId) : undefined,
     roundId: typeof s.roundId === "number" ? s.roundId : s.roundId ? Number(s.roundId) : undefined,
     top: parseTop(s.top),
+    heat: parseHeat(s.heat),
   }),
   component: () => (
     <RequireRole allow={["official", "user"]}>
@@ -187,7 +197,7 @@ function ScoreboardPicker() {
                 <li key={r.Id}>
                   <Link
                     to="/scoreboard"
-                    search={{ eventId: r.EventId, roundId: r.Id, top }}
+                    search={{ eventId: r.EventId, roundId: r.Id, top, heat: "all" }}
                     className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm hover:bg-secondary"
                   >
                     <div className="w-16 shrink-0 text-lg font-bold tabular-nums">
@@ -223,7 +233,7 @@ interface RankedRow extends Allocation {
 }
 
 function ScoreboardLive() {
-  const { eventId, roundId, top } = Route.useSearch();
+  const { eventId, roundId, top, heat } = Route.useSearch();
   const [competitionId] = useCompetitionId();
   const navigate = useNavigate({ from: "/scoreboard" });
   const detailQ = useQuery(eventDetailsQueryOptions(competitionId, eventId!));
@@ -239,9 +249,16 @@ function ScoreboardLive() {
     [ev, roundId],
   );
 
+  const visibleHeats = useMemo(() => {
+    if (!round) return [];
+    if (heat === "all") return round.Heats;
+    const filtered = round.Heats.filter((h) => h.Index === heat);
+    return filtered.length ? filtered : round.Heats;
+  }, [round, heat]);
+
   const rows = useMemo<RankedRow[]>(() => {
     if (!round) return [];
-    const allocs = round.Heats.flatMap((h) => h.Allocations);
+    const allocs = visibleHeats.flatMap((h) => h.Allocations);
     const enriched: RankedRow[] = allocs.map((a) => {
       const raw = a.Attempts ?? [];
       const attempts: (string | null)[] = Array.from({ length: 6 }, (_, i) => {
@@ -277,7 +294,7 @@ function ScoreboardLive() {
       const bv = Number.isFinite(bn) ? bn : -Infinity;
       return bv - av;
     });
-  }, [round]);
+  }, [round, visibleHeats]);
 
   const visible = rows.slice(0, top);
 
@@ -291,8 +308,8 @@ function ScoreboardLive() {
     if (!ev || !round) return;
     const next = new Map<number, string>();
     const newItems: NewResultItem[] = [];
-    for (const heat of round.Heats) {
-      for (const a of heat.Allocations) {
+    for (const h of visibleHeats) {
+      for (const a of h.Allocations) {
         const visualState = getResultVisualState(a);
         if (!visualState) continue;
         next.set(a.AllocId, visualState.signature);
@@ -303,7 +320,7 @@ function ScoreboardLive() {
             alloc: { ...a, Result: visualState.result ?? visualState.attemptResult },
             eventId: ev.Id,
             eventCategory: ev.EventCategory ?? "",
-            heatIndex: heat.Index,
+            heatIndex: h.Index,
             attemptIndex: visualState.attemptIndex,
           });
         }
@@ -311,7 +328,7 @@ function ScoreboardLive() {
     }
     prevResultsRef.current = next;
     if (newItems.length) setQueue((q) => [...q, ...newItems]);
-  }, [ev, round]);
+  }, [ev, round, visibleHeats]);
 
   useEffect(() => {
     if (currentOverlay || queue.length === 0) return;
@@ -321,18 +338,23 @@ function ScoreboardLive() {
 
   const handleOverlayDone = useCallback(() => setCurrentOverlay(null), []);
 
-  // Wind: prefer first heat's wind; fallback to most recent allocation wind.
+  // Wind: prefer first visible heat's wind; fallback to most recent allocation wind.
   const wind = useMemo<number | null>(() => {
-    if (!round) return null;
-    const heatWind = round.Heats[0]?.Wind;
+    if (!visibleHeats.length) return null;
+    const heatWind = visibleHeats[0]?.Wind;
     if (heatWind != null && Number.isFinite(heatWind)) return heatWind;
-    for (const h of round.Heats) {
+    for (const h of visibleHeats) {
       for (let i = h.Allocations.length - 1; i >= 0; i--) {
         const w = h.Allocations[i]?.Wind;
         if (w != null && Number.isFinite(w)) return w;
       }
     }
     return null;
+  }, [visibleHeats]);
+
+  const heatOptions = useMemo<number[]>(() => {
+    if (!round) return [];
+    return round.Heats.map((h) => h.Index).sort((a, b) => a - b);
   }, [round]);
 
   const vw = useViewportWidth();
@@ -346,7 +368,7 @@ function ScoreboardLive() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate({ search: { eventId: undefined, roundId: undefined, top } })}
+          onClick={() => navigate({ search: { eventId: undefined, roundId: undefined, top, heat: "all" } })}
           aria-label="Takaisin"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -357,7 +379,7 @@ function ScoreboardLive() {
           </h1>
           <p className="truncate text-xs text-muted-foreground">
             {round
-              ? `${round.Name} · ${formatTime(round.BeginDateTimeWithTZ)} · ${STATUS_LABEL[round.Status]}`
+              ? `${round.Name} · ${formatTime(round.BeginDateTimeWithTZ)} · ${STATUS_LABEL[round.Status]}${heat !== "all" ? ` · Erä ${heat}` : ""}`
               : ""}
           </p>
         </div>
@@ -380,6 +402,34 @@ function ScoreboardLive() {
             title="Tuuli"
           >
             Tuuli {formatWind(wind)} m/s
+          </div>
+        )}
+
+        {heatOptions.length >= 2 && (
+          <div className="flex shrink-0 gap-1 rounded-full border bg-background p-1 text-xs font-semibold">
+            <button
+              onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, heat: "all" }) })}
+              className={`rounded-full px-3 py-1 transition-colors ${
+                heat === "all"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              Koko kisa
+            </button>
+            {heatOptions.map((idx) => (
+              <button
+                key={idx}
+                onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, heat: idx }) })}
+                className={`rounded-full px-3 py-1 transition-colors ${
+                  heat === idx
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {`Erä ${idx}`}
+              </button>
+            ))}
           </div>
         )}
 
