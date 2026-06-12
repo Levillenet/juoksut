@@ -99,8 +99,10 @@ async function fetchSeasonRows(
       .gte("competition_date", range.from.toISOString())
       .lt("competition_date", range.to.toISOString())
       .not("result_numeric", "is", null)
+      .order("id", { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);
     if (ageClass) q = q.eq("age_class", ageClass);
+
     const { data, error } = await q;
     if (error) throw error;
     const rows = ((data ?? []) as RawRow[]).filter((r) => !isRoadOrCrossCountry(r));
