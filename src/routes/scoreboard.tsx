@@ -596,13 +596,13 @@ function ScoreRow({
         <>
           <p
             className="break-words font-semibold leading-tight text-muted-foreground"
-            style={{ fontSize: firstNameFontSize(count) }}
+            style={{ fontSize: firstNameFontSize(sizeBucket) }}
           >
             {first}
           </p>
           <p
             className="break-words font-black leading-tight"
-            style={{ fontSize: nameFontSize(count) }}
+            style={{ fontSize: nameFontSize(sizeBucket) }}
           >
             {last}
           </p>
@@ -610,14 +610,14 @@ function ScoreRow({
       ) : (
         <p
           className="truncate font-black leading-tight"
-          style={{ fontSize: narrow ? narrowNameFontSize(count) : nameFontSize(count) }}
+          style={{ fontSize: narrow ? narrowNameFontSize(sizeBucket) : nameFontSize(sizeBucket) }}
         >
           {row.Name}
         </p>
       )}
       <p
         className="mt-0.5 truncate text-muted-foreground"
-        style={{ fontSize: clubFontSize(count) }}
+        style={{ fontSize: clubFontSize(sizeBucket) }}
       >
         {row.Organization?.Name ?? row.Organization?.NameShort ?? ""}
         {row.Number ? ` · #${row.Number}` : ""}
@@ -635,9 +635,9 @@ function ScoreRow({
           : "bg-secondary text-secondary-foreground"
       }`}
       style={{
-        fontSize: narrow ? narrowRankFontSize(count) : rankFontSize(count),
-        minWidth: narrow ? "3rem" : rankBoxWidth(count),
-        maxWidth: narrow ? "4rem" : rankBoxMaxWidth(count),
+        fontSize: narrow ? narrowRankFontSize(sizeBucket) : rankFontSize(sizeBucket),
+        minWidth: narrow ? "3rem" : rankBoxWidth(sizeBucket),
+        maxWidth: narrow ? "4rem" : rankBoxMaxWidth(sizeBucket),
         paddingLeft: "0.5rem",
         paddingRight: "0.5rem",
         paddingTop: narrow ? "0.25rem" : undefined,
@@ -648,10 +648,10 @@ function ScoreRow({
     </div>
   );
 
-  const attMin = narrow ? narrowAttemptMinWidth(count) : attemptMinWidth(count);
-  const attMax = narrow ? narrowAttemptMaxWidth(count) : attemptMaxWidth(count);
-  const attValSize = narrow ? narrowAttemptValueSize(count) : attemptValueSize(count);
-  const attLabSize = attemptLabelSize(count);
+  const attMin = narrow ? narrowAttemptMinWidth(sizeBucket) : attemptMinWidth(sizeBucket);
+  const attMax = narrow ? narrowAttemptMaxWidth(sizeBucket) : attemptMaxWidth(sizeBucket);
+  const attValSize = narrow ? narrowAttemptValueSize(sizeBucket) : attemptValueSize(sizeBucket);
+  const attLabSize = attemptLabelSize(sizeBucket);
 
   const attemptsList = (
     <ol className={`flex shrink-0 items-stretch gap-1 ${narrow ? "flex-1" : "h-full"}`}>
@@ -701,14 +701,14 @@ function ScoreRow({
       }`}
       style={{
         minWidth: narrow ? "4rem" : "5rem",
-        width: narrow ? narrowResultBoxWidth(count) : resultBoxWidth(count),
-        maxWidth: narrow ? narrowResultBoxWidth(count) : resultBoxWidth(count),
+        width: narrow ? narrowResultBoxWidth(sizeBucket) : resultBoxWidth(sizeBucket),
+        maxWidth: narrow ? narrowResultBoxWidth(sizeBucket) : resultBoxWidth(sizeBucket),
       }}
     >
       {recordKind && (
         <span
           className="absolute -left-5 -top-5 z-10 animate-pulse drop-shadow-lg"
-          style={{ transform: count <= 5 ? "scale(2)" : "scale(1.6)", transformOrigin: "top left" }}
+          style={{ transform: sizeBucket <= 5 ? "scale(2)" : "scale(1.6)", transformOrigin: "top left" }}
           aria-label={recordKind === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
         >
           <RecordStar kind={recordKind} size="lg" />
@@ -719,7 +719,7 @@ function ScoreRow({
       </span>
       <span
         className="font-black tabular-nums leading-none"
-        style={{ fontSize: narrow ? narrowBestFontSize(count) : bestFontSize(count) }}
+        style={{ fontSize: narrow ? narrowBestFontSize(sizeBucket) : bestFontSize(sizeBucket) }}
       >
         {row.best ?? "–"}
       </span>
