@@ -96,11 +96,7 @@ function SharedWatchPage() {
     });
   }, [index, athletes]);
 
-  useEffect(() => {
-    if (token && competitionId) {
-      void loadHistoryBaselineForSharedWatch(token, competitionId);
-    }
-  }, [token, competitionId]);
+  useSharedHistoryBaseline(token, competitionId ?? null);
 
   const reload = () => {
     if (competitionId != null) {
