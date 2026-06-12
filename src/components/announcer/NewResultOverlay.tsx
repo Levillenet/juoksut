@@ -4,7 +4,7 @@ import { detectRecord, RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
 import { athleteKey } from "@/lib/athlete-key";
 import { useCompetitionId } from "@/lib/competition-store";
-import type { Allocation } from "@/lib/tuloslista";
+import { formatRelayLegs, type Allocation } from "@/lib/tuloslista";
 
 export interface NewResultItem {
   key: string;
