@@ -19,7 +19,7 @@ import {
 import { loadSharedWatch, type SharedWatchAthlete } from "@/lib/watch-share";
 import { RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
-import { loadHistoryBaselineForSharedWatch } from "@/lib/history-baseline";
+import { useSharedHistoryBaseline } from "@/lib/history-baseline";
 import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/seuraa/$token")({
