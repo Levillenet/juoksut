@@ -699,6 +699,7 @@ export type Database = {
         Args: { p_exclude_competition_id: number; p_token: string }
         Returns: {
           athlete_key: string
+          competition_date: string
           event_category: string
           event_name: string
           result_numeric: number
