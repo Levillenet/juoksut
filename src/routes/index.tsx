@@ -380,7 +380,7 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
           <>
             <TodayStatsSection />
             <DailyBestSection />
-            <ClubTodaySection excludeCompetitionId={competitionId} />
+            <ClubTodaySection />
             <LiveCompetitionsSection />
             <SeasonStatsSection />
 
