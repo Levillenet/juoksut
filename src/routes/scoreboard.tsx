@@ -30,7 +30,7 @@ import { detectRecord, RecordStar } from "@/lib/records";
 import { WakeLockToggle } from "@/components/WakeLockToggle";
 import { getResultVisualState } from "@/lib/result-visualization";
 
-type TopSize = 3 | 5 | 10;
+type TopSize = 3 | 5 | 10 | "all";
 
 type HeatSel = "all" | number;
 
@@ -44,7 +44,13 @@ interface SearchParams {
 function parseTop(v: unknown): TopSize {
   if (v === 3 || v === "3") return 3;
   if (v === 5 || v === "5") return 5;
+  if (v === "all") return "all";
   return 10;
+}
+
+const TOP_OPTIONS: TopSize[] = [3, 5, 10, "all"];
+function topLabel(n: TopSize): string {
+  return n === "all" ? "Kaikki" : `Top ${n}`;
 }
 
 function parseHeat(v: unknown): HeatSel {
