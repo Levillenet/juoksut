@@ -30,7 +30,7 @@ import { detectRecord, RecordStar } from "@/lib/records";
 import { WakeLockToggle } from "@/components/WakeLockToggle";
 import { getResultVisualState } from "@/lib/result-visualization";
 
-type TopSize = 3 | 5 | 10;
+type TopSize = 3 | 5 | 10 | "all";
 
 type HeatSel = "all" | number;
 
@@ -44,7 +44,13 @@ interface SearchParams {
 function parseTop(v: unknown): TopSize {
   if (v === 3 || v === "3") return 3;
   if (v === 5 || v === "5") return 5;
+  if (v === "all") return "all";
   return 10;
+}
+
+const TOP_OPTIONS: TopSize[] = [3, 5, 10, "all"];
+function topLabel(n: TopSize): string {
+  return n === "all" ? "Kaikki" : `Top ${n}`;
 }
 
 function parseHeat(v: unknown): HeatSel {
@@ -152,7 +158,7 @@ function ScoreboardPicker() {
             Kuinka monta kärkitulosta näytetään?
           </p>
           <div className="flex flex-wrap gap-2">
-            {([3, 5, 10] as TopSize[]).map((n) => (
+            {TOP_OPTIONS.map((n) => (
               <button
                 key={String(n)}
                 onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, top: n }) })}
@@ -162,7 +168,7 @@ function ScoreboardPicker() {
                     : "border-border bg-card text-foreground hover:bg-secondary"
                 }`}
               >
-                {`Top ${n}`}
+                {topLabel(n)}
               </button>
             ))}
           </div>
@@ -296,7 +302,8 @@ function ScoreboardLive() {
     });
   }, [round, visibleHeats]);
 
-  const visible = rows.slice(0, top);
+  const visible = top === "all" ? rows : rows.slice(0, top);
+  const scrollMode = top === "all";
 
   // Detect newly-arrived results to trigger overlay (works even if athlete is
   // outside the visible top N — overlay just animates without a row target).
@@ -363,8 +370,8 @@ function ScoreboardLive() {
   const clock = useClock();
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
-      <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-card/95 px-4 py-2 backdrop-blur">
+    <div className={`flex flex-col bg-background text-foreground ${scrollMode ? "min-h-screen" : "h-screen overflow-hidden"}`}>
+      <header className={`flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-card/95 px-4 py-2 backdrop-blur ${scrollMode ? "sticky top-0 z-10" : ""}`}>
         <Button
           variant="ghost"
           size="icon"
@@ -434,7 +441,7 @@ function ScoreboardLive() {
         )}
 
         <div className="flex shrink-0 gap-1 rounded-full border bg-background p-1 text-xs font-semibold">
-          {([3, 5, 10] as TopSize[]).map((n) => (
+          {TOP_OPTIONS.map((n) => (
             <button
               key={String(n)}
               onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, top: n }) })}
@@ -444,7 +451,7 @@ function ScoreboardLive() {
                   : "text-muted-foreground hover:bg-secondary"
               }`}
             >
-              {`Top ${n}`}
+              {topLabel(n)}
             </button>
           ))}
         </div>
@@ -460,7 +467,7 @@ function ScoreboardLive() {
         </Button>
       </header>
 
-      <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-2 sm:p-3">
+      <main className={`flex flex-col p-2 sm:p-3 ${scrollMode ? "" : "min-h-0 flex-1 overflow-hidden"}`}>
         {detailQ.isLoading && (
           <div className="flex flex-1 items-center justify-center text-2xl text-muted-foreground">
             Ladataan…
@@ -474,7 +481,7 @@ function ScoreboardLive() {
         )}
 
         {visible.length > 0 && (
-          <ul className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden">
+          <ul className={`flex flex-col gap-1.5 ${scrollMode ? "" : "min-h-0 flex-1 overflow-hidden"}`}>
             {visible.map((row, idx) => (
               <ScoreRow
                 key={row.AllocId}
@@ -485,6 +492,7 @@ function ScoreboardLive() {
                 category={ev?.EventCategory ?? ""}
                 competitionId={competitionId}
                 eventName={ev?.Name ?? ""}
+                scrollMode={scrollMode}
               />
             ))}
           </ul>
@@ -551,6 +559,7 @@ function ScoreRow({
   category,
   competitionId,
   eventName,
+  scrollMode,
 }: {
   row: RankedRow;
   displayRank: number;
@@ -559,14 +568,17 @@ function ScoreRow({
   category: string;
   competitionId: number;
   eventName: string;
+  scrollMode: boolean;
 }) {
   const vw = useViewportWidth();
   const narrow = vw < 900;
-  // Distribute height across rows; aim for big text but cap on small counts
-  const heightStyle = { flex: "1 1 0", minHeight: 0 };
+  // In scrollMode rows size to content; otherwise distribute the viewport height.
+  const heightStyle = scrollMode ? {} : { flex: "1 1 0", minHeight: 0 };
+  // Cap visual sizing at "10" buckets so scroll rows stay reasonable regardless of total count.
+  const sizeBucket = scrollMode ? 10 : count;
   const isLeader = displayRank === 1 && row.best;
   const rankNum = row.ResultRank ?? displayRank;
-  const stackName = !narrow && count <= 5;
+  const stackName = !narrow && sizeBucket <= 5;
   const { first, last } = splitName(row.Name ?? "");
 
   // Detect new PB / SB against captured baseline (falls back to API PB/SB,
@@ -584,13 +596,13 @@ function ScoreRow({
         <>
           <p
             className="break-words font-semibold leading-tight text-muted-foreground"
-            style={{ fontSize: firstNameFontSize(count) }}
+            style={{ fontSize: firstNameFontSize(sizeBucket) }}
           >
             {first}
           </p>
           <p
             className="break-words font-black leading-tight"
-            style={{ fontSize: nameFontSize(count) }}
+            style={{ fontSize: nameFontSize(sizeBucket) }}
           >
             {last}
           </p>
@@ -598,14 +610,14 @@ function ScoreRow({
       ) : (
         <p
           className="truncate font-black leading-tight"
-          style={{ fontSize: narrow ? narrowNameFontSize(count) : nameFontSize(count) }}
+          style={{ fontSize: narrow ? narrowNameFontSize(sizeBucket) : nameFontSize(sizeBucket) }}
         >
           {row.Name}
         </p>
       )}
       <p
         className="mt-0.5 truncate text-muted-foreground"
-        style={{ fontSize: clubFontSize(count) }}
+        style={{ fontSize: clubFontSize(sizeBucket) }}
       >
         {row.Organization?.Name ?? row.Organization?.NameShort ?? ""}
         {row.Number ? ` · #${row.Number}` : ""}
@@ -623,9 +635,9 @@ function ScoreRow({
           : "bg-secondary text-secondary-foreground"
       }`}
       style={{
-        fontSize: narrow ? narrowRankFontSize(count) : rankFontSize(count),
-        minWidth: narrow ? "3rem" : rankBoxWidth(count),
-        maxWidth: narrow ? "4rem" : rankBoxMaxWidth(count),
+        fontSize: narrow ? narrowRankFontSize(sizeBucket) : rankFontSize(sizeBucket),
+        minWidth: narrow ? "3rem" : rankBoxWidth(sizeBucket),
+        maxWidth: narrow ? "4rem" : rankBoxMaxWidth(sizeBucket),
         paddingLeft: "0.5rem",
         paddingRight: "0.5rem",
         paddingTop: narrow ? "0.25rem" : undefined,
@@ -636,10 +648,10 @@ function ScoreRow({
     </div>
   );
 
-  const attMin = narrow ? narrowAttemptMinWidth(count) : attemptMinWidth(count);
-  const attMax = narrow ? narrowAttemptMaxWidth(count) : attemptMaxWidth(count);
-  const attValSize = narrow ? narrowAttemptValueSize(count) : attemptValueSize(count);
-  const attLabSize = attemptLabelSize(count);
+  const attMin = narrow ? narrowAttemptMinWidth(sizeBucket) : attemptMinWidth(sizeBucket);
+  const attMax = narrow ? narrowAttemptMaxWidth(sizeBucket) : attemptMaxWidth(sizeBucket);
+  const attValSize = narrow ? narrowAttemptValueSize(sizeBucket) : attemptValueSize(sizeBucket);
+  const attLabSize = attemptLabelSize(sizeBucket);
 
   const attemptsList = (
     <ol className={`flex shrink-0 items-stretch gap-1 ${narrow ? "flex-1" : "h-full"}`}>
@@ -689,14 +701,14 @@ function ScoreRow({
       }`}
       style={{
         minWidth: narrow ? "4rem" : "5rem",
-        width: narrow ? narrowResultBoxWidth(count) : resultBoxWidth(count),
-        maxWidth: narrow ? narrowResultBoxWidth(count) : resultBoxWidth(count),
+        width: narrow ? narrowResultBoxWidth(sizeBucket) : resultBoxWidth(sizeBucket),
+        maxWidth: narrow ? narrowResultBoxWidth(sizeBucket) : resultBoxWidth(sizeBucket),
       }}
     >
       {recordKind && (
         <span
           className="absolute -left-5 -top-5 z-10 animate-pulse drop-shadow-lg"
-          style={{ transform: count <= 5 ? "scale(2)" : "scale(1.6)", transformOrigin: "top left" }}
+          style={{ transform: sizeBucket <= 5 ? "scale(2)" : "scale(1.6)", transformOrigin: "top left" }}
           aria-label={recordKind === "PB" ? "Uusi oma ennätys" : "Uusi kauden ennätys"}
         >
           <RecordStar kind={recordKind} size="lg" />
@@ -707,7 +719,7 @@ function ScoreRow({
       </span>
       <span
         className="font-black tabular-nums leading-none"
-        style={{ fontSize: narrow ? narrowBestFontSize(count) : bestFontSize(count) }}
+        style={{ fontSize: narrow ? narrowBestFontSize(sizeBucket) : bestFontSize(sizeBucket) }}
       >
         {row.best ?? "–"}
       </span>
