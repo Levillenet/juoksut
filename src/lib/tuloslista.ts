@@ -141,6 +141,18 @@ export function isRunningEvent(r: Pick<Round, "Category">): boolean {
   return r.Category === "Track";
 }
 
+/** True for high jump and pole vault (data has one Attempts entry per height). */
+export function isVerticalJump(
+  ev: { EventSubCategory?: string | null } | { SubCategory?: string | null } | null | undefined,
+): boolean {
+  if (!ev) return false;
+  const sub =
+    (ev as { EventSubCategory?: string | null }).EventSubCategory ??
+    (ev as { SubCategory?: string | null }).SubCategory ??
+    "";
+  return sub === "VerticalJump" || sub === "HighJump" || sub === "PoleVault";
+}
+
 const HELSINKI_TIME = new Intl.DateTimeFormat("fi-FI", {
   timeZone: "Europe/Helsinki",
   hour: "2-digit",
