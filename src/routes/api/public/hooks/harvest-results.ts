@@ -287,6 +287,60 @@ async function processCompetition(
       rowsAdded++;
     }
 
+    // Relay-lajeille: kerätään viestin juoksijat vaihtojärjestyksessä.
+    // Käytetään viimeisintä kierrosta, jonka allokaatiossa on AthleteOrders
+    // (loppukilpailun joukkuekokoonpano voittaa alkuerän).
+    if (category === "Relay") {
+      for (let rIdx = rounds.length - 1; rIdx >= 0; rIdx--) {
+        const r = rounds[rIdx];
+        let foundAnyOrders = false;
+        for (const h of r.Heats ?? []) {
+          for (const a of h.Allocations ?? []) {
+            const teamAllocId = a.Id;
+            if (teamAllocId == null) continue;
+            if (!a.Surname || !a.Firstname) continue;
+            const teamOrgId = a.Organization?.Id ?? null;
+            const teamKey = athleteKey(a.Surname, a.Firstname, teamOrgId);
+            const orders = (a.AthleteOrders ?? [])
+              .map((o) => ({
+                idx: o.Index ?? o.Athlete?.Index ?? null,
+                ath: o.Athlete,
+              }))
+              .filter((x): x is { idx: number; ath: RelayAthlete } => x.idx != null && !!x.ath);
+            const source =
+              orders.length > 0
+                ? orders
+                : (a.Athletes ?? [])
+                    .map((ath) => ({ idx: ath.Index ?? null, ath }))
+                    .filter((x): x is { idx: number; ath: RelayAthlete } => x.idx != null);
+            if (source.length === 0) continue;
+            foundAnyOrders = true;
+            for (const { idx, ath } of source) {
+              const fn = ath.Firstname ?? "";
+              const sn = ath.Surname ?? "";
+              if (!fn || !sn) continue;
+              const legOrgId = ath.Organization?.Id ?? null;
+              pendingLegs.push({
+                competition_id: id,
+                event_id: ev.Id,
+                team_alloc_id: teamAllocId,
+                leg_index: idx,
+                athlete_id: ath.Id ?? null,
+                firstname: fn,
+                surname: sn,
+                organization: ath.Organization?.Name ?? "",
+                organization_id: legOrgId,
+                athlete_key: athleteKey(sn, fn, legOrgId),
+                team_athlete_key: teamKey,
+                age_class: ageClass,
+                event_name: ev.Name,
+              });
+            }
+          }
+        }
+        if (foundAnyOrders) break;
+      }
+    }
   }
   return { existed: true, rowsAdded, competitionDate };
 }
