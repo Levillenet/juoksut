@@ -6,11 +6,14 @@ import { Building2, Calendar as CalendarIcon, ChevronDown, ChevronUp, Trophy } f
 import {
   fetchClubPreviousPbs,
   fetchClubTodayResults,
+  fetchRelayLegsForRows,
   fetchTodayClubs,
+  getRelayLegs,
   normalizeEventName,
   type ClubTodayRow,
 } from "@/lib/club-today";
 import { formatImprovement } from "@/lib/records";
+import { formatRelayLegsFromRows } from "@/lib/tuloslista";
 
 const STORAGE_KEY = "clubToday.orgId";
 
