@@ -61,7 +61,9 @@ async function fetchSeasonRowsForAgeClass(
       .gte("competition_date", range.from.toISOString())
       .lt("competition_date", range.to.toISOString())
       .not("result_numeric", "is", null)
+      .order("id", { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);
+
     if (error) throw error;
     const rows = ((data ?? []) as (LeaderRow & { event_category?: string; sub_category?: string })[])
       .filter((r) => !isRoadOrCrossCountry(r));
