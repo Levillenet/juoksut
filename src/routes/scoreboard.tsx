@@ -30,7 +30,7 @@ import { detectRecord, RecordStar } from "@/lib/records";
 import { WakeLockToggle } from "@/components/WakeLockToggle";
 import { getResultVisualState } from "@/lib/result-visualization";
 
-type TopSize = 3 | 5 | 10 | "all";
+type TopSize = 3 | 5 | 10;
 
 interface SearchParams {
   eventId?: number;
@@ -41,7 +41,6 @@ interface SearchParams {
 function parseTop(v: unknown): TopSize {
   if (v === 3 || v === "3") return 3;
   if (v === 5 || v === "5") return 5;
-  if (v === "all") return "all";
   return 10;
 }
 
@@ -143,7 +142,7 @@ function ScoreboardPicker() {
             Kuinka monta kärkitulosta näytetään?
           </p>
           <div className="flex flex-wrap gap-2">
-            {([3, 5, 10, "all"] as TopSize[]).map((n) => (
+            {([3, 5, 10] as TopSize[]).map((n) => (
               <button
                 key={String(n)}
                 onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, top: n }) })}
@@ -153,7 +152,7 @@ function ScoreboardPicker() {
                     : "border-border bg-card text-foreground hover:bg-secondary"
                 }`}
               >
-                {n === "all" ? "Kaikki" : `Top ${n}`}
+                {`Top ${n}`}
               </button>
             ))}
           </div>
@@ -280,7 +279,7 @@ function ScoreboardLive() {
     });
   }, [round]);
 
-  const visible = top === "all" ? rows : rows.slice(0, top);
+  const visible = rows.slice(0, top);
 
   // Detect newly-arrived results to trigger overlay (works even if athlete is
   // outside the visible top N — overlay just animates without a row target).
@@ -385,7 +384,7 @@ function ScoreboardLive() {
         )}
 
         <div className="flex shrink-0 gap-1 rounded-full border bg-background p-1 text-xs font-semibold">
-          {([3, 5, 10, "all"] as TopSize[]).map((n) => (
+          {([3, 5, 10] as TopSize[]).map((n) => (
             <button
               key={String(n)}
               onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, top: n }) })}
@@ -395,7 +394,7 @@ function ScoreboardLive() {
                   : "text-muted-foreground hover:bg-secondary"
               }`}
             >
-              {n === "all" ? "Kaikki" : `Top ${n}`}
+              {`Top ${n}`}
             </button>
           ))}
         </div>
