@@ -1,34 +1,36 @@
-# Visualisointi vain kerran per uusi tulos
+# Anna Matti Hannikaiselle pääsy kuuluttajanäkymään
 
-## Juurisyy
+## Tilanne
 
-`src/lib/result-visualization.ts` rakentaa allokaation signaturen näin:
+`/announcer` on suojattu `RequireRole allow={["official"]}`:lla. Tällä hetkellä vain officiali-salasanalla kirjautuneet (tai admin `samiaavikko@gmail.com`) pääsevät sisään. Henkilökohtaisesti kirjautuneet käyttäjät saavat roolin `"user"` eivätkä pääse läpi.
 
+## Muutos
+
+`src/components/RequireRole.tsx`: lisää sähköpostiperusteinen allowlist kuuluttajakäyttäjille — sama mekanismi kuin admin-poikkeus, mutta listana. Jos käyttäjän sähköposti löytyy listasta JA route sallii `"official"`-roolin, päästetään läpi.
+
+```ts
+const ANNOUNCER_ALLOWLIST = new Set<string>([
+  "matti.hannikainen.84@gmail.com",
+]);
+
+const email = (user?.email ?? "").toLowerCase();
+const isAdmin = email === "samiaavikko@gmail.com";
+const isAnnouncerAllowed =
+  ANNOUNCER_ALLOWLIST.has(email) && allow.includes("official");
+
+if (!allow.includes(role) && !isAdmin && !isAnnouncerAllowed) {
+  return <Navigate to="/" />;
+}
 ```
-result:${result}|rank:${ResultRank}|attempts:...
-```
 
-`ResultRank` muuttuu aina kun joku **muu** kilpailija saa tuloksen ja sijoitukset järjestyvät uudelleen. Tällöin Juho Alapien / Luka Klaavuniemen signature muuttuu vaikka heidän oma tulos ja yritykset eivät ole muuttuneet → overlay laukeaa uudelleen.
-
-## Korjaus
-
-### `src/lib/result-visualization.ts`
-
-Poistetaan `rank:${ResultRank}` signaturesta. Signaturen tehtävä on tunnistaa "onko tämän urheilijan oma suoritus muuttunut" — sijoitus on johdannainen, ei oma suoritus.
-
-Uusi muoto:
-```
-result:${result ?? ""}|${attemptSignature ?? ""}
-```
-
-Tämä riittää: kun urheilija saa uuden tuloksen tai uuden yrityksen, signature muuttuu kertaalleen ja overlay laukeaa kertaalleen. Sijoitusten päivittyminen muiden tulosten myötä ei enää aiheuta uutta laukaisua.
-
-## Verifiointi
-
-- TypeScript-tarkistus.
-- Manuaalinen testi `/scoreboard`-näytöllä kenttälajissa: kun useampi kilpailija saa tuloksia peräkkäin, kunkin overlay laukeaa vain kertaalleen — ei uudestaan sijoitusten muuttuessa.
+Tämä antaa Matille pääsyn `/announcer`-aluettiin (joka käyttää `allow={["official"]}`). Muut suojatut näkymät, jotka eivät salli `"official"`-roolia, eivät vahingossa avaudu.
 
 ## Mitä ei muuteta
 
-- `NewResultOverlay`, `useNewResultsQueue`, `scoreboard.tsx`-diff-logiikka pysyvät ennallaan.
-- `ResultRank` näytetään edelleen overlayssa normaalisti (luetaan suoraan allokaatiosta, ei signaturesta).
+- Roolijärjestelmää (`Role`-tyyppi, `auth.tsx`) ei refaktoroida — pidetään muutos minimissä.
+- Muita route-tiedostoja ei kosketa.
+- Ei lisätä erillistä `user_roles`-taulua tähän — käytetty mekanismi on jo email-allowlist (admin-poikkeus), joten pysytään samassa kuviossa.
+
+## Verifiointi
+
+TypeScript-tarkistus. Matti kirjautuu Googlella → `/announcer` aukeaa.
