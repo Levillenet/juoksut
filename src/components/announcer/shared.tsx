@@ -13,6 +13,7 @@ import { effectiveRecord } from "@/lib/record-baseline";
 import { athleteKey } from "@/lib/athlete-key";
 import { useCompetitionId } from "@/lib/competition-store";
 import {
+  formatRelayLegs,
   formatTime,
   type Round,
   type Allocation,
