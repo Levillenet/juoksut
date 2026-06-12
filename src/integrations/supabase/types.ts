@@ -695,6 +695,17 @@ export type Database = {
           surname: string
         }[]
       }
+      get_shared_watch_history: {
+        Args: { p_exclude_competition_id: number; p_token: string }
+        Returns: {
+          athlete_key: string
+          event_category: string
+          event_name: string
+          result_numeric: number
+          result_text: string
+          sub_category: string
+        }[]
+      }
       harvest_try_lock: { Args: never; Returns: boolean }
       harvest_unlock: { Args: never; Returns: undefined }
       is_admin_user: { Args: never; Returns: boolean }

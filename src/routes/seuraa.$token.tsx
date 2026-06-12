@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Trophy } from "lucide-react";
 
@@ -17,6 +17,9 @@ import {
   type IndexedEntry,
 } from "@/lib/tuloslista-queries";
 import { loadSharedWatch, type SharedWatchAthlete } from "@/lib/watch-share";
+import { RecordBadge } from "@/lib/records";
+import { effectiveRecord } from "@/lib/record-baseline";
+import { loadHistoryBaselineForSharedWatch } from "@/lib/history-baseline";
 import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/seuraa/$token")({
@@ -92,6 +95,12 @@ function SharedWatchPage() {
       return { athlete: w, entries };
     });
   }, [index, athletes]);
+
+  useEffect(() => {
+    if (token && competitionId) {
+      void loadHistoryBaselineForSharedWatch(token, competitionId);
+    }
+  }, [token, competitionId]);
 
   const reload = () => {
     if (competitionId != null) {
@@ -249,14 +258,37 @@ function SharedWatchPage() {
                                 {STATUS_LABEL[e.round.Status]}
                               </span>
                               {e.alloc.Result && (
-                                <p className="mt-1 text-sm font-bold tabular-nums">
-                                  {e.alloc.Result}
-                                  {e.alloc.ResultRank != null && (
-                                    <span className="ml-1 text-xs font-normal text-muted-foreground">
-                                      ({e.alloc.ResultRank}.)
-                                    </span>
+                                <>
+                                  <p className="mt-1 text-sm font-bold tabular-nums">
+                                    {e.alloc.Result}
+                                    {e.alloc.ResultRank != null && (
+                                      <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                        ({e.alloc.ResultRank}.)
+                                      </span>
+                                    )}
+                                  </p>
+                                  {competitionId != null && (
+                                    <div className="mt-1 flex justify-end">
+                                      {(() => {
+                                        const eff = effectiveRecord(e.round.EventId, e.alloc, {
+                                          competitionId,
+                                          athleteKey: athlete.key,
+                                          eventName: e.round.EventName,
+                                        });
+                                        return (
+                                          <RecordBadge
+                                            category={e.round.Category}
+                                            result={e.alloc.Result}
+                                            pb={eff.pb}
+                                            sb={eff.sb}
+                                            size="sm"
+                                            layout="row"
+                                          />
+                                        );
+                                      })()}
+                                    </div>
                                   )}
-                                </p>
+                                </>
                               )}
                             </div>
                           </Link>
