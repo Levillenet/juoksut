@@ -65,9 +65,28 @@ export function ClubTodaySection({
     staleTime: 5 * 60_000,
   });
 
+  const primaryClubs = clubsQuery.data ?? [];
+  const shouldFallback =
+    clubsQuery.isSuccess &&
+    primaryClubs.length === 0 &&
+    isToday &&
+    excludeCompetitionId != null;
+
+  const fallbackClubsQuery = useQuery({
+    queryKey: ["club-today", "clubs", "all", dateYmd],
+    queryFn: () => fetchTodayClubs(undefined, selectedDate),
+    enabled: shouldFallback,
+    staleTime: 5 * 60_000,
+  });
+
+  const fallbackClubs = fallbackClubsQuery.data ?? [];
+  const showingAll = shouldFallback && fallbackClubs.length > 0;
+
+  const effectiveExcludeId = showingAll ? null : (excludeCompetitionId ?? null);
+
   const resultsQuery = useQuery({
-    queryKey: ["club-today", "results", orgId ?? 0, excludeCompetitionId ?? 0, dateYmd],
-    queryFn: () => fetchClubTodayResults(orgId!, excludeCompetitionId, selectedDate),
+    queryKey: ["club-today", "results", orgId ?? 0, effectiveExcludeId ?? 0, dateYmd],
+    queryFn: () => fetchClubTodayResults(orgId!, effectiveExcludeId, selectedDate),
     enabled: orgId != null,
     staleTime: 60_000,
   });
