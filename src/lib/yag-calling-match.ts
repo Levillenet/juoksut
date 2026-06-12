@@ -180,8 +180,9 @@ export function matchYagCalling(
     g.rows.push(row);
   }
   for (const g of pdfGroups.values()) {
-    g.rows.sort((a, b) => a.calling.localeCompare(b.calling));
+    g.rows.sort((a, b) => callingStartMinutes(a.calling) - callingStartMinutes(b.calling));
   }
+
 
   // Esilaske entry-avaimet
   const indexed = entries.map((e) => {
