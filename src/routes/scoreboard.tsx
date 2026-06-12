@@ -370,8 +370,8 @@ function ScoreboardLive() {
   const clock = useClock();
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
-      <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-card/95 px-4 py-2 backdrop-blur">
+    <div className={`flex flex-col bg-background text-foreground ${scrollMode ? "min-h-screen" : "h-screen overflow-hidden"}`}>
+      <header className={`flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-card/95 px-4 py-2 backdrop-blur ${scrollMode ? "sticky top-0 z-10" : ""}`}>
         <Button
           variant="ghost"
           size="icon"
