@@ -32,16 +32,25 @@ import { getResultVisualState } from "@/lib/result-visualization";
 
 type TopSize = 3 | 5 | 10;
 
+type HeatSel = "all" | number;
+
 interface SearchParams {
   eventId?: number;
   roundId?: number;
   top: TopSize;
+  heat: HeatSel;
 }
 
 function parseTop(v: unknown): TopSize {
   if (v === 3 || v === "3") return 3;
   if (v === 5 || v === "5") return 5;
   return 10;
+}
+
+function parseHeat(v: unknown): HeatSel {
+  if (v == null || v === "all") return "all";
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) && n > 0 ? n : "all";
 }
 
 export const Route = createFileRoute("/scoreboard")({
@@ -59,6 +68,7 @@ export const Route = createFileRoute("/scoreboard")({
     eventId: typeof s.eventId === "number" ? s.eventId : s.eventId ? Number(s.eventId) : undefined,
     roundId: typeof s.roundId === "number" ? s.roundId : s.roundId ? Number(s.roundId) : undefined,
     top: parseTop(s.top),
+    heat: parseHeat(s.heat),
   }),
   component: () => (
     <RequireRole allow={["official", "user"]}>
