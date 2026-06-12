@@ -4,6 +4,7 @@
 // actually beats the athlete's historical best — even when the source
 // tuloslista has no PB/SB row (common for juniors).
 
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   isLowerBetter,
