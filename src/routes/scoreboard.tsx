@@ -273,9 +273,40 @@ function ScoreboardLive() {
 
   const rows = useMemo<RankedRow[]>(() => {
     if (!round) return [];
+    const vertical = isVerticalJump(ev);
     const allocs = visibleHeats.flatMap((h) => h.Allocations);
     const enriched: RankedRow[] = allocs.map((a) => {
       const raw = a.Attempts ?? [];
+
+      if (vertical) {
+        const heights: VerticalHeight[] = raw
+          .map((att) => {
+            const h = (att?.Line1 ?? "").trim();
+            const pattern = (att?.Line2 ?? "").trim().toLowerCase();
+            return { height: h, pattern, cleared: pattern.endsWith("o") };
+          })
+          .filter((x) => x.height);
+
+        let best: string | null = a.Result ?? null;
+        let bestIdx: number | null = null;
+        let bestNum = -Infinity;
+        heights.forEach((x, i) => {
+          if (!x.cleared) return;
+          const n = parseFloat(x.height.replace(",", "."));
+          if (Number.isFinite(n) && n > bestNum) {
+            bestNum = n;
+            bestIdx = i;
+            if (!a.Result) best = x.height;
+          }
+          // Still capture index of the best even if Result is explicit
+          if (a.Result) {
+            const r = parseFloat(a.Result.replace(",", "."));
+            if (Number.isFinite(r) && Math.abs(r - n) < 0.0001) bestIdx = i;
+          }
+        });
+        return { ...a, attempts: [], heights, vertical: true, best, bestIdx };
+      }
+
       const attempts: (string | null)[] = Array.from({ length: 6 }, (_, i) => {
         const v = raw[i]?.Line1;
         return v && v.trim() ? v.trim() : null;
@@ -296,7 +327,7 @@ function ScoreboardLive() {
           best = attempts[i];
         }
       });
-      return { ...a, attempts, best, bestIdx };
+      return { ...a, attempts, heights: [], vertical: false, best, bestIdx };
     });
     // Sort by ResultRank if known, otherwise by best numeric desc, fouls last
     return enriched.sort((a, b) => {
@@ -309,7 +340,7 @@ function ScoreboardLive() {
       const bv = Number.isFinite(bn) ? bn : -Infinity;
       return bv - av;
     });
-  }, [round, visibleHeats]);
+  }, [round, ev, visibleHeats]);
 
   const visible = top === "all" ? rows : rows.slice(0, top);
   const scrollMode = top === "all";
