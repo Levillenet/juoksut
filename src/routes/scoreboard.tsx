@@ -384,7 +384,7 @@ function ScoreboardLive() {
         )}
 
         <div className="flex shrink-0 gap-1 rounded-full border bg-background p-1 text-xs font-semibold">
-          {([3, 5, 10, "all"] as TopSize[]).map((n) => (
+          {([3, 5, 10] as TopSize[]).map((n) => (
             <button
               key={String(n)}
               onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, top: n }) })}
@@ -394,7 +394,7 @@ function ScoreboardLive() {
                   : "text-muted-foreground hover:bg-secondary"
               }`}
             >
-              {n === "all" ? "Kaikki" : `Top ${n}`}
+              {`Top ${n}`}
             </button>
           ))}
         </div>
