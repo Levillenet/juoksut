@@ -158,7 +158,7 @@ function ScoreboardPicker() {
             Kuinka monta kärkitulosta näytetään?
           </p>
           <div className="flex flex-wrap gap-2">
-            {([3, 5, 10] as TopSize[]).map((n) => (
+            {TOP_OPTIONS.map((n) => (
               <button
                 key={String(n)}
                 onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, top: n }) })}
@@ -168,7 +168,7 @@ function ScoreboardPicker() {
                     : "border-border bg-card text-foreground hover:bg-secondary"
                 }`}
               >
-                {`Top ${n}`}
+                {topLabel(n)}
               </button>
             ))}
           </div>
