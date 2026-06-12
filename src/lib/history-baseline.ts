@@ -134,6 +134,66 @@ export async function loadHistoryBaselineForCompetition(
   return p;
 }
 
+function buildBaselineMap(rows: Row[]): Map<string, HistoricalBest> {
+  const map = new Map<string, HistoricalBest>();
+  for (const r of rows) {
+    if (r.result_numeric == null) continue;
+    const norm = normalizeEventName(r.event_name);
+    if (!norm) continue;
+    const lower = isLowerBetter(r.event_category, r.sub_category);
+    const k = lookupKey(r.athlete_key, norm);
+    const cur = map.get(k);
+    if (
+      !cur ||
+      (lower
+        ? r.result_numeric < cur.resultNumeric
+        : r.result_numeric > cur.resultNumeric)
+    ) {
+      map.set(k, {
+        resultText: r.result_text,
+        resultNumeric: r.result_numeric,
+      });
+    }
+  }
+  return map;
+}
+
+/** Load (or return cached) historical-best lookup for a shared watch token.
+ * Uses an anon-callable RPC so unauthenticated visitors can also see PB stars. */
+export async function loadHistoryBaselineForSharedWatch(
+  token: string,
+  competitionId: number,
+): Promise<Map<string, HistoricalBest>> {
+  if (!competitionId || !token) return new Map();
+  const cached = cache.get(competitionId);
+  if (cached) return cached;
+  const pending = inflight.get(competitionId);
+  if (pending) return pending;
+
+  const p = (async () => {
+    try {
+      const { data, error } = await supabase.rpc("get_shared_watch_history", {
+        p_token: token,
+        p_exclude_competition_id: competitionId,
+      });
+      if (error) throw error;
+      const rows = (data ?? []) as Row[];
+      const map = buildBaselineMap(rows);
+      cache.set(competitionId, map);
+      return map;
+    } catch {
+      const empty = new Map<string, HistoricalBest>();
+      cache.set(competitionId, empty);
+      return empty;
+    } finally {
+      inflight.delete(competitionId);
+    }
+  })();
+  inflight.set(competitionId, p);
+  return p;
+}
+
+
 /** Synchronous lookup from the cached baseline. Returns the result text
  * (the format detectRecord knows how to parse) or null. */
 export function getHistoricalBest(
