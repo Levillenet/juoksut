@@ -18,6 +18,7 @@ import {
   isRunningEvent,
   isVerticalJump,
   STATUS_LABEL,
+  formatRelayLegs,
   type Allocation,
   type Round,
 } from "@/lib/tuloslista";
