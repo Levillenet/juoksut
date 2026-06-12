@@ -16,7 +16,7 @@ export interface AnnouncerViewLayout {
   columnsPerRow: 1 | 2 | 3;
   // Live-section (Käynnissä) extras
   liveColumns: 1 | 2 | 3;
-  liveLimit: 5 | 10 | "all";
+  liveLimit: 5 | 10;
   liveDefaultOpen: boolean;
 }
 
@@ -115,7 +115,7 @@ function sanitizeView(raw: unknown, view: AnnouncerView): AnnouncerViewLayout {
     const lc = (obj.liveColumns === 1 || obj.liveColumns === 2 || obj.liveColumns === 3)
       ? obj.liveColumns
       : base.liveColumns;
-    const ll: 5 | 10 | "all" = obj.liveLimit === 5 || obj.liveLimit === 10 || obj.liveLimit === "all"
+    const ll: 5 | 10 = obj.liveLimit === 5 || obj.liveLimit === 10
       ? obj.liveLimit
       : base.liveLimit;
     const ldo = typeof obj.liveDefaultOpen === "boolean" ? obj.liveDefaultOpen : base.liveDefaultOpen;

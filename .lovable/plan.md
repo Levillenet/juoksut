@@ -1,16 +1,28 @@
-Fix the "Seuran urheilijat tänään muissa kisoissa" feature on the homepage so it does not show empty when the only competitions today are the one being followed.
+## Suunnitelma: Poista "Kaikki"-vaihtoehto suorituspaikan livenäytöstä
 
-### Problem
-When a user follows a competition (e.g. YAG) and that is the only competition with results today, the `excludeCompetitionId` filter removes all clubs → the dropdown shows "Ei seuroja tänään" even though there are results in the database.
+### Tavoite
+Kuuluttajanäkymän asetteluvalikon kohdasta **"Käynnissä-lajien näyttö → Tuloksia per laji"** poistetaan **Kaikki**-vaihtoehto. Jäljelle jäävät vain **Top 5** ja **Top 10**, koska enempää tuloksia ei mahdu suorituspaikan livenäytölle.
 
-### Solution
-Modify `src/components/ClubTodaySection.tsx` so that when the excluded-clubs query returns empty for today, the component falls back to fetching clubs WITHOUT the exclusion and shows all results. The title changes from "muissa kisoissa" to just "Seuran urheilijat tänään" in this fallback mode.
+### Muutettavat tiedostot
 
-### Changes
-1. Add `showingAll` state that activates when `clubsQuery` returns empty but there IS an `excludeCompetitionId` and it is today.
-2. Add a fallback `useQuery` that fetches all clubs (no exclusion) — enabled only when primary query is done and empty.
-3. Update `resultsQuery` to use the same fallback logic (pass `undefined` instead of `excludeCompetitionId` when `showingAll`).
-4. Update the section title to drop "muissa kisoissa" when `showingAll` is true.
-5. Update dropdown loading/empty states to account for the fallback query.
+**1. `src/lib/announcer-layout-store.ts`**
+- `liveLimit`-tyyppi: `5 | 10 | "all"` → `5 | 10`
+- `sanitizeView`: poista `"all"` validointiehdosta (vanhat tallennetut "all"-arvot palautuvat oletukseen 10)
+- Päivitä oletukset tarvittaessa (planning-näkymän `liveLimit: 10` jo OK; combined-näkymän `liveLimit: 10` OK; live-näkymän `liveLimit: 5` OK)
 
-No backend changes needed — this is purely a frontend presentation fix.
+**2. `src/components/announcer/AnnouncerLayoutControls.tsx`**
+- Live-kontrollien nappilista: `([5, 10, "all"] as const)` → `([5, 10] as const)`
+- Poista `n === "all" ? "Kaikki" : ...` -ehto, jätä vain `Top {n}`
+
+**3. `src/components/announcer/InProgressSection.tsx`**
+- `limit`-propin tyyppi: `5 | 10 | "all"` → `5 | 10`
+- Oletusarvo: `"all"` → `10`
+
+**4. `src/components/announcer/shared.tsx` (EventCard)**
+- `rankLimit`-propin tyyppi: `5 | 10 | "all"` → `5 | 10`
+- Oletusarvo: `"all"` → `10`
+- Yksinkertaista `openList`: `allRanked.slice(0, rankLimit)` (poista `"all"`-haarat)
+
+### Vaikutus
+- Käyttäjille, joilla oli aiemmin "Kaikki" valittuna, valinta palautuu automaattisesti näkymän oletukseen (Top 5 tai Top 10).
+- Mikään muu toiminta (sarakkeet, leveys, "Avaa kaikki oletuksena") ei muutu.

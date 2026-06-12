@@ -188,7 +188,7 @@ export function AnnouncerLayoutControls({
                   Tuloksia per laji
                 </span>
                 <div className="flex gap-1 rounded-full border border-border bg-card p-1 text-xs font-medium">
-                  {([5, 10, "all"] as const).map((n) => (
+                  {([5, 10] as const).map((n) => (
                     <button
                       key={String(n)}
                       onClick={() => setLayout({ ...layout, liveLimit: n })}
@@ -198,7 +198,7 @@ export function AnnouncerLayoutControls({
                           : "text-muted-foreground hover:bg-secondary"
                       }`}
                     >
-                      {n === "all" ? "Kaikki" : `Top ${n}`}
+                      {`Top ${n}`}
                     </button>
                   ))}
                 </div>
