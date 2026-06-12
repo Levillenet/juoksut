@@ -143,6 +143,14 @@ function callingDateKey(iso: string): string {
   return `${d}.${m}.${y}`;
 }
 
+/** Parsii calling-aikaleiman (esim. "8:18–8:28" tai "8:18-8:28") alkuajan minuuteiksi. */
+export function callingStartMinutes(calling: string): number {
+  const m = calling.match(/(\d{1,2}):(\d{2})/);
+  if (!m) return Number.MAX_SAFE_INTEGER;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+
 interface PdfGroup {
   date: string;
   sarja: SarjaKey;
@@ -172,8 +180,9 @@ export function matchYagCalling(
     g.rows.push(row);
   }
   for (const g of pdfGroups.values()) {
-    g.rows.sort((a, b) => a.calling.localeCompare(b.calling));
+    g.rows.sort((a, b) => callingStartMinutes(a.calling) - callingStartMinutes(b.calling));
   }
+
 
   // Esilaske entry-avaimet
   const indexed = entries.map((e) => {

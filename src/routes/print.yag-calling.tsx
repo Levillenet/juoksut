@@ -5,7 +5,7 @@ import { ArrowLeft, Download, Users } from "lucide-react";
 
 import { competitionIndexQueryOptions } from "@/lib/tuloslista-queries";
 import { useWatchedAthletes } from "@/lib/watch-store";
-import { matchYagCalling, formatHeatList } from "@/lib/yag-calling-match";
+import { matchYagCalling, formatHeatList, callingStartMinutes } from "@/lib/yag-calling-match";
 import { downloadYagCallingPdf } from "@/lib/yag-calling-pdf";
 import { YAG_COMPETITION_ID } from "@/data/yag-calling";
 import { Button } from "@/components/ui/button";
@@ -113,7 +113,7 @@ function YagCallingPage() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, rows]) => ({
         date,
-        rows: [...rows].sort((a, b) => a.row.calling.localeCompare(b.row.calling)),
+        rows: [...rows].sort((a, b) => callingStartMinutes(a.row.calling) - callingStartMinutes(b.row.calling)),
       }));
   }, [matches]);
 
