@@ -559,6 +559,7 @@ function ScoreRow({
   category,
   competitionId,
   eventName,
+  scrollMode,
 }: {
   row: RankedRow;
   displayRank: number;
@@ -567,14 +568,17 @@ function ScoreRow({
   category: string;
   competitionId: number;
   eventName: string;
+  scrollMode: boolean;
 }) {
   const vw = useViewportWidth();
   const narrow = vw < 900;
-  // Distribute height across rows; aim for big text but cap on small counts
-  const heightStyle = { flex: "1 1 0", minHeight: 0 };
+  // In scrollMode rows size to content; otherwise distribute the viewport height.
+  const heightStyle = scrollMode ? {} : { flex: "1 1 0", minHeight: 0 };
+  // Cap visual sizing at "10" buckets so scroll rows stay reasonable regardless of total count.
+  const sizeBucket = scrollMode ? 10 : count;
   const isLeader = displayRank === 1 && row.best;
   const rankNum = row.ResultRank ?? displayRank;
-  const stackName = !narrow && count <= 5;
+  const stackName = !narrow && sizeBucket <= 5;
   const { first, last } = splitName(row.Name ?? "");
 
   // Detect new PB / SB against captured baseline (falls back to API PB/SB,
