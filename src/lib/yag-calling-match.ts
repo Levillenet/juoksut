@@ -24,6 +24,32 @@ export interface YagCallingMatch {
   heatNumber: number | null;
   /** Vain julkaisemattomille: koko lajin kaikkien erien calling-tiedot. */
   allHeats?: YagCallingHeatInfo[];
+  /** Eränumerot joille ei löytynyt omaa calling-riviä; nämä entryt
+   *  on liitetty tämän rivin alle huomautuksella. */
+  overflowHeats?: number[];
+}
+
+/** Muotoilee erä-numerolistan luettavaksi: peräkkäiset → "5–11",
+ *  ei-peräkkäiset → "5, 7, 9". */
+export function formatHeatList(heats: number[]): string {
+  if (heats.length === 0) return "";
+  const s = [...heats].sort((a, b) => a - b);
+  const ranges: string[] = [];
+  let start = s[0];
+  let prev = s[0];
+  for (let i = 1; i <= s.length; i++) {
+    const cur = s[i];
+    if (cur === prev + 1) {
+      prev = cur;
+      continue;
+    }
+    ranges.push(start === prev ? `${start}` : `${start}–${prev}`);
+    if (cur != null) {
+      start = cur;
+      prev = cur;
+    }
+  }
+  return ranges.join(", ");
 }
 
 interface SarjaKey {
@@ -190,14 +216,61 @@ export function matchYagCalling(
     const published = groupEntries.filter((x) => x.entry.heatIndex > 0);
     const unpublished = groupEntries.filter((x) => x.entry.heatIndex === 0);
 
+    // Lajin viimeinen calling-erä; tätä isompien erien entryt ohjataan tänne
+    // overflow-huomautuksella.
+    const callingHeats = g.rows
+      .map((r) => parseHeat(r.laji))
+      .filter((h): h is number => h != null);
+    const maxCallingHeat = callingHeats.length
+      ? Math.max(...callingHeats)
+      : null;
+    const lastRow =
+      maxCallingHeat != null
+        ? g.rows.find((r) => parseHeat(r.laji) === maxCallingHeat)
+        : null;
+
+    const overflowByHeat = new Map<number, IndexedEntry[]>();
+    if (maxCallingHeat != null && lastRow) {
+      for (const x of published) {
+        if (x.entry.heatIndex > maxCallingHeat) {
+          const arr = overflowByHeat.get(x.entry.heatIndex) ?? [];
+          arr.push(x.entry);
+          overflowByHeat.set(x.entry.heatIndex, arr);
+        }
+      }
+    }
+
     // Julkaistut: jaa erän mukaan
     for (const row of g.rows) {
       const heat = parseHeat(row.laji);
       const matched = published
-        .filter((x) => heat == null || x.entry.heatIndex === heat)
+        .filter(
+          (x) =>
+            heat == null ||
+            (x.entry.heatIndex === heat &&
+              (maxCallingHeat == null || x.entry.heatIndex <= maxCallingHeat)),
+        )
         .map((x) => x.entry);
-      if (matched.length > 0) {
-        out.push({ row, entries: matched, heatNumber: heat });
+
+      // Liitä overflow-entryt viimeisen calling-rivin alle
+      const isLast = row === lastRow;
+      const overflowEntries = isLast
+        ? [...overflowByHeat.entries()]
+            .sort((a, b) => a[0] - b[0])
+            .flatMap(([, es]) => es)
+        : [];
+      const overflowHeats = isLast
+        ? [...overflowByHeat.keys()].sort((a, b) => a - b)
+        : [];
+
+      const allEntries = [...matched, ...overflowEntries];
+      if (allEntries.length > 0) {
+        out.push({
+          row,
+          entries: allEntries,
+          heatNumber: heat,
+          ...(overflowHeats.length ? { overflowHeats } : {}),
+        });
       }
     }
 
