@@ -5,7 +5,7 @@ import { ArrowLeft, Download, Users } from "lucide-react";
 
 import { competitionIndexQueryOptions } from "@/lib/tuloslista-queries";
 import { useWatchedAthletes } from "@/lib/watch-store";
-import { matchYagCalling } from "@/lib/yag-calling-match";
+import { matchYagCalling, formatHeatList } from "@/lib/yag-calling-match";
 import { downloadYagCallingPdf } from "@/lib/yag-calling-pdf";
 import { YAG_COMPETITION_ID } from "@/data/yag-calling";
 import { Button } from "@/components/ui/button";
@@ -402,6 +402,11 @@ function YagCallingPage() {
                             </li>
                           ))}
                         </ul>
+                        {m.overflowHeats && m.overflowHeats.length > 0 && (
+                          <div className="mt-1 text-[10px] italic text-amber-700 print:text-black">
+                            Huom: yllä mukana myös erät {formatHeatList(m.overflowHeats)} — calling-aikataulu puuttuu, selvitetään myöhemmin.
+                          </div>
+                        )}
                       </td>
                       <td className="py-2 pr-2 tabular-nums">
                         {isUnpublished ? (
