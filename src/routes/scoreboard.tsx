@@ -693,7 +693,62 @@ function ScoreRow({
   const attValSize = narrow ? narrowAttemptValueSize(sizeBucket) : attemptValueSize(sizeBucket);
   const attLabSize = attemptLabelSize(sizeBucket);
 
-  const attemptsList = (
+  const attemptsList = row.vertical ? (
+    <ol
+      className={`flex items-stretch gap-1 overflow-x-auto ${narrow ? "flex-1" : "h-full shrink"} ${
+        row.heights.length === 0 ? "opacity-50" : ""
+      }`}
+    >
+      {row.heights.length === 0 ? (
+        <li
+          className="flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-background px-2 text-muted-foreground/60"
+          style={{ minWidth: attMin }}
+        >
+          <span style={{ fontSize: attValSize }}>–</span>
+        </li>
+      ) : (
+        row.heights.map((h, i) => {
+          const isBest = row.bestIdx === i;
+          const allFouls = h.pattern === "xxx";
+          const cleared = h.cleared;
+          return (
+            <li
+              key={i}
+              className={`flex flex-col items-center justify-center rounded-md border ${
+                narrow ? "px-1 py-0.5" : "px-2"
+              } ${
+                isBest
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : allFouls
+                    ? "border-destructive/40 bg-destructive/10 text-destructive"
+                    : cleared
+                      ? "border-border bg-secondary"
+                      : "border-border bg-background text-muted-foreground"
+              }`}
+              style={{
+                minWidth: attMin,
+                width: narrow ? undefined : attMax,
+                flex: narrow ? "1 1 0" : undefined,
+              }}
+            >
+              <span
+                className="font-bold tabular-nums leading-none"
+                style={{ fontSize: attLabSize }}
+              >
+                {h.height}
+              </span>
+              <span
+                className="font-black uppercase tabular-nums leading-none tracking-widest"
+                style={{ fontSize: attValSize }}
+              >
+                {h.pattern || "–"}
+              </span>
+            </li>
+          );
+        })
+      )}
+    </ol>
+  ) : (
     <ol className={`flex shrink-0 items-stretch gap-1 ${narrow ? "flex-1" : "h-full"}`}>
       {row.attempts.map((att, i) => {
         const isBest = row.bestIdx === i && att != null;
