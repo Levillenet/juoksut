@@ -259,8 +259,16 @@ export function ClubTodaySection({
                     <ul className="divide-y divide-border rounded-lg border bg-background/50">
                       {g.rows.map((r, idx) => {
                         const pb = pbs[`${r.athlete_key}|${normalizeEventName(r.event_name)}`];
+                        const lowerBetter = r.event_category === "Track";
+                        const beatsPrev =
+                          pb != null &&
+                          r.result_numeric != null &&
+                          (lowerBetter
+                            ? r.result_numeric < pb.numeric
+                            : r.result_numeric > pb.numeric);
+                        const isPb = r.was_pb || beatsPrev;
                         const improvement =
-                          r.was_pb && pb
+                          isPb && pb
                             ? formatImprovement(r.event_category, r.result_text, pb.text)
                             : null;
                         return (
@@ -286,10 +294,10 @@ export function ClubTodaySection({
                                   : r.result_rank != null
                                     ? ` · sija ${r.result_rank}`
                                     : null}
-                                {pb && ` · PB ${pb.text}`}
+                                {pb && ` · ${isPb ? "ed. PB" : "PB"} ${pb.text}`}
                               </p>
                             </div>
-                            {r.was_pb && (
+                            {isPb && (
                               <span
                                 title="Henkilökohtainen ennätys"
                                 className="shrink-0 inline-flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary"
@@ -303,7 +311,7 @@ export function ClubTodaySection({
                             )}
                             <span
                               className={`shrink-0 text-base font-bold tabular-nums ${
-                                r.was_pb ? "text-primary" : ""
+                                isPb ? "text-primary" : ""
                               }`}
                             >
                               {r.result_text}
