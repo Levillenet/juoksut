@@ -368,7 +368,7 @@ function ScoreboardLive() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate({ search: { eventId: undefined, roundId: undefined, top } })}
+          onClick={() => navigate({ search: { eventId: undefined, roundId: undefined, top, heat: "all" } })}
           aria-label="Takaisin"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -379,7 +379,7 @@ function ScoreboardLive() {
           </h1>
           <p className="truncate text-xs text-muted-foreground">
             {round
-              ? `${round.Name} · ${formatTime(round.BeginDateTimeWithTZ)} · ${STATUS_LABEL[round.Status]}`
+              ? `${round.Name} · ${formatTime(round.BeginDateTimeWithTZ)} · ${STATUS_LABEL[round.Status]}${heat !== "all" ? ` · Erä ${heat}` : ""}`
               : ""}
           </p>
         </div>
