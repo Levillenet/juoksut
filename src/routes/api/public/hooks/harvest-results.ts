@@ -42,14 +42,41 @@ const FLOOR_ID = 16456;      // tuloslista API:n vanhin saatavilla oleva kisa (5
 // on a later run instead of skipping them.
 let rateLimited = false;
 
+interface RelayAthlete {
+  Id?: number;
+  Index?: number;
+  Firstname?: string;
+  Surname?: string;
+  Organization?: { Id?: number; Name?: string } | null;
+}
+
 interface Allocation {
+  Id?: number;
   Surname?: string;
   Firstname?: string;
   Organization?: { Id?: number; Name?: string } | null;
   Result?: string | null;
   ResultRank?: number | null;
   Wind?: number | null;
+  AthleteOrders?: { Index?: number; Athlete?: RelayAthlete }[];
+  Athletes?: RelayAthlete[];
 }
+
+type RelayLegRow = {
+  competition_id: number;
+  event_id: number;
+  team_alloc_id: number;
+  leg_index: number;
+  athlete_id: number | null;
+  firstname: string;
+  surname: string;
+  organization: string;
+  organization_id: number | null;
+  athlete_key: string;
+  team_athlete_key: string;
+  age_class: string;
+  event_name: string;
+};
 
 interface PropertiesShape {
   Competition?: {
