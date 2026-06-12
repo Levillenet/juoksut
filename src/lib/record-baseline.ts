@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { getHistoricalBest } from "@/lib/history-baseline";
+import { getHistoricalBest, getHistoricalSeasonBest } from "@/lib/history-baseline";
 import type { Allocation } from "@/lib/tuloslista";
 
 export interface Baseline {
@@ -121,8 +121,9 @@ export function effectiveRecord(
   if (!pb && history) {
     pb = getHistoricalBest(history.competitionId, history.athleteKey, history.eventName) ?? "";
   }
-  return {
-    pb,
-    sb: b?.sb || alloc.SB || "",
-  };
+  let sb = b?.sb || alloc.SB || "";
+  if (!sb && history) {
+    sb = getHistoricalSeasonBest(history.competitionId, history.athleteKey, history.eventName) ?? "";
+  }
+  return { pb, sb };
 }
