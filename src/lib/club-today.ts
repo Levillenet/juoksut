@@ -14,6 +14,7 @@ export interface ClubTodayRow {
   organization_id: number | null;
   competition_id: number;
   competition_name: string;
+  event_id: number;
   event_name: string;
   age_class: string;
   sub_category: string;
