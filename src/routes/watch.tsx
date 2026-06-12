@@ -774,7 +774,11 @@ function WatchPage() {
                                     </p>
                                     <div className="mt-1 flex justify-end">
                                       {(() => {
-                                        const eff = effectiveRecord(e.round.EventId, e.alloc);
+                                        const eff = effectiveRecord(e.round.EventId, e.alloc, {
+                                          competitionId,
+                                          athleteKey: athlete.key,
+                                          eventName: e.round.EventName,
+                                        });
                                         return (
                                           <RecordBadge
                                             category={e.round.Category}
