@@ -1,41 +1,74 @@
-## Miksi erä puuttui?
+## Tavoite
 
-`src/data/yag-calling.ts` on rakennettu järjestäjän alkuperäisestä calling-PDF:stä. Live-tuloslistaan on PDF:n teon jälkeen lisätty eriä, kun ilmoittautumiset/allokoinnit ovat valmistuneet. Tämän vuoksi joillain lajeilla erien lukumäärä jää datassa vanhentuneeksi (kuten aiemmin T13 200m: PDF 4 erää, live 11). UI:n logiikka itse on kunnossa — datassa on aukko.
+Kun calling-listan (PDF) erien määrä < tuloslistan erien määrä, ylimääräiset erät (esim. T13 erä 5–11) ohjataan automaattisesti viimeisen olemassa olevan calling-rivin (erä 4) alle, ja kyseiseen riviin lisätään huomautus "ylimääräinen erä, calling-aikataulu puuttuu — selvitetään myöhemmin".
 
-## Tarkistuksen tulos
+## Toteutus
 
-Vertailin koko kilpailun (id 19616) jokaisen radan tapahtuman live-erien määrää calling-datan rivimäärään. Suodatin pois ne lajit, joissa erät eivät vielä ole allokoituneet (live = 0), koska siellä ei voi tietää lopullista määrää.
+### 1) `src/data/yag-calling.ts` — perutaan käsin ekstrapoloidut rivit
 
-Allokoiduista, vielä korjaamattomista löytyi **kolme epäsuhtaa**:
+Poistetaan aiemmin lisätyt ekstrapoloidut erät, jotta fallback-logiikka aktivoituu niillekin:
 
-| Sarja + laji | Calling-rivejä nyt | Live-eriä | Puuttuu |
-|---|---|---|---|
-| T11 150m | 8 | 9 | erä 9 |
-| P11 150m | 5 | 6 | erä 6 |
-| P12 200m | 4 | 5 | erä 5 |
+- T13 200m erät 5–11 (8 riviä, lisättiin aiemmassa kierroksessa erän 4 jälkeen)
+- T11 150m erä 9
+- P11 150m erä 6
+- P12 200m erä 5
 
-Olemassa olevat erät noudattavat tarkasti +3 min askelta erien välillä, joten puuttuvat erät voidaan ekstrapoloida samalla kaavalla.
+### 2) `src/lib/yag-calling-match.ts` — overflow-fallback
 
-## Lisättävät rivit
+Lisätään `YagCallingMatch`-tyyppiin uusi kenttä:
 
-Lisätään `src/data/yag-calling.ts`-tiedostoon viimeisen olemassa olevan erän perään seuraavat rivit (kaikki `date: "2026-06-12"`, `paikka: "–"`):
-
-```
-T11 150m (erä 9):  calling 14:14–14:24, kentälle 14:26, alkaa 14:34
-P11 150m (erä 6):  calling 14:45–14:55, kentälle 14:57, alkaa 15:05
-P12 200m (erä 5):  calling 11:55–12:05, kentälle 12:07, alkaa 12:15
+```ts
+/** Eränumerot joille ei löydy omaa calling-riviä; nämä entryt
+ *  on sidottu tämän rivin alle huomautuksella. */
+overflowHeats?: number[];
 ```
 
-Aikataulut on jatkettu kunkin lajin omasta +3 min -kuviosta:
+Muutetaan `matchYagCalling`:n erä-jaettu haara seuraavasti:
 
-- T11 150m: erä 1 alkaa 13:58 → erä 8 alkaa 14:31 → erä 9 alkaa 14:34
-- P11 150m: erä 1 alkaa 14:50 → erä 5 alkaa 15:02 → erä 6 alkaa 15:05
-- P12 200m: erä 1 alkaa 12:00 → erä 4 alkaa 12:09. (Tämä on aika tiukka: live näyttää 5 erää, joten lisätään erä 5 alkaa 12:15. **Huom:** P12 200m -erien aikaleimat eivät ole täydellisen säännölliset olemassa olevassa datassa — calling-PDF:n alkuperäiset ajat ovat erilaisia. Käyttäisin tässä saatavilla olevaa best-effort -ekstrapolaatiota; jos sinulla on viralliset ajat erälle 5, kerro ne niin käytetään niitä.)
+- Lasketaan `maxCallingHeat = max(parseHeat(r.laji)) over g.rows`.
+- Julkaistut entryt joiden `heatIndex > maxCallingHeat` kerätään `overflowEntries`-listaan **erikseen** sen sijaan, että jätettäisiin pois.
+- Etsitään viimeisen erän calling-rivi (`g.rows.find(r => parseHeat(r.laji) === maxCallingHeat)`).
+- Liitetään overflowEntries sen rivin `entries`-listaan ja täytetään `overflowHeats` uniikeilla, järjestetyillä erä-numeroilla (esim. `[5, 6, 7, 8, 9, 10, 11]`).
+- Heat-numero pidetään ennallaan (= maxCallingHeat) — UI näyttää huomautuksen erikseen.
 
-## Lajit jotka eivät vielä ole allokoituneet
+Julkaisemattomien (heatIndex === 0) käsittely säilyy ennallaan.
 
-Edellä mainitut 3 ovat ainoat varmistettavissa olevat puutteet. Lopuilla allokointi on vielä kesken (live `Heats` -lista tyhjä), joten kentälle voi vielä ilmestyä lisää eriä myöhemmin. Niitä ei voi nyt korjata datassa; tarvittaessa katsotaan uudestaan kun allokointi on tehty.
+### 3) `src/routes/print.yag-calling.tsx` — näytetään huomautus
+
+Erä-sarakkeeseen ja/tai sarja/laji-soluun lisätään pieni huomio kun `m.overflowHeats?.length`:
+
+```tsx
+{m.overflowHeats && m.overflowHeats.length > 0 && (
+  <div className="mt-1 text-[10px] italic text-amber-700 print:text-black">
+    Huom: lisäksi erät {formatHeatList(m.overflowHeats)} — calling-aikataulu
+    puuttuu, selvitetään myöhemmin.
+  </div>
+)}
+```
+
+`formatHeatList([5,6,7,8,9,10,11])` → "5–11"; ei-peräkkäiset → "5, 7, 9".
+Sijoitetaan huomautus sarja/laji-solun (col 4) urheilijalistan alle, jotta se näkyy selvästi.
+
+### 4) `src/lib/yag-calling-pdf.ts` — sama huomautus PDF:ään
+
+`sarjaCell`-stringin loppuun lisätään uusi rivi kun overflow-eriä on:
+
+```ts
+const overflowNote =
+  m.overflowHeats && m.overflowHeats.length > 0
+    ? `\n[Huom: lisäksi erät ${formatHeatList(m.overflowHeats)} — calling-aikataulu puuttuu]`
+    : "";
+const sarjaCell = `${lajiTxt}\n${athletes}${overflowNote}`;
+```
+
+`formatHeatList`-helper viedään `yag-calling-match.ts`:stä (export) tai duplikoidaan kummassakin.
+
+## Vaikutus
+
+- T13 200m: julkaistuilla erillä 5–11 olevat urheilijat näkyvät erän 4 calling-rivin alla yhdessä erän 4 omien urheilijoiden kanssa. Rivissä lukee "Huom: lisäksi erät 5–11 — calling-aikataulu puuttuu, selvitetään myöhemmin."
+- T11/P11 150m ja P12 200m vastaavasti.
+- Ei muutoksia muuhun logiikkaan (julkaisematon = entinen `allHeats`-näkymä).
 
 ## Avoin kysymys
 
-Onko sinulla viralliset calling-ajat näille kolmelle puuttuvalle erälle, vai käytetäänkö ekstrapoloituja arvoja? Erityisesti P12 200m erä 5:n aika kannattaa varmistaa.
+Ei. Toteutetaan suoraan.
