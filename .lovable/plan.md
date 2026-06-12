@@ -1,36 +1,16 @@
-# Anna Matti Hannikaiselle pääsy kuuluttajanäkymään
+Fix the "Seuran urheilijat tänään muissa kisoissa" feature on the homepage so it does not show empty when the only competitions today are the one being followed.
 
-## Tilanne
+### Problem
+When a user follows a competition (e.g. YAG) and that is the only competition with results today, the `excludeCompetitionId` filter removes all clubs → the dropdown shows "Ei seuroja tänään" even though there are results in the database.
 
-`/announcer` on suojattu `RequireRole allow={["official"]}`:lla. Tällä hetkellä vain officiali-salasanalla kirjautuneet (tai admin `samiaavikko@gmail.com`) pääsevät sisään. Henkilökohtaisesti kirjautuneet käyttäjät saavat roolin `"user"` eivätkä pääse läpi.
+### Solution
+Modify `src/components/ClubTodaySection.tsx` so that when the excluded-clubs query returns empty for today, the component falls back to fetching clubs WITHOUT the exclusion and shows all results. The title changes from "muissa kisoissa" to just "Seuran urheilijat tänään" in this fallback mode.
 
-## Muutos
+### Changes
+1. Add `showingAll` state that activates when `clubsQuery` returns empty but there IS an `excludeCompetitionId` and it is today.
+2. Add a fallback `useQuery` that fetches all clubs (no exclusion) — enabled only when primary query is done and empty.
+3. Update `resultsQuery` to use the same fallback logic (pass `undefined` instead of `excludeCompetitionId` when `showingAll`).
+4. Update the section title to drop "muissa kisoissa" when `showingAll` is true.
+5. Update dropdown loading/empty states to account for the fallback query.
 
-`src/components/RequireRole.tsx`: lisää sähköpostiperusteinen allowlist kuuluttajakäyttäjille — sama mekanismi kuin admin-poikkeus, mutta listana. Jos käyttäjän sähköposti löytyy listasta JA route sallii `"official"`-roolin, päästetään läpi.
-
-```ts
-const ANNOUNCER_ALLOWLIST = new Set<string>([
-  "matti.hannikainen.84@gmail.com",
-]);
-
-const email = (user?.email ?? "").toLowerCase();
-const isAdmin = email === "samiaavikko@gmail.com";
-const isAnnouncerAllowed =
-  ANNOUNCER_ALLOWLIST.has(email) && allow.includes("official");
-
-if (!allow.includes(role) && !isAdmin && !isAnnouncerAllowed) {
-  return <Navigate to="/" />;
-}
-```
-
-Tämä antaa Matille pääsyn `/announcer`-aluettiin (joka käyttää `allow={["official"]}`). Muut suojatut näkymät, jotka eivät salli `"official"`-roolia, eivät vahingossa avaudu.
-
-## Mitä ei muuteta
-
-- Roolijärjestelmää (`Role`-tyyppi, `auth.tsx`) ei refaktoroida — pidetään muutos minimissä.
-- Muita route-tiedostoja ei kosketa.
-- Ei lisätä erillistä `user_roles`-taulua tähän — käytetty mekanismi on jo email-allowlist (admin-poikkeus), joten pysytään samassa kuviossa.
-
-## Verifiointi
-
-TypeScript-tarkistus. Matti kirjautuu Googlella → `/announcer` aukeaa.
+No backend changes needed — this is purely a frontend presentation fix.

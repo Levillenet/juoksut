@@ -65,9 +65,28 @@ export function ClubTodaySection({
     staleTime: 5 * 60_000,
   });
 
+  const primaryClubs = clubsQuery.data ?? [];
+  const shouldFallback =
+    clubsQuery.isSuccess &&
+    primaryClubs.length === 0 &&
+    isToday &&
+    excludeCompetitionId != null;
+
+  const fallbackClubsQuery = useQuery({
+    queryKey: ["club-today", "clubs", "all", dateYmd],
+    queryFn: () => fetchTodayClubs(undefined, selectedDate),
+    enabled: shouldFallback,
+    staleTime: 5 * 60_000,
+  });
+
+  const fallbackClubs = fallbackClubsQuery.data ?? [];
+  const showingAll = shouldFallback && fallbackClubs.length > 0;
+
+  const effectiveExcludeId = showingAll ? null : (excludeCompetitionId ?? null);
+
   const resultsQuery = useQuery({
-    queryKey: ["club-today", "results", orgId ?? 0, excludeCompetitionId ?? 0, dateYmd],
-    queryFn: () => fetchClubTodayResults(orgId!, excludeCompetitionId, selectedDate),
+    queryKey: ["club-today", "results", orgId ?? 0, effectiveExcludeId ?? 0, dateYmd],
+    queryFn: () => fetchClubTodayResults(orgId!, effectiveExcludeId, selectedDate),
     enabled: orgId != null,
     staleTime: 60_000,
   });
@@ -95,7 +114,10 @@ export function ClubTodaySection({
   });
   const pbs = pbsQuery.data ?? {};
 
-  const clubs = clubsQuery.data ?? [];
+  const clubs = showingAll ? fallbackClubs : primaryClubs;
+  const isLoadingClubs =
+    clubsQuery.isLoading || (shouldFallback && fallbackClubsQuery.isLoading);
+  const showExcludeLabel = excludeCompetitionId != null && !showingAll;
 
   // Group rows by competition, then sort athletes within each event-row.
   const grouped = useMemo(() => {
@@ -148,8 +170,8 @@ export function ClubTodaySection({
         <Building2 className="h-4 w-4 text-primary" />
         <h2 className="flex-1 text-sm font-bold">
           {isToday
-            ? `Seuran urheilijat tänään${excludeCompetitionId != null ? " muissa kisoissa" : ""}`
-            : `Seuran urheilijoiden suorituksia${excludeCompetitionId != null ? " muissa kisoissa" : ""}`}
+            ? `Seuran urheilijat tänään${showExcludeLabel ? " muissa kisoissa" : ""}`
+            : `Seuran urheilijoiden suorituksia${showExcludeLabel ? " muissa kisoissa" : ""}`}
         </h2>
         {open ? (
           <ChevronUp className="h-4 w-4" />
@@ -173,7 +195,7 @@ export function ClubTodaySection({
                 disabled={clubs.length === 0}
               >
                 <option value="">
-                  {clubsQuery.isLoading
+                  {isLoadingClubs
                     ? "Ladataan seuroja…"
                     : clubs.length === 0
                       ? (isToday ? "Ei seuroja tänään" : "Ei seuroja päivälle")
