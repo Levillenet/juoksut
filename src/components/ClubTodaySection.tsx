@@ -104,12 +104,13 @@ export function ClubTodaySection({
   const pbsQuery = useQuery({
     queryKey: [
       "club-today",
-      "pbs",
+      "previous-pbs",
       orgId ?? 0,
+      dateYmd,
       pbInputs.athletes.join(","),
       pbInputs.events.join(","),
     ],
-    queryFn: () => fetchClubPbs(pbInputs.athletes, pbInputs.events),
+    queryFn: () => fetchClubPreviousPbs(pbInputs.athletes, pbInputs.events, selectedDate),
     enabled: pbInputs.athletes.length > 0 && pbInputs.events.length > 0,
     staleTime: 5 * 60_000,
   });
