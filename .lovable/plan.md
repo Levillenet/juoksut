@@ -1,44 +1,17 @@
-## Ongelma
+## Tavoite
 
-Jaetussa seurantanäkymässä (`/seuraa/$token`) urheilijan tuloksen viereen ei tule PB-tähteä eikä parannustietoa.
+Kilpailun aikataulu -näkymässä (`/print`) jokaisen lajirivin pitää olla klikattavissa, niin että käyttäjä pääsee suoraan lajin erien ja tilanteen näkymään (`/round/$eventId/$roundId`).
 
-Syyt:
-1. `seuraa.$token.tsx` ei renderöi `<RecordBadge>`-komponenttia eikä kutsu `effectiveRecord`-funktiota.
-2. Vaikka kutsuttaisiin, nykyinen `loadHistoryBaselineForCompetition` lukee `athlete_results`-taulun suoraan, ja sen RLS sallii vain `authenticated`-roolin. Jakolinkin vastaanottaja on yleensä kirjautumaton, joten data ei tulisi näkyviin.
+## Korjaus — `src/routes/print.index.tsx`
 
-## Korjaus
-
-### 1. Tietokanta — uusi SECURITY DEFINER RPC
-
-Lisätään migraatio, joka luo funktion `public.get_shared_watch_history(p_token text)`. Se palauttaa jakolinkin urheilijoiden historian (rivit eri kisoista) muodossa, jonka `history-baseline` -logiikka osaa kuluttaa:
-
-- Palautuskolumnit: `athlete_key`, `event_name`, `event_category`, `sub_category`, `result_text`, `result_numeric`.
-- WHERE: token vastaa `watch_shares`-riviä, joka ei ole peruutettu; rivit poimitaan `athlete_results`-taulusta `watched_athletes`-taulun athlete_key-listan kautta (jakajan `user_id` haetaan watch_sharesista); rajataan pois nykyinen `competition_id` ja `result_numeric IS NOT NULL`.
-- GRANT EXECUTE `anon`, `authenticated`.
-
-### 2. `src/lib/history-baseline.ts`
-
-Lisätään uusi public-funktio `loadHistoryBaselineForSharedWatch(token, competitionId)`, joka:
-- käyttää samaa muistivälimuistia (`cache`) avaimena `competitionId`,
-- kutsuu uutta RPC:tä `get_shared_watch_history` ja muuntaa rivit samaan `HistoricalBest`-mapiin kuin nykyinen `loadHistoryBaselineForCompetition`,
-- jakaa apurifunktion (esim. `buildBaselineMap(rows, competitionId)`) joka rakentaa kartan ja tallettaa cacheen.
-
-### 3. `src/routes/seuraa.$token.tsx`
-
-- Importoidaan `RecordBadge` (`@/lib/records`), `effectiveRecord` (`@/lib/record-baseline`) ja uusi `loadHistoryBaselineForSharedWatch`.
-- `useEffect`, joka kutsuu `loadHistoryBaselineForSharedWatch(token, competitionId)` kun `token` ja `competitionId` ovat olemassa.
-- Renderöinnissä (rivit 251–260, kun `e.alloc.Result` on olemassa) lisätään `RecordBadge` samalla tavalla kuin `watch.tsx`:ssä:
-  ```
-  const eff = effectiveRecord(e.round.EventId, e.alloc, {
-    competitionId,
-    athleteKey: athlete.key,
-    eventName: e.round.EventName,
-  });
-  <RecordBadge category={e.round.Category} result={e.alloc.Result} pb={eff.pb} sb={eff.sb} size="sm" layout="row" />
-  ```
+1. Lisätään `Link`-import on jo olemassa.
+2. Taulun rivin (`<tr>` rivit 184–195) sisältö kääritään `Link`-komponenttiin reitille `/round/$eventId/$roundId`, parametreina `eventId: String(r.EventId)` ja `roundId: String(r.Id)`. Linkki näytetään vain ruudulla (`print:hidden` ei sovi koko riville koska teksti pitää näkyä — käytetään sen sijaan tyylimuokkausta niin että print-tilassa linkki näyttää tavalliselta tekstiltä).
+   - Käytännössä koko `<tr>`:n sisältö wrapataan `<Link className="block ...">`-komponenttiin solujen sisällä, tai (siistimpi) muutetaan markup niin että aika+laji sisältö on `<td colSpan=2>`:n sisällä yksi `<Link>`, jolloin koko rivi tulee klikattavaksi.
+3. Lisätään visuaalinen vihje, että rivi on klikattava (esim. `hover:bg-secondary cursor-pointer`-tyyli ruudulla, ei tulosteessa).
+4. Print-tila pidetään ennallaan: `print:hover:bg-transparent` ja `print:no-underline`, jotta tulostus näyttää samalta.
 
 ## Tekninen huomio
 
-- RPC on SECURITY DEFINER + `search_path = public`, sallii lukemisen vain pätevän tokenin kautta — ei laajenna anonyymin pääsyä `athlete_results`-tauluun muuten.
-- Cache-avain on `competitionId`, joten jaetun ja oman näkymän baselinet eivät risteä, koska share-näkymässä competitionId on jakolinkin oma kisa.
-- Ei muutoksia `watch.tsx`:ään, ei muiden näkymien logiikkaan.
+- `Round`-tyypissä on jo `Id` ja `EventId`, joten muita kyselyitä ei tarvita.
+- `/round/$eventId/$roundId` on julkinen reitti, sopii kaikille käyttäjille.
+- Ei muutoksia muihin tiedostoihin eikä tietokantaan.
