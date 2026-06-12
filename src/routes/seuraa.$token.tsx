@@ -96,6 +96,12 @@ function SharedWatchPage() {
     });
   }, [index, athletes]);
 
+  useEffect(() => {
+    if (token && competitionId) {
+      void loadHistoryBaselineForSharedWatch(token, competitionId);
+    }
+  }, [token, competitionId]);
+
   const reload = () => {
     if (competitionId != null) {
       queryClient.invalidateQueries({ queryKey: competitionIndexKey(competitionId) });
