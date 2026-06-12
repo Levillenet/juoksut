@@ -19,6 +19,7 @@ import { useCompetitionId } from "@/lib/competition-store";
 import { useWatchedAthletes, athleteKey, type WatchedAthlete } from "@/lib/watch-store";
 import { RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
+import { loadHistoryBaselineForCompetition } from "@/lib/history-baseline";
 import {
   competitionIndexQueryOptions,
   competitionIndexKey,
