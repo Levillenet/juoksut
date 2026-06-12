@@ -170,8 +170,8 @@ export function ClubTodaySection({
         <Building2 className="h-4 w-4 text-primary" />
         <h2 className="flex-1 text-sm font-bold">
           {isToday
-            ? `Seuran urheilijat tänään${excludeCompetitionId != null ? " muissa kisoissa" : ""}`
-            : `Seuran urheilijoiden suorituksia${excludeCompetitionId != null ? " muissa kisoissa" : ""}`}
+            ? `Seuran urheilijat tänään${showExcludeLabel ? " muissa kisoissa" : ""}`
+            : `Seuran urheilijoiden suorituksia${showExcludeLabel ? " muissa kisoissa" : ""}`}
         </h2>
         {open ? (
           <ChevronUp className="h-4 w-4" />
