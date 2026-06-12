@@ -883,12 +883,14 @@ function ShareWatchButton({ competitionId }: { competitionId: number }) {
     <Popover open={open} onOpenChange={handleOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="ghost"
-          size="icon"
+          size="sm"
           aria-label="Jaa seuranta"
           title="Jaa seuranta"
+          className="gap-1.5"
         >
-          <Share2 className="h-5 w-5" />
+          <Share2 className="h-4 w-4" />
+          <span className="hidden sm:inline">Jaa seuranta</span>
+          <span className="sm:hidden">Jaa</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80">
