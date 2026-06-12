@@ -6,15 +6,15 @@ export function InProgressSection({
   data,
   layout = "grid",
   columns,
-  limit = "all",
+  limit = 10,
   defaultOpen = false,
 }: {
   data: AnnouncerData;
   layout?: "grid" | "wide";
   /** Override column count. Defaults: wide=1, grid=2. */
   columns?: 1 | 2 | 3;
-  /** Max ranked rows per event card; "all" = show all when open. */
-  limit?: 5 | 10 | "all";
+  /** Max ranked rows per event card. */
+  limit?: 5 | 10;
   /** When true, all event cards are expanded by default. */
   defaultOpen?: boolean;
 }) {
