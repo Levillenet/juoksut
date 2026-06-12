@@ -40,7 +40,7 @@ export function getResultVisualState(alloc: Allocation): ResultVisualState | nul
   if (!result && !attemptResult) return null;
 
   return {
-    signature: `result:${result ?? ""}|rank:${alloc.ResultRank ?? ""}|${attemptSignature ?? ""}`,
+    signature: `result:${result ?? ""}|${attemptSignature ?? ""}`,
     result,
     attemptSignature,
     attemptResult,
