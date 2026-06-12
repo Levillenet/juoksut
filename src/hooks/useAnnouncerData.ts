@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 import { detectRecord } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
-import { loadHistoryBaselineForCompetition } from "@/lib/history-baseline";
+import { useHistoryBaseline } from "@/lib/history-baseline";
 import { athleteKey } from "@/lib/athlete-key";
 import { helsinkiDateKey, type Round, type EventResults } from "@/lib/tuloslista";
 import {
@@ -66,10 +66,7 @@ export function useAnnouncerData() {
     return () => clearInterval(t);
   }, []);
 
-  useEffect(() => {
-    if (!competitionId) return;
-    void loadHistoryBaselineForCompetition(competitionId);
-  }, [competitionId]);
+  useHistoryBaseline(competitionId);
 
   const todayKey = helsinkiDateKey((now ?? new Date()).toISOString());
   const todayRounds = useMemo<Round[]>(() => {

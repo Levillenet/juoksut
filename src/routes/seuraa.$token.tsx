@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Trophy } from "lucide-react";
 
@@ -19,7 +19,7 @@ import {
 import { loadSharedWatch, type SharedWatchAthlete } from "@/lib/watch-share";
 import { RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
-import { loadHistoryBaselineForSharedWatch } from "@/lib/history-baseline";
+import { useSharedHistoryBaseline } from "@/lib/history-baseline";
 import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/seuraa/$token")({
@@ -96,11 +96,7 @@ function SharedWatchPage() {
     });
   }, [index, athletes]);
 
-  useEffect(() => {
-    if (token && competitionId) {
-      void loadHistoryBaselineForSharedWatch(token, competitionId);
-    }
-  }, [token, competitionId]);
+  useSharedHistoryBaseline(token, competitionId ?? null);
 
   const reload = () => {
     if (competitionId != null) {

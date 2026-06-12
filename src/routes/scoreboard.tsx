@@ -25,7 +25,7 @@ import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 import { RequireRole } from "@/components/RequireRole";
 import { effectiveRecord } from "@/lib/record-baseline";
-import { loadHistoryBaselineForCompetition } from "@/lib/history-baseline";
+import { useHistoryBaseline } from "@/lib/history-baseline";
 import { athleteKey } from "@/lib/athlete-key";
 import { detectRecord, RecordStar } from "@/lib/records";
 import { WakeLockToggle } from "@/components/WakeLockToggle";
@@ -254,10 +254,7 @@ function ScoreboardLive() {
   const detailQ = useQuery(eventDetailsQueryOptions(competitionId, eventId!));
   const ev = detailQ.data ?? null;
 
-  useEffect(() => {
-    if (!competitionId) return;
-    void loadHistoryBaselineForCompetition(competitionId);
-  }, [competitionId]);
+  const { dataUpdatedAt: baselineUpdatedAt } = useHistoryBaseline(competitionId);
 
   const round = useMemo(
     () => ev?.Rounds.find((r) => r.Id === roundId) ?? ev?.Rounds[0],

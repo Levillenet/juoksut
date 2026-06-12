@@ -19,7 +19,7 @@ import { useCompetitionId } from "@/lib/competition-store";
 import { useWatchedAthletes, athleteKey, type WatchedAthlete } from "@/lib/watch-store";
 import { RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
-import { loadHistoryBaselineForCompetition } from "@/lib/history-baseline";
+import { useHistoryBaseline } from "@/lib/history-baseline";
 import {
   competitionIndexQueryOptions,
   competitionIndexKey,
@@ -75,9 +75,7 @@ function WatchPage() {
     if (indexQuery.data) hasIndexData.current = true;
   }, [indexQuery.data]);
 
-  useEffect(() => {
-    if (competitionId) void loadHistoryBaselineForCompetition(competitionId);
-  }, [competitionId]);
+  useHistoryBaseline(competitionId);
 
   const index: IndexedEntry[] | null = indexQuery.data?.entries ?? null;
   const name = indexQuery.data?.name ?? "";
