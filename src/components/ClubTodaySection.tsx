@@ -114,7 +114,10 @@ export function ClubTodaySection({
   });
   const pbs = pbsQuery.data ?? {};
 
-  const clubs = clubsQuery.data ?? [];
+  const clubs = showingAll ? fallbackClubs : primaryClubs;
+  const isLoadingClubs =
+    clubsQuery.isLoading || (shouldFallback && fallbackClubsQuery.isLoading);
+  const showExcludeLabel = excludeCompetitionId != null && !showingAll;
 
   // Group rows by competition, then sort athletes within each event-row.
   const grouped = useMemo(() => {
