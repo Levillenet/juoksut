@@ -16,6 +16,7 @@ import {
   formatTime,
   helsinkiDateKey,
   isRunningEvent,
+  isVerticalJump,
   STATUS_LABEL,
   type Allocation,
   type Round,
@@ -232,8 +233,16 @@ function ScoreboardPicker() {
 
 /* ---------------- Live scoreboard ---------------- */
 
+interface VerticalHeight {
+  height: string;
+  pattern: string;
+  cleared: boolean;
+}
+
 interface RankedRow extends Allocation {
   attempts: (string | null)[];
+  heights: VerticalHeight[];
+  vertical: boolean;
   best: string | null;
   bestIdx: number | null;
 }
@@ -264,9 +273,40 @@ function ScoreboardLive() {
 
   const rows = useMemo<RankedRow[]>(() => {
     if (!round) return [];
+    const vertical = isVerticalJump(ev);
     const allocs = visibleHeats.flatMap((h) => h.Allocations);
     const enriched: RankedRow[] = allocs.map((a) => {
       const raw = a.Attempts ?? [];
+
+      if (vertical) {
+        const heights: VerticalHeight[] = raw
+          .map((att) => {
+            const h = (att?.Line1 ?? "").trim();
+            const pattern = (att?.Line2 ?? "").trim().toLowerCase();
+            return { height: h, pattern, cleared: pattern.endsWith("o") };
+          })
+          .filter((x) => x.height);
+
+        let best: string | null = a.Result ?? null;
+        let bestIdx: number | null = null;
+        let bestNum = -Infinity;
+        heights.forEach((x, i) => {
+          if (!x.cleared) return;
+          const n = parseFloat(x.height.replace(",", "."));
+          if (Number.isFinite(n) && n > bestNum) {
+            bestNum = n;
+            bestIdx = i;
+            if (!a.Result) best = x.height;
+          }
+          // Still capture index of the best even if Result is explicit
+          if (a.Result) {
+            const r = parseFloat(a.Result.replace(",", "."));
+            if (Number.isFinite(r) && Math.abs(r - n) < 0.0001) bestIdx = i;
+          }
+        });
+        return { ...a, attempts: [], heights, vertical: true, best, bestIdx };
+      }
+
       const attempts: (string | null)[] = Array.from({ length: 6 }, (_, i) => {
         const v = raw[i]?.Line1;
         return v && v.trim() ? v.trim() : null;
@@ -287,7 +327,7 @@ function ScoreboardLive() {
           best = attempts[i];
         }
       });
-      return { ...a, attempts, best, bestIdx };
+      return { ...a, attempts, heights: [], vertical: false, best, bestIdx };
     });
     // Sort by ResultRank if known, otherwise by best numeric desc, fouls last
     return enriched.sort((a, b) => {
@@ -300,7 +340,7 @@ function ScoreboardLive() {
       const bv = Number.isFinite(bn) ? bn : -Infinity;
       return bv - av;
     });
-  }, [round, visibleHeats]);
+  }, [round, ev, visibleHeats]);
 
   const visible = top === "all" ? rows : rows.slice(0, top);
   const scrollMode = top === "all";
@@ -653,7 +693,62 @@ function ScoreRow({
   const attValSize = narrow ? narrowAttemptValueSize(sizeBucket) : attemptValueSize(sizeBucket);
   const attLabSize = attemptLabelSize(sizeBucket);
 
-  const attemptsList = (
+  const attemptsList = row.vertical ? (
+    <ol
+      className={`flex items-stretch gap-1 overflow-x-auto ${narrow ? "flex-1" : "h-full shrink"} ${
+        row.heights.length === 0 ? "opacity-50" : ""
+      }`}
+    >
+      {row.heights.length === 0 ? (
+        <li
+          className="flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-background px-2 text-muted-foreground/60"
+          style={{ minWidth: attMin }}
+        >
+          <span style={{ fontSize: attValSize }}>–</span>
+        </li>
+      ) : (
+        row.heights.map((h, i) => {
+          const isBest = row.bestIdx === i;
+          const allFouls = h.pattern === "xxx";
+          const cleared = h.cleared;
+          return (
+            <li
+              key={i}
+              className={`flex flex-col items-center justify-center rounded-md border ${
+                narrow ? "px-1 py-0.5" : "px-2"
+              } ${
+                isBest
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : allFouls
+                    ? "border-destructive/40 bg-destructive/10 text-destructive"
+                    : cleared
+                      ? "border-border bg-secondary"
+                      : "border-border bg-background text-muted-foreground"
+              }`}
+              style={{
+                minWidth: attMin,
+                width: narrow ? undefined : attMax,
+                flex: narrow ? "1 1 0" : undefined,
+              }}
+            >
+              <span
+                className="font-bold tabular-nums leading-none"
+                style={{ fontSize: attLabSize }}
+              >
+                {h.height}
+              </span>
+              <span
+                className="font-black uppercase tabular-nums leading-none tracking-widest"
+                style={{ fontSize: attValSize }}
+              >
+                {h.pattern || "–"}
+              </span>
+            </li>
+          );
+        })
+      )}
+    </ol>
+  ) : (
     <ol className={`flex shrink-0 items-stretch gap-1 ${narrow ? "flex-1" : "h-full"}`}>
       {row.attempts.map((att, i) => {
         const isBest = row.bestIdx === i && att != null;

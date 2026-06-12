@@ -58,7 +58,7 @@ export interface Allocation {
   HeatRank: number | null;
   Wind: number | null;
   Organization: { Name: string; NameShort: string; Id: number };
-  Attempts?: { Line1: string | null }[];
+  Attempts?: { Line1: string | null; Line2?: string | null }[];
 }
 
 export interface Heat {
@@ -139,6 +139,18 @@ export function parseCompetitionId(input: string): number | null {
 /** Filter only running events (Track category). */
 export function isRunningEvent(r: Pick<Round, "Category">): boolean {
   return r.Category === "Track";
+}
+
+/** True for high jump and pole vault (data has one Attempts entry per height). */
+export function isVerticalJump(
+  ev: { EventSubCategory?: string | null } | { SubCategory?: string | null } | null | undefined,
+): boolean {
+  if (!ev) return false;
+  const sub =
+    (ev as { EventSubCategory?: string | null }).EventSubCategory ??
+    (ev as { SubCategory?: string | null }).SubCategory ??
+    "";
+  return sub === "VerticalJump" || sub === "HighJump" || sub === "PoleVault";
 }
 
 const HELSINKI_TIME = new Intl.DateTimeFormat("fi-FI", {
