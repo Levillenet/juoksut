@@ -158,6 +158,7 @@ type Row = {
 async function processCompetition(
   id: number,
   pending: Row[],
+  pendingLegs: RelayLegRow[],
 ): Promise<{ existed: boolean; rowsAdded: number; competitionDate: string | null }> {
   const props = await fetchJson<PropertiesShape>(
     `${API}/competition/${id}/properties`,
