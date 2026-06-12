@@ -5,7 +5,7 @@ import { trackEvent } from "@/lib/analytics";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Wind } from "lucide-react";
 
-import { formatTime, STATUS_LABEL, type Heat } from "@/lib/tuloslista";
+import { formatRelayLegs, formatTime, STATUS_LABEL, type Heat } from "@/lib/tuloslista";
 import { RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
 import {
