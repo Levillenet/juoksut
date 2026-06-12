@@ -1,8 +1,8 @@
-// Lookup for an athlete's historical best (across all age classes) for a
-// given normalized event. Used by the live announcer/scoreboard so that a
-// new result is only flagged as PB if it actually beats the athlete's
-// historical best — even when the source tuloslista has no PB/SB row
-// (common for juniors).
+// Lookup for an athlete's historical best (across all age classes) and
+// current-season best for a given normalized event. Used by the live
+// announcer/scoreboard so that a new result is only flagged as PB/SB if it
+// actually beats the athlete's historical best — even when the source
+// tuloslista has no PB/SB row (common for juniors).
 
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -15,9 +15,14 @@ interface HistoricalBest {
   resultNumeric: number;
 }
 
-// competitionId -> (`${athleteKey}|${normalizedEvent}` -> best)
-const cache = new Map<number, Map<string, HistoricalBest>>();
-const inflight = new Map<number, Promise<Map<string, HistoricalBest>>>();
+interface BaselineEntry {
+  pb: HistoricalBest | null;
+  sb: HistoricalBest | null;
+}
+
+// competitionId -> (`${athleteKey}|${normalizedEvent}` -> entry)
+const cache = new Map<number, Map<string, BaselineEntry>>();
+const inflight = new Map<number, Promise<Map<string, BaselineEntry>>>();
 
 function lookupKey(athleteKey: string, normalizedEvent: string): string {
   return `${athleteKey}|${normalizedEvent.toLowerCase()}`;
@@ -33,6 +38,18 @@ interface Row {
   sub_category: string;
   result_text: string;
   result_numeric: number | null;
+  competition_date: string | null;
+}
+
+/** Current season = calendar year of "now". Best effort fallback for SB. */
+function currentSeasonYear(): number {
+  return new Date().getFullYear();
+}
+
+function isInCurrentSeason(date: string | null, seasonYear: number): boolean {
+  if (!date) return false;
+  const y = Number(date.slice(0, 4));
+  return Number.isFinite(y) && y === seasonYear;
 }
 
 async function fetchKeysForCompetition(competitionId: number): Promise<string[]> {
@@ -69,7 +86,7 @@ async function fetchHistoryForKeys(
       const { data, error } = await supabase
         .from("athlete_results")
         .select(
-          "athlete_key, event_name, event_category, sub_category, result_text, result_numeric",
+          "athlete_key, event_name, event_category, sub_category, result_text, result_numeric, competition_date",
         )
         .in("athlete_key", chunk)
         .neq("competition_id", excludeCompetitionId)
@@ -86,10 +103,42 @@ async function fetchHistoryForKeys(
   return out;
 }
 
+function buildBaselineMap(rows: Row[]): Map<string, BaselineEntry> {
+  const map = new Map<string, BaselineEntry>();
+  const seasonYear = currentSeasonYear();
+  for (const r of rows) {
+    if (r.result_numeric == null) continue;
+    const norm = normalizeEventName(r.event_name);
+    if (!norm) continue;
+    const lower = isLowerBetter(r.event_category, r.sub_category);
+    const k = lookupKey(r.athlete_key, norm);
+    let entry = map.get(k);
+    if (!entry) {
+      entry = { pb: null, sb: null };
+      map.set(k, entry);
+    }
+    const candidate: HistoricalBest = {
+      resultText: r.result_text,
+      resultNumeric: r.result_numeric,
+    };
+    const better = (a: number, b: number) => (lower ? a < b : a > b);
+    if (!entry.pb || better(candidate.resultNumeric, entry.pb.resultNumeric)) {
+      entry.pb = candidate;
+    }
+    if (
+      isInCurrentSeason(r.competition_date, seasonYear) &&
+      (!entry.sb || better(candidate.resultNumeric, entry.sb.resultNumeric))
+    ) {
+      entry.sb = candidate;
+    }
+  }
+  return map;
+}
+
 /** Load (or return cached) historical-best lookup for a competition. */
 export async function loadHistoryBaselineForCompetition(
   competitionId: number,
-): Promise<Map<string, HistoricalBest>> {
+): Promise<Map<string, BaselineEntry>> {
   if (!competitionId) return new Map();
   const cached = cache.get(competitionId);
   if (cached) return cached;
@@ -100,30 +149,11 @@ export async function loadHistoryBaselineForCompetition(
     try {
       const keys = await fetchKeysForCompetition(competitionId);
       const rows = await fetchHistoryForKeys(keys, competitionId);
-      const map = new Map<string, HistoricalBest>();
-      for (const r of rows) {
-        if (r.result_numeric == null) continue;
-        const norm = normalizeEventName(r.event_name);
-        if (!norm) continue;
-        const lower = isLowerBetter(r.event_category, r.sub_category);
-        const k = lookupKey(r.athlete_key, norm);
-        const cur = map.get(k);
-        if (
-          !cur ||
-          (lower
-            ? r.result_numeric < cur.resultNumeric
-            : r.result_numeric > cur.resultNumeric)
-        ) {
-          map.set(k, {
-            resultText: r.result_text,
-            resultNumeric: r.result_numeric,
-          });
-        }
-      }
+      const map = buildBaselineMap(rows);
       cache.set(competitionId, map);
       return map;
     } catch {
-      const empty = new Map<string, HistoricalBest>();
+      const empty = new Map<string, BaselineEntry>();
       cache.set(competitionId, empty);
       return empty;
     } finally {
@@ -134,36 +164,12 @@ export async function loadHistoryBaselineForCompetition(
   return p;
 }
 
-function buildBaselineMap(rows: Row[]): Map<string, HistoricalBest> {
-  const map = new Map<string, HistoricalBest>();
-  for (const r of rows) {
-    if (r.result_numeric == null) continue;
-    const norm = normalizeEventName(r.event_name);
-    if (!norm) continue;
-    const lower = isLowerBetter(r.event_category, r.sub_category);
-    const k = lookupKey(r.athlete_key, norm);
-    const cur = map.get(k);
-    if (
-      !cur ||
-      (lower
-        ? r.result_numeric < cur.resultNumeric
-        : r.result_numeric > cur.resultNumeric)
-    ) {
-      map.set(k, {
-        resultText: r.result_text,
-        resultNumeric: r.result_numeric,
-      });
-    }
-  }
-  return map;
-}
-
 /** Load (or return cached) historical-best lookup for a shared watch token.
  * Uses an anon-callable RPC so unauthenticated visitors can also see PB stars. */
 export async function loadHistoryBaselineForSharedWatch(
   token: string,
   competitionId: number,
-): Promise<Map<string, HistoricalBest>> {
+): Promise<Map<string, BaselineEntry>> {
   if (!competitionId || !token) return new Map();
   const cached = cache.get(competitionId);
   if (cached) return cached;
@@ -182,7 +188,7 @@ export async function loadHistoryBaselineForSharedWatch(
       cache.set(competitionId, map);
       return map;
     } catch {
-      const empty = new Map<string, HistoricalBest>();
+      const empty = new Map<string, BaselineEntry>();
       cache.set(competitionId, empty);
       return empty;
     } finally {
@@ -205,5 +211,18 @@ export function getHistoricalBest(
   if (!map) return null;
   const norm = normalizeEventName(eventName);
   if (!norm) return null;
-  return map.get(lookupKey(athleteKey, norm))?.resultText ?? null;
+  return map.get(lookupKey(athleteKey, norm))?.pb?.resultText ?? null;
+}
+
+/** Synchronous lookup for the athlete's season best (current calendar year). */
+export function getHistoricalSeasonBest(
+  competitionId: number,
+  athleteKey: string,
+  eventName: string,
+): string | null {
+  const map = cache.get(competitionId);
+  if (!map) return null;
+  const norm = normalizeEventName(eventName);
+  if (!norm) return null;
+  return map.get(lookupKey(athleteKey, norm))?.sb?.resultText ?? null;
 }
