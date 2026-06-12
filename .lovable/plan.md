@@ -1,52 +1,44 @@
-## Korkeushypyn yritysnäkymä suorituspaikan livenäyttöön
+## Ongelma
 
-### Ongelma
-`/scoreboard`-näkymä renderöi kentälajien yritykset yleisellä logiikalla: kuusi numeroitua yrityspaikkaa (1./2./3./4./5./6.), joihin sijoitetaan `Attempts[i].Line1` arvona. Tämä toimii vaakahypyissä ja heitoissa, mutta korkeushypyssä (ja seiväshypyssä) data on rakennettu täysin toisin:
+Siiri Aavikko / T11 Korkeus -tapauksessa season best on tallennettu `athlete_results`-tauluun (Reilu Cup 2, 28.5.2026, 128). Urheilijakortti löytää sen, mutta suorituspaikan livenäytön rivillä SB ei näy.
 
-- Tuloslistan API palauttaa `Attempts`-taulukon **yksi alkio per korkeus**, johon hyppääjä on osallistunut.
-- `Line1` = korkeus (esim. `"85"`, `"95"`, `"100"`)
-- `Line2` = yrityskuvio kyseiselle korkeudelle: `"o"` (puhdas), `"xo"` (epäonnistui kerran, ylitti), `"xxo"` (kaksi epäonnistui, kolmas onnistui), `"xxx"` (hylätty kyseiseltä korkeudelta), `"-"` (väliin)
+Tausta: lisäsin äsken `effectiveRecord`-funktioon SB-fallbackin, joka hakee arvon `history-baseline`-välimuistista. Välimuisti ladataan `loadHistoryBaselineForCompetition`-kutsulla, joka on **fire-and-forget**: kun lataus valmistuu, mikään React-komponentti ei tiedä siitä eikä renderöi uudelleen. Lopputulos:
 
-Nykyinen scoreboard näyttää korkeushypyssä siis vain ylittyneitä korkeuksia (numeroita) ilman yritystietoa, ja parhaaksi-logiikka valitsee suurimman luvun — toimii oikein lopullisena tuloksena, mutta menettää kokonaan O/X-yritystiedot, jotka kuuluttaja ja yleisö tarvitsevat livenä.
+- Jos suorituspaikan datan kysely (`detailQ`) ehtii valmiiksi ennen baselinea (yleinen tapaus, koska tuloslista on nopeampi kuin koko kilpailun historian haku), `effectiveRecord` lukee tyhjän välimuistin → SB jää näkymättä.
+- 15 sekunnin välein tapahtuva `detailQ`-päivitys laukaisee uuden renderin, jolloin SB tulee näkyviin — mutta vain jos baseline on siihen mennessä valmis. Käytännössä asiakaskertomus näyttää SB:n vain "joskus" eikä luotettavasti.
 
-### Tavoite
-Korkeushyppykilpailussa scoreboardin yritysrivi näyttää **korkeuskohtaiset yritykset O/X-merkein** samaan tapaan kuin tuloslista.com:n livenäkymä:
+Sama ongelma koskee `watch.tsx`, `seuraa.$token.tsx`, `useAnnouncerData.ts` ja kaikkia paikkoja, jotka kutsuvat `effectiveRecord`-funktiota historian kanssa.
 
-```
-| 85    | 95    | 100   | 105   | 110   |
-|  o    |  xo   |  o    |  xxo  |  xxx  |
-```
+## Korjaus
 
-### Muutokset
+Tehdään `loadHistoryBaseline*`-koukut React-tietoisiksi niin, että baselinen latautuminen aiheuttaa uudelleenrenderin niissä komponenteissa, jotka käyttävät sitä.
 
-**1. `src/lib/tuloslista.ts` — tyyppi**
-- Lisätään `Line2?: string | null` `Allocation.Attempts`-tyyppiin (säilytetään valinnaisena, jotta vanhat call-sitet eivät rikkoonnu).
-- Lisätään apuri `isVerticalJump(ev: { EventSubCategory?: string } | { SubCategory?: string }): boolean`, joka palauttaa `true` kun arvo on `"VerticalJump"`, `"HighJump"` tai `"PoleVault"`.
+### 1. `src/lib/history-baseline.ts`
 
-**2. `src/routes/scoreboard.tsx` — pystyhypyn erikoisrendaus**
-- `RankedRow` saa uudet kentät: `heights: { height: string; pattern: string }[]` ja `cleared: string | null` (paras puhtaasti ylitetty korkeus).
-- `rows`-memo täytetään kahdella haaralla:
-  - **Vaakahypyt / heitot** — nykyinen 6-paikkainen logiikka säilyy ennallaan.
-  - **Pystyhypyt** (`isVerticalJump(ev)` = true):
-    - `heights` = `Attempts.map(a => ({ height: a.Line1 ?? "", pattern: (a.Line2 ?? "").toLowerCase() }))`
-    - `best` = `Result` jos asetettu; muuten suurin numeerinen `Line1`, jonka `pattern` päättyy `"o"`.
-    - `bestIdx` osoittaa parhaan korkeuden indeksiin (visuaalista korostusta varten).
-- `ScoreRow`:n yritysrivi (`attemptsList`) saa pystyhypyille uuden version:
-  - Jokainen sarake näyttää kaksi riviä: ylhäällä korkeus (Line1), alhaalla yrityskuvio (Line2) suuremmilla `O/X` -kirjaimilla.
-  - Värikoodaus: `o` (ja jäljellä `o` lopussa) = vihreä/primary, `xxx` = destructive, muut = neutraali.
-  - Korkeuksien määrä vaihtelee 0…N; renderöidään `flex`-pohjalla ja jos sarakkeita on >6, hyödynnetään horisontaalista skrollausta (`overflow-x-auto`) jotta livenäyttö ei riko layouttia.
-  - Sarakkeen sijaan käytetään `bestIdx` korostamaan korkeinta ylitettyä korkeutta (samoin kuin nykyinen `isBest`).
-- Top 3/5 -kokojen kaksirivinen rakenne säilyy; vain solujen sisältö muuttuu pystyhypyille.
+- Lisätään `queryOptions`-tyyppinen yhteinen avain: `historyBaselineKey(competitionId)` ja `sharedHistoryBaselineKey(token, competitionId)`.
+- Säilytetään nykyinen muistivälimuisti `getHistoricalBest` / `getHistoricalSeasonBest` -synkronikutsuja varten.
+- Tarjotaan `useHistoryBaseline(competitionId)` -hook (sisäisesti `useQuery`), joka palauttaa `dataUpdatedAt`-leiman. Hook täyttää saman moduulinvälimuistin kuin nykyinen `loadHistoryBaselineForCompetition`, mutta lisäksi React-query tietää, milloin lataus valmistuu.
+- Sama `useSharedHistoryBaseline(token, competitionId)` jaetulle seurantalinkille.
 
-**3. `src/lib/result-visualization.ts` — signature**
-- `getResultVisualState` lukee tällä hetkellä vain `Line1`. Sisällytetään `Line2` mukaan allekirjoitukseen pystyhypyissä, jotta uuden yrityksen tultua (esim. "x" → "xo") `NewResultOverlay` laukeaa myös korkeushypyssä.
-- Käytännössä: `attemptParts.push(\`${index}:${value}:${line2 ?? ""}\`)` — toimii kaikille lajeille, ei rikko nykyistä logiikkaa.
+### 2. Käyttöpaikat
 
-### Ei muuteta tässä vaiheessa
-- `/round/...`-näkymä, kuuluttajanäkymä ja tulostussivut eivät kuulu pyynnön piiriin — pidetään ne ennallaan.
-- API-tyypistä `Line2` jää valinnaiseksi, joten muiden käyttäjien ei tarvitse päivittää mitään.
+Korvataan kaikki `void loadHistoryBaselineFor*`-kutsut `useHistoryBaseline`-hookilla samassa tiedostossa:
 
-### Tiedostot
-- `src/lib/tuloslista.ts` (tyyppi + apuri)
-- `src/lib/result-visualization.ts` (signature)
-- `src/routes/scoreboard.tsx` (rendering)
+- `src/routes/scoreboard.tsx` (ScoreboardLive)
+- `src/routes/watch.tsx`
+- `src/hooks/useAnnouncerData.ts`
+- `src/routes/seuraa.$token.tsx` (useSharedHistoryBaseline)
+
+Lisätään hookin palauttama `dataUpdatedAt` rivien laskennan `useMemo`-dependenssilistalle (esim. `rows`-memo, `entries`-memo), jotta SB renderöityy heti, kun välimuisti on täytetty.
+
+### 3. Verifiointi
+
+- Avataan YAG-kilpailun T11 Korkeus -suorituspaikan livenäyttö ja tarkistetaan, että Siirin kohdalla näkyy `SB 128`.
+- Tarkistetaan, että watch- ja seuraa-näkymät edelleen näyttävät PB-tähden niissä tapauksissa, joissa se aiemmin toimi.
+- Varmistetaan, että muut SB-arvot eivät hävinneet (tuloslistasta tuleva SB säilyy etusijalla `effectiveRecord`-järjestyksessä `b?.sb || alloc.SB || historicalSeasonBest`).
+
+## Tekniset yksityiskohdat
+
+- `useQuery`-asetukset: `staleTime: 5 * 60_000`, `gcTime: 10 * 60_000`, `refetchOnWindowFocus: false`. Lataus on raskas, mutta cache pitää sen yhden kerran per kilpailu.
+- Hookin `queryFn` palauttaa `dataUpdatedAt`-virkistyksen lisäksi `Map`-rakenteen, mutta kutsujat eivät käytä sitä suoraan — kaikki lukutoiminta menee edelleen `getHistoricalBest` / `getHistoricalSeasonBest`-synkronikutsujen kautta, jotka säilyvät ennallaan.
+- Ei tietokantamuutoksia. Aiempi `get_shared_watch_history`-migraatio (jossa lisättiin `competition_date`) jää voimaan.
