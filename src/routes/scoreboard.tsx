@@ -197,7 +197,7 @@ function ScoreboardPicker() {
                 <li key={r.Id}>
                   <Link
                     to="/scoreboard"
-                    search={{ eventId: r.EventId, roundId: r.Id, top }}
+                    search={{ eventId: r.EventId, roundId: r.Id, top, heat: "all" }}
                     className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm hover:bg-secondary"
                   >
                     <div className="w-16 shrink-0 text-lg font-bold tabular-nums">
