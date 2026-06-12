@@ -294,7 +294,7 @@ function ScoreboardLive() {
       const bv = Number.isFinite(bn) ? bn : -Infinity;
       return bv - av;
     });
-  }, [round]);
+  }, [round, visibleHeats]);
 
   const visible = rows.slice(0, top);
 
