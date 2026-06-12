@@ -58,7 +58,7 @@ export interface Allocation {
   HeatRank: number | null;
   Wind: number | null;
   Organization: { Name: string; NameShort: string; Id: number };
-  Attempts?: { Line1: string | null }[];
+  Attempts?: { Line1: string | null; Line2?: string | null }[];
 }
 
 export interface Heat {
