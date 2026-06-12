@@ -41,6 +41,19 @@ export interface Round {
 
 export type RoundsByDate = Record<string, Round[]>;
 
+export interface RelayAthlete {
+  Id?: number;
+  Index?: number;
+  Firstname: string;
+  Surname: string;
+  Organization?: { Name: string; NameShort?: string; Id: number };
+}
+
+export interface AthleteOrder {
+  Index?: number;
+  Athlete?: RelayAthlete;
+}
+
 export interface Allocation {
   Id: number;
   AllocId: number;
@@ -59,6 +72,8 @@ export interface Allocation {
   Wind: number | null;
   Organization: { Name: string; NameShort: string; Id: number };
   Attempts?: { Line1: string | null; Line2?: string | null }[];
+  AthleteOrders?: AthleteOrder[];
+  Athletes?: RelayAthlete[];
 }
 
 export interface Heat {
