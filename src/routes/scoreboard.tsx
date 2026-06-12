@@ -308,8 +308,8 @@ function ScoreboardLive() {
     if (!ev || !round) return;
     const next = new Map<number, string>();
     const newItems: NewResultItem[] = [];
-    for (const heat of round.Heats) {
-      for (const a of heat.Allocations) {
+    for (const h of visibleHeats) {
+      for (const a of h.Allocations) {
         const visualState = getResultVisualState(a);
         if (!visualState) continue;
         next.set(a.AllocId, visualState.signature);
@@ -320,7 +320,7 @@ function ScoreboardLive() {
             alloc: { ...a, Result: visualState.result ?? visualState.attemptResult },
             eventId: ev.Id,
             eventCategory: ev.EventCategory ?? "",
-            heatIndex: heat.Index,
+            heatIndex: h.Index,
             attemptIndex: visualState.attemptIndex,
           });
         }
@@ -328,7 +328,7 @@ function ScoreboardLive() {
     }
     prevResultsRef.current = next;
     if (newItems.length) setQueue((q) => [...q, ...newItems]);
-  }, [ev, round]);
+  }, [ev, round, visibleHeats]);
 
   useEffect(() => {
     if (currentOverlay || queue.length === 0) return;
@@ -338,18 +338,23 @@ function ScoreboardLive() {
 
   const handleOverlayDone = useCallback(() => setCurrentOverlay(null), []);
 
-  // Wind: prefer first heat's wind; fallback to most recent allocation wind.
+  // Wind: prefer first visible heat's wind; fallback to most recent allocation wind.
   const wind = useMemo<number | null>(() => {
-    if (!round) return null;
-    const heatWind = round.Heats[0]?.Wind;
+    if (!visibleHeats.length) return null;
+    const heatWind = visibleHeats[0]?.Wind;
     if (heatWind != null && Number.isFinite(heatWind)) return heatWind;
-    for (const h of round.Heats) {
+    for (const h of visibleHeats) {
       for (let i = h.Allocations.length - 1; i >= 0; i--) {
         const w = h.Allocations[i]?.Wind;
         if (w != null && Number.isFinite(w)) return w;
       }
     }
     return null;
+  }, [visibleHeats]);
+
+  const heatOptions = useMemo<number[]>(() => {
+    if (!round) return [];
+    return round.Heats.map((h) => h.Index).sort((a, b) => a - b);
   }, [round]);
 
   const vw = useViewportWidth();
