@@ -103,6 +103,45 @@ export interface Enrollment {
   PB: string;
   SB: string;
   Organization: { Name: string; NameShort: string; Id: number };
+  Athletes?: RelayAthlete[];
+}
+
+/** Format relay leg list: "1. Etu Suku · 2. ... · 3. ... · 4. ...".
+ * Uses AthleteOrders first, falls back to Athletes. Returns null if no team
+ * members are available. */
+export function formatRelayLegs(
+  alloc: Pick<Allocation, "AthleteOrders" | "Athletes">,
+): string | null {
+  const fromOrders = (alloc.AthleteOrders ?? [])
+    .map((o) => ({
+      idx: o.Index ?? o.Athlete?.Index ?? null,
+      ath: o.Athlete,
+    }))
+    .filter((x): x is { idx: number; ath: RelayAthlete } => x.idx != null && !!x.ath);
+  const source =
+    fromOrders.length > 0
+      ? fromOrders
+      : (alloc.Athletes ?? [])
+          .map((ath) => ({ idx: ath.Index ?? null, ath }))
+          .filter((x): x is { idx: number; ath: RelayAthlete } => x.idx != null);
+  if (source.length === 0) return null;
+  return source
+    .slice()
+    .sort((a, b) => a.idx - b.idx)
+    .map((x) => `${x.idx}. ${x.ath.Firstname} ${x.ath.Surname}`.trim())
+    .join(" · ");
+}
+
+/** Same as formatRelayLegs but for a DB-stored leg list. */
+export function formatRelayLegsFromRows(
+  legs: { leg_index: number; firstname: string; surname: string }[],
+): string | null {
+  if (!legs || legs.length === 0) return null;
+  return legs
+    .slice()
+    .sort((a, b) => a.leg_index - b.leg_index)
+    .map((l) => `${l.leg_index}. ${l.firstname} ${l.surname}`.trim())
+    .join(" · ");
 }
 
 export interface EventResults {
