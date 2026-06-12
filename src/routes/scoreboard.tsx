@@ -405,6 +405,34 @@ function ScoreboardLive() {
           </div>
         )}
 
+        {heatOptions.length >= 2 && (
+          <div className="flex shrink-0 gap-1 rounded-full border bg-background p-1 text-xs font-semibold">
+            <button
+              onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, heat: "all" }) })}
+              className={`rounded-full px-3 py-1 transition-colors ${
+                heat === "all"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              Koko kisa
+            </button>
+            {heatOptions.map((idx) => (
+              <button
+                key={idx}
+                onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, heat: idx }) })}
+                className={`rounded-full px-3 py-1 transition-colors ${
+                  heat === idx
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {`Erä ${idx}`}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex shrink-0 gap-1 rounded-full border bg-background p-1 text-xs font-semibold">
           {([3, 5, 10] as TopSize[]).map((n) => (
             <button
