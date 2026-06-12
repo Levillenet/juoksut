@@ -1,27 +1,44 @@
 ## Ongelma
 
-Omaseurantasivulla (`/watch`) urheilijan tuloksen PB-merkki ei näy uusille ennätyksille. Esim. Siiri Aavikko, T11 150 m, uusi 21,49 (vanha 22,67) — ei tähteä.
+Jaetussa seurantanäkymässä (`/seuraa/$token`) urheilijan tuloksen viereen ei tule PB-tähteä eikä parannustietoa.
 
-Syy: `effectiveRecord(e.round.EventId, e.alloc)` kutsutaan ilman `history`-parametria. Live-allokaation `PB`-kenttä on usein tyhjä eikä `record_baseline`-snapshotteja ole, joten vertailtava PB jää tyhjäksi ja `detectRecord` palauttaa `null`.
+Syyt:
+1. `seuraa.$token.tsx` ei renderöi `<RecordBadge>`-komponenttia eikä kutsu `effectiveRecord`-funktiota.
+2. Vaikka kutsuttaisiin, nykyinen `loadHistoryBaselineForCompetition` lukee `athlete_results`-taulun suoraan, ja sen RLS sallii vain `authenticated`-roolin. Jakolinkin vastaanottaja on yleensä kirjautumaton, joten data ei tulisi näkyviin.
 
-ClubTodaySection ja announcer-näkymät käyttävät jo historiapohjaa (`loadHistoryBaselineForCompetition` + `effectiveRecord(..., { competitionId, athleteKey, eventName })`). Sama puuttuu watch-sivulta.
+## Korjaus
 
-## Korjaus — `src/routes/watch.tsx`
+### 1. Tietokanta — uusi SECURITY DEFINER RPC
 
-1. Importoidaan `loadHistoryBaselineForCompetition` tiedostosta `@/lib/history-baseline`.
-2. `WatchPage`-komponentissa lisätään `useEffect`, joka kutsuu `loadHistoryBaselineForCompetition(competitionId)` kun `competitionId` muuttuu (sama kuvio kuin `scoreboard.tsx`:ssä).
-3. Rivin 772 `effectiveRecord`-kutsuun annetaan kolmas `history`-argumentti:
-   ```
-   effectiveRecord(e.round.EventId, e.alloc, {
-     competitionId,
-     athleteKey: athlete.key,
-     eventName: e.round.EventName,
-   })
-   ```
-   `athlete.key` saadaan ulomman `watchedSections.map(({ athlete, entries }) => …)` -lohkon `athlete`-arvosta (käytössä jo rivillä 646).
+Lisätään migraatio, joka luo funktion `public.get_shared_watch_history(p_token text)`. Se palauttaa jakolinkin urheilijoiden historian (rivit eri kisoista) muodossa, jonka `history-baseline` -logiikka osaa kuluttaa:
+
+- Palautuskolumnit: `athlete_key`, `event_name`, `event_category`, `sub_category`, `result_text`, `result_numeric`.
+- WHERE: token vastaa `watch_shares`-riviä, joka ei ole peruutettu; rivit poimitaan `athlete_results`-taulusta `watched_athletes`-taulun athlete_key-listan kautta (jakajan `user_id` haetaan watch_sharesista); rajataan pois nykyinen `competition_id` ja `result_numeric IS NOT NULL`.
+- GRANT EXECUTE `anon`, `authenticated`.
+
+### 2. `src/lib/history-baseline.ts`
+
+Lisätään uusi public-funktio `loadHistoryBaselineForSharedWatch(token, competitionId)`, joka:
+- käyttää samaa muistivälimuistia (`cache`) avaimena `competitionId`,
+- kutsuu uutta RPC:tä `get_shared_watch_history` ja muuntaa rivit samaan `HistoricalBest`-mapiin kuin nykyinen `loadHistoryBaselineForCompetition`,
+- jakaa apurifunktion (esim. `buildBaselineMap(rows, competitionId)`) joka rakentaa kartan ja tallettaa cacheen.
+
+### 3. `src/routes/seuraa.$token.tsx`
+
+- Importoidaan `RecordBadge` (`@/lib/records`), `effectiveRecord` (`@/lib/record-baseline`) ja uusi `loadHistoryBaselineForSharedWatch`.
+- `useEffect`, joka kutsuu `loadHistoryBaselineForSharedWatch(token, competitionId)` kun `token` ja `competitionId` ovat olemassa.
+- Renderöinnissä (rivit 251–260, kun `e.alloc.Result` on olemassa) lisätään `RecordBadge` samalla tavalla kuin `watch.tsx`:ssä:
+  ```
+  const eff = effectiveRecord(e.round.EventId, e.alloc, {
+    competitionId,
+    athleteKey: athlete.key,
+    eventName: e.round.EventName,
+  });
+  <RecordBadge category={e.round.Category} result={e.alloc.Result} pb={eff.pb} sb={eff.sb} size="sm" layout="row" />
+  ```
 
 ## Tekninen huomio
 
-- `athleteKey`-formaatti `${surname}|${firstname}|${orgId ?? ""}` on sama mitä harvester tallentaa `athlete_results`-tauluun, joten avaimet täsmäävät.
-- `loadHistoryBaselineForCompetition` on idempotentti ja muistissa cachetettu, joten useampi kutsu ei aiheuta lisäkyselyitä.
-- Ei muutoksia tietokantaan, ei muita tiedostoja.
+- RPC on SECURITY DEFINER + `search_path = public`, sallii lukemisen vain pätevän tokenin kautta — ei laajenna anonyymin pääsyä `athlete_results`-tauluun muuten.
+- Cache-avain on `competitionId`, joten jaetun ja oman näkymän baselinet eivät risteä, koska share-näkymässä competitionId on jakolinkin oma kisa.
+- Ei muutoksia `watch.tsx`:ään, ei muiden näkymien logiikkaan.
