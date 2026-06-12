@@ -371,6 +371,21 @@ async function flush(rows: Row[]) {
   }
 }
 
+async function flushLegs(rows: RelayLegRow[]) {
+  if (rows.length === 0) return;
+  const CHUNK = 500;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const slice = rows.slice(i, i + CHUNK);
+    const { error } = await supabaseAdmin
+      .from("relay_legs")
+      .upsert(slice, {
+        onConflict: "competition_id,event_id,team_alloc_id,leg_index",
+        ignoreDuplicates: false,
+      });
+    if (error) console.error("relay_legs upsert error:", error.message);
+  }
+}
+
 async function harvestRange(ids: number[], latestIdHint: number) {
   let scanned = 0;
   let existed = 0;
