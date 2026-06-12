@@ -265,6 +265,12 @@ function RoundView() {
                         {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
                         {" · "}Erä {a._heatIndex}
                       </p>
+                      {(() => {
+                        const legs = formatRelayLegs(a);
+                        return legs ? (
+                          <p className="truncate text-xs text-muted-foreground">{legs}</p>
+                        ) : null;
+                      })()}
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs tabular-nums">
                       <span className="text-base font-bold text-foreground">
