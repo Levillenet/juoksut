@@ -75,9 +75,7 @@ function WatchPage() {
     if (indexQuery.data) hasIndexData.current = true;
   }, [indexQuery.data]);
 
-  useEffect(() => {
-    if (competitionId) void loadHistoryBaselineForCompetition(competitionId);
-  }, [competitionId]);
+  useHistoryBaseline(competitionId);
 
   const index: IndexedEntry[] | null = indexQuery.data?.entries ?? null;
   const name = indexQuery.data?.name ?? "";
