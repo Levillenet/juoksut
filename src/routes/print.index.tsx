@@ -181,16 +181,24 @@ function PrintPage() {
             <table className="w-full text-sm print:text-xs">
               <tbody>
                 {g.runs.map((r) => (
-                  <tr key={r.Id} className="border-b border-border/50 align-top">
-                    <td className="time w-14 py-2 pr-2 font-bold tabular-nums">
-                      {formatTime(r.BeginDateTimeWithTZ)}
-                    </td>
-                    <td className="event py-2">
-                      <span className="font-semibold leading-tight">{r.EventName}</span>
-                      <span className="sub"> · {r.Name}</span>
-                      <div className="text-xs text-muted-foreground print:hidden">
-                        {r.Name}
-                      </div>
+                  <tr key={r.Id} className="border-b border-border/50 align-top hover:bg-secondary/60 print:hover:bg-transparent">
+                    <td colSpan={2} className="p-0">
+                      <Link
+                        to="/round/$eventId/$roundId"
+                        params={{ eventId: String(r.EventId), roundId: String(r.Id) }}
+                        className="flex items-start gap-2 py-2 no-underline text-foreground print:cursor-default"
+                      >
+                        <span className="time w-14 shrink-0 pr-2 font-bold tabular-nums">
+                          {formatTime(r.BeginDateTimeWithTZ)}
+                        </span>
+                        <span className="event min-w-0 flex-1">
+                          <span className="font-semibold leading-tight">{r.EventName}</span>
+                          <span className="sub"> · {r.Name}</span>
+                          <span className="block text-xs text-muted-foreground print:hidden">
+                            {r.Name}
+                          </span>
+                        </span>
+                      </Link>
                     </td>
                   </tr>
                 ))}
