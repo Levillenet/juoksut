@@ -949,3 +949,105 @@ function ShareWatchButton({ competitionId }: { competitionId: number }) {
     </Popover>
   );
 }
+
+function ShareInviteBanner({ competitionId }: { competitionId: number }) {
+  const { share, createShare, loading } = useWatchShare(competitionId);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const url = share
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/seuraa/${share.token}`
+    : "";
+
+  const ensureShare = async (): Promise<string | null> => {
+    if (url) return url;
+    setBusy(true);
+    const created = await createShare();
+    setBusy(false);
+    if (!created) {
+      toast.error("Linkin luonti epäonnistui");
+      return null;
+    }
+    return `${window.location.origin}/seuraa/${created.token}`;
+  };
+
+  const copy = async () => {
+    const u = await ensureShare();
+    if (!u) return;
+    try {
+      await navigator.clipboard.writeText(u);
+      setCopied(true);
+      toast.success("Linkki kopioitu leikepöydälle");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Kopiointi epäonnistui");
+    }
+  };
+
+  const nativeShare = async () => {
+    const u = await ensureShare();
+    if (!u) return;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          title: "Kilpailijaseuranta",
+          text: "Tule mukaan seuraamaan ja jännittämään kilpailun suorituksia!",
+          url: u,
+        });
+      } catch {
+        /* user cancelled */
+      }
+    } else {
+      void copy();
+    }
+  };
+
+  const canNativeShare =
+    typeof navigator !== "undefined" && typeof navigator.share === "function";
+
+  return (
+    <div className="mb-5 rounded-xl border border-primary/30 bg-primary/10 p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
+          <Share2 className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground">
+            Jaa seuranta kavereille ja perheelle
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Lähetä linkki, niin tutut näkevät saman näkymän ja voivat seurata
+            ja jännittää kilpailun suorituksia kanssasi reaaliajassa.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {canNativeShare && (
+              <Button
+                size="sm"
+                onClick={nativeShare}
+                disabled={busy || loading}
+                className="gap-1.5"
+              >
+                <Share2 className="h-4 w-4" />
+                Jaa linkki
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant={canNativeShare ? "outline" : "default"}
+              onClick={copy}
+              disabled={busy || loading}
+              className="gap-1.5"
+            >
+              {copied ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+              {copied ? "Kopioitu" : "Kopioi linkki"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
