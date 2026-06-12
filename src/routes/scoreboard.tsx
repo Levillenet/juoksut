@@ -279,7 +279,7 @@ function ScoreboardLive() {
     });
   }, [round]);
 
-  const visible = top === "all" ? rows : rows.slice(0, top);
+  const visible = rows.slice(0, top);
 
   // Detect newly-arrived results to trigger overlay (works even if athlete is
   // outside the visible top N — overlay just animates without a row target).
