@@ -392,6 +392,7 @@ async function harvestRange(ids: number[], latestIdHint: number) {
   let revisited = 0;
   let lastScannedId = ids.length > 0 ? ids[0] - 1 : -1;
   const pending: Row[] = [];
+  const pendingLegs: RelayLegRow[] = [];
   const touchedCompIds = new Set<number>();
   const scanRecords: Array<{
     competition_id: number;
