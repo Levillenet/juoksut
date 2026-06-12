@@ -666,7 +666,18 @@ function ScoreRow({
         style={{ fontSize: clubFontSize(sizeBucket) }}
       >
         {row.Organization?.Name ?? row.Organization?.NameShort ?? ""}
-        {row.Number ? ` · #${row.Number}` : ""}
+        {row.SB ? (
+          <span className="ml-2">
+            <span className="opacity-60">SP</span>{" "}
+            <span className="font-semibold tabular-nums">{row.SB}</span>
+          </span>
+        ) : null}
+        {row.PB ? (
+          <span className="ml-2">
+            <span className="opacity-60">PB</span>{" "}
+            <span className="font-semibold tabular-nums">{row.PB}</span>
+          </span>
+        ) : null}
       </p>
     </div>
   );
