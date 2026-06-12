@@ -28,7 +28,8 @@ export function getResultVisualState(alloc: Allocation): ResultVisualState | nul
   alloc.Attempts?.forEach((attempt, index) => {
     const value = normalizeResult(attempt.Line1);
     if (!value || !isDisplayableAttempt(value)) return;
-    attemptParts.push(`${index}:${value}`);
+    const line2 = normalizeResult(attempt.Line2 ?? null) ?? "";
+    attemptParts.push(`${index}:${value}:${line2}`);
     attemptResult = value;
     attemptIndex = index + 1;
   });
