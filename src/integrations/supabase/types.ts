@@ -476,6 +476,57 @@ export type Database = {
         }
         Relationships: []
       }
+      relay_legs: {
+        Row: {
+          age_class: string
+          athlete_id: number | null
+          athlete_key: string
+          captured_at: string
+          competition_id: number
+          event_id: number
+          event_name: string
+          firstname: string
+          leg_index: number
+          organization: string
+          organization_id: number | null
+          surname: string
+          team_alloc_id: number
+          team_athlete_key: string
+        }
+        Insert: {
+          age_class?: string
+          athlete_id?: number | null
+          athlete_key: string
+          captured_at?: string
+          competition_id: number
+          event_id: number
+          event_name?: string
+          firstname: string
+          leg_index: number
+          organization?: string
+          organization_id?: number | null
+          surname: string
+          team_alloc_id: number
+          team_athlete_key: string
+        }
+        Update: {
+          age_class?: string
+          athlete_id?: number | null
+          athlete_key?: string
+          captured_at?: string
+          competition_id?: number
+          event_id?: number
+          event_name?: string
+          firstname?: string
+          leg_index?: number
+          organization?: string
+          organization_id?: number | null
+          surname?: string
+          team_alloc_id?: number
+          team_athlete_key?: string
+        }
+        Relationships: []
+      }
       team_invites: {
         Row: {
           created_at: string
