@@ -233,7 +233,7 @@ interface RankedRow extends Allocation {
 }
 
 function ScoreboardLive() {
-  const { eventId, roundId, top } = Route.useSearch();
+  const { eventId, roundId, top, heat } = Route.useSearch();
   const [competitionId] = useCompetitionId();
   const navigate = useNavigate({ from: "/scoreboard" });
   const detailQ = useQuery(eventDetailsQueryOptions(competitionId, eventId!));
@@ -249,9 +249,16 @@ function ScoreboardLive() {
     [ev, roundId],
   );
 
+  const visibleHeats = useMemo(() => {
+    if (!round) return [];
+    if (heat === "all") return round.Heats;
+    const filtered = round.Heats.filter((h) => h.Index === heat);
+    return filtered.length ? filtered : round.Heats;
+  }, [round, heat]);
+
   const rows = useMemo<RankedRow[]>(() => {
     if (!round) return [];
-    const allocs = round.Heats.flatMap((h) => h.Allocations);
+    const allocs = visibleHeats.flatMap((h) => h.Allocations);
     const enriched: RankedRow[] = allocs.map((a) => {
       const raw = a.Attempts ?? [];
       const attempts: (string | null)[] = Array.from({ length: 6 }, (_, i) => {
