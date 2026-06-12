@@ -6,6 +6,28 @@ const KEY_BASE = "tuloslista.competitionId";
 const DEFAULT_ID = 19219;
 const META_KEY = "last_competition_id";
 
+// Aktivoi YAG Espoo 2026 automaattisesti seurattavaksi kisaviikonlopun ajaksi.
+// Kerran per käyttäjä/laite/rooli — jos käyttäjä vaihtaa pois, sitä kunnioitetaan.
+const YAG_AUTO = {
+  id: 19616,
+  start: "2026-06-12",
+  end: "2026-06-14",
+  flagKey: "tuloslista.yagAutoApplied.v1",
+};
+
+function helsinkiDateISO(d = new Date()): string {
+  // YYYY-MM-DD Helsinki-aikavyöhykkeellä
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Helsinki",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+
 function keyFor(role: string | null): string {
   // Eri valinta toimitsija- ja käyttäjäroolille, jotta kirjautuminen
   // sisään/ulos ei vaihda toisen näkymän aktiivista kisaa.
@@ -83,5 +105,23 @@ export function useCompetitionId(): [number, (id: number) => void] {
     }
   };
 
+  // YAG-viikonlopun automaattinen aktivointi (kerran per rooli/laite).
+  useEffect(() => {
+    try {
+      const today = helsinkiDateISO();
+      if (today < YAG_AUTO.start || today > YAG_AUTO.end) return;
+      const flagKey = `${YAG_AUTO.flagKey}.${role ?? "anon"}`;
+      if (localStorage.getItem(flagKey)) return;
+      localStorage.setItem(flagKey, today);
+      if (getValue(key) !== YAG_AUTO.id) {
+        update(YAG_AUTO.id);
+      }
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role, user]);
+
   return [id, update];
 }
+
