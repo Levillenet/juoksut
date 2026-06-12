@@ -4,12 +4,13 @@ import { Link } from "@tanstack/react-router";
 import { Building2, Calendar as CalendarIcon, ChevronDown, ChevronUp, Trophy } from "lucide-react";
 
 import {
-  fetchClubPbs,
+  fetchClubPreviousPbs,
   fetchClubTodayResults,
   fetchTodayClubs,
   normalizeEventName,
   type ClubTodayRow,
 } from "@/lib/club-today";
+import { formatImprovement } from "@/lib/records";
 
 const STORAGE_KEY = "clubToday.orgId";
 
