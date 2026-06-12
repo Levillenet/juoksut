@@ -2,6 +2,7 @@
 // background-harvested athlete_results table.
 
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeEventName } from "./athlete-history";
 import { helsinkiDayBounds } from "./daily-best";
 import { isRoadOrCrossCountry } from "./event-filters";
 
@@ -97,14 +98,9 @@ export async function fetchClubTodayResults(
 
 export type ClubPbMap = Record<string, { text: string; numeric: number; category: string }>;
 
-/** Strip leading age-class prefix and multi-event prefix (e.g. "M19 10-ottelu Pituus" -> "Pituus"). */
-export function normalizeEventName(name: string): string {
-  return name
-    .replace(/^(?:[MNT]\d*|P\d+)\s+/i, "")
-    .replace(/^\d+-ottelu\s+/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+// Re-export shared normalizer so that today's rows ("T11 Korkeus (E)") match
+// historical rows ("T11 Korkeus") when looking up previous PBs.
+export { normalizeEventName };
 
 /** Best historical result per (athlete_key, normalized event_name), optionally
  * limited to results strictly before `beforeISO`. */
