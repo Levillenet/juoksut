@@ -99,8 +99,10 @@ async function fetchSeasonRows(
       .gte("competition_date", range.from.toISOString())
       .lt("competition_date", range.to.toISOString())
       .not("result_numeric", "is", null)
+      .order("id", { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);
     if (ageClass) q = q.eq("age_class", ageClass);
+
     const { data, error } = await q;
     if (error) throw error;
     const rows = ((data ?? []) as RawRow[]).filter((r) => !isRoadOrCrossCountry(r));
@@ -125,7 +127,9 @@ async function fetchSeasonAgeClasses(season: SeasonKind): Promise<string[]> {
       .gte("competition_date", range.from.toISOString())
       .lt("competition_date", range.to.toISOString())
       .not("result_numeric", "is", null)
+      .order("id", { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);
+
     if (error) throw error;
     const rows = (data ?? []) as { age_class: string | null }[];
     for (const r of rows) if (r.age_class) set.add(r.age_class);
@@ -149,7 +153,9 @@ async function fetchSeasonEvents(season: SeasonKind): Promise<LeaderEventOption[
       .gte("competition_date", range.from.toISOString())
       .lt("competition_date", range.to.toISOString())
       .not("result_numeric", "is", null)
+      .order("id", { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);
+
     if (error) throw error;
     const rows = ((data ?? []) as { event_name: string | null; event_category: string | null; sub_category: string | null }[])
       .filter((r) => !isRoadOrCrossCountry(r));
@@ -225,7 +231,9 @@ async function fetchSeasonClubs(season: SeasonKind): Promise<ClubOption[]> {
       .gte("competition_date", range.from.toISOString())
       .lt("competition_date", range.to.toISOString())
       .not("result_numeric", "is", null)
+      .order("id", { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);
+
     if (error) throw error;
     const rows = (data ?? []) as { organization: string | null; organization_id: number | null }[];
     for (const r of rows) {
