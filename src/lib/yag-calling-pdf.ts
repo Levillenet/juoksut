@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import type { YagCallingMatch } from "./yag-calling-match";
+import { formatHeatList, type YagCallingMatch } from "./yag-calling-match";
 
 const DATE_LABEL: Record<string, string> = {
   "2026-06-12": "Perjantai 12.6.2026",
@@ -101,7 +101,11 @@ export function downloadYagCallingPdf(opts: YagPdfOptions) {
           return parts.join(" ");
         })
         .join("\n");
-      const sarjaCell = `${lajiTxt}\n${athletes}`;
+      const overflowNote =
+        m.overflowHeats && m.overflowHeats.length > 0
+          ? `\n[Huom: yllä mukana myös erät ${formatHeatList(m.overflowHeats)} — calling-aikataulu puuttuu]`
+          : "";
+      const sarjaCell = `${lajiTxt}\n${athletes}${overflowNote}`;
 
       const eräCell = isUnpublished
         ? "ei vielä julkaistu"
