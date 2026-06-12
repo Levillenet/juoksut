@@ -462,8 +462,11 @@ async function harvestRange(ids: number[], latestIdHint: number) {
       if (r.status === "rejected") console.error("comp", id, r.reason);
     }
     if (pending.length >= 400) await flush(pending.splice(0));
+    if (pendingLegs.length >= 400) await flushLegs(pendingLegs.splice(0));
   }
   await flush(pending);
+  await flushLegs(pendingLegs);
+
 
   // Kirjaa skannauskirjanpito (chunked upsert)
   if (scanRecords.length > 0) {
