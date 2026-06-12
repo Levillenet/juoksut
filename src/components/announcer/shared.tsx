@@ -426,6 +426,12 @@ function AllocationRow({
             <span className="block truncate text-xs text-muted-foreground">
               {a.Organization?.Name ?? ""}
             </span>
+            {(() => {
+              const legs = formatRelayLegs(a);
+              return legs ? (
+                <span className="block truncate text-xs text-muted-foreground">{legs}</span>
+              ) : null;
+            })()}
           </span>
           {a.Result ? (
             <span className="shrink-0 font-bold tabular-nums">{a.Result}</span>
