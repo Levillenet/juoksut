@@ -695,14 +695,14 @@ function ScoreRow({
 
   const attemptsList = row.vertical ? (
     <ol
-      className={`flex items-stretch gap-1 overflow-x-auto ${narrow ? "flex-1" : "h-full shrink"} ${
-        row.heights.length === 0 ? "opacity-50" : ""
-      }`}
+      className={`flex items-stretch gap-1 ${
+        narrow ? "w-full flex-wrap" : "h-full shrink overflow-x-auto"
+      } ${row.heights.length === 0 ? "opacity-50" : ""}`}
     >
       {row.heights.length === 0 ? (
         <li
-          className="flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-background px-2 text-muted-foreground/60"
-          style={{ minWidth: attMin }}
+          className="flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-background px-2 py-1 text-muted-foreground/60"
+          style={{ minWidth: narrow ? "3rem" : attMin }}
         >
           <span style={{ fontSize: attValSize }}>–</span>
         </li>
@@ -714,8 +714,8 @@ function ScoreRow({
           return (
             <li
               key={i}
-              className={`flex flex-col items-center justify-center rounded-md border ${
-                narrow ? "px-1 py-0.5" : "px-2"
+              className={`flex items-baseline gap-1 rounded-md border px-1.5 py-0.5 ${
+                narrow ? "" : "flex-col justify-center px-2"
               } ${
                 isBest
                   ? "border-primary bg-primary text-primary-foreground"
@@ -725,11 +725,11 @@ function ScoreRow({
                       ? "border-border bg-secondary"
                       : "border-border bg-background text-muted-foreground"
               }`}
-              style={{
-                minWidth: attMin,
-                width: narrow ? undefined : attMax,
-                flex: narrow ? "1 1 0" : undefined,
-              }}
+              style={
+                narrow
+                  ? undefined
+                  : { minWidth: attMin, width: attMax }
+              }
             >
               <span
                 className="font-bold tabular-nums leading-none"
