@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Trophy } from "lucide-react";
 
@@ -17,6 +17,9 @@ import {
   type IndexedEntry,
 } from "@/lib/tuloslista-queries";
 import { loadSharedWatch, type SharedWatchAthlete } from "@/lib/watch-share";
+import { RecordBadge } from "@/lib/records";
+import { effectiveRecord } from "@/lib/record-baseline";
+import { loadHistoryBaselineForSharedWatch } from "@/lib/history-baseline";
 import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/seuraa/$token")({
