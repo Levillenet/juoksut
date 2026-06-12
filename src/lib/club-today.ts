@@ -14,6 +14,7 @@ export interface ClubTodayRow {
   organization_id: number | null;
   competition_id: number;
   competition_name: string;
+  event_id: number;
   event_name: string;
   age_class: string;
   sub_category: string;
@@ -83,7 +84,7 @@ export async function fetchClubTodayResults(
   let query = supabase
     .from("athlete_results")
     .select(
-      "athlete_key, surname, firstname, organization, organization_id, competition_id, competition_name, event_name, age_class, sub_category, event_category, result_text, result_numeric, result_rank, result_round_name, was_pb",
+      "athlete_key, surname, firstname, organization, organization_id, competition_id, competition_name, event_id, event_name, age_class, sub_category, event_category, result_text, result_numeric, result_rank, result_round_name, was_pb",
     )
     .eq("organization_id", organizationId)
     .gte("competition_date", startISO)
@@ -154,4 +155,55 @@ export async function fetchClubPreviousPbs(
 ): Promise<ClubPbMap> {
   const { startISO } = helsinkiDayBounds(beforeDate);
   return fetchClubPbs(athleteKeys, eventNames, startISO);
+}
+
+export interface RelayLegRow {
+  competition_id: number;
+  event_id: number;
+  team_athlete_key: string;
+  leg_index: number;
+  firstname: string;
+  surname: string;
+}
+
+export type RelayLegMap = Map<string, RelayLegRow[]>;
+
+function relayLegKey(competitionId: number, eventId: number, teamKey: string) {
+  return `${competitionId}|${eventId}|${teamKey}`;
+}
+
+/** Fetch relay leg rows for the given team-result rows. Keyed by
+ * `${competition_id}|${event_id}|${team_athlete_key}`. */
+export async function fetchRelayLegsForRows(
+  rows: Array<{ competition_id: number; event_id: number; athlete_key: string; event_category: string }>,
+): Promise<RelayLegMap> {
+  const teamKeys = Array.from(
+    new Set(rows.filter((r) => r.event_category === "Relay").map((r) => r.athlete_key)),
+  );
+  const compIds = Array.from(
+    new Set(rows.filter((r) => r.event_category === "Relay").map((r) => r.competition_id)),
+  );
+  const out: RelayLegMap = new Map();
+  if (teamKeys.length === 0 || compIds.length === 0) return out;
+  const { data, error } = await supabase
+    .from("relay_legs")
+    .select("competition_id, event_id, team_athlete_key, leg_index, firstname, surname")
+    .in("competition_id", compIds)
+    .in("team_athlete_key", teamKeys);
+  if (error) return out;
+  for (const r of (data ?? []) as RelayLegRow[]) {
+    const k = relayLegKey(r.competition_id, r.event_id, r.team_athlete_key);
+    if (!out.has(k)) out.set(k, []);
+    out.get(k)!.push(r);
+  }
+  return out;
+}
+
+export function getRelayLegs(
+  legs: RelayLegMap,
+  competitionId: number,
+  eventId: number,
+  teamKey: string,
+): RelayLegRow[] | undefined {
+  return legs.get(relayLegKey(competitionId, eventId, teamKey));
 }

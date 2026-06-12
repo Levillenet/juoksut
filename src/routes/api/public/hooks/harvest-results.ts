@@ -42,14 +42,41 @@ const FLOOR_ID = 16456;      // tuloslista API:n vanhin saatavilla oleva kisa (5
 // on a later run instead of skipping them.
 let rateLimited = false;
 
+interface RelayAthlete {
+  Id?: number;
+  Index?: number;
+  Firstname?: string;
+  Surname?: string;
+  Organization?: { Id?: number; Name?: string } | null;
+}
+
 interface Allocation {
+  Id?: number;
   Surname?: string;
   Firstname?: string;
   Organization?: { Id?: number; Name?: string } | null;
   Result?: string | null;
   ResultRank?: number | null;
   Wind?: number | null;
+  AthleteOrders?: { Index?: number; Athlete?: RelayAthlete }[];
+  Athletes?: RelayAthlete[];
 }
+
+type RelayLegRow = {
+  competition_id: number;
+  event_id: number;
+  team_alloc_id: number;
+  leg_index: number;
+  athlete_id: number | null;
+  firstname: string;
+  surname: string;
+  organization: string;
+  organization_id: number | null;
+  athlete_key: string;
+  team_athlete_key: string;
+  age_class: string;
+  event_name: string;
+};
 
 interface PropertiesShape {
   Competition?: {
@@ -131,6 +158,7 @@ type Row = {
 async function processCompetition(
   id: number,
   pending: Row[],
+  pendingLegs: RelayLegRow[],
 ): Promise<{ existed: boolean; rowsAdded: number; competitionDate: string | null }> {
   const props = await fetchJson<PropertiesShape>(
     `${API}/competition/${id}/properties`,
@@ -259,6 +287,60 @@ async function processCompetition(
       rowsAdded++;
     }
 
+    // Relay-lajeille: kerätään viestin juoksijat vaihtojärjestyksessä.
+    // Käytetään viimeisintä kierrosta, jonka allokaatiossa on AthleteOrders
+    // (loppukilpailun joukkuekokoonpano voittaa alkuerän).
+    if (category === "Relay") {
+      for (let rIdx = rounds.length - 1; rIdx >= 0; rIdx--) {
+        const r = rounds[rIdx];
+        let foundAnyOrders = false;
+        for (const h of r.Heats ?? []) {
+          for (const a of h.Allocations ?? []) {
+            const teamAllocId = a.Id;
+            if (teamAllocId == null) continue;
+            if (!a.Surname || !a.Firstname) continue;
+            const teamOrgId = a.Organization?.Id ?? null;
+            const teamKey = athleteKey(a.Surname, a.Firstname, teamOrgId);
+            const orders = (a.AthleteOrders ?? [])
+              .map((o) => ({
+                idx: o.Index ?? o.Athlete?.Index ?? null,
+                ath: o.Athlete,
+              }))
+              .filter((x): x is { idx: number; ath: RelayAthlete } => x.idx != null && !!x.ath);
+            const source =
+              orders.length > 0
+                ? orders
+                : (a.Athletes ?? [])
+                    .map((ath) => ({ idx: ath.Index ?? null, ath }))
+                    .filter((x): x is { idx: number; ath: RelayAthlete } => x.idx != null);
+            if (source.length === 0) continue;
+            foundAnyOrders = true;
+            for (const { idx, ath } of source) {
+              const fn = ath.Firstname ?? "";
+              const sn = ath.Surname ?? "";
+              if (!fn || !sn) continue;
+              const legOrgId = ath.Organization?.Id ?? null;
+              pendingLegs.push({
+                competition_id: id,
+                event_id: ev.Id,
+                team_alloc_id: teamAllocId,
+                leg_index: idx,
+                athlete_id: ath.Id ?? null,
+                firstname: fn,
+                surname: sn,
+                organization: ath.Organization?.Name ?? "",
+                organization_id: legOrgId,
+                athlete_key: athleteKey(sn, fn, legOrgId),
+                team_athlete_key: teamKey,
+                age_class: ageClass,
+                event_name: ev.Name,
+              });
+            }
+          }
+        }
+        if (foundAnyOrders) break;
+      }
+    }
   }
   return { existed: true, rowsAdded, competitionDate };
 }
@@ -289,12 +371,28 @@ async function flush(rows: Row[]) {
   }
 }
 
+async function flushLegs(rows: RelayLegRow[]) {
+  if (rows.length === 0) return;
+  const CHUNK = 500;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const slice = rows.slice(i, i + CHUNK);
+    const { error } = await supabaseAdmin
+      .from("relay_legs")
+      .upsert(slice, {
+        onConflict: "competition_id,event_id,team_alloc_id,leg_index",
+        ignoreDuplicates: false,
+      });
+    if (error) console.error("relay_legs upsert error:", error.message);
+  }
+}
+
 async function harvestRange(ids: number[], latestIdHint: number) {
   let scanned = 0;
   let existed = 0;
   let revisited = 0;
   let lastScannedId = ids.length > 0 ? ids[0] - 1 : -1;
   const pending: Row[] = [];
+  const pendingLegs: RelayLegRow[] = [];
   const touchedCompIds = new Set<number>();
   const scanRecords: Array<{
     competition_id: number;
@@ -321,7 +419,7 @@ async function harvestRange(ids: number[], latestIdHint: number) {
     const results = await Promise.allSettled(
       chunk.map(async (id) => {
         await jitter();
-        return processCompetition(id, pending);
+        return processCompetition(id, pending, pendingLegs);
       }),
     );
     const nowIso = new Date().toISOString();
@@ -364,8 +462,11 @@ async function harvestRange(ids: number[], latestIdHint: number) {
       if (r.status === "rejected") console.error("comp", id, r.reason);
     }
     if (pending.length >= 400) await flush(pending.splice(0));
+    if (pendingLegs.length >= 400) await flushLegs(pendingLegs.splice(0));
   }
   await flush(pending);
+  await flushLegs(pendingLegs);
+
 
   // Kirjaa skannauskirjanpito (chunked upsert)
   if (scanRecords.length > 0) {

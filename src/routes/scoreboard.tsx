@@ -18,6 +18,7 @@ import {
   isRunningEvent,
   isVerticalJump,
   STATUS_LABEL,
+  formatRelayLegs,
   type Allocation,
   type Round,
 } from "@/lib/tuloslista";
@@ -676,6 +677,17 @@ function ScoreRow({
           </span>
         ) : null}
       </p>
+      {(() => {
+        const legs = formatRelayLegs(row);
+        return legs ? (
+          <p
+            className="mt-0.5 truncate text-muted-foreground"
+            style={{ fontSize: clubFontSize(sizeBucket) }}
+          >
+            {legs}
+          </p>
+        ) : null;
+      })()}
     </div>
   );
 

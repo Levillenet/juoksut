@@ -13,6 +13,7 @@ import { effectiveRecord } from "@/lib/record-baseline";
 import { athleteKey } from "@/lib/athlete-key";
 import { useCompetitionId } from "@/lib/competition-store";
 import {
+  formatRelayLegs,
   formatTime,
   type Round,
   type Allocation,
@@ -313,6 +314,12 @@ export function EventCard({
                     <p className="truncate text-xs text-muted-foreground">
                       {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
                     </p>
+                    {(() => {
+                      const legs = formatRelayLegs(a);
+                      return legs ? (
+                        <p className="truncate text-xs text-muted-foreground">{legs}</p>
+                      ) : null;
+                    })()}
                   </div>
                   <div className="col-start-3 col-end-4 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 sm:col-start-4 sm:col-end-5 sm:mt-0 sm:shrink-0 sm:justify-end">
                     {a.Result ? (
@@ -419,6 +426,12 @@ function AllocationRow({
             <span className="block truncate text-xs text-muted-foreground">
               {a.Organization?.Name ?? ""}
             </span>
+            {(() => {
+              const legs = formatRelayLegs(a);
+              return legs ? (
+                <span className="block truncate text-xs text-muted-foreground">{legs}</span>
+              ) : null;
+            })()}
           </span>
           {a.Result ? (
             <span className="shrink-0 font-bold tabular-nums">{a.Result}</span>

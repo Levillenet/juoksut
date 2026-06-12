@@ -6,11 +6,14 @@ import { Building2, Calendar as CalendarIcon, ChevronDown, ChevronUp, Trophy } f
 import {
   fetchClubPreviousPbs,
   fetchClubTodayResults,
+  fetchRelayLegsForRows,
   fetchTodayClubs,
+  getRelayLegs,
   normalizeEventName,
   type ClubTodayRow,
 } from "@/lib/club-today";
 import { formatImprovement } from "@/lib/records";
+import { formatRelayLegsFromRows } from "@/lib/tuloslista";
 
 const STORAGE_KEY = "clubToday.orgId";
 
@@ -115,6 +118,30 @@ export function ClubTodaySection({
     staleTime: 5 * 60_000,
   });
   const pbs = pbsQuery.data ?? {};
+
+  const relayInputs = useMemo(() => {
+    const rows = (resultsQuery.data ?? []).filter((r) => r.event_category === "Relay");
+    return rows.map((r) => ({
+      competition_id: r.competition_id,
+      event_id: r.event_id,
+      athlete_key: r.athlete_key,
+      event_category: r.event_category,
+    }));
+  }, [resultsQuery.data]);
+
+  const legsQuery = useQuery({
+    queryKey: [
+      "club-today",
+      "relay-legs",
+      orgId ?? 0,
+      dateYmd,
+      relayInputs.length,
+    ],
+    queryFn: () => fetchRelayLegsForRows(relayInputs),
+    enabled: relayInputs.length > 0,
+    staleTime: 5 * 60_000,
+  });
+  const legs = legsQuery.data;
 
   const clubs = showingAll ? fallbackClubs : primaryClubs;
   const isLoadingClubs =
@@ -271,6 +298,13 @@ export function ClubTodaySection({
                           isPb && pb
                             ? formatImprovement(r.event_category, r.result_text, pb.text)
                             : null;
+                        const relayLegs =
+                          r.event_category === "Relay" && legs
+                            ? getRelayLegs(legs, r.competition_id, r.event_id, r.athlete_key)
+                            : undefined;
+                        const relayText = relayLegs
+                          ? formatRelayLegsFromRows(relayLegs)
+                          : null;
                         return (
                           <li
                             key={`${r.athlete_key}-${r.event_name}-${idx}`}
@@ -296,6 +330,11 @@ export function ClubTodaySection({
                                     : null}
                                 {pb && ` · ${isPb ? "ed. PB" : "PB"} ${pb.text}`}
                               </p>
+                              {relayText && (
+                                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                  {relayText}
+                                </p>
+                              )}
                             </div>
                             {isPb && (
                               <span

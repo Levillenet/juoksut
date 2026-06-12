@@ -4,7 +4,7 @@ import { detectRecord, RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
 import { athleteKey } from "@/lib/athlete-key";
 import { useCompetitionId } from "@/lib/competition-store";
-import type { Allocation } from "@/lib/tuloslista";
+import { formatRelayLegs, type Allocation } from "@/lib/tuloslista";
 
 export interface NewResultItem {
   key: string;
@@ -225,6 +225,12 @@ function Card({ item }: { item: NewResultItem }) {
       <p className="text-sm text-muted-foreground">
         {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
       </p>
+      {(() => {
+        const legs = formatRelayLegs(a);
+        return legs ? (
+          <p className="text-xs text-muted-foreground">{legs}</p>
+        ) : null;
+      })()}
       <div className="flex items-baseline gap-3">
         <span className="text-6xl font-black tabular-nums text-foreground">
           {a.Result}
