@@ -123,7 +123,7 @@ export function ClubTodaySection({
     const rows = (resultsQuery.data ?? []).filter((r) => r.event_category === "Relay");
     return rows.map((r) => ({
       competition_id: r.competition_id,
-      event_id: 0, // event_id is not exposed in ClubTodayRow; populated below
+      event_id: r.event_id,
       athlete_key: r.athlete_key,
       event_category: r.event_category,
     }));
