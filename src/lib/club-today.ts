@@ -2,6 +2,7 @@
 // background-harvested athlete_results table.
 
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeEventName } from "./athlete-history";
 import { helsinkiDayBounds } from "./daily-best";
 import { isRoadOrCrossCountry } from "./event-filters";
 
