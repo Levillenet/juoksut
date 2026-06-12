@@ -4,12 +4,13 @@ import { Link } from "@tanstack/react-router";
 import { Building2, Calendar as CalendarIcon, ChevronDown, ChevronUp, Trophy } from "lucide-react";
 
 import {
-  fetchClubPbs,
+  fetchClubPreviousPbs,
   fetchClubTodayResults,
   fetchTodayClubs,
   normalizeEventName,
   type ClubTodayRow,
 } from "@/lib/club-today";
+import { formatImprovement } from "@/lib/records";
 
 const STORAGE_KEY = "clubToday.orgId";
 
@@ -103,12 +104,13 @@ export function ClubTodaySection({
   const pbsQuery = useQuery({
     queryKey: [
       "club-today",
-      "pbs",
+      "previous-pbs",
       orgId ?? 0,
+      dateYmd,
       pbInputs.athletes.join(","),
       pbInputs.events.join(","),
     ],
-    queryFn: () => fetchClubPbs(pbInputs.athletes, pbInputs.events),
+    queryFn: () => fetchClubPreviousPbs(pbInputs.athletes, pbInputs.events, selectedDate),
     enabled: pbInputs.athletes.length > 0 && pbInputs.events.length > 0,
     staleTime: 5 * 60_000,
   });
@@ -257,6 +259,10 @@ export function ClubTodaySection({
                     <ul className="divide-y divide-border rounded-lg border bg-background/50">
                       {g.rows.map((r, idx) => {
                         const pb = pbs[`${r.athlete_key}|${normalizeEventName(r.event_name)}`];
+                        const improvement =
+                          r.was_pb && pb
+                            ? formatImprovement(r.event_category, r.result_text, pb.text)
+                            : null;
                         return (
                           <li
                             key={`${r.athlete_key}-${r.event_name}-${idx}`}
@@ -286,10 +292,13 @@ export function ClubTodaySection({
                             {r.was_pb && (
                               <span
                                 title="Henkilökohtainen ennätys"
-                                className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary"
+                                className="shrink-0 inline-flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary"
                               >
                                 <Trophy className="h-2.5 w-2.5" />
                                 PB
+                                {improvement && (
+                                  <span className="tabular-nums normal-case">{improvement}</span>
+                                )}
                               </span>
                             )}
                             <span
