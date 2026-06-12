@@ -119,6 +119,30 @@ export function ClubTodaySection({
   });
   const pbs = pbsQuery.data ?? {};
 
+  const relayInputs = useMemo(() => {
+    const rows = (resultsQuery.data ?? []).filter((r) => r.event_category === "Relay");
+    return rows.map((r) => ({
+      competition_id: r.competition_id,
+      event_id: 0, // event_id is not exposed in ClubTodayRow; populated below
+      athlete_key: r.athlete_key,
+      event_category: r.event_category,
+    }));
+  }, [resultsQuery.data]);
+
+  const legsQuery = useQuery({
+    queryKey: [
+      "club-today",
+      "relay-legs",
+      orgId ?? 0,
+      dateYmd,
+      relayInputs.length,
+    ],
+    queryFn: () => fetchRelayLegsForRows(relayInputs),
+    enabled: relayInputs.length > 0,
+    staleTime: 5 * 60_000,
+  });
+  const legs = legsQuery.data;
+
   const clubs = showingAll ? fallbackClubs : primaryClubs;
   const isLoadingClubs =
     clubsQuery.isLoading || (shouldFallback && fallbackClubsQuery.isLoading);
