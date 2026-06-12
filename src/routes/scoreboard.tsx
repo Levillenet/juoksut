@@ -233,8 +233,16 @@ function ScoreboardPicker() {
 
 /* ---------------- Live scoreboard ---------------- */
 
+interface VerticalHeight {
+  height: string;
+  pattern: string;
+  cleared: boolean;
+}
+
 interface RankedRow extends Allocation {
   attempts: (string | null)[];
+  heights: VerticalHeight[];
+  vertical: boolean;
   best: string | null;
   bestIdx: number | null;
 }
