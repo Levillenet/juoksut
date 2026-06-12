@@ -105,6 +105,15 @@ export const YAG_CALLING_ROWS: YagCallingRow[] = [
     "date": "2026-06-12",
     "calling": "11:52–12:02",
     "kentalle": "12:04",
+    "alkaa": "12:12",
+    "sarja": "P12",
+    "laji": "200m (erä 5)",
+    "paikka": "–"
+  },
+  {
+    "date": "2026-06-12",
+    "calling": "11:52–12:02",
+    "kentalle": "12:04",
     "alkaa": "12:15",
     "sarja": "T12",
     "laji": "200m (erä 1)",
@@ -409,6 +418,15 @@ export const YAG_CALLING_ROWS: YagCallingRow[] = [
   },
   {
     "date": "2026-06-12",
+    "calling": "14:14–14:24",
+    "kentalle": "14:26",
+    "alkaa": "14:34",
+    "sarja": "T11",
+    "laji": "150m (erä 9)",
+    "paikka": "–"
+  },
+  {
+    "date": "2026-06-12",
     "calling": "14:30–14:40",
     "kentalle": "14:42",
     "alkaa": "14:50",
@@ -450,6 +468,15 @@ export const YAG_CALLING_ROWS: YagCallingRow[] = [
     "alkaa": "15:02",
     "sarja": "P11",
     "laji": "150m (erä 5)",
+    "paikka": "–"
+  },
+  {
+    "date": "2026-06-12",
+    "calling": "14:45–14:55",
+    "kentalle": "14:57",
+    "alkaa": "15:05",
+    "sarja": "P11",
+    "laji": "150m (erä 6)",
     "paikka": "–"
   },
   {
