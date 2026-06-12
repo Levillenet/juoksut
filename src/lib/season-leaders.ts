@@ -153,7 +153,9 @@ async function fetchSeasonEvents(season: SeasonKind): Promise<LeaderEventOption[
       .gte("competition_date", range.from.toISOString())
       .lt("competition_date", range.to.toISOString())
       .not("result_numeric", "is", null)
+      .order("id", { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);
+
     if (error) throw error;
     const rows = ((data ?? []) as { event_name: string | null; event_category: string | null; sub_category: string | null }[])
       .filter((r) => !isRoadOrCrossCountry(r));
