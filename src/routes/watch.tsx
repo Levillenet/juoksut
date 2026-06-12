@@ -378,6 +378,10 @@ function WatchPage() {
           </div>
         )}
 
+        {watched.length > 0 && (
+          <ShareInviteBanner competitionId={competitionId} />
+        )}
+
         <div>
 
         {/* Search results */}
