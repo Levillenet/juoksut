@@ -298,6 +298,13 @@ export function ClubTodaySection({
                           isPb && pb
                             ? formatImprovement(r.event_category, r.result_text, pb.text)
                             : null;
+                        const relayLegs =
+                          r.event_category === "Relay" && legs
+                            ? getRelayLegs(legs, r.competition_id, r.event_id, r.athlete_key)
+                            : undefined;
+                        const relayText = relayLegs
+                          ? formatRelayLegsFromRows(relayLegs)
+                          : null;
                         return (
                           <li
                             key={`${r.athlete_key}-${r.event_name}-${idx}`}
@@ -323,6 +330,11 @@ export function ClubTodaySection({
                                     : null}
                                 {pb && ` · ${isPb ? "ed. PB" : "PB"} ${pb.text}`}
                               </p>
+                              {relayText && (
+                                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                  {relayText}
+                                </p>
+                              )}
                             </div>
                             {isPb && (
                               <span
