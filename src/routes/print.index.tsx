@@ -36,7 +36,7 @@ function PrintPage() {
   const [data, setData] = useState<RoundsByDate | null>(null);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState<Filter>("running");
+  const [filter, setFilter] = useState<Filter>("all");
 
   useEffect(() => {
     (async () => {
@@ -100,7 +100,7 @@ function PrintPage() {
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex w-full gap-2 sm:w-auto">
-              {(["running", "all"] as Filter[]).map((f) => (
+              {(["all", "running"] as Filter[]).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
