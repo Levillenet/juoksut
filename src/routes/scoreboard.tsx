@@ -354,11 +354,13 @@ function ScoreboardLive() {
     if (!ev || !round) return;
     const next = new Map<number, string>();
     const newItems: NewResultItem[] = [];
+    const skipVisualization = isVerticalJump(ev);
     for (const h of visibleHeats) {
       for (const a of h.Allocations) {
         const visualState = getResultVisualState(a);
         if (!visualState) continue;
         next.set(a.AllocId, visualState.signature);
+        if (skipVisualization) continue;
         const prev = prevResultsRef.current.get(a.AllocId);
         if (prev !== undefined && prev !== visualState.signature) {
           newItems.push({
@@ -375,6 +377,7 @@ function ScoreboardLive() {
     prevResultsRef.current = next;
     if (newItems.length) setQueue((q) => [...q, ...newItems]);
   }, [ev, round, visibleHeats]);
+
 
   useEffect(() => {
     if (currentOverlay || queue.length === 0) return;
