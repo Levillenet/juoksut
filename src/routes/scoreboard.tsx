@@ -405,6 +405,10 @@ function ScoreboardLive() {
 
   const vw = useViewportWidth();
   const narrow = vw < 900;
+  const verticalEvent = isVerticalJump(ev);
+  // Mobile + high/pole vault always scrolls — rows need height for the per-height
+  // attempt chips, which don't fit in a fixed-screen Top N layout on a phone.
+  const scrollMode = top === "all" || (narrow && verticalEvent);
 
   const clock = useClock();
 
