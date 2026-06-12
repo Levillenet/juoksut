@@ -1,28 +1,22 @@
-## Suunnitelma: Poista "Kaikki"-vaihtoehto suorituspaikan livenäytöstä
+## Muutokset
 
-### Tavoite
-Kuuluttajanäkymän asetteluvalikon kohdasta **"Käynnissä-lajien näyttö → Tuloksia per laji"** poistetaan **Kaikki**-vaihtoehto. Jäljelle jäävät vain **Top 5** ja **Top 10**, koska enempää tuloksia ei mahdu suorituspaikan livenäytölle.
+### 1. `WelcomeDialog` — uusi sisältö ja näytä kaikille
+`src/components/WelcomeDialog.tsx`
 
-### Muutettavat tiedostot
+- **Vaihda `STORAGE_PREFIX`** uuteen avaimeen (esim. `"welcome.dialog.seen.v3-yag"`), jotta dialogi avautuu uudelleen myös niille käyttäjille, jotka ovat jo sulkeneet vanhan v2-version. Logiikka (näytä kerran per käyttäjä, muista localStorageen) säilyy.
+- **Otsikko**: "Tärkeää tietoa palvelusta" → "Uutta: YAG Calling-aikataulu"
+- **Sisältö** (korvaa `<AboutServiceContent />`): lyhyt inline-teksti, joka kertoo:
+  - YAG Espoo 2026 -kisalle on nyt oma calling-aikataulu.
+  - Sen löytää **Kilpailun aikataulu** -valikon yläreunan **YAG**-välilehdeltä.
+  - Voi valita näkymäksi joko **omat seurattavat urheilijat** tai **oman seuran**.
+  - Aikataulun saa myös ladattua PDF:nä.
+- **Footer**: linkki "Avaa erillisellä sivulla" → osoittaa `/print/yag-calling`-sivulle (tekstinä esim. "Avaa YAG calling-aikataulu"). "Selvä, kiitos!" -painike säilyy.
 
-**1. `src/lib/announcer-layout-store.ts`**
-- `liveLimit`-tyyppi: `5 | 10 | "all"` → `5 | 10`
-- `sanitizeView`: poista `"all"` validointiehdosta (vanhat tallennetut "all"-arvot palautuvat oletukseen 10)
-- Päivitä oletukset tarvittaessa (planning-näkymän `liveLimit: 10` jo OK; combined-näkymän `liveLimit: 10` OK; live-näkymän `liveLimit: 5` OK)
+### 2. Säilytä vanha "Tietoa palvelusta" -sisältö
+- `AboutServiceContent` ja `/tietoa-palvelusta`-sivu säilyvät ennallaan, joten vanha teksti on luettavissa.
+- Lisätään pieni linkki etusivun alalaitaan (kaikille) tai admin-osioon: "Tietoa palvelusta", joka vie `/tietoa-palvelusta`-sivulle. *(Voidaan jättää myös pois, jos linkki on jo olemassa — tarkistetaan toteutusvaiheessa, näkyykö linkki etusivulla.)*
 
-**2. `src/components/announcer/AnnouncerLayoutControls.tsx`**
-- Live-kontrollien nappilista: `([5, 10, "all"] as const)` → `([5, 10] as const)`
-- Poista `n === "all" ? "Kaikki" : ...` -ehto, jätä vain `Top {n}`
-
-**3. `src/components/announcer/InProgressSection.tsx`**
-- `limit`-propin tyyppi: `5 | 10 | "all"` → `5 | 10`
-- Oletusarvo: `"all"` → `10`
-
-**4. `src/components/announcer/shared.tsx` (EventCard)**
-- `rankLimit`-propin tyyppi: `5 | 10 | "all"` → `5 | 10`
-- Oletusarvo: `"all"` → `10`
-- Yksinkertaista `openList`: `allRanked.slice(0, rankLimit)` (poista `"all"`-haarat)
-
-### Vaikutus
-- Käyttäjille, joilla oli aiemmin "Kaikki" valittuna, valinta palautuu automaattisesti näkymän oletukseen (Top 5 tai Top 10).
-- Mikään muu toiminta (sarakkeet, leveys, "Avaa kaikki oletuksena") ei muutu.
+## Vaikutukset
+- Kaikki käyttäjät (myös aiemmin dialogin sulkeneet) saavat YAG-ohjeen näkyviin seuraavalla kirjautumisella.
+- Suljettuaan dialogin uudelleen, sitä ei näytetä enää (uusi v3-avain merkitään nähdyksi).
+- Vanha "Tietoa palvelusta" -teksti pysyy saatavilla erillisellä sivulla.
