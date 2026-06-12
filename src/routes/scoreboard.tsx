@@ -16,6 +16,7 @@ import {
   formatTime,
   helsinkiDateKey,
   isRunningEvent,
+  isVerticalJump,
   STATUS_LABEL,
   type Allocation,
   type Round,
