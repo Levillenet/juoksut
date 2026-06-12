@@ -113,7 +113,7 @@ function YagCallingPage() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, rows]) => ({
         date,
-        rows: [...rows].sort((a, b) => a.row.calling.localeCompare(b.row.calling)),
+        rows: [...rows].sort((a, b) => callingStartMinutes(a.row.calling) - callingStartMinutes(b.row.calling)),
       }));
   }, [matches]);
 
