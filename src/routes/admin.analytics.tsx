@@ -235,13 +235,53 @@ function Page() {
           </p>
         )}
 
-        <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-          <StatCard label="Tapahtumia yhteensä" value={stats.total} />
-          <StatCard label="Viim. 24h" value={stats.last24h} />
-          <StatCard label="Käyttäjät tänään" value={stats.todayUsers} />
-          <StatCard label="Uniikkeja käyttäjiä" value={stats.uniqueUsers} />
-          <StatCard label="Päiviä" value={stats.byDay.length} />
+        <section className="space-y-3">
+          <div>
+            <h2 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+              Tänään
+            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
+              <StatCard
+                label="Uniikit kävijät"
+                value={stats.todayUsers}
+                hint="kirjautuneet + anonyymit selaimet"
+              />
+              <StatCard label="Tapahtumia" value={stats.todayEvents} />
+            </div>
+          </div>
+          <div>
+            <h2 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+              Viim. 7 päivää
+            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
+              <StatCard label="Uniikit kävijät" value={stats.last7dUsers} />
+              <StatCard label="Tapahtumia" value={stats.last7dEvents} />
+            </div>
+          </div>
+          <div>
+            <h2 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+              Kaikkiaan
+            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <StatCard
+                label="Uniikit kävijät"
+                value={stats.allUniqueVisitors}
+                hint="kirjautuneet + anonyymit selaimet"
+              />
+              <StatCard
+                label="Kirjautuneet käyttäjät"
+                value={stats.uniqueUsers}
+                hint="uniikit tilit"
+              />
+              <StatCard label="Tapahtumia" value={stats.total} />
+              <StatCard label="Viim. 24h" value={stats.last24h} />
+            </div>
+          </div>
         </section>
+
+        <Section title="Päivittäin – kävijät ja tapahtumat">
+          <DailyTable data={stats.byDayCombined} />
+        </Section>
 
         <Section title="Näkymät / tapahtumat">
           <Table data={stats.byEvent} keyLabel="Tapahtuma" />
@@ -267,13 +307,6 @@ function Page() {
           <NamedTable data={stats.byCompetition} keyLabel="Kilpailu" />
         </Section>
 
-        <Section title="Päivittäin (tapahtumat)">
-          <Table data={stats.byDay} keyLabel="Päivä" />
-        </Section>
-
-        <Section title="Päivittäin (uniikit käyttäjät)">
-          <Table data={stats.byDayUnique} keyLabel="Päivä" />
-        </Section>
 
         <Section title="Viimeisimmät tapahtumat (50)">
           <div className="overflow-x-auto rounded-md border">
