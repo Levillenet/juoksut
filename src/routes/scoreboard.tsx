@@ -32,27 +32,32 @@ import { detectRecord, RecordStar } from "@/lib/records";
 import { WakeLockToggle } from "@/components/WakeLockToggle";
 import { getResultVisualState } from "@/lib/result-visualization";
 
-type TopSize = 3 | 5 | 10 | "all";
+type TopSize = 10 | "all";
 
 type HeatSel = "all" | number;
+
+type OrderMode = "result" | "start";
 
 interface SearchParams {
   eventId?: number;
   roundId?: number;
   top: TopSize;
   heat: HeatSel;
+  order: OrderMode;
 }
 
 function parseTop(v: unknown): TopSize {
-  if (v === 3 || v === "3") return 3;
-  if (v === 5 || v === "5") return 5;
   if (v === "all") return "all";
   return 10;
 }
 
-const TOP_OPTIONS: TopSize[] = [3, 5, 10, "all"];
+const TOP_OPTIONS: TopSize[] = [10, "all"];
 function topLabel(n: TopSize): string {
   return n === "all" ? "Kaikki" : `Top ${n}`;
+}
+
+function parseOrder(v: unknown): OrderMode {
+  return v === "start" ? "start" : "result";
 }
 
 function parseHeat(v: unknown): HeatSel {
@@ -77,6 +82,7 @@ export const Route = createFileRoute("/scoreboard")({
     roundId: typeof s.roundId === "number" ? s.roundId : s.roundId ? Number(s.roundId) : undefined,
     top: parseTop(s.top),
     heat: parseHeat(s.heat),
+    order: parseOrder(s.order),
   }),
   component: () => (
     <RequireRole allow={["official", "user"]}>
@@ -94,7 +100,7 @@ function ScoreboardGate() {
 
 function ScoreboardPicker() {
   const [competitionId] = useCompetitionId();
-  const { top } = Route.useSearch();
+  const { top, order } = Route.useSearch();
   const navigate = useNavigate({ from: "/scoreboard" });
   const scheduleQ = useQuery(competitionScheduleQueryOptions(competitionId));
 
@@ -205,7 +211,7 @@ function ScoreboardPicker() {
                 <li key={r.Id}>
                   <Link
                     to="/scoreboard"
-                    search={{ eventId: r.EventId, roundId: r.Id, top, heat: "all" }}
+                    search={{ eventId: r.EventId, roundId: r.Id, top, heat: "all", order }}
                     className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm hover:bg-secondary"
                   >
                     <div className="w-16 shrink-0 text-lg font-bold tabular-nums">
@@ -249,7 +255,7 @@ interface RankedRow extends Allocation {
 }
 
 function ScoreboardLive() {
-  const { eventId, roundId, top, heat } = Route.useSearch();
+  const { eventId, roundId, top, heat, order } = Route.useSearch();
   const [competitionId] = useCompetitionId();
   const navigate = useNavigate({ from: "/scoreboard" });
   const detailQ = useQuery(eventDetailsQueryOptions(competitionId, eventId!));
@@ -327,6 +333,19 @@ function ScoreboardLive() {
       });
       return { ...a, attempts, heights: [], vertical: false, best, bestIdx };
     });
+    if (order === "start") {
+      // Suoritusjärjestys: Position (rata/järjestysnumero) nouseva, kilpailun
+      // ulkopuolella olevat loppuun.
+      return enriched.sort((a, b) => {
+        const ao = a.NotInCompetition ? 1 : 0;
+        const bo = b.NotInCompetition ? 1 : 0;
+        if (ao !== bo) return ao - bo;
+        const ap = a.Position ?? Number.POSITIVE_INFINITY;
+        const bp = b.Position ?? Number.POSITIVE_INFINITY;
+        if (ap !== bp) return ap - bp;
+        return (a.Name ?? "").localeCompare(b.Name ?? "");
+      });
+    }
     // Sort by ResultRank if known, otherwise by best numeric desc, fouls last
     return enriched.sort((a, b) => {
       if (a.ResultRank != null && b.ResultRank != null) return a.ResultRank - b.ResultRank;
@@ -338,7 +357,7 @@ function ScoreboardLive() {
       const bv = Number.isFinite(bn) ? bn : -Infinity;
       return bv - av;
     });
-  }, [round, ev, visibleHeats]);
+  }, [round, ev, visibleHeats, order]);
 
   const visible = top === "all" ? rows : rows.slice(0, top);
 
@@ -433,7 +452,7 @@ function ScoreboardLive() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate({ search: { eventId: undefined, roundId: undefined, top, heat: "all" } })}
+          onClick={() => navigate({ search: { eventId: undefined, roundId: undefined, top, heat: "all", order } })}
           aria-label="Takaisin"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -499,6 +518,31 @@ function ScoreboardLive() {
         )}
 
         <div className="flex shrink-0 gap-1 rounded-full border bg-background p-1 text-xs font-semibold">
+          <button
+            onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, order: "result" }) })}
+            className={`rounded-full px-3 py-1 transition-colors ${
+              order === "result"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-secondary"
+            }`}
+            title="Paremmuusjärjestys"
+          >
+            Tulokset
+          </button>
+          <button
+            onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, order: "start" }) })}
+            className={`rounded-full px-3 py-1 transition-colors ${
+              order === "start"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-secondary"
+            }`}
+            title="Suoritusjärjestys"
+          >
+            Suoritusvuoro
+          </button>
+        </div>
+
+        <div className="flex shrink-0 gap-1 rounded-full border bg-background p-1 text-xs font-semibold">
           {TOP_OPTIONS.map((n) => (
             <button
               key={String(n)}
@@ -515,20 +559,15 @@ function ScoreboardLive() {
         </div>
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           onClick={() => setOverlayEnabled((v) => !v)}
           aria-label={overlayEnabled ? "Piilota uuden tuloksen efekti" : "Näytä uuden tuloksen efekti"}
           title={overlayEnabled ? "Uuden tuloksen esittely: päällä" : "Uuden tuloksen esittely: pois"}
-          className={`shrink-0 gap-1.5 rounded-full border px-3 text-xs font-semibold ${
-            overlayEnabled
-              ? "border-primary/30 bg-primary/10 text-primary"
-              : "border-border bg-background text-muted-foreground"
+          className={`shrink-0 rounded-full ${
+            overlayEnabled ? "text-primary" : "text-muted-foreground"
           }`}
         >
-          <Sparkles className="h-4 w-4" />
-          <span className="hidden sm:inline">
-            {overlayEnabled ? "Uuden tuloksen esittely päällä" : "Uuden tuloksen esittely pois"}
-          </span>
+          <Sparkles className="h-5 w-5" />
         </Button>
         <WakeLockToggle />
         <Button
@@ -561,7 +600,12 @@ function ScoreboardLive() {
               <ScoreRow
                 key={row.AllocId}
                 row={row}
-                displayRank={idx + 1}
+                displayRank={
+                  order === "start"
+                    ? (row.Position ?? idx + 1)
+                    : (row.ResultRank ?? idx + 1)
+                }
+                isLeader={order === "result" && idx === 0 && !!row.best}
                 count={visible.length}
                 eventId={ev?.Id ?? 0}
                 category={ev?.EventCategory ?? ""}
@@ -629,6 +673,7 @@ function useViewportWidth(): number {
 function ScoreRow({
   row,
   displayRank,
+  isLeader: isLeaderProp,
   count,
   eventId,
   category,
@@ -638,6 +683,7 @@ function ScoreRow({
 }: {
   row: RankedRow;
   displayRank: number;
+  isLeader?: boolean;
   count: number;
   eventId: number;
   category: string;
@@ -651,8 +697,8 @@ function ScoreRow({
   const heightStyle = scrollMode ? {} : { flex: "1 1 0", minHeight: 0 };
   // Cap visual sizing at "10" buckets so scroll rows stay reasonable regardless of total count.
   const sizeBucket = scrollMode ? 10 : count;
-  const isLeader = displayRank === 1 && row.best;
-  const rankNum = row.ResultRank ?? displayRank;
+  const isLeader = isLeaderProp ?? (displayRank === 1 && !!row.best);
+  const rankNum = displayRank;
   const stackName = !narrow && sizeBucket <= 5;
   const { first, last } = splitName(row.Name ?? "");
 
