@@ -139,7 +139,9 @@ export function AthleteSearch({
       )}
 
       <ul className="mt-3 space-y-3">
-        {groups.map((g) => (
+        {groups.map((g) => {
+          const isWatched = watchedKeys.has(g.key);
+          return (
           <li key={g.key} className="rounded-xl border bg-card p-4 shadow-sm">
             <div className="mb-3 flex items-baseline justify-between gap-3">
               <div className="min-w-0">
@@ -154,9 +156,42 @@ export function AthleteSearch({
                   <p className="truncate text-xs text-muted-foreground">{g.organization}</p>
                 )}
               </div>
-              <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
-                {g.entries.length} lajia
-              </span>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={isWatched ? "secondary" : "outline"}
+                  aria-pressed={isWatched}
+                  aria-label={isWatched ? "Poista seurannasta" : "Lisää seurantaan"}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (isWatched) {
+                      void remove(g.key);
+                    } else {
+                      void add({
+                        key: g.key,
+                        surname: g.surname,
+                        firstname: g.firstname,
+                        organization: g.organization,
+                        organizationId: g.organizationId,
+                      });
+                    }
+                  }}
+                >
+                  {isWatched ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <UserPlus className="h-4 w-4" />
+                  )}
+                  <span className="ml-1 hidden sm:inline">
+                    {isWatched ? "Seurannassa" : "Seuraa"}
+                  </span>
+                </Button>
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
+                  {g.entries.length} lajia
+                </span>
+              </div>
             </div>
             <ul className="divide-y divide-border">
               {g.entries.map((e, idx) => {
