@@ -205,47 +205,27 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
 function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
   const { signOut, user } = useAuth();
   const [competitionId] = useCompetitionId();
+  const queryClient = useQueryClient();
   const isOfficial = role === "official" && !isAdmin;
-  const [data, setData] = useState<RoundsByDate | null>(null);
-  const [name, setName] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [activeDate, setActiveDate] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
   const [now, setNow] = useState(() => new Date());
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
-  const [refreshSec] = useRefreshIntervalSec();
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      if (isOfficial) {
-        const props = await fetchProperties(competitionId).catch(() => null);
-        setName(props?.Competition?.Name ?? "");
-        setUpdatedAt(new Date());
-      } else {
-        const [rounds, props] = await Promise.all([
-          fetchRounds(competitionId),
-          fetchProperties(competitionId).catch(() => null),
-        ]);
-        setData(rounds);
-        setName(props?.Competition?.Name ?? "");
-        setUpdatedAt(new Date());
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Tuntematon virhe");
-    } finally {
-      setLoading(false);
-    }
+  const scheduleQuery = useQuery(competitionScheduleQueryOptions(competitionId));
+  const data = scheduleQuery.data?.rounds ?? null;
+  const name = scheduleQuery.data?.name ?? "";
+  const loading = scheduleQuery.isFetching && !scheduleQuery.data;
+  const error = scheduleQuery.error
+    ? scheduleQuery.error instanceof Error
+      ? scheduleQuery.error.message
+      : "Tuntematon virhe"
+    : null;
+  const updatedAt = scheduleQuery.dataUpdatedAt
+    ? new Date(scheduleQuery.dataUpdatedAt)
+    : null;
+  const load = () => {
+    queryClient.invalidateQueries({ queryKey: competitionScheduleKey(competitionId) });
   };
-
-  useEffect(() => {
-    load();
-    const t = setInterval(load, Math.max(5, refreshSec) * 1000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competitionId, refreshSec, isOfficial]);
 
   const dates = useMemo(() => {
     if (!data) return [];
