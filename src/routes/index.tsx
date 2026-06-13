@@ -101,15 +101,15 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
         </Link>
       )}
       {!isOfficial && (
-        <Link
-          to="/season-leaders"
-          className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
+        <div
+          className="cursor-not-allowed rounded-xl border-2 border-dashed border-muted bg-muted/30 px-4 py-2.5 text-center opacity-70"
+          aria-disabled="true"
         >
           <div className="text-sm font-semibold leading-tight">Kauden kärki</div>
           <div className="mt-0.5 text-[11px] text-muted-foreground">
-            Kauden parhaat tulokset lajeittain ja ikäluokittain
+            Palvelu ei käytössä vielä
           </div>
-        </Link>
+        </div>
       )}
       {role === "user" && (
         <Link
