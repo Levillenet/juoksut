@@ -82,6 +82,7 @@ export const Route = createFileRoute("/scoreboard")({
     roundId: typeof s.roundId === "number" ? s.roundId : s.roundId ? Number(s.roundId) : undefined,
     top: parseTop(s.top),
     heat: parseHeat(s.heat),
+    order: parseOrder(s.order),
   }),
   component: () => (
     <RequireRole allow={["official", "user"]}>
