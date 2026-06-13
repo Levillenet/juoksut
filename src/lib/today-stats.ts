@@ -44,8 +44,8 @@ async function fetchTodayRows(): Promise<TodayRow[]> {
       .select(
         "competition_id, event_id, athlete_key, event_name, event_category, sub_category, age_class, result_numeric, was_pb",
       )
-      .gte("competition_date", startISO)
-      .lt("competition_date", endISO)
+      .gte("captured_at", startISO)
+      .lt("captured_at", endISO)
       .range(offset, offset + PAGE - 1);
     if (error) throw error;
     const rows = ((data ?? []) as TodayRow[]).filter((r) => !isRoadOrCrossCountry(r));
