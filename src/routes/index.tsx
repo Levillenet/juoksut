@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, ChevronRight, LogOut } from "lucide-react";
 import logo from "@/assets/lahden-ahkera-logo.png";
 import { TodayStatsSection } from "@/components/TodayStatsSection";
@@ -7,14 +8,15 @@ import { TodayStatsSection } from "@/components/TodayStatsSection";
 const NAVCARDS_COLLAPSED_KEY = "home.navCards.collapsed";
 
 import {
-  fetchRounds,
-  fetchProperties,
   formatTime,
   helsinkiDateKey,
   STATUS_LABEL,
   type Round,
-  type RoundsByDate,
 } from "@/lib/tuloslista";
+import {
+  competitionScheduleQueryOptions,
+  competitionScheduleKey,
+} from "@/lib/tuloslista-queries";
 import { useCompetitionId } from "@/lib/competition-store";
 import { useAuth, type Role } from "@/lib/auth";
 import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
@@ -25,7 +27,6 @@ import { LiveCompetitionsSection } from "@/components/LiveCompetitionsSection";
 import { SeasonStatsSection } from "@/components/SeasonStatsSection";
 import { Button } from "@/components/ui/button";
 import { NoteLinkInvitesBanner } from "@/components/NoteLinkInvitesBanner";
-import { useRefreshIntervalSec } from "@/lib/settings-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -203,47 +204,27 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
 function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
   const { signOut, user } = useAuth();
   const [competitionId] = useCompetitionId();
+  const queryClient = useQueryClient();
   const isOfficial = role === "official" && !isAdmin;
-  const [data, setData] = useState<RoundsByDate | null>(null);
-  const [name, setName] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [activeDate, setActiveDate] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
   const [now, setNow] = useState(() => new Date());
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
-  const [refreshSec] = useRefreshIntervalSec();
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      if (isOfficial) {
-        const props = await fetchProperties(competitionId).catch(() => null);
-        setName(props?.Competition?.Name ?? "");
-        setUpdatedAt(new Date());
-      } else {
-        const [rounds, props] = await Promise.all([
-          fetchRounds(competitionId),
-          fetchProperties(competitionId).catch(() => null),
-        ]);
-        setData(rounds);
-        setName(props?.Competition?.Name ?? "");
-        setUpdatedAt(new Date());
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Tuntematon virhe");
-    } finally {
-      setLoading(false);
-    }
+  const scheduleQuery = useQuery(competitionScheduleQueryOptions(competitionId));
+  const data = scheduleQuery.data?.rounds ?? null;
+  const name = scheduleQuery.data?.name ?? "";
+  const loading = scheduleQuery.isFetching && !scheduleQuery.data;
+  const error = scheduleQuery.error
+    ? scheduleQuery.error instanceof Error
+      ? scheduleQuery.error.message
+      : "Tuntematon virhe"
+    : null;
+  const updatedAt = scheduleQuery.dataUpdatedAt
+    ? new Date(scheduleQuery.dataUpdatedAt)
+    : null;
+  const load = () => {
+    queryClient.invalidateQueries({ queryKey: competitionScheduleKey(competitionId) });
   };
-
-  useEffect(() => {
-    load();
-    const t = setInterval(load, Math.max(5, refreshSec) * 1000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competitionId, refreshSec, isOfficial]);
 
   const dates = useMemo(() => {
     if (!data) return [];

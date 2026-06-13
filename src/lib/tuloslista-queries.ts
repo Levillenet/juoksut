@@ -1,3 +1,31 @@
+/**
+ * Jaetut live-datan kyselyt (tuloslista.com).
+ *
+ * SÄÄNNÖT — pidetään yksi totuus, ettei eri näkymät ajaudu eri lopputuloksiin
+ * (esim. ilmoittautumiset näkyvät yhdessä mutta eivät toisessa).
+ *
+ * 1. Urheilijatason / allokaatiotason näkymät (haku, seuranta, tulosteet,
+ *    YAG-calling jne.) käyttävät **vain** `competitionIndexQueryOptions`.
+ *    Indeksi sisältää automaattisesti `Enrollments`-fallbackin: kun eräjakoa
+ *    ei ole vielä tehty, ilmoittautuneet näkyvät `fromEnrollment: true`
+ *    -merkinnällä — tämä on miksi huomisen 800 m löytyy haulla vaikka rataa
+ *    ei ole vielä jaettu.
+ *
+ * 2. Aikataulutason näkymät (kotisivun lajilista, tulostettava aikataulu,
+ *    juoksulajien operointi, kuuluttajan rounds-jono) käyttävät **vain**
+ *    `competitionScheduleQueryOptions`. Älä tee omaa `fetchRounds`-kutsua
+ *    + `useState`/`useEffect`-paria komponenttiin: jaettu query antaa
+ *    automaattisen 15 s päivityksen ja yhden cache-merkinnän.
+ *
+ * 3. Yksittäisen lajin yksityiskohdat (tulosrivit, eräjako per laji) tulevat
+ *    `eventDetailsQueryOptions`-funktiolta, joka kapseloi `fetchEvent`-haun.
+ *    Älä luo uutta `fetchEvent`-looppia komponenttiin — jos tarvitset useita
+ *    lajeja, käytä `useQueries` `eventDetailsQueryOptions`-pohjalta.
+ *
+ * Jos uusi tarve ei mahdu näihin kolmeen, lisää tähän tiedostoon uusi
+ * jaettu `queryOptions`-funktio sen sijaan että kirjoittaisit oman fetchin
+ * suoraan reittiin.
+ */
 import { queryOptions } from "@tanstack/react-query";
 import {
   fetchRounds,
