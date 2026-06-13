@@ -104,6 +104,16 @@ export function competitionIndexQueryOptions(
                 /* baseline DB is best-effort */
               }
             }
+            const eventHasAnyAllocs = ev.Rounds.some((r) =>
+              r.Heats.some((h) => h.Allocations.length > 0),
+            );
+            const firstRoundId = ev.Rounds
+              .slice()
+              .sort(
+                (a, b) =>
+                  new Date(a.BeginDateTimeWithTZ).getTime() -
+                  new Date(b.BeginDateTimeWithTZ).getTime(),
+              )[0]?.Id;
             for (const round of ev.Rounds) {
               const matchingRound =
                 allRounds.find((r) => r.Id === round.Id) ?? {
@@ -127,7 +137,12 @@ export function competitionIndexQueryOptions(
                     });
                   }
                 }
-              } else if (ev.Enrollments && ev.Enrollments.length > 0) {
+              } else if (
+                !eventHasAnyAllocs &&
+                round.Id === firstRoundId &&
+                ev.Enrollments &&
+                ev.Enrollments.length > 0
+              ) {
                 for (const e of ev.Enrollments) {
                   if (e.NotInCompetition) continue;
                   collected.push({
