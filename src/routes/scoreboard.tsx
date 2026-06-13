@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, RefreshCw, Maximize2 } from "lucide-react";
+import { ArrowLeft, RefreshCw, Maximize2, Sparkles } from "lucide-react";
 import {
   NewResultOverlay,
   type NewResultItem,
@@ -347,6 +347,20 @@ function ScoreboardLive() {
   const prevResultsRef = useRef<Map<number, string>>(new Map());
   const [queue, setQueue] = useState<NewResultItem[]>([]);
   const [currentOverlay, setCurrentOverlay] = useState<NewResultItem | null>(null);
+  const [overlayEnabled, setOverlayEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem("scoreboard.overlayEnabled") !== "0";
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("scoreboard.overlayEnabled", overlayEnabled ? "1" : "0");
+  }, [overlayEnabled]);
+  useEffect(() => {
+    if (!overlayEnabled) {
+      setQueue([]);
+      setCurrentOverlay(null);
+    }
+  }, [overlayEnabled]);
 
   useEffect(() => {
     if (!ev || !round) return;
@@ -373,8 +387,8 @@ function ScoreboardLive() {
       }
     }
     prevResultsRef.current = next;
-    if (newItems.length) setQueue((q) => [...q, ...newItems]);
-  }, [ev, round, visibleHeats]);
+    if (newItems.length && overlayEnabled) setQueue((q) => [...q, ...newItems]);
+  }, [ev, round, visibleHeats, overlayEnabled]);
 
 
   useEffect(() => {
@@ -499,6 +513,16 @@ function ScoreboardLive() {
             </button>
           ))}
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setOverlayEnabled((v) => !v)}
+          aria-label={overlayEnabled ? "Piilota uuden tuloksen efekti" : "Näytä uuden tuloksen efekti"}
+          title={overlayEnabled ? "Uuden tuloksen efekti: päällä" : "Uuden tuloksen efekti: pois"}
+          className={overlayEnabled ? "text-primary" : "text-muted-foreground"}
+        >
+          <Sparkles className={`h-5 w-5 ${overlayEnabled ? "" : "opacity-50"}`} />
+        </Button>
         <WakeLockToggle />
         <Button
           variant="ghost"
@@ -542,7 +566,7 @@ function ScoreboardLive() {
           </ul>
         )}
       </main>
-      <NewResultOverlay item={currentOverlay} onDone={handleOverlayDone} />
+      <NewResultOverlay item={overlayEnabled ? currentOverlay : null} onDone={handleOverlayDone} />
     </div>
   );
 }
