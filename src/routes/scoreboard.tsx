@@ -347,6 +347,20 @@ function ScoreboardLive() {
   const prevResultsRef = useRef<Map<number, string>>(new Map());
   const [queue, setQueue] = useState<NewResultItem[]>([]);
   const [currentOverlay, setCurrentOverlay] = useState<NewResultItem | null>(null);
+  const [overlayEnabled, setOverlayEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem("scoreboard.overlayEnabled") !== "0";
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("scoreboard.overlayEnabled", overlayEnabled ? "1" : "0");
+  }, [overlayEnabled]);
+  useEffect(() => {
+    if (!overlayEnabled) {
+      setQueue([]);
+      setCurrentOverlay(null);
+    }
+  }, [overlayEnabled]);
 
   useEffect(() => {
     if (!ev || !round) return;
