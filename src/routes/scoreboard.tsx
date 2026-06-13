@@ -518,6 +518,31 @@ function ScoreboardLive() {
         )}
 
         <div className="flex shrink-0 gap-1 rounded-full border bg-background p-1 text-xs font-semibold">
+          <button
+            onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, order: "result" }) })}
+            className={`rounded-full px-3 py-1 transition-colors ${
+              order === "result"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-secondary"
+            }`}
+            title="Paremmuusjärjestys"
+          >
+            Tulokset
+          </button>
+          <button
+            onClick={() => navigate({ search: (prev: SearchParams) => ({ ...prev, order: "start" }) })}
+            className={`rounded-full px-3 py-1 transition-colors ${
+              order === "start"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-secondary"
+            }`}
+            title="Suoritusjärjestys"
+          >
+            Suoritusvuoro
+          </button>
+        </div>
+
+        <div className="flex shrink-0 gap-1 rounded-full border bg-background p-1 text-xs font-semibold">
           {TOP_OPTIONS.map((n) => (
             <button
               key={String(n)}
@@ -534,20 +559,15 @@ function ScoreboardLive() {
         </div>
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           onClick={() => setOverlayEnabled((v) => !v)}
           aria-label={overlayEnabled ? "Piilota uuden tuloksen efekti" : "Näytä uuden tuloksen efekti"}
           title={overlayEnabled ? "Uuden tuloksen esittely: päällä" : "Uuden tuloksen esittely: pois"}
-          className={`shrink-0 gap-1.5 rounded-full border px-3 text-xs font-semibold ${
-            overlayEnabled
-              ? "border-primary/30 bg-primary/10 text-primary"
-              : "border-border bg-background text-muted-foreground"
+          className={`shrink-0 rounded-full ${
+            overlayEnabled ? "text-primary" : "text-muted-foreground"
           }`}
         >
-          <Sparkles className="h-4 w-4" />
-          <span className="hidden sm:inline">
-            {overlayEnabled ? "Uuden tuloksen esittely päällä" : "Uuden tuloksen esittely pois"}
-          </span>
+          <Sparkles className="h-5 w-5" />
         </Button>
         <WakeLockToggle />
         <Button
