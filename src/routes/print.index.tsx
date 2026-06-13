@@ -1,15 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Printer } from "lucide-react";
 
-import {
-  fetchRounds,
-  fetchProperties,
-  isRunningEvent,
-  formatTime,
-  type Round,
-  type RoundsByDate,
-} from "@/lib/tuloslista";
+import { isRunningEvent, formatTime, type Round } from "@/lib/tuloslista";
+import { competitionScheduleQueryOptions } from "@/lib/tuloslista-queries";
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 import { PrintTabs } from "@/components/PrintTabs";
@@ -33,26 +28,12 @@ export const Route = createFileRoute("/print/")({
 function PrintPage() {
   const [competitionId] = useCompetitionId();
   const { orientation, setOrientation } = usePrintOrientation();
-  const [data, setData] = useState<RoundsByDate | null>(null);
-  const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        const [r, p] = await Promise.all([
-          fetchRounds(competitionId),
-          fetchProperties(competitionId).catch(() => null),
-        ]);
-        setData(r);
-        setName(p?.Competition?.Name ?? "");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [competitionId]);
+  const scheduleQuery = useQuery(competitionScheduleQueryOptions(competitionId));
+  const data = scheduleQuery.data?.rounds ?? null;
+  const name = scheduleQuery.data?.name ?? "";
+  const loading = scheduleQuery.isFetching && !scheduleQuery.data;
 
   const grouped = useMemo(() => {
     if (!data) return [] as Array<{ date: string; runs: Round[] }>;
