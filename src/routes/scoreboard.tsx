@@ -333,6 +333,19 @@ function ScoreboardLive() {
       });
       return { ...a, attempts, heights: [], vertical: false, best, bestIdx };
     });
+    if (order === "start") {
+      // Suoritusjärjestys: Position (rata/järjestysnumero) nouseva, kilpailun
+      // ulkopuolella olevat loppuun.
+      return enriched.sort((a, b) => {
+        const ao = a.NotInCompetition ? 1 : 0;
+        const bo = b.NotInCompetition ? 1 : 0;
+        if (ao !== bo) return ao - bo;
+        const ap = a.Position ?? Number.POSITIVE_INFINITY;
+        const bp = b.Position ?? Number.POSITIVE_INFINITY;
+        if (ap !== bp) return ap - bp;
+        return (a.Name ?? "").localeCompare(b.Name ?? "");
+      });
+    }
     // Sort by ResultRank if known, otherwise by best numeric desc, fouls last
     return enriched.sort((a, b) => {
       if (a.ResultRank != null && b.ResultRank != null) return a.ResultRank - b.ResultRank;
@@ -344,7 +357,7 @@ function ScoreboardLive() {
       const bv = Number.isFinite(bn) ? bn : -Infinity;
       return bv - av;
     });
-  }, [round, ev, visibleHeats]);
+  }, [round, ev, visibleHeats, order]);
 
   const visible = top === "all" ? rows : rows.slice(0, top);
 
