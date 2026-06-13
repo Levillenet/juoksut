@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, RefreshCw, Maximize2 } from "lucide-react";
+import { ArrowLeft, RefreshCw, Maximize2, Sparkles } from "lucide-react";
 import {
   NewResultOverlay,
   type NewResultItem,
