@@ -1,38 +1,40 @@
-## Ongelma
+## Suunnitelma: Kuuluttajanäkymän avaaminen kaikille käyttäjille
 
-"Seuran urheilijat tänään" -listassa Lahden Ahkeran urheilijoiden (esim. Front Lauri, 60m 10,23) uusia PB-ennätyksiä ei merkitä PB-merkillä, vaikka Jyväskylän Kenttäurheilijoiden vastaavat näkyvät oikein.
+### Tausta
+Kuuluttajanäkymä ( `/announcer/*` ) on tällä hetkellä suojattu `RequireRole`-komponentilla, joka vaatii `official`-roolin. Tämä tarkoittaa, että käyttäjän täytyy joko:
+- Kirjautua virallisella salasanalla (localStorage-based)
+- Olla allowlistatulla sähköpostilla ja kirjautuneena
+- Olla admin (samiaavikko@gmail.com)
 
-## Juurisyy
+### Tavoite
+Poistaa roolivaatimus, jotta kaikki käyttäjät (kirjautuneet ja ei-kirjautuneet) voivat nähdä ja käyttää kuuluttajanäkymää.
 
-`src/lib/club-today.ts` → `fetchClubPbs` rajaa "aiemmat PB:t" SQL-ehdolla:
+### Tekninen toteutus
 
-```ts
-if (beforeISO) query = query.lt("competition_date", beforeISO);
+**Muokattava tiedosto:** `src/routes/announcer.tsx`
+
+**Muutokset:**
+- Poista `RequireRole`-komponentin import ja käyttö
+- Korvaa komponentti palauttamalla suoraan `<Outlet />`
+- Säilytä `head()`-metatiedot ennallaan
+
+```tsx
+// Nykyinen:
+component: () => (
+  <RequireRole allow={["official"]}>
+    <Outlet />
+  </RequireRole>
+),
+
+// Uusi:
+component: () => <Outlet />,
 ```
 
-Monipäiväisissä kisoissa (YAG 12.–14.6.) jokaisen päivän tuloksilla on sama `competition_date` = kisan alkamispäivä (12.6.). Kun valittu päivä on 13.6., `beforeISO` = 13.6. 00:00 → ehto `12.6. < 13.6.` täyttyy myös **tänään juostuille tuloksille**. Niinpä Front Laurin tämänpäiväinen 10,23 luetaan "aiempana PB:nä" → vertailu ei näe parannusta → PB-rusettia ei piirretä.
+### Vaikutukset
+- `/announcer`, `/announcer/combined`, `/announcer/live`, `/announcer/planning` -reitit ovat julkisesti saatavilla
+- Näkymän asetukset tallentuvat edelleen localStorageen; kirjautuneet käyttäjät voivat synkronoida asetukset tililleen
+- Kaikki data tulee julkisesta tuloslista-API:sta, joten ei vaadi autentikaatiota
 
-Yksipäiväisissä kisoissa ongelmaa ei näy, koska `competition_date` = sama kuin tämä päivä → ei mukana "aiemmissa".
-
-## Korjaus
-
-Yksi muutos `src/lib/club-today.ts`:ssa.
-
-`fetchClubPbs` ottaa `beforeISO`:n sijaan/lisäksi rajauksen `captured_at`-kenttään, koska se kuvaa todellista tallennushetkeä eikä kisan alkamispäivää:
-
-```ts
-if (beforeISO) query = query.lt("captured_at", beforeISO);
-```
-
-`fetchClubPreviousPbs` antaa edelleen `helsinkiDayBounds(beforeDate).startISO` ⇒ tämän päivän 00:00 Helsinki-aikaa. Tällöin:
-
-- Eilen tai aiemmin tallennetut YAG-tulokset → mukana (oikein, oikea PB-vertailupohja).
-- Tänään tallennetut YAG-tulokset (sis. saman päivän aiemmat erät) → EIVÄT mukana → tämän päivän paras 10,23 verrataan kunnolla edelliseen ennätykseen → PB-merkki ilmestyy.
-
-Sama tarkennus pidetään johdonmukaisena aiemman korjauksen kanssa, jossa `daily-best.ts`/`club-today.ts` luvut siirrettiin jo käyttämään `captured_at`a monipäiväisten kisojen tukemiseksi.
-
-## Vaikutus
-
-- Front Laurin ja muiden Lahden Ahkeran YAG-urheilijoiden uudet PB:t näkyvät PB-merkillä ja parannuslukemalla.
-- Yksipäiväisissä kisoissa käytös pysyy samana (`captured_at` ja `competition_date` osuvat samalle päivälle).
-- Ei muutoksia UI-koodiin, kyselyavaimiin tai muihin osioihin.
+### Riskit
+- Ei merkittäviä riskejä; kuuluttajanäkymä on puhtaasti lukunäkymä tuloslistadatasta
+- Ainoastaan asetus-tallennus (layout) edellyttää kirjautumista jos haluaa synkronoinnin, mutta localStorage-varmuuskopio toimii aina

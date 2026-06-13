@@ -1,5 +1,4 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { RequireRole } from "@/components/RequireRole";
 
 export const Route = createFileRoute("/announcer")({
   head: () => ({
@@ -12,9 +11,5 @@ export const Route = createFileRoute("/announcer")({
       },
     ],
   }),
-  component: () => (
-    <RequireRole allow={["official"]}>
-      <Outlet />
-    </RequireRole>
-  ),
+  component: () => <Outlet />,
 });
