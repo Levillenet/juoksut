@@ -67,8 +67,10 @@ function WatchPage() {
 
   const hasIndexData = useRef(false);
   const indexQuery = useQuery(
-    competitionIndexQueryOptions(competitionId, (done, total) => {
-      if (!hasIndexData.current) setProgress({ done, total });
+    competitionIndexQueryOptions(competitionId, {
+      onProgress: (done, total) => {
+        if (!hasIndexData.current) setProgress({ done, total });
+      },
     }),
   );
   useEffect(() => {

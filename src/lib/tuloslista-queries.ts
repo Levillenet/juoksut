@@ -42,10 +42,18 @@ export const eventDetailsKey = (id: number, eventId: number) =>
  */
 export function competitionIndexQueryOptions(
   competitionId: number,
-  onProgress?: (done: number, total: number) => void,
+  options?: {
+    onProgress?: (done: number, total: number) => void;
+    skipBaselines?: boolean;
+  },
 ) {
+  const onProgress = options?.onProgress;
+  const skipBaselines = options?.skipBaselines ?? false;
   return queryOptions({
-    queryKey: competitionIndexKey(competitionId),
+    queryKey: [
+      ...competitionIndexKey(competitionId),
+      skipBaselines ? "no-baselines" : "baselines",
+    ] as const,
     queryFn: async (): Promise<CompetitionIndex> => {
       const [byDate, props] = await Promise.all([
         fetchRounds(competitionId),
@@ -56,7 +64,7 @@ export function competitionIndexQueryOptions(
       onProgress?.(0, eventIds.length);
 
       const collected: IndexedEntry[] = [];
-      const CONCURRENCY = 6;
+      const CONCURRENCY = 12;
       let cursor = 0;
       let done = 0;
 
@@ -66,11 +74,13 @@ export function competitionIndexQueryOptions(
           const eid = eventIds[i];
           try {
             const ev = await fetchEvent(competitionId, eid);
-            const allAllocs = ev.Rounds.flatMap((r) =>
-              r.Heats.flatMap((h) => h.Allocations),
-            );
-            await captureBaselines(competitionId, eid, allAllocs);
-            await loadBaselines(competitionId, eid);
+            if (!skipBaselines) {
+              const allAllocs = ev.Rounds.flatMap((r) =>
+                r.Heats.flatMap((h) => h.Allocations),
+              );
+              await captureBaselines(competitionId, eid, allAllocs);
+              await loadBaselines(competitionId, eid);
+            }
             for (const round of ev.Rounds) {
               const matchingRound =
                 allRounds.find((r) => r.Id === round.Id) ?? {
