@@ -120,7 +120,7 @@ export async function fetchClubPbs(
     .in("athlete_key", athleteKeys)
     .not("result_numeric", "is", null)
     .limit(10000);
-  if (beforeISO) query = query.lt("competition_date", beforeISO);
+  if (beforeISO) query = query.lt("captured_at", beforeISO);
   const { data, error } = await query;
   if (error) throw error;
   const map: ClubPbMap = {};
