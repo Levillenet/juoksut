@@ -1,52 +1,29 @@
-## Analytiikkasivun parannukset
+## Ongelma
 
-Selkeytetään `/admin/analytics`-sivun yläosaa ja lisätään päiväkohtainen näkymä, josta näkee sekä uniikit että kokonaiskävijämäärät päivätasolla.
+`/search` (Hae nimellä) ei löydä huomisen T10 800 m Amanda Gustavssonia, mutta `/watch` (Seuratut urheilijat) löytää saman urheilijan.
+
+Syy: kaksi eri indeksointitapaa.
+
+- `/watch` käyttää `competitionIndexQueryOptions` (`src/lib/tuloslista-queries.ts`), joka osaa **falbäckiksi** synteettiset rivit `ev.Enrollments`-listasta silloin kun lajiin ei ole vielä jaettu eriä (`fromEnrollment: true`). Huomisen 800 m on juuri tällainen: ilmoittautumiset olemassa, eräjako tulossa.
+- `/search` käyttää omaa indeksointiaan komponentissa `src/components/AthleteSearch.tsx`, joka iteroi vain `round.Heats[].Allocations`. Jos eriä ei ole, lajia ei tule indeksiin – joten hakukin ei löydä siihen ilmoittautuneita.
+
+## Korjaus
+
+Yhdenmukaistetaan: `AthleteSearch` käyttää samaa jaettua `competitionIndexQueryOptions`-kyselyä kuin `/watch`. Etu: yksi totuus, jaettu välimuisti (haku ei tee toistamiseen kymmeniä event-hakuja kun käyttäjä on jo käynyt watch-näkymässä), ja enrollment-fallback tulee automaattisesti.
 
 ### Muutokset
 
-**1. Yläosan tunnusluvut (StatCard-rivi) – uudelleenjärjestys ja selitteet**
+1. **`src/components/AthleteSearch.tsx`**
+   - Poista oma `buildIndex` / per-event fetch -looppi ja `setIndex`/`setProgress`/`setLoading`-tila.
+   - Korvaa `useQuery(competitionIndexQueryOptions(competitionId, { skipBaselines: true, onProgress }))`. `skipBaselines: true` koska hakunäkymä ei tarvitse record-baseline-tallennuksia.
+   - Sovella `runningOnly`-suodatus indeksin päälle (`entries.filter(e => isRunningEvent(e.round))`) – tätä käytetään esim. `running-ops`-sivulla.
+   - Listanäytön rivissä: jos `e.fromEnrollment === true` ja kyseessä on juoksu, näytä "Erä – / Rata –" sijaan pieni "Ilmoittautunut" -merkintä (eräjako tulossa). Kentällä jo ennestään näytetään "Järj. n" vain kun `Position != null`, joten enrollment-rivi (Position 0) näkyy ilman erikoiskäsittelyä.
+   - Latausilmoitus käyttää queryn `isFetching`-tilaa ja `onProgress`-callbackin viimeisiä lukuja.
 
-Korvataan nykyiset 5 korttia selkeämmillä, ryhmiteltyinä "tänään / 7 pv / kaikki":
+2. **Muut käyttäjät**: tarkistetaan että `AthleteSearch`-komponenttia käyttävät sivut (`src/routes/search.tsx`, `src/routes/running-ops.tsx` mikäli käyttää) toimivat edelleen samalla rajapinnalla – propsit (`competitionId`, `runningOnly`, `placeholder`, `autoFocus`) säilyvät ennallaan.
 
-- **Tänään – uniikit kävijät** (todayUsers, jo laskettu)
-- **Tänään – tapahtumia** (rows joissa day === today)
-- **7 pv – uniikit kävijät** (uniikkien visitorId:iden määrä viim. 7 päivältä)
-- **7 pv – tapahtumia**
-- **Kaikkiaan – uniikit kävijät** (kaikki visitorId:t, ei vain kirjautuneet)
-- **Kaikkiaan – kirjautuneet käyttäjät** (uniikit user_id, nykyinen uniqueUsers)
-- **Kaikkiaan – tapahtumia** (total)
+Ei muutoksia tietokantaan, backendiin tai muihin näkymiin.
 
-Lisätään jokaiseen korttiin pieni alaselite (esim. "uniikit selaimet/sessiot" vs. "kirjautuneet tilit"), jotta käsitteet ovat selvät.
+## Tekninen huomio
 
-**2. Uusi taulukko: "Päivittäin – uniikit ja yhteensä"**
-
-Yhdistetään nykyiset erilliset taulukot `byDay` (tapahtumat) ja `byDayUnique` (uniikit) yhdeksi taulukoksi, jossa sarakkeet:
-
-```
-Päivä | Uniikit kävijät | Kirjautuneet uniikit | Tapahtumia yhteensä
-```
-
-- Uniikit kävijät = nykyinen byDayUnique (user_id ‖ email ‖ user_agent)
-- Kirjautuneet uniikit = uniikit user_id per päivä (uusi laskenta)
-- Tapahtumia yhteensä = nykyinen byDay
-
-Järjestys: uusin päivä ylimpänä. Bar-palkki suhteutuu uniikkien kävijöiden maksimiin.
-
-**3. Poistettavat / siivottavat osiot**
-
-- Poistetaan erilliset osiot "Päivittäin (tapahtumat)" ja "Päivittäin (uniikit käyttäjät)" – korvautuvat yhdistetyllä taulukolla.
-- StatCard "Päiviä"-laatikko poistetaan (vähäarvoinen).
-
-### Tekniset yksityiskohdat
-
-Muutokset rajataan tiedostoon `src/routes/admin.analytics.tsx`:
-
-- Laajennetaan `useMemo`-laskenta tuottamaan:
-  - `last7dUsers: number`, `last7dEvents: number`
-  - `allUniqueVisitors: number` (kaikki visitorId:t, ei vain kirjautuneet)
-  - `todayEvents: number`
-  - `byDayCombined: { day, uniqueVisitors, uniqueLoggedIn, events }[]`
-- Päiväavain pysyy `created_at.slice(0,10)` (UTC) – sama kuin nyt, joten yhteensopiva olemassa olevan logiikan kanssa.
-- Ei tietokantamuutoksia, ei uusia kyselyitä – kaikki johdetaan jo haetusta `analytics_events`-aineistosta.
-
-Ei muutoksia muihin tiedostoihin tai komponentteihin.
+`competitionIndexQueryOptions` ajaa oletuksena baseline-tallennuksen Supabaseen jokaiselle eventille. Hakukomponentin pitäisi käyttää `skipBaselines: true` -varianttia (eri queryKey-suffix `"no-baselines"`), ettei pelkkä haku tee turhia kirjoituksia jos käyttäjä ei käytä watch-näkymää. Jos watch on jo käynyt, hänellä on cachessa "baselines"-versio – tämä tarkoittaa kahta erillistä cache-merkintää, mikä on hyväksyttävä kompromissi: enrollment-fallback on identtinen kummassakin.
