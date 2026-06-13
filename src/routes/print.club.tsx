@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Printer, Building2 } from "lucide-react";
 
@@ -43,7 +43,20 @@ function PrintClubPage() {
   const { org, auto } = Route.useSearch();
   const navigate = useNavigate();
   const { orientation, setOrientation } = usePrintOrientation();
-  const indexQuery = useQuery(competitionIndexQueryOptions(competitionId));
+  const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
+  const hasData = useRef(false);
+  const indexQuery = useQuery(
+    competitionIndexQueryOptions(competitionId, {
+      skipBaselines: true,
+      onProgress: (done, total) => {
+        if (!hasData.current) setProgress({ done, total });
+      },
+    }),
+  );
+  useEffect(() => {
+    if (indexQuery.data) hasData.current = true;
+  }, [indexQuery.data]);
+
 
   const entries: IndexedEntry[] = indexQuery.data?.entries ?? [];
   const compName = indexQuery.data?.name ?? "";
@@ -257,9 +270,10 @@ function PrintClubPage() {
 
         {org && indexQuery.isLoading && entries.length === 0 && (
           <p className="py-12 text-center text-sm text-muted-foreground">
-            Ladataan…
+            Ladataan… {progress.total > 0 ? `${progress.done} / ${progress.total} lajia` : ""}
           </p>
         )}
+
 
         {org && !indexQuery.isLoading && grouped.length === 0 && (
           <p className="py-12 text-center text-sm text-muted-foreground">
