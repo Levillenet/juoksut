@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, ChevronRight, LogOut } from "lucide-react";
 import logo from "@/assets/lahden-ahkera-logo.png";
 import { TodayStatsSection } from "@/components/TodayStatsSection";
@@ -7,14 +8,16 @@ import { TodayStatsSection } from "@/components/TodayStatsSection";
 const NAVCARDS_COLLAPSED_KEY = "home.navCards.collapsed";
 
 import {
-  fetchRounds,
   fetchProperties,
   formatTime,
   helsinkiDateKey,
   STATUS_LABEL,
   type Round,
-  type RoundsByDate,
 } from "@/lib/tuloslista";
+import {
+  competitionScheduleQueryOptions,
+  competitionScheduleKey,
+} from "@/lib/tuloslista-queries";
 import { useCompetitionId } from "@/lib/competition-store";
 import { useAuth, type Role } from "@/lib/auth";
 import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
@@ -25,7 +28,6 @@ import { LiveCompetitionsSection } from "@/components/LiveCompetitionsSection";
 import { SeasonStatsSection } from "@/components/SeasonStatsSection";
 import { Button } from "@/components/ui/button";
 import { NoteLinkInvitesBanner } from "@/components/NoteLinkInvitesBanner";
-import { useRefreshIntervalSec } from "@/lib/settings-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
