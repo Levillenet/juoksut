@@ -341,11 +341,69 @@ function Page() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: number;
+  hint?: string;
+}) {
   return (
     <div className="rounded-md border bg-card p-3">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="mt-1 text-2xl font-bold">{value.toLocaleString("fi-FI")}</div>
+      {hint && <div className="mt-1 text-[10px] text-muted-foreground">{hint}</div>}
+    </div>
+  );
+}
+
+function DailyTable({
+  data,
+}: {
+  data: { day: string; uniqueVisitors: number; uniqueLoggedIn: number; events: number }[];
+}) {
+  if (data.length === 0)
+    return <p className="text-xs text-muted-foreground">Ei dataa.</p>;
+  const max = Math.max(...data.map((d) => d.uniqueVisitors), 1);
+  return (
+    <div className="overflow-x-auto rounded-md border">
+      <table className="w-full text-xs">
+        <thead className="bg-muted/50 text-left">
+          <tr>
+            <th className="p-2">Päivä</th>
+            <th className="p-2 text-right">Uniikit kävijät</th>
+            <th className="p-2 text-right">Kirjautuneet</th>
+            <th className="p-2 text-right">Tapahtumia</th>
+            <th className="p-2 w-1/3">Osuus</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((d) => (
+            <tr key={d.day} className="border-t">
+              <td className="p-2 font-mono">{d.day}</td>
+              <td className="p-2 text-right tabular-nums">
+                {d.uniqueVisitors.toLocaleString("fi-FI")}
+              </td>
+              <td className="p-2 text-right tabular-nums">
+                {d.uniqueLoggedIn.toLocaleString("fi-FI")}
+              </td>
+              <td className="p-2 text-right tabular-nums">
+                {d.events.toLocaleString("fi-FI")}
+              </td>
+              <td className="p-2">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full bg-primary"
+                    style={{ width: `${(d.uniqueVisitors / max) * 100}%` }}
+                  />
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
