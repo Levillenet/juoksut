@@ -100,7 +100,7 @@ function ScoreboardGate() {
 
 function ScoreboardPicker() {
   const [competitionId] = useCompetitionId();
-  const { top } = Route.useSearch();
+  const { top, order } = Route.useSearch();
   const navigate = useNavigate({ from: "/scoreboard" });
   const scheduleQ = useQuery(competitionScheduleQueryOptions(competitionId));
 
