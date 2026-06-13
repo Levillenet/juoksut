@@ -1,20 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, ChevronRight } from "lucide-react";
 import logo from "@/assets/lahden-ahkera-logo.png";
 
 import {
-  fetchRounds,
-  fetchProperties,
   formatTime,
   helsinkiDateKey,
   isRunningEvent,
   STATUS_LABEL,
   type Round,
-  type RoundsByDate,
 } from "@/lib/tuloslista";
+import {
+  competitionScheduleQueryOptions,
+  competitionScheduleKey,
+} from "@/lib/tuloslista-queries";
 import { useCompetitionId } from "@/lib/competition-store";
-import { useRefreshIntervalSec } from "@/lib/settings-store";
 import { Button } from "@/components/ui/button";
 import { AthleteSearch } from "@/components/AthleteSearch";
 import { RequireRole } from "@/components/RequireRole";
@@ -46,40 +47,26 @@ const STATUS_STYLE: Record<Round["Status"], string> = {
 
 function RunningOps() {
   const [competitionId] = useCompetitionId();
-  const [data, setData] = useState<RoundsByDate | null>(null);
-  const [name, setName] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [activeDate, setActiveDate] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
   const [now, setNow] = useState(() => new Date());
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
-  const [refreshSec] = useRefreshIntervalSec();
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [rounds, props] = await Promise.all([
-        fetchRounds(competitionId),
-        fetchProperties(competitionId).catch(() => null),
-      ]);
-      setData(rounds);
-      setName(props?.Competition?.Name ?? "");
-      setUpdatedAt(new Date());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Tuntematon virhe");
-    } finally {
-      setLoading(false);
-    }
+  const scheduleQuery = useQuery(competitionScheduleQueryOptions(competitionId));
+  const data = scheduleQuery.data?.rounds ?? null;
+  const name = scheduleQuery.data?.name ?? "";
+  const loading = scheduleQuery.isFetching && !scheduleQuery.data;
+  const error = scheduleQuery.error
+    ? scheduleQuery.error instanceof Error
+      ? scheduleQuery.error.message
+      : "Tuntematon virhe"
+    : null;
+  const updatedAt = scheduleQuery.dataUpdatedAt
+    ? new Date(scheduleQuery.dataUpdatedAt)
+    : null;
+  const load = () => {
+    queryClient.invalidateQueries({ queryKey: competitionScheduleKey(competitionId) });
   };
-
-  useEffect(() => {
-    load();
-    const t = setInterval(load, Math.max(5, refreshSec) * 1000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competitionId, refreshSec]);
 
   const dates = useMemo(() => {
     if (!data) return [];
