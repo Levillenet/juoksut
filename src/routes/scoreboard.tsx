@@ -515,13 +515,20 @@ function ScoreboardLive() {
         </div>
         <Button
           variant="ghost"
-          size="icon"
+          size="sm"
           onClick={() => setOverlayEnabled((v) => !v)}
           aria-label={overlayEnabled ? "Piilota uuden tuloksen efekti" : "Näytä uuden tuloksen efekti"}
-          title={overlayEnabled ? "Uuden tuloksen efekti: päällä" : "Uuden tuloksen efekti: pois"}
-          className={overlayEnabled ? "text-primary" : "text-muted-foreground"}
+          title={overlayEnabled ? "Uuden tuloksen esittely: päällä" : "Uuden tuloksen esittely: pois"}
+          className={`shrink-0 gap-1.5 rounded-full border px-3 text-xs font-semibold ${
+            overlayEnabled
+              ? "border-primary/30 bg-primary/10 text-primary"
+              : "border-border bg-background text-muted-foreground"
+          }`}
         >
-          <Sparkles className={`h-5 w-5 ${overlayEnabled ? "" : "opacity-50"}`} />
+          <Sparkles className="h-4 w-4" />
+          <span className="hidden sm:inline">
+            {overlayEnabled ? "Uuden tuloksen esittely päällä" : "Uuden tuloksen esittely pois"}
+          </span>
         </Button>
         <WakeLockToggle />
         <Button
