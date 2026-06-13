@@ -44,6 +44,11 @@ export function AthleteSearch({
     done: 0,
     total: 0,
   });
+  const { list: watched, add, remove } = useWatchedAthletes();
+  const watchedKeys = useMemo(
+    () => new Set(watched.map((w) => w.key)),
+    [watched],
+  );
 
   // Käytetään samaa jaettua indeksiä kuin /watch — saa myös pelkkien
   // ilmoittautumisten kautta tulevat rivit (huomisen lajit ilman eräjakoa).
