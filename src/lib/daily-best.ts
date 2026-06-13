@@ -68,8 +68,8 @@ export async function fetchTodayAgeClasses(): Promise<string[]> {
   const { data, error } = await supabase
     .from("athlete_results")
     .select("age_class")
-    .gte("competition_date", startISO)
-    .lt("competition_date", endISO);
+    .gte("captured_at", startISO)
+    .lt("captured_at", endISO);
   if (error) throw error;
   const set = new Set<string>();
   for (const r of data ?? []) {
@@ -89,8 +89,8 @@ export async function fetchDailyBest(ageClasses: string[]): Promise<DailyBestRow
       "event_name, sub_category, event_category, age_class, result_text, result_numeric, result_rank, athlete_key, surname, firstname, organization, organization_id, competition_name, competition_id, competition_date, event_id",
     )
     .in("age_class", ageClasses)
-    .gte("competition_date", startISO)
-    .lt("competition_date", endISO)
+    .gte("captured_at", startISO)
+    .lt("captured_at", endISO)
     .not("result_numeric", "is", null);
   if (error) throw error;
   const filtered = (data as DailyBestRow[]).filter((r) => !isRoadOrCrossCountry(r));
@@ -115,8 +115,8 @@ export async function fetchDailyBestForAthletes(
       "athlete_key, event_name, age_class, sub_category, event_category, result_text, result_numeric",
     )
     .in("athlete_key", athleteKeys)
-    .gte("competition_date", startISO)
-    .lt("competition_date", endISO);
+    .gte("captured_at", startISO)
+    .lt("captured_at", endISO);
   if (e1) throw e1;
 
   const result: Record<string, DailyBestRow[]> = {};
@@ -142,8 +142,8 @@ export async function fetchDailyBestForAthletes(
     )
     .in("event_name", eventNames)
     .in("age_class", ageClasses.length > 0 ? ageClasses : [""])
-    .gte("competition_date", startISO)
-    .lt("competition_date", endISO)
+    .gte("captured_at", startISO)
+    .lt("captured_at", endISO)
     .not("result_numeric", "is", null);
   if (e2) throw e2;
 

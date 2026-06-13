@@ -41,8 +41,8 @@ export async function fetchTodayClubs(
   let query = supabase
     .from("athlete_results")
     .select("organization, organization_id, athlete_key, event_name, event_category, sub_category")
-    .gte("competition_date", startISO)
-    .lt("competition_date", endISO)
+    .gte("captured_at", startISO)
+    .lt("captured_at", endISO)
     .not("organization_id", "is", null);
   if (excludeCompetitionId != null) {
     query = query.neq("competition_id", excludeCompetitionId);
@@ -87,8 +87,8 @@ export async function fetchClubTodayResults(
       "athlete_key, surname, firstname, organization, organization_id, competition_id, competition_name, event_id, event_name, age_class, sub_category, event_category, result_text, result_numeric, result_rank, result_round_name, was_pb",
     )
     .eq("organization_id", organizationId)
-    .gte("competition_date", startISO)
-    .lt("competition_date", endISO);
+    .gte("captured_at", startISO)
+    .lt("captured_at", endISO);
   if (excludeCompetitionId != null) {
     query = query.neq("competition_id", excludeCompetitionId);
   }
