@@ -1,24 +1,18 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Search as SearchIcon } from "lucide-react";
 import {
-  fetchRounds,
-  fetchEvent,
   formatTime,
   helsinkiDateKey,
   isRunningEvent,
-  type Round,
-  type Allocation,
 } from "@/lib/tuloslista";
+import {
+  competitionIndexQueryOptions,
+  type IndexedEntry,
+} from "@/lib/tuloslista-queries";
 import { Input } from "@/components/ui/input";
 import { athleteKey } from "@/lib/watch-store";
-
-interface IndexedEntry {
-  round: Round;
-  alloc: Allocation;
-  heatIndex: number;
-  heatBegin: string;
-}
 
 interface GroupedAthlete {
   key: string;
@@ -45,73 +39,33 @@ export function AthleteSearch({
   autoFocus = false,
 }: Props) {
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number }>({
     done: 0,
     total: 0,
   });
-  const [error, setError] = useState<string | null>(null);
-  const [index, setIndex] = useState<IndexedEntry[] | null>(null);
 
-  const buildIndex = async () => {
-    setLoading(true);
-    setError(null);
-    setProgress({ done: 0, total: 0 });
-    try {
-      const byDate = await fetchRounds(competitionId);
-      const allRounds: Round[] = Object.values(byDate).flat();
-      const eventIds = Array.from(new Set(allRounds.map((r) => r.EventId)));
-      setProgress({ done: 0, total: eventIds.length });
+  // Käytetään samaa jaettua indeksiä kuin /watch — saa myös pelkkien
+  // ilmoittautumisten kautta tulevat rivit (huomisen lajit ilman eräjakoa).
+  // skipBaselines: true → ei kirjoiteta record-baselineja pelkän haun vuoksi.
+  const indexQuery = useQuery(
+    competitionIndexQueryOptions(competitionId, {
+      skipBaselines: true,
+      onProgress: (done, total) => setProgress({ done, total }),
+    }),
+  );
 
-      const collected: IndexedEntry[] = [];
-      const CONCURRENCY = 6;
-      let cursor = 0;
-      const worker = async () => {
-        while (cursor < eventIds.length) {
-          const i = cursor++;
-          const eid = eventIds[i];
-          try {
-            const ev = await fetchEvent(competitionId, eid);
-            for (const round of ev.Rounds) {
-              const matchingRound = allRounds.find((r) => r.Id === round.Id) ?? {
-                ...allRounds.find((r) => r.EventId === eid)!,
-                Id: round.Id,
-                BeginDateTimeWithTZ: round.BeginDateTimeWithTZ,
-                Name: round.Name,
-                Status: round.Status,
-              };
-              if (runningOnly && !isRunningEvent(matchingRound)) continue;
-              for (const heat of round.Heats) {
-                for (const alloc of heat.Allocations) {
-                  collected.push({
-                    round: matchingRound,
-                    alloc,
-                    heatIndex: heat.Index,
-                    heatBegin: round.BeginDateTimeWithTZ,
-                  });
-                }
-              }
-            }
-          } catch {
-            /* skip */
-          } finally {
-            setProgress((p) => ({ done: p.done + 1, total: p.total }));
-          }
-        }
-      };
-      await Promise.all(Array.from({ length: CONCURRENCY }, worker));
-      setIndex(collected);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Tuntematon virhe");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loading = indexQuery.isFetching && !indexQuery.data;
+  const error = indexQuery.error
+    ? indexQuery.error instanceof Error
+      ? indexQuery.error.message
+      : "Tuntematon virhe"
+    : null;
 
-  useEffect(() => {
-    buildIndex();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competitionId, runningOnly]);
+  const index = useMemo<IndexedEntry[] | null>(() => {
+    const all = indexQuery.data?.entries ?? null;
+    if (!all) return null;
+    return runningOnly ? all.filter((e) => isRunningEvent(e.round)) : all;
+  }, [indexQuery.data, runningOnly]);
 
   const groups = useMemo<GroupedAthlete[]>(() => {
     if (!index) return [];
@@ -121,7 +75,6 @@ export function AthleteSearch({
     const matches = index.filter((e) => {
       const s = (e.alloc.Surname ?? "").toLowerCase();
       const f = (e.alloc.Firstname ?? "").toLowerCase();
-      // Sallitaan haku missä järjestyksessä tahansa: "Aapo Simo" tai "Simo Aapo".
       const haystack = `${s} ${f} ${f} ${s}`;
       return tokens.every((t) => haystack.includes(t));
     });
@@ -202,6 +155,7 @@ export function AthleteSearch({
             <ul className="divide-y divide-border">
               {g.entries.map((e, idx) => {
                 const isRun = isRunningEvent(e.round);
+                const enrollmentOnly = e.fromEnrollment === true;
                 return (
                   <li key={`${e.round.Id}-${e.alloc.Id}-${idx}`} className="py-2">
                     <Link
@@ -229,7 +183,9 @@ export function AthleteSearch({
                         )}
                       </div>
                       <div className="shrink-0 text-right text-xs">
-                        {isRun ? (
+                        {enrollmentOnly ? (
+                          <p className="text-muted-foreground">Ilmoittautunut</p>
+                        ) : isRun ? (
                           <>
                             <p className="font-semibold">Erä {e.heatIndex}</p>
                             {e.alloc.Position != null && (
