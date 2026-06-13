@@ -8,7 +8,6 @@ import { TodayStatsSection } from "@/components/TodayStatsSection";
 const NAVCARDS_COLLAPSED_KEY = "home.navCards.collapsed";
 
 import {
-  fetchProperties,
   formatTime,
   helsinkiDateKey,
   STATUS_LABEL,
