@@ -60,12 +60,20 @@ function Page() {
     const byPath = new Map<string, number>();
     const byDay = new Map<string, number>();
     const byDayUniqueSets = new Map<string, Set<string>>();
+    const byDayLoggedInSets = new Map<string, Set<string>>();
     const byRole = new Map<string, number>();
     const byAthlete = new Map<string, { count: number; name: string | null }>();
     const byCompetition = new Map<string, { count: number; name: string | null }>();
     const uniqueUsers = new Set<string>();
+    const allUniqueVisitors = new Set<string>();
     const todayStr = new Date().toISOString().slice(0, 10);
     const todayUsers = new Set<string>();
+    let todayEvents = 0;
+    const last7dStart = new Date(Date.now() - 7 * 24 * 3600 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const last7dUsers = new Set<string>();
+    let last7dEvents = 0;
     const last24h = Date.now() - 24 * 3600 * 1000;
     let last24hCount = 0;
     for (const r of rows) {
@@ -82,9 +90,21 @@ function Page() {
           byDayUniqueSets.set(day, set);
         }
         set.add(visitorId);
+        allUniqueVisitors.add(visitorId);
         if (day === todayStr) todayUsers.add(visitorId);
+        if (day >= last7dStart) last7dUsers.add(visitorId);
       }
-      if (r.user_id) uniqueUsers.add(r.user_id);
+      if (r.user_id) {
+        uniqueUsers.add(r.user_id);
+        let set = byDayLoggedInSets.get(day);
+        if (!set) {
+          set = new Set<string>();
+          byDayLoggedInSets.set(day, set);
+        }
+        set.add(r.user_id);
+      }
+      if (day === todayStr) todayEvents++;
+      if (day >= last7dStart) last7dEvents++;
       if (new Date(r.created_at).getTime() >= last24h) last24hCount++;
 
       const md = (r.metadata ?? {}) as Record<string, unknown>;
@@ -117,21 +137,34 @@ function Page() {
       Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
     const sortDescObj = <T extends { count: number }>(m: Map<string, T>) =>
       Array.from(m.entries()).sort((a, b) => b[1].count - a[1].count);
-    const byDayUnique: [string, number][] = Array.from(byDayUniqueSets.entries())
-      .map(([d, s]) => [d, s.size] as [string, number])
-      .sort((a, b) => (a[0] < b[0] ? 1 : -1));
+    const allDays = new Set<string>([
+      ...byDay.keys(),
+      ...byDayUniqueSets.keys(),
+      ...byDayLoggedInSets.keys(),
+    ]);
+    const byDayCombined = Array.from(allDays)
+      .map((day) => ({
+        day,
+        uniqueVisitors: byDayUniqueSets.get(day)?.size ?? 0,
+        uniqueLoggedIn: byDayLoggedInSets.get(day)?.size ?? 0,
+        events: byDay.get(day) ?? 0,
+      }))
+      .sort((a, b) => (a.day < b.day ? 1 : -1));
     return {
       total: rows.length,
       last24h: last24hCount,
       uniqueUsers: uniqueUsers.size,
+      allUniqueVisitors: allUniqueVisitors.size,
       todayUsers: todayUsers.size,
+      todayEvents,
+      last7dUsers: last7dUsers.size,
+      last7dEvents,
       byEvent: sortDesc(byEvent),
       byPath: sortDesc(byPath),
-      byDay: Array.from(byDay.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1)),
-      byDayUnique,
       byRole: sortDesc(byRole),
       byAthlete: sortDescObj(byAthlete),
       byCompetition: sortDescObj(byCompetition),
+      byDayCombined,
     };
   }, [rows]);
 
@@ -202,13 +235,53 @@ function Page() {
           </p>
         )}
 
-        <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-          <StatCard label="Tapahtumia yhteensä" value={stats.total} />
-          <StatCard label="Viim. 24h" value={stats.last24h} />
-          <StatCard label="Käyttäjät tänään" value={stats.todayUsers} />
-          <StatCard label="Uniikkeja käyttäjiä" value={stats.uniqueUsers} />
-          <StatCard label="Päiviä" value={stats.byDay.length} />
+        <section className="space-y-3">
+          <div>
+            <h2 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+              Tänään
+            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
+              <StatCard
+                label="Uniikit kävijät"
+                value={stats.todayUsers}
+                hint="kirjautuneet + anonyymit selaimet"
+              />
+              <StatCard label="Tapahtumia" value={stats.todayEvents} />
+            </div>
+          </div>
+          <div>
+            <h2 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+              Viim. 7 päivää
+            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
+              <StatCard label="Uniikit kävijät" value={stats.last7dUsers} />
+              <StatCard label="Tapahtumia" value={stats.last7dEvents} />
+            </div>
+          </div>
+          <div>
+            <h2 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+              Kaikkiaan
+            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <StatCard
+                label="Uniikit kävijät"
+                value={stats.allUniqueVisitors}
+                hint="kirjautuneet + anonyymit selaimet"
+              />
+              <StatCard
+                label="Kirjautuneet käyttäjät"
+                value={stats.uniqueUsers}
+                hint="uniikit tilit"
+              />
+              <StatCard label="Tapahtumia" value={stats.total} />
+              <StatCard label="Viim. 24h" value={stats.last24h} />
+            </div>
+          </div>
         </section>
+
+        <Section title="Päivittäin – kävijät ja tapahtumat">
+          <DailyTable data={stats.byDayCombined} />
+        </Section>
 
         <Section title="Näkymät / tapahtumat">
           <Table data={stats.byEvent} keyLabel="Tapahtuma" />
@@ -234,13 +307,6 @@ function Page() {
           <NamedTable data={stats.byCompetition} keyLabel="Kilpailu" />
         </Section>
 
-        <Section title="Päivittäin (tapahtumat)">
-          <Table data={stats.byDay} keyLabel="Päivä" />
-        </Section>
-
-        <Section title="Päivittäin (uniikit käyttäjät)">
-          <Table data={stats.byDayUnique} keyLabel="Päivä" />
-        </Section>
 
         <Section title="Viimeisimmät tapahtumat (50)">
           <div className="overflow-x-auto rounded-md border">
@@ -275,11 +341,69 @@ function Page() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: number;
+  hint?: string;
+}) {
   return (
     <div className="rounded-md border bg-card p-3">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="mt-1 text-2xl font-bold">{value.toLocaleString("fi-FI")}</div>
+      {hint && <div className="mt-1 text-[10px] text-muted-foreground">{hint}</div>}
+    </div>
+  );
+}
+
+function DailyTable({
+  data,
+}: {
+  data: { day: string; uniqueVisitors: number; uniqueLoggedIn: number; events: number }[];
+}) {
+  if (data.length === 0)
+    return <p className="text-xs text-muted-foreground">Ei dataa.</p>;
+  const max = Math.max(...data.map((d) => d.uniqueVisitors), 1);
+  return (
+    <div className="overflow-x-auto rounded-md border">
+      <table className="w-full text-xs">
+        <thead className="bg-muted/50 text-left">
+          <tr>
+            <th className="p-2">Päivä</th>
+            <th className="p-2 text-right">Uniikit kävijät</th>
+            <th className="p-2 text-right">Kirjautuneet</th>
+            <th className="p-2 text-right">Tapahtumia</th>
+            <th className="p-2 w-1/3">Osuus</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((d) => (
+            <tr key={d.day} className="border-t">
+              <td className="p-2 font-mono">{d.day}</td>
+              <td className="p-2 text-right tabular-nums">
+                {d.uniqueVisitors.toLocaleString("fi-FI")}
+              </td>
+              <td className="p-2 text-right tabular-nums">
+                {d.uniqueLoggedIn.toLocaleString("fi-FI")}
+              </td>
+              <td className="p-2 text-right tabular-nums">
+                {d.events.toLocaleString("fi-FI")}
+              </td>
+              <td className="p-2">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full bg-primary"
+                    style={{ width: `${(d.uniqueVisitors / max) * 100}%` }}
+                  />
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
