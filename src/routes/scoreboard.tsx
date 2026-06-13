@@ -387,8 +387,8 @@ function ScoreboardLive() {
       }
     }
     prevResultsRef.current = next;
-    if (newItems.length) setQueue((q) => [...q, ...newItems]);
-  }, [ev, round, visibleHeats]);
+    if (newItems.length && overlayEnabled) setQueue((q) => [...q, ...newItems]);
+  }, [ev, round, visibleHeats, overlayEnabled]);
 
 
   useEffect(() => {
