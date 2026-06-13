@@ -60,12 +60,20 @@ function Page() {
     const byPath = new Map<string, number>();
     const byDay = new Map<string, number>();
     const byDayUniqueSets = new Map<string, Set<string>>();
+    const byDayLoggedInSets = new Map<string, Set<string>>();
     const byRole = new Map<string, number>();
     const byAthlete = new Map<string, { count: number; name: string | null }>();
     const byCompetition = new Map<string, { count: number; name: string | null }>();
     const uniqueUsers = new Set<string>();
+    const allUniqueVisitors = new Set<string>();
     const todayStr = new Date().toISOString().slice(0, 10);
     const todayUsers = new Set<string>();
+    let todayEvents = 0;
+    const last7dStart = new Date(Date.now() - 7 * 24 * 3600 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const last7dUsers = new Set<string>();
+    let last7dEvents = 0;
     const last24h = Date.now() - 24 * 3600 * 1000;
     let last24hCount = 0;
     for (const r of rows) {
@@ -82,56 +90,53 @@ function Page() {
           byDayUniqueSets.set(day, set);
         }
         set.add(visitorId);
+        allUniqueVisitors.add(visitorId);
         if (day === todayStr) todayUsers.add(visitorId);
+        if (day >= last7dStart) last7dUsers.add(visitorId);
       }
-      if (r.user_id) uniqueUsers.add(r.user_id);
+      if (r.user_id) {
+        uniqueUsers.add(r.user_id);
+        let set = byDayLoggedInSets.get(day);
+        if (!set) {
+          set = new Set<string>();
+          byDayLoggedInSets.set(day, set);
+        }
+        set.add(r.user_id);
+      }
+      if (day === todayStr) todayEvents++;
+      if (day >= last7dStart) last7dEvents++;
       if (new Date(r.created_at).getTime() >= last24h) last24hCount++;
-
-      const md = (r.metadata ?? {}) as Record<string, unknown>;
-      if (r.event_name === "athlete_view") {
-        const key = typeof md.athlete_key === "string" ? md.athlete_key : null;
-        if (key) {
-          const prev = byAthlete.get(key);
-          const name = typeof md.athlete_name === "string" ? md.athlete_name : null;
-          byAthlete.set(key, {
-            count: (prev?.count ?? 0) + 1,
-            name: prev?.name ?? name,
-          });
-        }
-      }
-      if (r.event_name === "scoreboard_view" || r.event_name === "round_view") {
-        const cid = md.competition_id;
-        const key = cid != null ? String(cid) : null;
-        if (key) {
-          const prev = byCompetition.get(key);
-          const name =
-            typeof md.competition_name === "string" ? md.competition_name : null;
-          byCompetition.set(key, {
-            count: (prev?.count ?? 0) + 1,
-            name: prev?.name ?? name,
-          });
-        }
-      }
-    }
-    const sortDesc = (m: Map<string, number>) =>
-      Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
+...
     const sortDescObj = <T extends { count: number }>(m: Map<string, T>) =>
       Array.from(m.entries()).sort((a, b) => b[1].count - a[1].count);
-    const byDayUnique: [string, number][] = Array.from(byDayUniqueSets.entries())
-      .map(([d, s]) => [d, s.size] as [string, number])
-      .sort((a, b) => (a[0] < b[0] ? 1 : -1));
+    const allDays = new Set<string>([
+      ...byDay.keys(),
+      ...byDayUniqueSets.keys(),
+      ...byDayLoggedInSets.keys(),
+    ]);
+    const byDayCombined = Array.from(allDays)
+      .map((day) => ({
+        day,
+        uniqueVisitors: byDayUniqueSets.get(day)?.size ?? 0,
+        uniqueLoggedIn: byDayLoggedInSets.get(day)?.size ?? 0,
+        events: byDay.get(day) ?? 0,
+      }))
+      .sort((a, b) => (a.day < b.day ? 1 : -1));
     return {
       total: rows.length,
       last24h: last24hCount,
       uniqueUsers: uniqueUsers.size,
+      allUniqueVisitors: allUniqueVisitors.size,
       todayUsers: todayUsers.size,
+      todayEvents,
+      last7dUsers: last7dUsers.size,
+      last7dEvents,
       byEvent: sortDesc(byEvent),
       byPath: sortDesc(byPath),
-      byDay: Array.from(byDay.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1)),
-      byDayUnique,
       byRole: sortDesc(byRole),
       byAthlete: sortDescObj(byAthlete),
       byCompetition: sortDescObj(byCompetition),
+      byDayCombined,
     };
   }, [rows]);
 
