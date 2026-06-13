@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search as SearchIcon } from "lucide-react";
+import { Search as SearchIcon, UserPlus, Check } from "lucide-react";
 import {
   formatTime,
   helsinkiDateKey,
@@ -12,7 +12,8 @@ import {
   type IndexedEntry,
 } from "@/lib/tuloslista-queries";
 import { Input } from "@/components/ui/input";
-import { athleteKey } from "@/lib/watch-store";
+import { Button } from "@/components/ui/button";
+import { athleteKey, useWatchedAthletes } from "@/lib/watch-store";
 
 interface GroupedAthlete {
   key: string;
