@@ -1,12 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, Users } from "lucide-react";
 
 import { competitionIndexQueryOptions } from "@/lib/tuloslista-queries";
 import { useWatchedAthletes } from "@/lib/watch-store";
 import { matchYagCalling, formatHeatList, callingStartMinutes } from "@/lib/yag-calling-match";
-import { downloadYagCallingPdf } from "@/lib/yag-calling-pdf";
+
 import { YAG_COMPETITION_ID } from "@/data/yag-calling";
 import { Button } from "@/components/ui/button";
 import { RequireRole } from "@/components/RequireRole";
@@ -52,7 +52,20 @@ function YagCallingPage() {
   const navigate = useNavigate({ from: "/print/yag-calling" });
   const { list: watched } = useWatchedAthletes();
   const { orientation, setOrientation } = usePrintOrientation();
-  const indexQuery = useQuery(competitionIndexQueryOptions(YAG_COMPETITION_ID, { skipBaselines: true }));
+  const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
+  const hasData = useRef(false);
+  const indexQuery = useQuery(
+    competitionIndexQueryOptions(YAG_COMPETITION_ID, {
+      skipBaselines: true,
+      onProgress: (done, total) => {
+        if (!hasData.current) setProgress({ done, total });
+      },
+    }),
+  );
+  useEffect(() => {
+    if (indexQuery.data) hasData.current = true;
+  }, [indexQuery.data]);
+
 
   const entries = indexQuery.data?.entries ?? [];
   const compName = indexQuery.data?.name ?? "YAG Espoo 2026";
@@ -117,8 +130,9 @@ function YagCallingPage() {
       }));
   }, [matches]);
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (grouped.length === 0) return;
+    const { downloadYagCallingPdf } = await import("@/lib/yag-calling-pdf");
     downloadYagCallingPdf({
       grouped,
       compName,
@@ -128,6 +142,7 @@ function YagCallingPage() {
       watchedCount: watched.length,
     });
   }, [grouped, compName, orientation, mode, orgName, watched.length]);
+
 
   useEffect(() => {
     if (auto && !indexQuery.isLoading && grouped.length > 0) {
@@ -294,9 +309,10 @@ function YagCallingPage() {
 
         {indexQuery.isLoading && entries.length === 0 && (
           <p className="py-12 text-center text-sm text-muted-foreground">
-            Ladataan…
+            Ladataan… {progress.total > 0 ? `${progress.done} / ${progress.total} lajia` : ""}
           </p>
         )}
+
 
         {!indexQuery.isLoading &&
           ((mode === "watched" && watched.length > 0) ||

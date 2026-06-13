@@ -1,40 +1,29 @@
-## Miksi lataus kestää ~30 s
+Ongelma on nyt laajempi kuin pelkkä YAG calling: YAG-kisa on iso, ja `Seuran ohjelma` sekä `Seurattujen aikataulu` käyttävät edelleen raskasta koko kilpailun indeksihakua baseline-/ennätysvertailuineen. Muut kisat toimivat, koska niissä eventtejä on vähemmän.
 
-YAG Calling -näkymä kutsuu `competitionIndexQueryOptions(YAG_COMPETITION_ID)` -kyselyä, joka rakentaa koko kisan (yli sata lajia) tasaisen listan (kierros + allocation) selaimessa. Per laji se tekee:
+Suunnitelma:
 
-1. `GET /api/public/tuloslista/live/v1/results/{id}/{eventId}` — proxy-välimuistilla nopea (~5–20 ms lämpimänä), mutta kylmänä 200–800 ms originista.
-2. `captureBaselines(...)` → Lovable Cloud `upsert` `record_baseline`-tauluun.
-3. `loadBaselines(...)` → Lovable Cloud `select` `record_baseline`-taulusta.
+1. Kevennä tulostettavat ohjelmasivut
+- Muuta `Seuran ohjelma` (`/print/club`) käyttämään `skipBaselines: true`.
+- Muuta `Seurattujen ohjelma` (`/print/watched`) käyttämään `skipBaselines: true`.
+- Näillä sivuilla ei näytetä PB/SB-baselinevertailua, joten ne eivät tarvitse hitaita lisäkyselyitä.
 
-Rinnakkaisuus on `CONCURRENCY = 6`. Jos kisassa on ~150 lajia, se on ~25 aaltoa, ja jokaisessa aallossa hitain on noin 2 DB-roundtripiä (~80–150 ms/kpl) + 1 API-kutsu. → tyypillisesti 25 × ~300 ms = ~8–15 s lämpimänä, kylmänä yli 30 s.
+2. Estä ikuinen lataus YAG:n isoissa hauissa
+- Lisää `competitionIndexQueryOptions`-funktioon valinnainen timeout / aikabudjetti isoille tulostusnäkymille.
+- Jos yksittäinen Tuloslista-event jää roikkumaan, se ohitetaan eikä koko sivu jää odottamaan.
+- Jos koko YAG-indeksin lataus ylittää kohtuullisen ajan, palautetaan siihen mennessä saatu data eikä jäädä “Ladataan…”-tilaan.
 
-YAG Calling -näkymä **ei käytä PB/SB-baselineja lainkaan** — se vain matchaa urheilijat (`Surname`, `Firstname`, `OrganizationId`) kalenterin riveihin. Baseline-kutsut ovat siis täysin turhia tässä käyttötapauksessa, mutta muut näkymät (`watch`, `print.club`, `print.watched`, `seuraa.$token`) tarvitsevat ne.
+3. Lisää latauksen eteneminen tulostussivuille
+- Näytä `Haetaan kilpailun lajeja X / Y` seuran ohjelmassa, seurattujen ohjelmassa ja YAG callingissa.
+- Lisää hallittu virheilmoitus ja “Yritä uudelleen” -painike, jos haku epäonnistuu kokonaan.
 
-## Korjaus
+4. Pidä YAG calling erillisenä kevyenä näkymänä
+- Säilytä nykyinen `skipBaselines: true` YAG callingissa.
+- Lisää samat timeout-/etenemisasetukset myös calling-sivulle, jotta yksittäinen hidas event ei estä PDF-aikataulun muodostumista.
 
-Yksi kohdistettu muutos: lisätään `competitionIndexQueryOptions`:lle valinnainen `skipBaselines`-lippu, ja `print.yag-calling` antaa sen `true`. Muiden näkymien käyttäytyminen ei muutu.
+5. Vähennä turhaa latausta avattaessa sivua
+- Siirrä PDF-kirjaston lataus YAG callingissa vasta “Lataa PDF” -painikkeen painallukseen, jotta alkuperäinen sivun avaus ei lataa raskasta PDF-koodia heti.
 
-Samalla nostetaan `CONCURRENCY` 6 → 12. Proxy/cache kestää tämän hyvin (single-flight koalisoi rinnakkaiset pyynnöt) ja se puolittaa aaltojen määrän.
-
-### Muutoskohdat
-
-1. **`src/lib/tuloslista-queries.ts`**
-   - Lisää `options?: { skipBaselines?: boolean }` parametri `competitionIndexQueryOptions`:lle.
-   - Kun `skipBaselines === true`, ohitetaan sekä `captureBaselines` että `loadBaselines` per laji.
-   - Eriytetään `queryKey` lipun mukaan, jotta sama välimuisti ei sekoa muille kutsujille:
-     `["competition-index", id, skipBaselines ? "no-baselines" : "baselines"]`.
-   - Nosta `CONCURRENCY = 12`.
-
-2. **`src/routes/print.yag-calling.tsx`**
-   - Käytä `competitionIndexQueryOptions(YAG_COMPETITION_ID, { skipBaselines: true })`.
-   - `onProgress`-callbackin paikka muuttuu nimettyihin optioihin — tarkistetaan ettei kutsuja käytä progressia (ei käytä).
-
-### Odotettu vaikutus
-
-- DB-kutsut per latauskerta: **N × 2 → 0**.
-- Aaltojen määrä rinnakkaisuudessa: **puolittuu**.
-- Kylmälataus ~30 s → odotettavissa **~8–12 s**, lämmin (proxy-cache osumat) **~2–4 s**.
-
-### Mitä tämä ei korjaa
-
-Jos halutaan vielä nopeampaa (alle 2 s), pitäisi siirtyä server-side aggregaattiin: oma `/api/public/tuloslista/calling-index/{id}` -reitti, joka palauttaa valmiiksi tiivistetyn (laji → allocations) digestin yhdellä pyynnöllä ja cachetetaan reunalla. Tämä on isompi muutos eikä mukana tässä korjauksessa — voidaan tehdä erillisenä tehtävänä jos yllä oleva ei riitä.
+Odotettu vaikutus:
+- YAG:n `Seuran ohjelma`, `Seurattujen aikataulu` ja `Calling` eivät enää jää minuutiksi hakemaan.
+- Iso YAG-kisa voi näyttää osittaisen datan, jos Tuloslista hidastelee, mutta sivu ei jää tyhjäksi.
+- Muut kisat säilyvät ennallaan, mutta tulostusnäkymät kevenevät myös niissä.

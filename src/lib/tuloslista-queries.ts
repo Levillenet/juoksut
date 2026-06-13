@@ -68,18 +68,41 @@ export function competitionIndexQueryOptions(
       let cursor = 0;
       let done = 0;
 
+      const PER_EVENT_TIMEOUT_MS = 8_000;
+      const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T> =>
+        new Promise<T>((resolve, reject) => {
+          const t = setTimeout(() => reject(new Error("event-timeout")), ms);
+          p.then(
+            (v) => {
+              clearTimeout(t);
+              resolve(v);
+            },
+            (e) => {
+              clearTimeout(t);
+              reject(e);
+            },
+          );
+        });
+
       const worker = async () => {
         while (cursor < eventIds.length) {
           const i = cursor++;
           const eid = eventIds[i];
           try {
-            const ev = await fetchEvent(competitionId, eid);
+            const ev = await withTimeout(
+              fetchEvent(competitionId, eid),
+              PER_EVENT_TIMEOUT_MS,
+            );
             if (!skipBaselines) {
               const allAllocs = ev.Rounds.flatMap((r) =>
                 r.Heats.flatMap((h) => h.Allocations),
               );
-              await captureBaselines(competitionId, eid, allAllocs);
-              await loadBaselines(competitionId, eid);
+              try {
+                await captureBaselines(competitionId, eid, allAllocs);
+                await loadBaselines(competitionId, eid);
+              } catch {
+                /* baseline DB is best-effort */
+              }
             }
             for (const round of ev.Rounds) {
               const matchingRound =
@@ -105,8 +128,6 @@ export function competitionIndexQueryOptions(
                   }
                 }
               } else if (ev.Enrollments && ev.Enrollments.length > 0) {
-                // No heat allocations yet — synthesize entries from enrollments
-                // so watched athletes still see the event in their schedule.
                 for (const e of ev.Enrollments) {
                   if (e.NotInCompetition) continue;
                   collected.push({
@@ -137,7 +158,7 @@ export function competitionIndexQueryOptions(
               }
             }
           } catch {
-            /* skip */
+            /* skip slow/failing event so the page can still render */
           } finally {
             done++;
             onProgress?.(done, eventIds.length);
@@ -145,6 +166,7 @@ export function competitionIndexQueryOptions(
         }
       };
       await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+
       return { name: props?.Competition?.Name ?? "", entries: collected };
     },
     staleTime: 10_000,
