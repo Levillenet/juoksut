@@ -669,6 +669,7 @@ function useViewportWidth(): number {
 function ScoreRow({
   row,
   displayRank,
+  isLeader: isLeaderProp,
   count,
   eventId,
   category,
@@ -678,6 +679,7 @@ function ScoreRow({
 }: {
   row: RankedRow;
   displayRank: number;
+  isLeader?: boolean;
   count: number;
   eventId: number;
   category: string;
@@ -691,8 +693,8 @@ function ScoreRow({
   const heightStyle = scrollMode ? {} : { flex: "1 1 0", minHeight: 0 };
   // Cap visual sizing at "10" buckets so scroll rows stay reasonable regardless of total count.
   const sizeBucket = scrollMode ? 10 : count;
-  const isLeader = displayRank === 1 && row.best;
-  const rankNum = row.ResultRank ?? displayRank;
+  const isLeader = isLeaderProp ?? (displayRank === 1 && !!row.best);
+  const rankNum = displayRank;
   const stackName = !narrow && sizeBucket <= 5;
   const { first, last } = splitName(row.Name ?? "");
 
