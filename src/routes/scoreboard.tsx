@@ -600,7 +600,11 @@ function ScoreboardLive() {
               <ScoreRow
                 key={row.AllocId}
                 row={row}
-                displayRank={order === "start" ? (row.Position ?? idx + 1) : idx + 1}
+                displayRank={
+                  order === "start"
+                    ? (row.Position ?? idx + 1)
+                    : (row.ResultRank ?? idx + 1)
+                }
                 isLeader={order === "result" && idx === 0 && !!row.best}
                 count={visible.length}
                 eventId={ev?.Id ?? 0}
