@@ -186,14 +186,15 @@ export function matchYagCalling(
     const sarja = parseSarja(row.sarja);
     if (!sarja) continue;
     const disc = disciplineKey(row.laji);
-    const key = `${row.date}|${sarjaKey(sarja)}|${disc}`;
+    const phase = phaseTag(row.laji);
+    const key = `${row.date}|${sarjaKey(sarja)}|${disc}|${phase || "any"}`;
     let g = pdfGroups.get(key);
     if (!g) {
       g = { date: row.date, sarja, disc, phases: new Set<Phase>(), rows: [] };
       pdfGroups.set(key, g);
     }
     g.rows.push(row);
-    g.phases.add(phaseTag(row.laji));
+    g.phases.add(phase);
   }
   for (const g of pdfGroups.values()) {
     g.rows.sort((a, b) => callingStartMinutes(a.calling) - callingStartMinutes(b.calling));
