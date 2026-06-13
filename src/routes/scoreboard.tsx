@@ -255,7 +255,7 @@ interface RankedRow extends Allocation {
 }
 
 function ScoreboardLive() {
-  const { eventId, roundId, top, heat } = Route.useSearch();
+  const { eventId, roundId, top, heat, order } = Route.useSearch();
   const [competitionId] = useCompetitionId();
   const navigate = useNavigate({ from: "/scoreboard" });
   const detailQ = useQuery(eventDetailsQueryOptions(competitionId, eventId!));
