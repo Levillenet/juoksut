@@ -83,7 +83,7 @@ function sarjaKey(s: SarjaKey): string {
  * skandit ja normalisoi etäisyydet.
  */
 function disciplineKey(raw: string): string {
-  let x = raw
+  const x = raw
     .toLowerCase()
     .replace(/\(er[äa]\s*\d+\)/g, "")
     .replace(/^[mnpt]\d+\s+/i, "")
@@ -92,44 +92,56 @@ function disciplineKey(raw: string): string {
     .replace(/\s+/g, " ")
     .trim();
 
-  // Aitaviesti (4x60m, 4x80m...)
-  if (/aitaviesti/.test(x) || (/4x/.test(x) && /aidat/.test(x))) {
-    const m = x.match(/4x(\d+)/);
-    return m ? `aitaviesti${m[1]}` : "aitaviesti";
-  }
-  // Viesti (4x100m, 4x600m, 4x50m, 4x800m)
-  if (/\bviesti\b/.test(x) || /^4x/.test(x)) {
-    const m = x.match(/4x(\d+)/);
-    return m ? `viesti${m[1]}` : "viesti";
-  }
-  // Aidat
-  if (/\baidat\b/.test(x)) {
-    const m = x.match(/(\d+)\s*m/);
-    return m ? `aidat${m[1]}` : "aidat";
-  }
-  // Kävely
-  if (/kavely/.test(x)) {
-    const m = x.match(/(\d+)\s*m/);
-    return m ? `kavely${m[1]}` : "kavely";
-  }
-  // Pelkkä juoksumatka: 60m, 100m, 150m, 200m, 300m, 800m, 40m, 1000m...
-  const runM = x.match(/^(\d+)\s*m\b/);
-  if (runM) return `juoksu${runM[1]}`;
+  // Kierroksen vaihe (alkuerät / välierät / loppukilpailu): pidetään
+  // erottelevana, jotta saman eventin alkuerät ja finaali eivät matchaa
+  // samaan calling-ryhmään.
+  let phase = "";
+  if (/loppukilpailu|finaali|\bfinal\b/.test(x)) phase = ":final";
+  else if (/valier/.test(x)) phase = ":semi";
+  else if (/alkuer/.test(x)) phase = ":heat";
 
-  // Kenttälajit (suomenkielinen sana)
-  for (const k of [
-    "pituus",
-    "kolmiloikka",
-    "korkeus",
-    "seivas",
-    "kuula",
-    "kiekko",
-    "moukari",
-    "keihas",
-  ]) {
-    if (x.includes(k)) return k;
-  }
-  return x.replace(/\s+/g, "");
+  const base = ((): string => {
+    // Aitaviesti (4x60m, 4x80m...)
+    if (/aitaviesti/.test(x) || (/4x/.test(x) && /aidat/.test(x))) {
+      const m = x.match(/4x(\d+)/);
+      return m ? `aitaviesti${m[1]}` : "aitaviesti";
+    }
+    // Viesti (4x100m, 4x600m, 4x50m, 4x800m)
+    if (/\bviesti\b/.test(x) || /^4x/.test(x)) {
+      const m = x.match(/4x(\d+)/);
+      return m ? `viesti${m[1]}` : "viesti";
+    }
+    // Aidat
+    if (/\baidat\b/.test(x)) {
+      const m = x.match(/(\d+)\s*m/);
+      return m ? `aidat${m[1]}` : "aidat";
+    }
+    // Kävely
+    if (/kavely/.test(x)) {
+      const m = x.match(/(\d+)\s*m/);
+      return m ? `kavely${m[1]}` : "kavely";
+    }
+    // Pelkkä juoksumatka: 60m, 100m, 150m, 200m, 300m, 800m, 40m, 1000m...
+    const runM = x.match(/^(\d+)\s*m\b/);
+    if (runM) return `juoksu${runM[1]}`;
+
+    // Kenttälajit (suomenkielinen sana)
+    for (const k of [
+      "pituus",
+      "kolmiloikka",
+      "korkeus",
+      "seivas",
+      "kuula",
+      "kiekko",
+      "moukari",
+      "keihas",
+    ]) {
+      if (x.includes(k)) return k;
+    }
+    return x.replace(/\s+/g, "");
+  })();
+
+  return base + phase;
 }
 
 function parseHeat(laji: string): number | null {
