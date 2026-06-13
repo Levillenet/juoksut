@@ -566,7 +566,7 @@ function ScoreboardLive() {
           </ul>
         )}
       </main>
-      <NewResultOverlay item={currentOverlay} onDone={handleOverlayDone} />
+      <NewResultOverlay item={overlayEnabled ? currentOverlay : null} onDone={handleOverlayDone} />
     </div>
   );
 }
