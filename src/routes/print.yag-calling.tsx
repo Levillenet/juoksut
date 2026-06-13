@@ -309,9 +309,10 @@ function YagCallingPage() {
 
         {indexQuery.isLoading && entries.length === 0 && (
           <p className="py-12 text-center text-sm text-muted-foreground">
-            Ladataan…
+            Ladataan… {progress.total > 0 ? `${progress.done} / ${progress.total} lajia` : ""}
           </p>
         )}
+
 
         {!indexQuery.isLoading &&
           ((mode === "watched" && watched.length > 0) ||
