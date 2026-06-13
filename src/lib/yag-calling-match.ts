@@ -168,6 +168,8 @@ interface PdfGroup {
   date: string;
   sarja: SarjaKey;
   disc: string;
+  /** Phase-setti tämän ryhmän riveistä; "" mukana jos jokin rivi on vaiheeton. */
+  phases: Set<Phase>;
   rows: YagCallingRow[]; // aikajärjestyksessä
 }
 
@@ -187,10 +189,11 @@ export function matchYagCalling(
     const key = `${row.date}|${sarjaKey(sarja)}|${disc}`;
     let g = pdfGroups.get(key);
     if (!g) {
-      g = { date: row.date, sarja, disc, rows: [] };
+      g = { date: row.date, sarja, disc, phases: new Set<Phase>(), rows: [] };
       pdfGroups.set(key, g);
     }
     g.rows.push(row);
+    g.phases.add(phaseTag(row.laji));
   }
   for (const g of pdfGroups.values()) {
     g.rows.sort((a, b) => callingStartMinutes(a.calling) - callingStartMinutes(b.calling));
@@ -202,20 +205,28 @@ export function matchYagCalling(
     const sarja = sarjaFromRound(e.round.Gender, e.round.Age);
     const date = helsinkiDateKey(e.heatBegin);
     const disc = disciplineKey(`${e.round.EventName} ${e.round.Name ?? ""}`);
-    return { entry: e, sarja, date, disc };
+    const phase = phaseTag(`${e.round.EventName} ${e.round.Name ?? ""}`);
+    return { entry: e, sarja, date, disc, phase };
   });
 
   const out: YagCallingMatch[] = [];
 
   for (const g of pdfGroups.values()) {
     const rowDate = callingDateKey(g.date);
-    // Entryt jotka kuuluvat tähän lajiryhmään
+    // Vaihe-suodatus: jos ryhmässä on selvä vaihe (esim. vain "heat" tai
+    // vain "final"), hyväksy entry vain jos sen vaihe sopii.
+    // Jos ryhmässä on sekä vaiheellisia että vaiheettomia rivejä, ei suodateta.
+    const groupPhases = g.phases;
+    const restrictPhase = groupPhases.size === 1 && !groupPhases.has("");
+    const allowedPhase = restrictPhase ? [...groupPhases][0] : null;
+
     const groupEntries = indexed.filter(
       (ix) =>
         ix.sarja &&
         sarjaEq(ix.sarja, g.sarja) &&
         ix.date === rowDate &&
-        ix.disc === g.disc,
+        ix.disc === g.disc &&
+        (allowedPhase == null || ix.phase === "" || ix.phase === allowedPhase),
     );
 
     if (groupEntries.length === 0) continue;
