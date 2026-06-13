@@ -52,7 +52,7 @@ function YagCallingPage() {
   const navigate = useNavigate({ from: "/print/yag-calling" });
   const { list: watched } = useWatchedAthletes();
   const { orientation, setOrientation } = usePrintOrientation();
-  const indexQuery = useQuery(competitionIndexQueryOptions(YAG_COMPETITION_ID));
+  const indexQuery = useQuery(competitionIndexQueryOptions(YAG_COMPETITION_ID, { skipBaselines: true }));
 
   const entries = indexQuery.data?.entries ?? [];
   const compName = indexQuery.data?.name ?? "YAG Espoo 2026";
