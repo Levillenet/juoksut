@@ -245,7 +245,8 @@ export function AthleteSearch({
               })}
             </ul>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );
