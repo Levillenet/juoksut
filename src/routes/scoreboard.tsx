@@ -439,7 +439,7 @@ function ScoreboardLive() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate({ search: { eventId: undefined, roundId: undefined, top, heat: "all" } })}
+          onClick={() => navigate({ search: { eventId: undefined, roundId: undefined, top, heat: "all", order } })}
           aria-label="Takaisin"
         >
           <ArrowLeft className="h-5 w-5" />
