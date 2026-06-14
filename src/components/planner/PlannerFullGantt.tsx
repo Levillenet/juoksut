@@ -72,15 +72,48 @@ export function PlannerFullGantt({
   const [dayIdx, setDayIdx] = useState(0);
   const [showEmpty, setShowEmpty] = useState(false);
   const evMap = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
-  const conflictMap = useMemo(
-    () => new Map(conflicts.map((c) => [c.id, c.reason])),
-    [conflicts],
-  );
+export function PlannerFullGantt({
+  plan,
+  venues,
+  events,
+  schedule,
+  conflicts,
+  highlightIds,
+  onChange,
+}: Props) {
+  const windows = useMemo(() => resolveDayWindows(plan), [plan]);
+  const [dayIdx, setDayIdx] = useState(0);
+  const [showEmpty, setShowEmpty] = useState(false);
+  const evMap = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
+  const venueMap = useMemo(() => new Map(venues.map((v) => [v.id, v])), [venues]);
 
-  const ageClasses = useMemo(
-    () => Array.from(new Set(events.map((e) => e.age_class))).sort(ageClassSort),
-    [events],
+  // Pidä per id-konflikti, joka on vakavin
+  const conflictMap = useMemo(() => {
+    const m = new Map<string, Conflict>();
+    for (const c of conflicts) {
+      const prev = m.get(c.id);
+      if (!prev || SEVERITY_ORDER[c.severity] > SEVERITY_ORDER[prev.severity]) {
+        m.set(c.id, c);
+      }
+    }
+    return m;
+  }, [conflicts]);
+
+  // Mikä taulukon item on osana mitä-tahansa konfliktia (myös relatedIds)
+  const conflictedAnyIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const c of conflicts) {
+      s.add(c.id);
+      c.relatedIds?.forEach((id) => s.add(id));
+    }
+    return s;
+  }, [conflicts]);
+
+  const highlightSet = useMemo(
+    () => new Set(highlightIds ?? []),
+    [highlightIds],
   );
+  const isHighlightActive = highlightSet.size > 0;
 
   const win = windows[Math.min(dayIdx, Math.max(0, windows.length - 1))];
 
