@@ -1,85 +1,64 @@
-## Tavoite
+# Juoksulajien aika-asetusten yksinkertaistus
 
-Tehdä suunnittelijasta valmiimpi: oletussuorituspaikat YU-kentälle, pakotettu lajikatalogivalinta, monipäiväinen tapahtuma + lajien päivärajaus, raahattava Gantt-aikataulu, testikilpailugeneraattori, **ja pohjan ottaminen aiemmasta livetuloslistakilpailusta**.
+Käyttäjän palaute liitetyn YAG 2022 -aikataulun pohjalta: juoksulajeissa ei tarvita erillistä "eräväli"-asetusta. Riittää, että lajille annetaan **aika per erä** (sisältää järjestäytymisen). Solver kertoo sen erien lukumäärällä.
 
-## Muutokset
+## 1. Tietomalli (plan_events)
 
-### 1. Tapahtuman luonti & perustiedot
-- `competition_plans`: lisää `is_multi_day` (bool) ja `day_windows` (jsonb: `[{date, starts_at, ends_at}]`).
-- Basics-välilehti: "Monipäiväinen?" -kytkin → näytetään päivälista (lisää/poista) ja alku/loppu per päivä.
+Poistetaan käytöstä juoksuille:
+- `between_heats_min` (ei enää käytössä juoksuilla)
 
-### 2. Suorituspaikat — YU-kentän oletuspohja
-- "Käytä YU-kentän oletusta" -nappi avaa paneelin, jossa lista vakiopaikoista määräalasvetoineen (0/1/2/3):
-  pikajuoksusuora, ratakierros, pituuskuoppa, kolmiloikkapaikka, korkeushyppy, seiväshyppy, kuulakehä, kiekkokehä, keihäsvauhdinotto, moukarikehä.
-- "Lisää valitut" luo `plan_venues`-rivit järkevillä nimillä ("Pituuskuoppa A/B", "Kuulakehä 1"…).
-- Manuaalinen lisääminen säilyy.
-- Tekstit: "Asemia rinnakkain" → kenttälajeissa "Suorituspaikkoja", juoksulajeissa "Ratoja".
+Korvataan / käytetään olemassa olevaa kenttää:
+- `minutes_per_heat` (numeric, nullable) — käyttäjän asettama oletus per laji
+- Jos null → käytetään lajikatalogin oletusta (ks. kohta 3)
 
-### 3. Lajit — pakotettu valinta katalogista
-- Poistetaan vapaat tekstikentät; käytetään `get_event_catalog`-RPC:tä (alennetaan kynnystä uudessa `get_event_catalog_full`-RPC:ssä, jotta kaikki sarjat tulevat mukaan).
-- Lajidialogi: kaksivaiheinen pudotusvalikko (ikäluokka → laji), "Lisää oma laji" toissijaisena painikkeena.
-- Final-formaatille selitykset valinnan vieressä.
-- "Oma kesto (min)" → "Ohita arvioitu kesto (min)" + tooltip ("Oletuksena lasketaan livetuloslistan historiasta; täytä vain jos haluat pakottaa toisen arvon").
+Aitojen pystytys/purku (`hurdles_setup_min`, `hurdles_teardown_min`) säilyy — koskee koko aitablokkia, ei yksittäistä erää.
 
-### 4. Lajien päivärajaus (monipäivä)
-- `plan_events`: lisää `allowed_days date[]` (null = vapaa).
-- Lajidialogissa monivalinta päivistä jos `is_multi_day`.
-- Solveri rajaa sijoittelun sallittuihin päiviin.
+Migraatio: ei pakollisia kolumnimuutoksia, mutta poistetaan UI:sta + solverista `between_heats_min`-käyttö juoksuissa. Voidaan jättää sarake tietokantaan (ei riko olemassa olevia rivejä).
 
-### 5. Solver — monipäivätuki
-- Pilkotaan greedy päivittäin: iteroidaan päivät järjestyksessä, segmentti joka ei mahdu siirtyy seuraavaan sallittuun päivään.
-- Venuetilakoneet nollataan päivän alussa.
+## 2. Solver (`src/lib/planner-solver.ts`)
 
-### 6. Aikataulunäkymä — Gantt + raahaus
-- Uusi `PlannerGantt`-komponentti:
-  - Vasen sarake: rivit ryhmiteltynä ikäluokan + lajin mukaan (toggle: ikäluokan / suorituspaikan mukaan).
-  - Yläpalkki: aika-akseli per päivä, päivävalitsin välilehtinä.
-  - Palkit värikoodattu ikäluokan mukaan, leveys = kesto.
-- Raahaus pointer-tapahtumilla (ei uutta riippuvuutta), napsahdus 5 min ruudukkoon. Pudotus toisen suorituspaikan riville vaihtaa venuen.
-- Reaaliaikainen `detectConflicts` → punainen reuna + tooltip.
-- "Tallenna" persistoi `plan_schedule_items`-muutokset.
+Juoksulajin kesto:
+```
+heats = ceil(participants / lanes)
+duration = heats * minutes_per_heat
+         + (is_hurdles ? setup + teardown : 0)
+         + prep_before_start
+```
+Poistetaan `(heats - 1) * between_heats_min` -termi.
 
-### 7. Testikilpailun generaattori
-- "Luo demokilpailu" -nappi: tyhjentää (vahvistuksella) ja lisää YU-kentän oletuspaikat + tyypilliset lajit jokaiseen ikäluokkaan + satunnaiset osallistujamäärät (6–24), ajaa solverin.
+## 3. Oletusarvot per laji (Excel-pohjalta)
 
-### 8. **Pohja aiemmasta kilpailusta** (uusi)
-- "Uusi suunnitelma" -nappiin pudotusvalinta:
-  - "Tyhjä pohja" (nykyinen).
-  - "YU-kentän oletus + demolajit" (= testikilpailu).
-  - "Aiempi kilpailu…" → avaa dialogi, jossa pudotusvalikossa **vuoden 2026 kilpailut** (myöhemmin valittava vuosi) `athlete_results`-taulusta (DISTINCT `competition_id`, `competition_name`, `competition_date`, järjestys uusin ensin).
-- Valittu kilpailu → kopioidaan suunnitelmaan:
-  - **Ikäluokat + lajit**: `athlete_results` ryhmiteltynä `age_class` + `event_pb_key` → `plan_events`-rivit. Osallistujamääräksi todellinen osallistujamäärä (DISTINCT `athlete_key`).
-  - **Suorituspaikat**: oletetaan YU-kentän vakiopaikat (1 kpl kutakin), koska venue-tieto ei ole tuloslistassa. Käyttäjä voi muokata.
-  - **Aikaikkuna**: `min/max(captured_at)` → tapahtuman alku/loppu pyöristettynä. Monipäiväinen tunnistetaan, jos kestää yli yhden päivän.
-  - **Kestojen oletusarvot** poimitaan automaattisesti samasta kilpailusta (per laji `max-min` capture-aika), jos olemassa, muuten yleisestä regressiosta.
-- Toteutus: uusi server-fn `src/lib/planner-templates.functions.ts`:
-  - `listRecentCompetitions(year)` → palauttaa kilpailut pudotusvalikkoa varten.
-  - `buildPlanFromCompetition(competitionId, planId)` → ajaa kopioinnin server-fn:nä (`requireSupabaseAuth` + admin-tarkistus).
+Lisätään `src/lib/planner-defaults.ts`:iin oletus `minutes_per_heat` per matka (ohjearvot YAG 2022 -aikataulusta):
 
-### 9. Termistö & UX-pikkukorjaukset
-- "Asemia rinnakkain" → kontekstin mukaan "Suorituspaikkoja" / "Ratoja".
-- Final-formaatin selitykset.
-- "Oma kesto" → "Ohita arvioitu kesto" + ohje.
+| Matka | min/erä |
+|---|---|
+| 40 m / 60 m / 60 m aj | 4 |
+| 80 m aj / 100 m / 100 m aj | 5 |
+| 150 m | 5 |
+| 300 m | 6 |
+| 600 m / 800 m / 1000 m | 8 |
+| 1000 m kävely | 10 |
+| 3000 m kävely | 18 |
 
-## Tekniset yksityiskohdat
+Demo-/template-generaattori esitäyttää nämä, käyttäjä voi muokata lajikohtaisesti.
 
-- **Migraatio**:
-  - `ALTER TABLE competition_plans ADD COLUMN is_multi_day boolean NOT NULL DEFAULT false, ADD COLUMN day_windows jsonb`.
-  - `ALTER TABLE plan_events ADD COLUMN allowed_days date[]`.
-  - Uusi RPC `get_event_catalog_full()` (alennettu kynnys, ei aikarajaa).
-  - Uusi RPC `list_planner_template_competitions(p_year int)` palauttaa kilpailulistan.
-- **Uudet tiedostot**:
-  - `src/lib/planner-defaults.ts` — YU-kentän vakiopaikat.
-  - `src/lib/planner-demo.ts` — demokilpailun generointi.
-  - `src/lib/planner-templates.functions.ts` — server-fn: listaus + kopiointi aiemmasta kilpailusta.
-  - `src/components/planner/DefaultVenuesDialog.tsx`.
-  - `src/components/planner/EventPickerDialog.tsx` — kaksivaiheinen pudotusvalikko.
-  - `src/components/planner/TemplatePickerDialog.tsx` — uusi (kilpailu pohjaksi).
-  - `src/components/planner/PlannerGantt.tsx` — raahattava kalenteri.
-- **Muokattavat**: `src/lib/planner-solver.ts` (monipäivä + `allowed_days`), `src/lib/planner-types.ts`, `src/routes/planner.$planId.tsx`, `src/routes/planner.index.tsx` (uudet luontivaihtoehdot).
-- Raahaus toteutetaan kevyellä pointer-handlerilla ilman uusia riippuvuuksia; px↔min konversio aika-akselin `pixelsPerMin`-vakion kautta.
+## 4. UI (`planner.$planId.tsx` lajilista)
 
-## Mitä jää pois
-- Ei lajien välistä riippuvuusgraafia (paitsi heats→final, joka jo on).
-- Ei mobiilioptimoitua raahausta tässä iteraatiossa.
-- Pohjasta kopioitaessa venue-mappaus on käyttäjän vastuulla (lähdedatassa ei ole suorituspaikkatietoa).
+- Juoksulajin riville: yksi numerokenttä **"Aika/erä (min)"**.
+- Piilotetaan/poistetaan "Erien väli (min)" -kenttä juoksulajeilta.
+- Aitajuoksulle näkyvät lisäksi setup/teardown -kentät (kuten nyt).
+- Kenttälajeilla (pituus, kuula, …) ei muutoksia.
+
+## 5. Mitä EI tehdä
+
+- Ei muuteta kenttälajien (hyppy/heitto) logiikkaa.
+- Ei kosketa muiden juoksuasetusten (ratamäärä, valmistautumisaika ennen lajia) toimintaa.
+- Ei tuoda Excel-tiedostoa sellaisenaan dataksi — käytetään vain ohjearvoina oletuksiin.
+
+## Muutettavat tiedostot
+
+- `src/lib/planner-types.ts` — kommentti `between_heats_min`-kentälle (legacy)
+- `src/lib/planner-defaults.ts` — `MINUTES_PER_HEAT_DEFAULTS` map
+- `src/lib/planner-solver.ts` — keston laskenta
+- `src/lib/planner-demo.ts` — esitäyttö oletuksilla
+- `src/routes/planner.$planId.tsx` — lajirivin UI
