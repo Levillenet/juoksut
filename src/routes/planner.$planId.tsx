@@ -238,7 +238,7 @@ function BasicsTab({
           default_hurdle_setup_min: form.hurdleSetup,
           default_hurdle_teardown_min: form.hurdleTeardown,
           is_multi_day: form.isMultiDay,
-          day_windows: form.isMultiDay ? form.dayWindows : null,
+          day_windows: form.isMultiDay ? (form.dayWindows as unknown as never) : null,
           notes: form.notes,
         })
         .eq("id", plan.id);
