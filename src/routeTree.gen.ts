@@ -18,6 +18,7 @@ import { Route as ScoreboardRouteImport } from './routes/scoreboard'
 import { Route as RunningOpsRouteImport } from './routes/running-ops'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrintRouteImport } from './routes/print'
+import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as KilpailukalenteriRouteImport } from './routes/kilpailukalenteri'
 import { Route as HauskatTilastotRouteImport } from './routes/hauskat-tilastot'
@@ -88,6 +89,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const PrintRoute = PrintRouteImport.update({
   id: '/print',
   path: '/print',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlannerRoute = PlannerRouteImport.update({
+  id: '/planner',
+  path: '/planner',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -232,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/hauskat-tilastot': typeof HauskatTilastotRoute
   '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
+  '/planner': typeof PlannerRoute
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/running-ops': typeof RunningOpsRoute
@@ -268,6 +275,7 @@ export interface FileRoutesByTo {
   '/hauskat-tilastot': typeof HauskatTilastotRoute
   '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
+  '/planner': typeof PlannerRoute
   '/reset-password': typeof ResetPasswordRoute
   '/running-ops': typeof RunningOpsRoute
   '/scoreboard': typeof ScoreboardRoute
@@ -305,6 +313,7 @@ export interface FileRoutesById {
   '/hauskat-tilastot': typeof HauskatTilastotRoute
   '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
+  '/planner': typeof PlannerRoute
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/running-ops': typeof RunningOpsRoute
@@ -344,6 +353,7 @@ export interface FileRouteTypes {
     | '/hauskat-tilastot'
     | '/kilpailukalenteri'
     | '/login'
+    | '/planner'
     | '/print'
     | '/reset-password'
     | '/running-ops'
@@ -380,6 +390,7 @@ export interface FileRouteTypes {
     | '/hauskat-tilastot'
     | '/kilpailukalenteri'
     | '/login'
+    | '/planner'
     | '/reset-password'
     | '/running-ops'
     | '/scoreboard'
@@ -416,6 +427,7 @@ export interface FileRouteTypes {
     | '/hauskat-tilastot'
     | '/kilpailukalenteri'
     | '/login'
+    | '/planner'
     | '/print'
     | '/reset-password'
     | '/running-ops'
@@ -454,6 +466,7 @@ export interface RootRouteChildren {
   HauskatTilastotRoute: typeof HauskatTilastotRoute
   KilpailukalenteriRoute: typeof KilpailukalenteriRoute
   LoginRoute: typeof LoginRoute
+  PlannerRoute: typeof PlannerRoute
   PrintRoute: typeof PrintRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   RunningOpsRoute: typeof RunningOpsRoute
@@ -538,6 +551,13 @@ declare module '@tanstack/react-router' {
       path: '/print'
       fullPath: '/print'
       preLoaderRoute: typeof PrintRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planner': {
+      id: '/planner'
+      path: '/planner'
+      fullPath: '/planner'
+      preLoaderRoute: typeof PlannerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -794,6 +814,7 @@ const rootRouteChildren: RootRouteChildren = {
   HauskatTilastotRoute: HauskatTilastotRoute,
   KilpailukalenteriRoute: KilpailukalenteriRoute,
   LoginRoute: LoginRoute,
+  PlannerRoute: PlannerRoute,
   PrintRoute: PrintRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   RunningOpsRoute: RunningOpsRoute,
