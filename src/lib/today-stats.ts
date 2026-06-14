@@ -190,8 +190,7 @@ export async function fetchTodayStats(): Promise<TodayStats> {
   for (const r of today) {
     if (r.result_numeric == null) continue;
     if (!r.athlete_key) continue;
-    const norm = normalizeEventName(r.event_name);
-    const key = `${r.athlete_key}|${norm}`;
+    const key = `${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`;
     const lower = isLowerBetter(r.event_category, r.sub_category);
     const cur = todayAthleteBest.get(key);
     if (
