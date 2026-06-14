@@ -285,9 +285,6 @@ export function solve(input: SolverInput): SolverResult {
         .reduce((a, b) => Math.max(a, b), 0);
       // KORJAUS 2/3: afterPhaseKey pakottaa alkamaan tietyn vaiheen päättymisestä.
       const phaseRefEnd = seg.afterPhaseKey ? phaseEnds.get(seg.afterPhaseKey) : undefined;
-      const phaseRefLatest = seg.afterPhaseKey && phaseRefEnd != null
-        ? phaseRefEnd + (seg.maxGapAfterPhaseMin ?? 0) * 60000
-        : null;
       if (phaseRefEnd != null) prevEventEnd = Math.max(prevEventEnd, phaseRefEnd);
 
       // Per-venue "free at" huomioi siirtoajan.
