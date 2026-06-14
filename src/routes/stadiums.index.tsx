@@ -56,8 +56,15 @@ function StadiumsIndex() {
 
   if (!user) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-10 text-sm text-muted-foreground">
-        Kirjaudu sisään käyttääksesi stadion-hallintaa.
+      <div className="mx-auto max-w-2xl space-y-4 px-4 py-10">
+        <p className="text-sm text-muted-foreground">
+          Kirjaudu sisään käyttääksesi stadion-hallintaa.
+        </p>
+        <Button asChild>
+          <Link to="/login" search={{ redirect: "/stadiums" }}>
+            Kirjaudu sisään
+          </Link>
+        </Button>
       </div>
     );
   }
