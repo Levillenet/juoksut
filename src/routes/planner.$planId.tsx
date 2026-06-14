@@ -543,6 +543,29 @@ function EventsTab({
                       }}
                     />
                   </td>
+                  {(["setup_before_min", "between_heats_min", "hurdle_setup_min", "hurdle_teardown_min"] as const).map(
+                    (key) => {
+                      const isHurdleField = key === "hurdle_setup_min" || key === "hurdle_teardown_min";
+                      const isHurdleEvt = /aita|aidat|hurdle/i.test(e.event_name);
+                      if (isHurdleField && !isHurdleEvt) {
+                        return <td key={key} className="py-1 pr-2 text-right text-muted-foreground">–</td>;
+                      }
+                      return (
+                        <td key={key} className="py-1 pr-2 text-right">
+                          <Input
+                            type="number"
+                            className="w-14 text-right"
+                            placeholder="auto"
+                            value={e[key] ?? ""}
+                            onChange={(ev) => {
+                              const v = ev.target.value;
+                              update.mutate({ id: e.id, [key]: v === "" ? null : parseInt(v) });
+                            }}
+                          />
+                        </td>
+                      );
+                    },
+                  )}
                   <td className="py-1 pr-2">
                     <Button size="icon" variant="ghost" onClick={() => del.mutate(e.id)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
@@ -551,6 +574,7 @@ function EventsTab({
                 </tr>
               );
             })}
+
           </tbody>
         </table>
         <datalist id={`agecls-${planId}`}>
