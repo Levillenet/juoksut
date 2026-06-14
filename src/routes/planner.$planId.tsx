@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { ArrowLeft, Trash2, Plus, Wand2, Save, Download, LayoutGrid, Sparkles } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -942,6 +942,14 @@ function EventPickerDialog({
   const [customMode, setCustomMode] = useState(false);
   const [customAge, setCustomAge] = useState("");
   const [customName, setCustomName] = useState("");
+
+  // Keep `age` in sync once the catalog finishes loading or changes.
+  useEffect(() => {
+    if (ageClasses.length === 0) return;
+    if (!age || !ageClasses.includes(age)) {
+      setAge(ageClasses[0]);
+    }
+  }, [ageClasses, age]);
 
   const eventOptions = useMemo(
     () =>
