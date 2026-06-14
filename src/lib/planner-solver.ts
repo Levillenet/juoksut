@@ -40,6 +40,10 @@ export interface SolverInput {
   events: SolverInputEvent[];
   /** Suorituspaikkojen rajoiteryhmät: max N samaan aikaan käytössä. */
   conflictGroups?: ConflictGroupRow[];
+  /** Saako eri juoksumatkoja sijoittaa samalle suorituspaikalle? (oletus true) */
+  allowDistanceChangeSameVenue?: boolean;
+  /** Minimitauko (min) matkanvaihdon yhteydessä samalla suorituspaikalla. (oletus 5) */
+  minDistanceChangeGapMin?: number;
 }
 
 interface Segment {
