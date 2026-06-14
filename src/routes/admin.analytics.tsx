@@ -360,6 +360,8 @@ function Page() {
             </table>
           </div>
         </Section>
+        </>
+        )}
       </main>
     </div>
   );
