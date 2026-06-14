@@ -212,10 +212,32 @@ export function solve(input: SolverInput): SolverResult {
     return blockUntil;
   };
 
+  // Per-venue siirtoaika (ms) edellisestä juoksulajista tähän segmenttiin.
+  const venueChangeoverMs = (vs: VenueState): number => {
+    if (!vs.lastEventName) return 0;
+    const co = getDistanceChangeoverMin(vs.lastEventName, seg.eventName, true);
+    if (co === 0) return 0;
+    return Math.max(co, minChangeGap) * 60000;
+  };
+
   for (const seg of segments) {
+    const segIsRun = parseDistanceM(seg.eventName) != null || isHurdleEvent(seg.eventName);
+    const segDist = parseDistanceM(seg.eventName);
+    const segHurdle = isHurdleEvent(seg.eventName);
+
     const eligibleStates = venueStates.filter((vs) => {
       const kind = venueKindById.get(vs.id);
-      return kind ? isVenueForEvent(kind, seg.eventName) : false;
+      if (!kind || !isVenueForEvent(kind, seg.eventName)) return false;
+      // Jos käyttäjä ei salli matkanvaihtoa samalla suorituspaikalla,
+      // estä juoksupaikat joilla on aiempi eri matkan/tyypin juoksu.
+      if (!allowChange && segIsRun && vs.lastEventName) {
+        const prevDist = parseDistanceM(vs.lastEventName);
+        const prevHurdle = isHurdleEvent(vs.lastEventName);
+        if (prevDist != null && (prevDist !== segDist || prevHurdle !== segHurdle)) {
+          return false;
+        }
+      }
+      return true;
     });
     if (eligibleStates.length < seg.needsStations) {
       warnings.push(
@@ -234,13 +256,16 @@ export function solve(input: SolverInput): SolverResult {
         .map((id) => (eventEnds.get(id) ?? 0) + seg.recoveryAfterPrev * 60000)
         .reduce((a, b) => Math.max(a, b), 0);
 
+      // Per-venue "free at" huomioi siirtoajan.
+      const freeAt = (vs: VenueState) => vs.busyUntil + venueChangeoverMs(vs);
+
       let candidateStart = Math.max(win.startMs, ageBusyUntil, prevEventEnd);
       let placedVenues: VenueState[] = [];
 
       for (let attempts = 0; attempts < 400; attempts++) {
-        const sorted = eligibleStates.slice().sort((a, b) => a.busyUntil - b.busyUntil);
+        const sorted = eligibleStates.slice().sort((a, b) => freeAt(a) - freeAt(b));
         const ready = sorted.filter(
-          (v) => v.busyUntil <= candidateStart - setupMs && candidateStart >= win.startMs,
+          (v) => freeAt(v) <= candidateStart - setupMs && candidateStart >= win.startMs,
         );
         if (ready.length >= seg.needsStations) {
           const cand = ready.slice(0, seg.needsStations);
@@ -254,7 +279,7 @@ export function solve(input: SolverInput): SolverResult {
           if (candidateStart > win.endMs) break;
           continue;
         }
-        const next = sorted[seg.needsStations - 1].busyUntil + setupMs;
+        const next = freeAt(sorted[seg.needsStations - 1]) + setupMs;
         const newCandidate = Math.max(next, ageBusyUntil, prevEventEnd, win.startMs);
         if (newCandidate <= candidateStart) break; // ei etene
         candidateStart = newCandidate;
