@@ -45,6 +45,7 @@ interface Row {
   result_text: string;
   result_numeric: number | null;
   competition_date: string | null;
+  age_class: string | null;
 }
 
 /** Current season = calendar year of "now". Best effort fallback for SB. */
