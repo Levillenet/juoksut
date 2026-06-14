@@ -1,5 +1,6 @@
 // YU-kentän vakiosuorituspaikat ja niiden nimeämislogiikka.
 import type { VenueKind } from "./planner-types";
+import { minutesPerHeat } from "./planner-rules";
 
 export interface DefaultVenueSpec {
   key: string;
