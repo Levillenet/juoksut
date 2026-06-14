@@ -166,13 +166,19 @@ export function ageClassRank(ageClass: string | null | undefined): number {
 }
 
 export function groupByEvent(rows: AthleteResultRow[]): EventGroup[] {
+  // Lazy import to avoid cycles
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { pbEventKey, pbEventLabel, isSpecSensitive } = require("./pb-key") as typeof import("./pb-key");
   const map = new Map<string, EventGroup>();
   for (const r of rows) {
     const normName = normalizeEventName(r.event_name);
-    const key = `${normName}|${r.sub_category}|${r.event_category}`;
+    // For hurdles/throws the spec (height/weight) is part of the group key,
+    // so a result with different equipment is shown as its own event.
+    const specKeyPart = pbEventKey(r);
+    const key = `${specKeyPart}|${r.sub_category}|${r.event_category}`;
     if (!map.has(key)) {
       map.set(key, {
-        eventName: normName,
+        eventName: pbEventLabel(r),
         category: r.event_category,
         subCategory: r.sub_category,
         lowerBetter: isLowerBetter(r.event_category, r.sub_category),
@@ -191,13 +197,18 @@ export function groupByEvent(rows: AthleteResultRow[]): EventGroup[] {
     const better = (a: AthleteResultRow, b: AthleteResultRow) =>
       g.lowerBetter ? (a.result_numeric ?? Infinity) < (b.result_numeric ?? Infinity)
                     : (a.result_numeric ?? -Infinity) > (b.result_numeric ?? -Infinity);
-    // Only consider rows from the highest age class the athlete has
-    // competed in for this event — lower age classes are hidden from PBs.
     const ranked = g.rows.filter((r) => r.result_numeric != null);
-    const maxRank = ranked.reduce((m, r) => Math.max(m, ageClassRank(r.age_class)), 0);
-    const pbCandidates = ranked.filter(
-      (r) => ageClassRank(r.age_class) === maxRank,
-    );
+    // For spec-sensitive events (hurdles/throws) the group already isolates
+    // a single spec, so all rows in the group are valid PB candidates.
+    // For other events we still prefer the athlete's highest age class.
+    const specSensitive = ranked.some((r) => isSpecSensitive(r.event_name));
+    let pbCandidates: AthleteResultRow[];
+    if (specSensitive) {
+      pbCandidates = ranked;
+    } else {
+      const maxRank = ranked.reduce((m, r) => Math.max(m, ageClassRank(r.age_class)), 0);
+      pbCandidates = ranked.filter((r) => ageClassRank(r.age_class) === maxRank);
+    }
     let best: AthleteResultRow | null = null;
     let bestIn: AthleteResultRow | null = null;
     let bestOut: AthleteResultRow | null = null;
