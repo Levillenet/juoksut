@@ -34,6 +34,7 @@ import { Route as SettingsNoteLinksRouteImport } from './routes/settings.note-li
 import { Route as PrintYagCallingRouteImport } from './routes/print.yag-calling'
 import { Route as PrintWatchedRouteImport } from './routes/print.watched'
 import { Route as PrintClubRouteImport } from './routes/print.club'
+import { Route as PlannerPlanIdRouteImport } from './routes/planner.$planId'
 import { Route as AthleteKeyRouteImport } from './routes/athlete.$key'
 import { Route as AnnouncerPlanningRouteImport } from './routes/announcer.planning'
 import { Route as AnnouncerLiveRouteImport } from './routes/announcer.live'
@@ -172,6 +173,11 @@ const PrintClubRoute = PrintClubRouteImport.update({
   path: '/club',
   getParentRoute: () => PrintRoute,
 } as any)
+const PlannerPlanIdRoute = PlannerPlanIdRouteImport.update({
+  id: '/$planId',
+  path: '/$planId',
+  getParentRoute: () => PlannerRoute,
+} as any)
 const AthleteKeyRoute = AthleteKeyRouteImport.update({
   id: '/athlete/$key',
   path: '/athlete/$key',
@@ -260,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/announcer/live': typeof AnnouncerLiveRoute
   '/announcer/planning': typeof AnnouncerPlanningRoute
   '/athlete/$key': typeof AthleteKeyRoute
+  '/planner/$planId': typeof PlannerPlanIdRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
   '/print/yag-calling': typeof PrintYagCallingRoute
@@ -296,6 +303,7 @@ export interface FileRoutesByTo {
   '/announcer/live': typeof AnnouncerLiveRoute
   '/announcer/planning': typeof AnnouncerPlanningRoute
   '/athlete/$key': typeof AthleteKeyRoute
+  '/planner/$planId': typeof PlannerPlanIdRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
   '/print/yag-calling': typeof PrintYagCallingRoute
@@ -336,6 +344,7 @@ export interface FileRoutesById {
   '/announcer/live': typeof AnnouncerLiveRoute
   '/announcer/planning': typeof AnnouncerPlanningRoute
   '/athlete/$key': typeof AthleteKeyRoute
+  '/planner/$planId': typeof PlannerPlanIdRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
   '/print/yag-calling': typeof PrintYagCallingRoute
@@ -377,6 +386,7 @@ export interface FileRouteTypes {
     | '/announcer/live'
     | '/announcer/planning'
     | '/athlete/$key'
+    | '/planner/$planId'
     | '/print/club'
     | '/print/watched'
     | '/print/yag-calling'
@@ -413,6 +423,7 @@ export interface FileRouteTypes {
     | '/announcer/live'
     | '/announcer/planning'
     | '/athlete/$key'
+    | '/planner/$planId'
     | '/print/club'
     | '/print/watched'
     | '/print/yag-calling'
@@ -452,6 +463,7 @@ export interface FileRouteTypes {
     | '/announcer/live'
     | '/announcer/planning'
     | '/athlete/$key'
+    | '/planner/$planId'
     | '/print/club'
     | '/print/watched'
     | '/print/yag-calling'
@@ -675,6 +687,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrintClubRouteImport
       parentRoute: typeof PrintRoute
     }
+    '/planner/$planId': {
+      id: '/planner/$planId'
+      path: '/$planId'
+      fullPath: '/planner/$planId'
+      preLoaderRoute: typeof PlannerPlanIdRouteImport
+      parentRoute: typeof PlannerRoute
+    }
     '/athlete/$key': {
       id: '/athlete/$key'
       path: '/athlete/$key'
@@ -781,10 +800,12 @@ const AnnouncerRouteWithChildren = AnnouncerRoute._addFileChildren(
 )
 
 interface PlannerRouteChildren {
+  PlannerPlanIdRoute: typeof PlannerPlanIdRoute
   PlannerIndexRoute: typeof PlannerIndexRoute
 }
 
 const PlannerRouteChildren: PlannerRouteChildren = {
+  PlannerPlanIdRoute: PlannerPlanIdRoute,
   PlannerIndexRoute: PlannerIndexRoute,
 }
 
