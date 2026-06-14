@@ -1,62 +1,86 @@
+
 ## Tavoite
 
-Lisätään admin-näkymään työkalu, jolla kilpailusta saa Excel-tiedoston, jossa kullekin lajille näkyy aloitusaika, osanottajamäärä, viimeisen tuloksen tallennusaika ja siitä laskettu kesto. Juoksulajeille lisäksi erien lukumäärä ja osanottajat yhteensä kaikista eristä.
+Aikataulun tarkkuus paranee, kun otetaan huomioon lajikohtaiset valmistelu- ja siirtymäajat sekä aitajuoksujen looginen ryhmittely sileiden juoksujen kanssa.
 
-## Muutokset
+## Mitä lisätään
 
-### 1. Reitti uudelleennimettynä: `/admin/analytics` → "Admin-valikko"
+### 1) Lajikohtaiset aika-asetukset (plan_events)
 
-- `src/routes/admin.analytics.tsx`: vaihdetaan otsikko **"Käyttöanalytiikka"** → **"Admin-valikko"** ja `head` meta `title: "Admin-valikko"`.
-- Lisätään sivun alkuun kevyt tab-/osio-rakenne: **Käyttöanalytiikka** (nykyinen sisältö) ja **Lajien kestot** (uusi). Reittipolku säilyy `/admin/analytics`-osoitteessa toistaiseksi, jotta admin-bookmarkit eivät rikkoudu.
+Uudet kentät jokaiselle suunnitelmalajille (oletukset suluissa):
 
-### 2. Uusi osio "Lajien kestot"
+- **`setup_before_min`** — aika ennen lajin alkua suorituspaikalla (esim. askelmerkit pituus/kolmiloikka/seiväs/korkeus). Oletukset:
+  - Pituus / kolmiloikka: 10 min
+  - Korkeus: 15 min (alkukorkeuden asettelu + lämmittelyhypyt)
+  - Seiväs: 20 min (telineet, riman säätö)
+  - Muut tekniset / juoksu: 0 min
+- **`between_heats_min`** — juoksuerien välinen järjestäytymisaika (oletus 4 min pikajuoksuille, 6 min keskimatkoille).
+- **`hurdle_setup_min`** — aitojen tuonti ja asettelu ennen ensimmäistä erää (oletus 10 min, vain aitalajit).
+- **`hurdle_teardown_min`** — aitojen poisvienti viimeisen erän jälkeen (oletus 8 min).
 
-UI sisältää:
-- Kilpailun valinta (oletuksena nykyinen `useCompetitionId()`-arvo, vaihdettavissa numerokentällä).
-- Painike **"Lataa ja vie Excel"** sekä yhteenvetotaulukko esikatselua varten.
+Kaikki kentät ovat ylikirjoitettavissa lajikohtaisesti UI:ssa, mutta lajityypille ehdotetaan järkevä oletus automaattisesti (samalla logiikalla kuin nykyiset kestoarviot).
 
-Lataaminen tekee rinnakkain:
-1. `fetchRounds(competitionId)` (tuloslista-aikataulu, jo olemassa `src/lib/tuloslista.ts`).
-2. Per laji `fetchEvent(competitionId, eventId)` → saadaan `Rounds[].Heats[]` ja kunkin lajin Track/Field-luonne. Pyynnöt batchataan (esim. 6 rinnakkain) menemättä päälle palvelimen rajoja.
-3. Yksi Supabase-kysely: `athlete_results` taulusta `competition_id = ?` — palautetaan `event_id`, `captured_at`, `athlete_key`. Lasketaan paikallisesti `max(captured_at)` ja `count(distinct athlete_key)` per lajiin.
+### 2) Suunnitelmatason oletukset (competition_plans)
 
-### 3. Yhden rivin lasenta (per laji)
+Lisätään oletukset, jotka periytyvät uusille lajeille:
 
-| Sarake | Lähde |
-| --- | --- |
-| Laji-ID | `EventId` |
-| Lajin nimi | `EventName` |
-| Sarja / ryhmä | `Name` / `GroupName` |
-| Kategoria | Track / Field (suomennettuna) |
-| Alkamisaika | aikataulun varhaisin `BeginDateTimeWithTZ` lajin kaikkien Round-rivien yli (Helsinki-aika) |
-| Erien määrä (vain juoksut) | `Rounds[].Heats.length` summa |
-| Osanottajat ilm. (aikataulu) | `Round.CountConfirmed` (tai `CountEnrolled` jos confirmed puuttuu); juoksuilla summa kaikista eristä |
-| Osanottajat tuloksissa | `athlete_results`: distinct `athlete_key` per event_id |
-| Viimeinen tulos | `max(captured_at)` |
-| Kesto (min) | `(viimeinen tulos − alkamisaika)` minuutteina; tyhjä jos ei tuloksia |
-| Status | tuloslistan `Status` (esim. Virallinen / Käynnissä) |
+- `default_setup_field_min` (10)
+- `default_between_heats_min` (4)
+- `default_hurdle_setup_min` (10)
+- `default_hurdle_teardown_min` (8)
 
-Huom: kesto perustuu omaan `captured_at`-aikaleimaamme (harvesterin syke ~minuutteja). Tämä todetaan vienti­tiedoston yläriville selitteenä.
+Käyttäjä voi muuttaa oletukset planin alkuasetuksissa.
 
-### 4. Excel-vienti
+### 3) Aitajuoksujen ryhmittely
 
-- Lisätään `xlsx`-paketti (`bun add xlsx`) ja muodostetaan tiedosto selainpuolella `XLSX.utils.json_to_sheet` + `XLSX.writeFile`.
-- Tiedostonimi: `lajien-kestot-<competitionId>-<YYYY-MM-DD>.xlsx`.
-- Kaksi välilehteä: **"Kaikki lajit"** (yllä kuvattu taulukko) ja **"Juoksut yhteenveto"** (vain Track-lajit, sarakkeet: laji, erät, osanottajat yhteensä).
+Solveriin sääntö: kun samalla radalla / suorituspaikalla on sekä aita- että sileitä juoksuja, ne **eivät vuorottele**.
 
-### 5. Tekninen toteutus
+- Aitalajit niputetaan yhteen blokkiin per suorituspaikka.
+- Blokin alkuun lisätään `hurdle_setup_min`, loppuun `hurdle_teardown_min`.
+- Eri aitakorkeudet (esim. P15 / T17) saa edelleen niputtaa peräkkäin jos sama radan layout käy; muuten lisätään uudelleen setup-aika.
+- Käyttäjä voi pakottaa järjestyksen manuaalisesti raahaamalla kalenterissa; konflikti­varoitus syttyy jos aitablokki rikotaan sileällä juoksulla.
 
-- Uusi pieni moduuli `src/lib/event-durations.ts`:
-  - `buildEventDurationRows(competitionId)` → palauttaa rivit yllä olevassa muodossa.
-  - Hyödyntää `fetchRounds`, `fetchEvent` ja yhden Supabase-kyselyn.
-- Uusi komponentti `src/components/admin/EventDurationsSection.tsx`, renderöidään `admin.analytics.tsx`-sivulle uutena osiona.
-- Käyttää nykyistä admin-gateä (`ADMIN_EMAIL`-tarkistus). Ei uusia RLS-policyjä — `athlete_results` on jo luettavissa kirjautuneelle adminille nykyisillä säännöillä; jos kysely epäonnistuu oikeuksien takia, fallback `createServerFn`:lla admin-tarkistuksen kanssa (käyttää `supabaseAdmin`).
+### 4) Aikataulun rakentaminen
 
-### 6. Tulevaisuuden käyttö
+Solverin uusi laskentakaava per segmentti:
 
-Data on suunniteltu uudelleenkäytettäväksi tulevassa kilpailujen aikataulutus­työkalussa: sama `buildEventDurationRows` voidaan ajaa useammalta vanhalta kisalta ja koostaa ennusteita lajien kestoista.
+```
+segment_start = previous_end + recovery
+visible_block_start = segment_start − setup_before_min
+heat_total = base_per_heat × heats + (heats − 1) × between_heats_min
+hurdle_extra = hurdle_setup_min (vain blokin 1. aita)
+              + hurdle_teardown_min (vain blokin viim. aita)
+segment_end = segment_start + heat_total + hurdle_extra
+```
 
-## Ulkopuolelle jää
+Kalenterissa setup-aika näkyy lajipalkin edessä haalealla värillä ("Valmistelu 10 min"), itse kilpailu täydellä värillä — käyttäjä näkee selvästi mihin aikaan suorituspaikka varautuu vs. kilpailu alkaa.
 
-- Ei vielä historiakoostetta useammalta kisalta (rakenne valmistellaan, mutta UI tehdään myöhemmin).
-- Ei muuteta `/admin/analytics`-osoitetta itseään; vain otsikko ja sivun rakenne. Mahdollinen siirto `/admin`-juureen voidaan tehdä, kun valikkoon tulee lisää työkaluja.
+### 5) UI-muutokset
+
+- **PlanEventTable**: uusi kolumniryhmä "Aika-asetukset" (setup / heats-väli / aitojen setup+teardown). Aitalajeissa aitakentät näkyvät, muissa piilossa.
+- **Lajimuokkausdialogi**: selittävät tooltipit ja "Palauta oletus" -nappi.
+- **Plan-asetusvälilehti**: "Aika-asetusten oletukset" -lohko.
+- **PlannerCalendar**: setup-vaihe omana vaaleampana segmenttinä, aitablokit merkitty pienellä aita-ikonilla, varoitus jos aitablokki katkeaa.
+
+### 6) Excel-vienti
+
+Vientiin lisätään sarakkeet: "Valmistelu alkaa", "Kilpailu alkaa", "Kilpailu päättyy", "Aitojen setup (min)", "Eräväli (min)" — jotta järjestäjä näkee mistä koko­naisaika koostuu.
+
+## Tekninen toteutus
+
+1. **Migraatio**: ALTER TABLE `plan_events` ja `competition_plans` (uudet sarakkeet, oletukset, NOT NULL + DEFAULT).
+2. **`src/lib/planner-types.ts`**: laajennetut tyypit.
+3. **`src/lib/planner-estimate.ts`**: `suggestEventTimings(eventKey, ageClass)` palauttaa setup/heats-välin oletukset lajityypin perusteella (uudelleenkäyttää `event_spec_suffix`-logiikkaa aitojen tunnistamiseen).
+4. **`src/lib/planner-solver.ts`**: 
+   - Segmenttilaskuun setup + between-heats.
+   - Aitablokkien rakennus: ryhmittele aitalajit per venue, järjestä ensin, lisää setup/teardown.
+   - Konfliktitarkistus: jos käyttäjä raahaa sileän juoksun aitablokin keskelle → punainen varoitus.
+5. **`PlanEventTable.tsx`** + **lajidialogi**: uudet kentät, oletusten ehdotus auto-täytöllä, "palauta oletus".
+6. **`PlannerCalendar.tsx`**: setup-segmentti visualisointi + aitablokin varoitus.
+7. **Excel-vienti** (`src/lib/planner-export.ts`): uudet sarakkeet.
+
+## Mitä EI tehdä tässä vaiheessa
+
+- Ei monivaiheista palautumisaikaa per kilpailija (vain järjestäytymisaika).
+- Ei automaattista aitakorkeuksien yhteensopivuuden päättelyä — käyttäjä voi pakottaa erottelun manuaalisesti.
+- Ei mobiilioptimointia kalenterin uusille elementeille (sama kuin nykytila).

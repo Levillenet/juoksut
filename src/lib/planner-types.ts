@@ -31,6 +31,11 @@ export interface PlanRow {
   starts_at: string;
   ends_at: string;
   default_recovery_min: number;
+  default_setup_field_min: number;
+  default_setup_vertical_min: number;
+  default_between_heats_min: number;
+  default_hurdle_setup_min: number;
+  default_hurdle_teardown_min: number;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -56,9 +61,14 @@ export interface PlanEventRow {
   final_cut: number | null;
   station_count: number;
   override_duration_min: number | null;
+  setup_before_min: number | null;
+  between_heats_min: number | null;
+  hurdle_setup_min: number | null;
+  hurdle_teardown_min: number | null;
   notes: string | null;
   sort_order: number;
 }
+
 
 export interface ScheduleItemRow {
   id: string;

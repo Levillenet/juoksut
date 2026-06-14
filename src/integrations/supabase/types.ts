@@ -245,7 +245,12 @@ export type Database = {
       competition_plans: {
         Row: {
           created_at: string
+          default_between_heats_min: number
+          default_hurdle_setup_min: number
+          default_hurdle_teardown_min: number
           default_recovery_min: number
+          default_setup_field_min: number
+          default_setup_vertical_min: number
           ends_at: string
           id: string
           name: string
@@ -256,7 +261,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          default_between_heats_min?: number
+          default_hurdle_setup_min?: number
+          default_hurdle_teardown_min?: number
           default_recovery_min?: number
+          default_setup_field_min?: number
+          default_setup_vertical_min?: number
           ends_at: string
           id?: string
           name: string
@@ -267,7 +277,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          default_between_heats_min?: number
+          default_hurdle_setup_min?: number
+          default_hurdle_teardown_min?: number
           default_recovery_min?: number
+          default_setup_field_min?: number
+          default_setup_vertical_min?: number
           ends_at?: string
           id?: string
           name?: string
@@ -521,15 +536,19 @@ export type Database = {
       plan_events: {
         Row: {
           age_class: string
+          between_heats_min: number | null
           created_at: string
           event_name: string
           final_cut: number | null
           final_format: string
+          hurdle_setup_min: number | null
+          hurdle_teardown_min: number | null
           id: string
           notes: string | null
           override_duration_min: number | null
           participants: number
           plan_id: string
+          setup_before_min: number | null
           sort_order: number
           station_count: number
           sub_category: string | null
@@ -537,15 +556,19 @@ export type Database = {
         }
         Insert: {
           age_class: string
+          between_heats_min?: number | null
           created_at?: string
           event_name: string
           final_cut?: number | null
           final_format?: string
+          hurdle_setup_min?: number | null
+          hurdle_teardown_min?: number | null
           id?: string
           notes?: string | null
           override_duration_min?: number | null
           participants?: number
           plan_id: string
+          setup_before_min?: number | null
           sort_order?: number
           station_count?: number
           sub_category?: string | null
@@ -553,15 +576,19 @@ export type Database = {
         }
         Update: {
           age_class?: string
+          between_heats_min?: number | null
           created_at?: string
           event_name?: string
           final_cut?: number | null
           final_format?: string
+          hurdle_setup_min?: number | null
+          hurdle_teardown_min?: number | null
           id?: string
           notes?: string | null
           override_duration_min?: number | null
           participants?: number
           plan_id?: string
+          setup_before_min?: number | null
           sort_order?: number
           station_count?: number
           sub_category?: string | null

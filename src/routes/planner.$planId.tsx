@@ -19,6 +19,7 @@ import {
 } from "@/lib/planner-types";
 import { estimateDuration } from "@/lib/planner-estimate";
 import { solve, detectConflicts } from "@/lib/planner-solver";
+import { resolveTimings } from "@/lib/planner-timings";
 
 export const Route = createFileRoute("/planner/$planId")({
   component: PlanEditor,
@@ -177,6 +178,11 @@ function BasicsTab({ plan, onChange }: { plan: PlanRow; onChange: () => void }) 
     starts: fmtDateTimeInput(plan.starts_at),
     ends: fmtDateTimeInput(plan.ends_at),
     recovery: plan.default_recovery_min,
+    setupField: plan.default_setup_field_min,
+    setupVertical: plan.default_setup_vertical_min,
+    betweenHeats: plan.default_between_heats_min,
+    hurdleSetup: plan.default_hurdle_setup_min,
+    hurdleTeardown: plan.default_hurdle_teardown_min,
     notes: plan.notes ?? "",
   });
   const save = useMutation({
@@ -188,6 +194,11 @@ function BasicsTab({ plan, onChange }: { plan: PlanRow; onChange: () => void }) 
           starts_at: fromDateTimeInput(form.starts),
           ends_at: fromDateTimeInput(form.ends),
           default_recovery_min: form.recovery,
+          default_setup_field_min: form.setupField,
+          default_setup_vertical_min: form.setupVertical,
+          default_between_heats_min: form.betweenHeats,
+          default_hurdle_setup_min: form.hurdleSetup,
+          default_hurdle_teardown_min: form.hurdleTeardown,
           notes: form.notes,
         })
         .eq("id", plan.id);
@@ -195,6 +206,17 @@ function BasicsTab({ plan, onChange }: { plan: PlanRow; onChange: () => void }) 
     },
     onSuccess: onChange,
   });
+
+  const numField = (key: keyof typeof form, label: string, hint?: string) => (
+    <Field label={label}>
+      <Input
+        type="number"
+        value={form[key] as number}
+        onChange={(e) => setForm({ ...form, [key]: parseInt(e.target.value) || 0 })}
+      />
+      {hint && <span className="text-[10px] text-muted-foreground">{hint}</span>}
+    </Field>
+  );
 
   return (
     <section className="space-y-3 rounded-xl border bg-card p-4">
@@ -224,14 +246,27 @@ function BasicsTab({ plan, onChange }: { plan: PlanRow; onChange: () => void }) 
             onChange={(e) => setForm({ ...form, ends: e.target.value })}
           />
         </Field>
-        <Field label="Muistiinpanot" className="sm:col-span-2">
-          <textarea
-            className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          />
-        </Field>
       </div>
+
+      <h3 className="pt-2 text-sm font-semibold text-muted-foreground">
+        Aika-asetusten oletukset
+      </h3>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {numField("setupField", "Pituus/kolmiloikka valmistelu (min)", "Askelmerkit yms. ennen lajia")}
+        {numField("setupVertical", "Korkeus/seiväs valmistelu (min)", "Lämmittelyhypyt, telineet")}
+        {numField("betweenHeats", "Juoksuerien väli (min)", "Järjestäytymisaika erien välissä")}
+        {numField("hurdleSetup", "Aitojen pystytys (min)", "Ennen ensimmäistä aitaerää")}
+        {numField("hurdleTeardown", "Aitojen purku (min)", "Aitablokin jälkeen")}
+      </div>
+
+      <Field label="Muistiinpanot">
+        <textarea
+          className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          value={form.notes}
+          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+        />
+      </Field>
+
       <Button onClick={() => save.mutate()} disabled={save.isPending}>
         <Save className="mr-2 h-4 w-4" />
         Tallenna
@@ -239,6 +274,7 @@ function BasicsTab({ plan, onChange }: { plan: PlanRow; onChange: () => void }) 
     </section>
   );
 }
+
 
 // ─── Suorituspaikat ───────────────────────────────────────────────────────
 function VenuesTab({
@@ -402,7 +438,12 @@ function EventsTab({
               <th className="py-1 pr-2">Finaalit</th>
               <th className="py-1 pr-2 text-right">A-finaalin koko</th>
               <th className="py-1 pr-2 text-right">Oma kesto (min)</th>
+              <th className="py-1 pr-2 text-right" title="Valmisteluaika ennen lajia (askelmerkit yms.)">Valm.</th>
+              <th className="py-1 pr-2 text-right" title="Juoksuerien välinen järjestäytymisaika">Eräväli</th>
+              <th className="py-1 pr-2 text-right" title="Aitojen pystytys (vain aitalajit)">Aidat+</th>
+              <th className="py-1 pr-2 text-right" title="Aitojen purku (vain aitalajit)">Aidat-</th>
               <th></th>
+
             </tr>
           </thead>
           <tbody>
@@ -502,6 +543,29 @@ function EventsTab({
                       }}
                     />
                   </td>
+                  {(["setup_before_min", "between_heats_min", "hurdle_setup_min", "hurdle_teardown_min"] as const).map(
+                    (key) => {
+                      const isHurdleField = key === "hurdle_setup_min" || key === "hurdle_teardown_min";
+                      const isHurdleEvt = /aita|aidat|hurdle/i.test(e.event_name);
+                      if (isHurdleField && !isHurdleEvt) {
+                        return <td key={key} className="py-1 pr-2 text-right text-muted-foreground">–</td>;
+                      }
+                      return (
+                        <td key={key} className="py-1 pr-2 text-right">
+                          <Input
+                            type="number"
+                            className="w-14 text-right"
+                            placeholder="auto"
+                            value={e[key] ?? ""}
+                            onChange={(ev) => {
+                              const v = ev.target.value;
+                              update.mutate({ id: e.id, [key]: v === "" ? null : parseInt(v) });
+                            }}
+                          />
+                        </td>
+                      );
+                    },
+                  )}
                   <td className="py-1 pr-2">
                     <Button size="icon" variant="ghost" onClick={() => del.mutate(e.id)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
@@ -510,6 +574,7 @@ function EventsTab({
                 </tr>
               );
             })}
+
           </tbody>
         </table>
         <datalist id={`agecls-${planId}`}>
@@ -572,7 +637,22 @@ function ScheduleTab({
           };
         }),
       );
-      const enriched = events.map((e, i) => ({ ...e, ...ests[i] }));
+      const enriched = events.map((e, i) => {
+        const t = resolveTimings(e, plan);
+        // Lisää erien välinen aika juoksulajeille arvioon.
+        const heats = t.isTrack ? Math.max(1, Math.ceil(e.participants / 8)) : 1;
+        const heatGapAdd = t.isTrack ? (heats - 1) * t.betweenHeatsMin : 0;
+        return {
+          ...e,
+          ...ests[i],
+          estimateMinutes: ests[i].estimateMinutes + heatGapAdd,
+          setupBeforeMin: t.setupBeforeMin,
+          betweenHeatsMin: t.betweenHeatsMin,
+          hurdleSetupMin: t.hurdleSetupMin,
+          hurdleTeardownMin: t.hurdleTeardownMin,
+          isHurdles: t.isHurdles,
+        };
+      });
       const result = solve({
         startISO: plan.starts_at,
         endISO: plan.ends_at,
@@ -580,6 +660,7 @@ function ScheduleTab({
         venues,
         events: enriched,
       });
+
       // Tallenna: tyhjennä auto-generated rivit ja korvaa
       await supabase
         .from("plan_schedule_items")
@@ -621,16 +702,25 @@ function ScheduleTab({
     const rows = schedule.map((s) => {
       const ev = evMap.get(s.plan_event_id);
       const v = vMap.get(s.venue_id);
+      const t = ev ? resolveTimings(ev, plan) : null;
+      const startMs = new Date(s.starts_at).getTime();
+      const setupStart = t ? new Date(startMs - t.setupBeforeMin * 60000) : null;
       return {
-        Alkamisaika: new Date(s.starts_at).toLocaleString("fi-FI"),
-        Päättymisaika: new Date(s.ends_at).toLocaleString("fi-FI"),
+        "Valmistelu alkaa": setupStart ? setupStart.toLocaleString("fi-FI") : "",
+        "Kilpailu alkaa": new Date(s.starts_at).toLocaleString("fi-FI"),
+        "Kilpailu päättyy": new Date(s.ends_at).toLocaleString("fi-FI"),
         Ikäryhmä: ev?.age_class ?? "",
         Laji: ev?.event_name ?? "",
         Vaihe: s.phase,
         Suorituspaikka: v?.name ?? "",
         Osanottajat: ev?.participants ?? "",
+        "Valm. (min)": t?.setupBeforeMin ?? "",
+        "Eräväli (min)": t?.isTrack ? t.betweenHeatsMin : "",
+        "Aitojen setup (min)": t?.isHurdles ? t.hurdleSetupMin : "",
+        "Aitojen purku (min)": t?.isHurdles ? t.hurdleTeardownMin : "",
       };
     });
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Aikataulu");
     XLSX.writeFile(wb, `aikataulu-${plan.name.replace(/\s+/g, "_")}.xlsx`);
@@ -770,27 +860,49 @@ function CalendarView({
               ))}
               {items.map((s) => {
                 const ev = evMap.get(s.plan_event_id);
+                const t = ev ? resolveTimings(ev, plan) : null;
                 const startOff = (new Date(s.starts_at).getTime() - startMs) / 60000;
                 const dur = (new Date(s.ends_at).getTime() - new Date(s.starts_at).getTime()) / 60000;
+                const setupMin = t?.setupBeforeMin ?? 0;
+                const isHurdleEvt = !!t?.isHurdles;
                 return (
-                  <div
-                    key={s.id}
-                    className="absolute left-0.5 right-0.5 overflow-hidden rounded border border-border/60 px-1 py-0.5 text-[10px] leading-tight shadow-sm"
-                    style={{
-                      top: startOff * pxPerMin,
-                      height: Math.max(16, dur * pxPerMin - 1),
-                      background: ev ? colorFor(ev.age_class) : "hsl(0 0% 80% / 0.5)",
-                    }}
-                    title={`${ev?.age_class} ${ev?.event_name} (${s.phase})`}
-                  >
-                    <div className="font-semibold">{ev?.age_class}</div>
-                    <div className="truncate">{ev?.event_name}</div>
-                    {s.phase !== "single" && (
-                      <div className="text-[9px] text-muted-foreground">{s.phase}</div>
+                  <div key={s.id}>
+                    {setupMin > 0 && (
+                      <div
+                        className="absolute left-0.5 right-0.5 overflow-hidden rounded-t border border-dashed border-border/50 px-1 text-[9px] italic leading-tight"
+                        style={{
+                          top: (startOff - setupMin) * pxPerMin,
+                          height: setupMin * pxPerMin,
+                          background: ev ? colorFor(ev.age_class) : "hsl(0 0% 80% / 0.25)",
+                          opacity: 0.35,
+                        }}
+                        title={`Valmistelu ${setupMin} min`}
+                      >
+                        Valm. {setupMin}′
+                      </div>
                     )}
+                    <div
+                      className="absolute left-0.5 right-0.5 overflow-hidden rounded border border-border/60 px-1 py-0.5 text-[10px] leading-tight shadow-sm"
+                      style={{
+                        top: startOff * pxPerMin,
+                        height: Math.max(16, dur * pxPerMin - 1),
+                        background: ev ? colorFor(ev.age_class) : "hsl(0 0% 80% / 0.5)",
+                      }}
+                      title={`${ev?.age_class} ${ev?.event_name} (${s.phase})`}
+                    >
+                      <div className="font-semibold">
+                        {isHurdleEvt && <span title="Aitajuoksu">⫼ </span>}
+                        {ev?.age_class}
+                      </div>
+                      <div className="truncate">{ev?.event_name}</div>
+                      {s.phase !== "single" && (
+                        <div className="text-[9px] text-muted-foreground">{s.phase}</div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
+
             </div>
           );
         })}
