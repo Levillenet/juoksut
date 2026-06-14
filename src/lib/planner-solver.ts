@@ -245,9 +245,17 @@ export function solve(input: SolverInput): SolverResult {
     };
 
 
+
+    // KORJAUS 2: jos segmentillä on afterPhaseKey + sameVenueAsPhase,
+    // rajoita kelvolliset suorituspaikat samoihin kuin viite-vaiheella.
+    const requiredVenueIds = seg.afterPhaseKey && seg.sameVenueAsPhase
+      ? phaseVenues.get(seg.afterPhaseKey) ?? null
+      : null;
+
     const eligibleStates = venueStates.filter((vs) => {
       const kind = venueKindById.get(vs.id);
       if (!kind || !isVenueForEvent(kind, seg.eventName)) return false;
+      if (requiredVenueIds && !requiredVenueIds.includes(vs.id)) return false;
       // Jos käyttäjä ei salli matkanvaihtoa samalla suorituspaikalla,
       // estä juoksupaikat joilla on aiempi eri matkan/tyypin juoksu.
       if (!allowChange && segIsRun && vs.lastEventName) {
