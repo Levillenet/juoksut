@@ -158,10 +158,15 @@ export function solve(input: SolverInput): SolverResult {
   // Reset venue busy alkuun ensimmäisen ikkunan alkuun
   for (const v of venueStates) v.busyUntil = input.windows[0].startMs;
 
+  const venueKindById = new Map(input.venues.map((v) => [v.id, v.kind]));
   for (const seg of segments) {
-    if (venueStates.length < seg.needsStations) {
+    const eligibleStates = venueStates.filter((vs) => {
+      const kind = venueKindById.get(vs.id);
+      return kind ? isVenueForEvent(kind, seg.eventName) : false;
+    });
+    if (eligibleStates.length < seg.needsStations) {
       warnings.push(
-        `${seg.ageClass} – ei riittävästi suorituspaikkoja (${seg.needsStations} tarvitaan, ${venueStates.length} olemassa).`,
+        `${seg.ageClass} ${seg.eventName} – ei sopivaa suorituspaikkaa (${seg.needsStations} tarvitaan).`,
       );
       continue;
     }
@@ -180,7 +185,7 @@ export function solve(input: SolverInput): SolverResult {
       let placedVenues: VenueState[] = [];
 
       for (let attempts = 0; attempts < 200; attempts++) {
-        const sorted = venueStates.slice().sort((a, b) => a.busyUntil - b.busyUntil);
+        const sorted = eligibleStates.slice().sort((a, b) => a.busyUntil - b.busyUntil);
         const ready = sorted.filter(
           (v) => v.busyUntil <= candidateStart - setupMs && candidateStart >= win.startMs,
         );
