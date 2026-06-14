@@ -103,6 +103,11 @@ export function PlannerFullGantt({
   );
   const isHighlightActive = highlightSet.size > 0;
 
+  const ageClasses = useMemo(
+    () => Array.from(new Set(events.map((e) => e.age_class))).sort(ageClassSort),
+    [events],
+  );
+
   const win = windows[Math.min(dayIdx, Math.max(0, windows.length - 1))];
 
   // Pyöristä päivän aikaikkuna tasatuntiin
