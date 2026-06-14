@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo, useEffect } from "react";
-import { ArrowLeft, Trash2, Plus, Wand2, Save, Download, LayoutGrid, Sparkles } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { ArrowLeft, Trash2, Plus, Wand2, Save, Download, LayoutGrid, Sparkles, AlertTriangle } from "lucide-react";
 import { downloadPlannerSchedulePdf } from "@/lib/planner-schedule-pdf";
 import { downloadPlannerScheduleVisualXlsx } from "@/lib/planner-schedule-xlsx";
 import { PlannerFullGantt } from "@/components/planner/PlannerFullGantt";
@@ -34,7 +34,7 @@ import type {
 } from "@/lib/planner-types";
 import { estimateDuration } from "@/lib/planner-estimate";
 import { computeRuleEstimate } from "@/lib/planner-rules";
-import { solve, detectConflicts } from "@/lib/planner-solver";
+import { solve, detectConflicts, type Conflict, type ConflictSeverity } from "@/lib/planner-solver";
 import { resolveTimings } from "@/lib/planner-timings";
 import { DEFAULT_VENUES, buildDefaultVenueRows, isVenueForEvent, getDefaultOfficialsCount } from "@/lib/planner-defaults";
 import { fillPlanWithDemo } from "@/lib/planner-demo";
@@ -1469,6 +1469,13 @@ function ScheduleTab({
 }) {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [highlightIds, setHighlightIds] = useState<string[]>([]);
+  const highlightTimeout = useRef<number | null>(null);
+  const highlightConflict = (ids: string[]) => {
+    if (highlightTimeout.current) window.clearTimeout(highlightTimeout.current);
+    setHighlightIds(ids);
+    highlightTimeout.current = window.setTimeout(() => setHighlightIds([]), 2200);
+  };
 
   const generate = async () => {
     if (venues.length === 0 || events.length === 0) {
@@ -1623,14 +1630,12 @@ function ScheduleTab({
         </div>
       )}
       {conflicts.length > 0 && (
-        <div className="rounded border border-destructive/40 bg-destructive/10 p-2 text-xs">
-          <div className="font-semibold">Konfliktit:</div>
-          <ul className="list-disc pl-5">
-            {conflicts.map((c, i) => (
-              <li key={i}>{c.reason}</li>
-            ))}
-          </ul>
-        </div>
+        <ConflictsList
+          conflicts={conflicts}
+          events={events}
+          schedule={schedule}
+          onHighlight={highlightConflict}
+        />
       )}
 
       <OfficialsPanel
@@ -1647,10 +1652,93 @@ function ScheduleTab({
           events={events}
           schedule={schedule}
           conflicts={conflicts}
+          highlightIds={highlightIds}
           onChange={onChange}
         />
       </div>
     </section>
+  );
+}
+
+const SEV_META: Record<
+  ConflictSeverity,
+  { dot: string; chip: string; label: string }
+> = {
+  critical: { dot: "bg-red-600", chip: "border-red-500 bg-red-50", label: "🔴 Kriittinen" },
+  high: { dot: "bg-orange-500", chip: "border-orange-500 bg-orange-50", label: "🟠 Korkea" },
+  warning: { dot: "bg-yellow-500", chip: "border-yellow-500 bg-yellow-50", label: "🟡 Varoitus" },
+};
+
+function ConflictsList({
+  conflicts,
+  events,
+  schedule,
+  onHighlight,
+}: {
+  conflicts: Conflict[];
+  events: PlanEventRow[];
+  schedule: ScheduleItemRow[];
+  onHighlight: (ids: string[]) => void;
+}) {
+  const evMap = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
+  const itemMap = useMemo(() => new Map(schedule.map((s) => [s.id, s])), [schedule]);
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleTimeString("fi-FI", { hour: "2-digit", minute: "2-digit" });
+  const itemLabel = (id: string) => {
+    const it = itemMap.get(id);
+    if (!it) return id;
+    const ev = evMap.get(it.plan_event_id);
+    const name = ev ? `${ev.age_class} ${ev.event_name}` : "—";
+    return `${name} (${fmt(it.starts_at)}–${fmt(it.ends_at)})`;
+  };
+  const sevRank: Record<ConflictSeverity, number> = { critical: 0, high: 1, warning: 2 };
+  const sorted = [...conflicts].sort((a, b) => sevRank[a.severity] - sevRank[b.severity]);
+
+  return (
+    <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+      <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+        <AlertTriangle className="h-4 w-4 text-destructive" />
+        {conflicts.length} konflikti{conflicts.length === 1 ? "" : "a"} havaittu
+      </div>
+      <ul className="space-y-2">
+        {sorted.map((c, i) => {
+          const meta = SEV_META[c.severity];
+          const ids = [c.id, ...(c.relatedIds ?? [])];
+          return (
+            <li
+              key={`${c.id}-${i}`}
+              className={`rounded-md border-l-4 ${meta.chip} px-3 py-2 text-xs`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`inline-block h-2 w-2 rounded-full ${meta.dot}`} />
+                    <span className="font-semibold">{c.reason}</span>
+                    <span className="text-[10px] text-muted-foreground">{meta.label}</span>
+                  </div>
+                  <div className="text-muted-foreground">
+                    {ids.map((id, j) => (
+                      <span key={id}>
+                        {j > 0 && " · "}
+                        {itemLabel(id)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 shrink-0 text-[11px]"
+                  onClick={() => onHighlight(ids)}
+                >
+                  Korosta Gantt-näkymässä
+                </Button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
