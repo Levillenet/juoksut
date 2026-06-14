@@ -54,6 +54,8 @@ export interface PlanRow {
   day_windows: DayWindow[] | null;
   notes: string | null;
   stadium_id: string | null;
+  total_officials_available: number;
+  officials_changeover_min: number;
   created_at: string;
   updated_at: string;
 }
