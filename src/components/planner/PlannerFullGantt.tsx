@@ -66,18 +66,6 @@ export function PlannerFullGantt({
   events,
   schedule,
   conflicts,
-  onChange,
-}: Props) {
-  const windows = useMemo(() => resolveDayWindows(plan), [plan]);
-  const [dayIdx, setDayIdx] = useState(0);
-  const [showEmpty, setShowEmpty] = useState(false);
-  const evMap = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
-export function PlannerFullGantt({
-  plan,
-  venues,
-  events,
-  schedule,
-  conflicts,
   highlightIds,
   onChange,
 }: Props) {
