@@ -117,22 +117,12 @@ export function isVenueForEvent(kind: VenueKind, eventName: string): boolean {
 }
 
 /**
- * Ohjearvo "aika per erä" (min) eri juoksumatkoille — perustuu YAG 2022 -aikataulun
- * manuaaliseen suunnitelmaan. Sisältää järjestäytymisajan eli ei vaadi erillistä eräväliä.
+ * Ohjearvo "aika per erä" (min) eri juoksumatkoille — YAG 2022.
+ * Delegoituu `planner-rules.ts`:lle (yksi totuus).
  */
 export function defaultMinutesPerHeat(eventName: string): number {
-  const n = (eventName ?? "").toLowerCase();
-  // Kävely
-  if (/3\s*000\s*m\s*käv|3000\s*m\s*käv|3\s*km\s*käv/.test(n)) return 18;
-  if (/1\s*000\s*m\s*käv|1000\s*m\s*käv|1\s*km\s*käv/.test(n)) return 10;
-  // Pitkät matkat
-  if (/\b(3000|5000|10000)\s*m\b|\b(3|5|10)\s*km\b/.test(n)) return 16;
-  if (/\b(1500|2000)\s*m\b/.test(n)) return 10;
-  if (/\b(600|800|1000)\s*m\b/.test(n)) return 8;
-  // Keskimatkat ja aidat
-  if (/\b400\s*m/.test(n)) return 7;
-  if (/\b300\s*m/.test(n)) return 6;
-  if (/\b(100|110|150)\s*m/.test(n)) return 5;
-  if (/\b(40|60|80)\s*m/.test(n)) return 4;
-  return 5;
+  // Lazy-tuonti välttää sykli/kierroriskin.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { minutesPerHeat } = require("./planner-rules") as typeof import("./planner-rules");
+  return minutesPerHeat(eventName);
 }
