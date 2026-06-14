@@ -353,8 +353,15 @@ export function PlannerFullGantt({
     </div>
   );
 
-  const venueRows = venues.map((v) => ({ id: v.id, label: v.name }));
-  const ageRows = ageClasses.map((a) => ({ id: a, label: a }));
+  const venueHas = (vid: string) => dayItems.some((s) => s.venue_id === vid);
+  const ageHas = (age: string) =>
+    dayItems.some((s) => evMap.get(s.plan_event_id)?.age_class === age);
+  const venueRows = venues
+    .filter((v) => showEmpty || venueHas(v.id))
+    .map((v) => ({ id: v.id, label: v.name }));
+  const ageRows = ageClasses
+    .filter((a) => showEmpty || ageHas(a))
+    .map((a) => ({ id: a, label: a }));
 
   return (
     <div className="flex h-full flex-col">
