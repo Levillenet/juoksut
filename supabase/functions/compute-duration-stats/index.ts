@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
   const runs = new Map<string, RunAgg>();
-  const PAGE = 10000;
+  const PAGE = 1000; // Supabase Data API caps SELECT at 1000 rows per request
   let from = 0;
   let rowsProcessed = 0;
 
