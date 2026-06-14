@@ -1532,6 +1532,16 @@ function ScheduleTab({
     [schedule, events, venues, plan.default_recovery_min, conflictGroups],
   );
 
+  const officials = useMemo(
+    () => computeOfficialsTimeline(schedule, events, plan.total_officials_available ?? 10),
+    [schedule, events, plan.total_officials_available],
+  );
+
+  const eventLabel = (id: string) => {
+    const ev = events.find((e) => e.id === id);
+    return ev ? `${ev.age_class} ${ev.event_name}` : id;
+  };
+
   const exportExcel = () => {
     const conflictIds = new Set(conflicts.map((c) => c.id));
     downloadPlannerScheduleVisualXlsx({ plan, venues, events, schedule, conflictIds });
