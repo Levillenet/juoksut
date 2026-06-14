@@ -178,6 +178,11 @@ function BasicsTab({ plan, onChange }: { plan: PlanRow; onChange: () => void }) 
     starts: fmtDateTimeInput(plan.starts_at),
     ends: fmtDateTimeInput(plan.ends_at),
     recovery: plan.default_recovery_min,
+    setupField: plan.default_setup_field_min,
+    setupVertical: plan.default_setup_vertical_min,
+    betweenHeats: plan.default_between_heats_min,
+    hurdleSetup: plan.default_hurdle_setup_min,
+    hurdleTeardown: plan.default_hurdle_teardown_min,
     notes: plan.notes ?? "",
   });
   const save = useMutation({
@@ -189,6 +194,11 @@ function BasicsTab({ plan, onChange }: { plan: PlanRow; onChange: () => void }) 
           starts_at: fromDateTimeInput(form.starts),
           ends_at: fromDateTimeInput(form.ends),
           default_recovery_min: form.recovery,
+          default_setup_field_min: form.setupField,
+          default_setup_vertical_min: form.setupVertical,
+          default_between_heats_min: form.betweenHeats,
+          default_hurdle_setup_min: form.hurdleSetup,
+          default_hurdle_teardown_min: form.hurdleTeardown,
           notes: form.notes,
         })
         .eq("id", plan.id);
@@ -196,6 +206,17 @@ function BasicsTab({ plan, onChange }: { plan: PlanRow; onChange: () => void }) 
     },
     onSuccess: onChange,
   });
+
+  const numField = (key: keyof typeof form, label: string, hint?: string) => (
+    <Field label={label}>
+      <Input
+        type="number"
+        value={form[key] as number}
+        onChange={(e) => setForm({ ...form, [key]: parseInt(e.target.value) || 0 })}
+      />
+      {hint && <span className="text-[10px] text-muted-foreground">{hint}</span>}
+    </Field>
+  );
 
   return (
     <section className="space-y-3 rounded-xl border bg-card p-4">
@@ -225,14 +246,27 @@ function BasicsTab({ plan, onChange }: { plan: PlanRow; onChange: () => void }) 
             onChange={(e) => setForm({ ...form, ends: e.target.value })}
           />
         </Field>
-        <Field label="Muistiinpanot" className="sm:col-span-2">
-          <textarea
-            className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          />
-        </Field>
       </div>
+
+      <h3 className="pt-2 text-sm font-semibold text-muted-foreground">
+        Aika-asetusten oletukset
+      </h3>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {numField("setupField", "Pituus/kolmiloikka valmistelu (min)", "Askelmerkit yms. ennen lajia")}
+        {numField("setupVertical", "Korkeus/seiväs valmistelu (min)", "Lämmittelyhypyt, telineet")}
+        {numField("betweenHeats", "Juoksuerien väli (min)", "Järjestäytymisaika erien välissä")}
+        {numField("hurdleSetup", "Aitojen pystytys (min)", "Ennen ensimmäistä aitaerää")}
+        {numField("hurdleTeardown", "Aitojen purku (min)", "Aitablokin jälkeen")}
+      </div>
+
+      <Field label="Muistiinpanot">
+        <textarea
+          className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          value={form.notes}
+          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+        />
+      </Field>
+
       <Button onClick={() => save.mutate()} disabled={save.isPending}>
         <Save className="mr-2 h-4 w-4" />
         Tallenna
@@ -240,6 +274,7 @@ function BasicsTab({ plan, onChange }: { plan: PlanRow; onChange: () => void }) 
     </section>
   );
 }
+
 
 // ─── Suorituspaikat ───────────────────────────────────────────────────────
 function VenuesTab({
