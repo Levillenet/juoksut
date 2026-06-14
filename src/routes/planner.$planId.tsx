@@ -306,6 +306,8 @@ function BasicsTab({
     isMultiDay: plan.is_multi_day,
     dayWindows: (plan.day_windows ?? []) as DayWindow[],
     notes: plan.notes ?? "",
+    totalOfficials: plan.total_officials_available ?? 10,
+    officialsChangeover: plan.officials_changeover_min ?? 10,
   });
   const [demoBusy, setDemoBusy] = useState(false);
 
@@ -326,6 +328,8 @@ function BasicsTab({
           is_multi_day: form.isMultiDay,
           day_windows: form.isMultiDay ? (form.dayWindows as unknown as never) : null,
           notes: form.notes,
+          total_officials_available: form.totalOfficials,
+          officials_changeover_min: form.officialsChangeover,
         })
         .eq("id", plan.id);
       if (error) throw error;
