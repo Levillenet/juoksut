@@ -35,6 +35,7 @@ export interface SolverInput {
 
 interface Segment {
   eventId: string;
+  eventName: string;
   ageClass: string;
   phase: SchedulePhase;
   durationMin: number;
