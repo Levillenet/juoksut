@@ -61,7 +61,7 @@ function StadiumsIndex() {
           Kirjaudu sisään käyttääksesi stadion-hallintaa.
         </p>
         <Button asChild>
-          <Link to="/login" search={{ redirect: "/stadiums" }}>
+          <Link to="/login">
             Kirjaudu sisään
           </Link>
         </Button>
