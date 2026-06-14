@@ -9,6 +9,7 @@ import {
   type ScheduleItemRow,
 } from "@/lib/planner-types";
 import { resolveTimings } from "@/lib/planner-timings";
+import { getEventColorClass } from "@/lib/planner-defaults";
 
 interface Props {
   plan: PlanRow;
