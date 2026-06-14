@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Minus, Plus, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   resolveDayWindows,
