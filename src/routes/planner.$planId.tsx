@@ -1220,6 +1220,10 @@ function ScheduleTab({
             <Download className="mr-2 h-4 w-4" />
             Vie Excel
           </Button>
+          <Button variant="secondary" onClick={exportPdf} disabled={schedule.length === 0}>
+            <Download className="mr-2 h-4 w-4" />
+            Tulosta PDF
+          </Button>
         </div>
       </div>
 
