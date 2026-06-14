@@ -1,16 +1,17 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download, BarChart3 } from "lucide-react";
+import { ArrowLeft, Download, Wrench } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { EventDurationsSection } from "@/components/admin/EventDurationsSection";
 
 const ADMIN_EMAIL = "samiaavikko@gmail.com";
 
 export const Route = createFileRoute("/admin/analytics")({
-  head: () => ({ meta: [{ title: "Analytiikka – Admin" }] }),
+  head: () => ({ meta: [{ title: "Admin-valikko" }] }),
   component: Gate,
 });
 
