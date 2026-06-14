@@ -19,9 +19,9 @@ interface Props {
   onChange: () => void;
 }
 
-const PX_PER_5MIN = 14; // 168 px per tunti
-const ROW_HEIGHT = 44;
-const LEFT_COL = 160;
+const PX_PER_5MIN = 22; // 264 px per tunti
+const ROW_HEIGHT = 64;
+const LEFT_COL = 220;
 
 function ageClassSort(a: string, b: string): number {
   const order = (s: string) => {
