@@ -689,6 +689,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      event_pb_key: {
+        Args: { age_class: string; event_name: string }
+        Returns: string
+      }
+      event_spec_suffix: {
+        Args: { age_class: string; event_name: string }
+        Returns: string
+      }
       fix_running_times_numeric: {
         Args: never
         Returns: {
