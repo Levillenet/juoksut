@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { helsinkiDayBounds } from "./daily-best";
 import { isLowerBetter } from "./athlete-history";
 import { normalizeEventName } from "./season-leaders";
+import { pbEventKey } from "./pb-key";
 import { seasonRange } from "./season-stats";
 import { isRoadOrCrossCountry } from "./event-filters";
 import { fetchCompetitionList, filterToday } from "./competition-list";
