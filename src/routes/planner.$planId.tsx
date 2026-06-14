@@ -28,12 +28,17 @@ import {
   type FinalFormat,
   type DayWindow,
 } from "@/lib/planner-types";
+import type {
+  ConflictGroupRow,
+  StadiumRow,
+} from "@/lib/planner-types";
 import { estimateDuration } from "@/lib/planner-estimate";
 import { computeRuleEstimate } from "@/lib/planner-rules";
 import { solve, detectConflicts } from "@/lib/planner-solver";
 import { resolveTimings } from "@/lib/planner-timings";
 import { DEFAULT_VENUES, buildDefaultVenueRows } from "@/lib/planner-defaults";
 import { fillPlanWithDemo } from "@/lib/planner-demo";
+import { applyStadiumToPlan, removeStadiumFromPlan } from "@/lib/planner-stadium";
 
 export const Route = createFileRoute("/planner/$planId")({
   component: PlanEditor,
