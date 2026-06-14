@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Minus, Plus, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   resolveDayWindows,
@@ -38,9 +38,16 @@ const SEVERITY_ORDER: Record<ConflictSeverity, number> = {
   warning: 1,
 };
 
-const PX_PER_5MIN = 22; // 264 px per tunti
 const ROW_HEIGHT = 64;
-const LEFT_COL = 220;
+// Sticky left column with venue/age labels. Smaller on mobile.
+const LEFT_COL_DESKTOP = 180;
+const LEFT_COL_MOBILE = 120;
+// pixels-per-minute bounds (user can zoom in/out within these)
+const MIN_PX_PER_MIN = 2;
+const MAX_PX_PER_MIN = 50;
+// auto-fit bounds (default when no user zoom)
+const AUTOFIT_MIN = 4;
+const AUTOFIT_MAX = 20;
 
 function ageClassSort(a: string, b: string): number {
   const order = (s: string) => {
@@ -133,7 +140,83 @@ export function PlannerFullGantt({
   }, [win]);
 
   const totalMin = (endMs - startMs) / 60000;
-  const totalWidth = LEFT_COL + totalMin / 5 * PX_PER_5MIN;
+
+  // ── Responsive layout & zoom ─────────────────────────────────────────
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(() =>
+    typeof window === "undefined" ? 1200 : window.innerWidth,
+  );
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w && Math.abs(w - containerWidth) > 4) setContainerWidth(w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const isMobile = containerWidth > 0 && containerWidth < 768;
+  const LEFT_COL = isMobile ? LEFT_COL_MOBILE : LEFT_COL_DESKTOP;
+
+  const zoomKey = `planner_gantt_zoom_${plan.id}`;
+  const [zoomFactor, setZoomFactor] = useState<number>(() => {
+    if (typeof window === "undefined") return 1;
+    const raw = window.localStorage.getItem(zoomKey);
+    const n = raw ? parseFloat(raw) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(zoomKey, String(zoomFactor));
+    } catch {
+      /* noop */
+    }
+  }, [zoomFactor, zoomKey]);
+
+  const autoFitPxMin = useMemo(() => {
+    if (!totalMin || containerWidth <= 0) return 8;
+    const avail = Math.max(200, containerWidth - LEFT_COL - 24);
+    return Math.max(AUTOFIT_MIN, Math.min(AUTOFIT_MAX, avail / totalMin));
+  }, [totalMin, containerWidth, LEFT_COL]);
+
+  const pxPerMin = Math.max(
+    MIN_PX_PER_MIN,
+    Math.min(MAX_PX_PER_MIN, autoFitPxMin * zoomFactor),
+  );
+  const PX_PER_5MIN = pxPerMin * 5;
+  const totalWidth = LEFT_COL + (totalMin / 5) * PX_PER_5MIN;
+  const zoomPercent = Math.round((pxPerMin / autoFitPxMin) * 100);
+
+  const zoomIn = useCallback(
+    () => setZoomFactor((z) => Math.min(z * 1.5, MAX_PX_PER_MIN / Math.max(0.01, autoFitPxMin))),
+    [autoFitPxMin],
+  );
+  const zoomOut = useCallback(
+    () => setZoomFactor((z) => Math.max(z * 0.67, MIN_PX_PER_MIN / Math.max(0.01, autoFitPxMin))),
+    [autoFitPxMin],
+  );
+  const zoomReset = useCallback(() => setZoomFactor(1), []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        zoomIn();
+      } else if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        zoomOut();
+      } else if (e.key === "0") {
+        e.preventDefault();
+        zoomReset();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoomIn, zoomOut, zoomReset]);
 
   const dragRef = useRef<{
     id: string;
@@ -373,48 +456,75 @@ export function PlannerFullGantt({
     );
   };
 
+  // Zoom-aware tick density
+  const showHalfHours = pxPerMin >= 6;
+  const show10Min = pxPerMin >= 12;
+  const show5MinNumbers = pxPerMin >= 20;
+
   const TimeAxis = () => (
     <div
-      className="sticky top-0 z-30 flex border-b bg-card"
-      style={{ width: totalWidth, height: 42 }}
+      className="sticky top-0 z-30 flex border-b bg-background shadow-sm"
+      style={{ width: totalWidth, height: 44 }}
     >
       <div
-        className="sticky left-0 z-40 flex items-end border-r bg-card px-2 pb-1 text-xs font-semibold"
+        className="sticky left-0 z-40 flex items-end border-r bg-background px-2 pb-1 text-xs font-semibold shadow-md"
         style={{ width: LEFT_COL }}
       >
         Aika
       </div>
-      <div className="relative" style={{ width: totalWidth - LEFT_COL, height: 42 }}>
-        {/* Hour headers */}
+      <div className="relative" style={{ width: totalWidth - LEFT_COL, height: 44 }}>
+        {/* Hour headers — bold and large */}
         {hourTicks.map((m) => {
           const d = new Date(startMs + m * 60000);
           return (
             <div
               key={`h-${m}`}
-              className="absolute top-0 border-l border-border/60 px-1 text-[11px] font-semibold"
-              style={{ left: (m / 5) * PX_PER_5MIN, height: 22, lineHeight: "22px" }}
+              className="absolute top-0 border-l-2 border-border px-1 text-sm font-bold"
+              style={{ left: (m / 5) * PX_PER_5MIN, height: 24, lineHeight: "24px" }}
             >
               {d.getHours()}
             </div>
           );
         })}
-        {/* 5-min labels */}
+        {/* Minor ticks */}
         {fiveTicks.map((m) => {
-          const mm = (m % 60);
+          const mm = m % 60;
           if (mm === 0) return null;
+          const isHalf = mm === 30;
+          const isTen = mm % 10 === 0;
+          if (isHalf && !showHalfHours) return null;
+          if (!isHalf && isTen && !show10Min) return null;
+          if (!isHalf && !isTen && !show5MinNumbers) return null;
+          const label = isHalf ? ":30" : String(mm);
           return (
             <div
               key={`f-${m}`}
-              className="absolute border-l border-border/20 px-0.5 text-[9px] text-muted-foreground"
-              style={{ left: (m / 5) * PX_PER_5MIN, top: 22, height: 20, lineHeight: "20px" }}
+              className={`absolute border-l text-muted-foreground ${
+                isHalf ? "border-border/60 text-[10px] font-medium" : "border-border/20 text-[9px]"
+              }`}
+              style={{ left: (m / 5) * PX_PER_5MIN, top: 24, height: 20, lineHeight: "20px", paddingLeft: 2 }}
             >
-              {mm}
+              {label}
             </div>
           );
         })}
+        {/* Plain 5-min gridline marks (no number) when zoom too small */}
+        {!show5MinNumbers &&
+          fiveTicks.map((m) => {
+            const mm = m % 60;
+            if (mm === 0 || mm === 30 || mm % 10 === 0) return null;
+            return (
+              <div
+                key={`tick-${m}`}
+                className="absolute border-l border-border/15"
+                style={{ left: (m / 5) * PX_PER_5MIN, top: 36, height: 6 }}
+              />
+            );
+          })}
       </div>
     </div>
   );
+
 
   const Section = ({
     title,
@@ -437,7 +547,7 @@ export function PlannerFullGantt({
         {rows.map((r, i) => (
           <div
             key={`lbl-${r.id}`}
-            className="sticky left-0 z-10 flex items-center border-b border-r bg-card px-2 text-xs"
+            className="sticky left-0 z-10 flex items-center border-b border-r bg-background px-2 text-xs shadow-md"
             style={{
               width: LEFT_COL,
               height: ROW_HEIGHT,
@@ -487,7 +597,6 @@ export function PlannerFullGantt({
     .filter((a) => showEmpty || ageHas(a))
     .map((a) => ({ id: a, label: a }));
 
-  const scrollRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!isHighlightActive || !scrollRef.current) return;
     const first = scrollRef.current.querySelector<HTMLElement>(
@@ -520,15 +629,44 @@ export function PlannerFullGantt({
               })}
             </button>
           ))}
-        <label className="ml-auto flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={showEmpty}
-            onChange={(e) => setShowEmpty(e.target.checked)}
-            className="h-3.5 w-3.5 accent-primary"
-          />
-          Näytä myös tyhjät paikat
-        </label>
+        <div className="ml-auto flex items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={showEmpty}
+              onChange={(e) => setShowEmpty(e.target.checked)}
+              className="h-3.5 w-3.5 accent-primary"
+            />
+            Näytä myös tyhjät paikat
+          </label>
+          <div className="flex items-center gap-0.5 rounded-md border bg-background p-0.5">
+            <button
+              type="button"
+              onClick={zoomOut}
+              title="Zoom out (Ctrl+−)"
+              className="grid h-7 w-7 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={zoomReset}
+              title="Reset zoom (Ctrl+0)"
+              className="flex h-7 min-w-[3rem] items-center justify-center gap-1 rounded px-1.5 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <RotateCcw className="h-3 w-3" />
+              {zoomPercent}%
+            </button>
+            <button
+              type="button"
+              onClick={zoomIn}
+              title="Zoom in (Ctrl++)"
+              className="grid h-7 w-7 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-card/50 px-3 py-1.5 text-[10px] text-muted-foreground">
         {LEGEND.map((l) => (
