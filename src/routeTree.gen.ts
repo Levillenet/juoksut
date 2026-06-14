@@ -25,6 +25,7 @@ import { Route as HauskatTilastotRouteImport } from './routes/hauskat-tilastot'
 import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PrintIndexRouteImport } from './routes/print.index'
+import { Route as PlannerIndexRouteImport } from './routes/planner.index'
 import { Route as AnnouncerIndexRouteImport } from './routes/announcer.index'
 import { Route as UrheilijaTokenRouteImport } from './routes/urheilija.$token'
 import { Route as SeuraaTokenRouteImport } from './routes/seuraa.$token'
@@ -125,6 +126,11 @@ const PrintIndexRoute = PrintIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PrintRoute,
+} as any)
+const PlannerIndexRoute = PlannerIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PlannerRoute,
 } as any)
 const AnnouncerIndexRoute = AnnouncerIndexRouteImport.update({
   id: '/',
@@ -238,7 +244,7 @@ export interface FileRoutesByFullPath {
   '/hauskat-tilastot': typeof HauskatTilastotRoute
   '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
-  '/planner': typeof PlannerRoute
+  '/planner': typeof PlannerRouteWithChildren
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/running-ops': typeof RunningOpsRoute
@@ -262,6 +268,7 @@ export interface FileRoutesByFullPath {
   '/seuraa/$token': typeof SeuraaTokenRoute
   '/urheilija/$token': typeof UrheilijaTokenRoute
   '/announcer/': typeof AnnouncerIndexRoute
+  '/planner/': typeof PlannerIndexRoute
   '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
@@ -275,7 +282,6 @@ export interface FileRoutesByTo {
   '/hauskat-tilastot': typeof HauskatTilastotRoute
   '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
-  '/planner': typeof PlannerRoute
   '/reset-password': typeof ResetPasswordRoute
   '/running-ops': typeof RunningOpsRoute
   '/scoreboard': typeof ScoreboardRoute
@@ -298,6 +304,7 @@ export interface FileRoutesByTo {
   '/seuraa/$token': typeof SeuraaTokenRoute
   '/urheilija/$token': typeof UrheilijaTokenRoute
   '/announcer': typeof AnnouncerIndexRoute
+  '/planner': typeof PlannerIndexRoute
   '/print': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
@@ -313,7 +320,7 @@ export interface FileRoutesById {
   '/hauskat-tilastot': typeof HauskatTilastotRoute
   '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
-  '/planner': typeof PlannerRoute
+  '/planner': typeof PlannerRouteWithChildren
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/running-ops': typeof RunningOpsRoute
@@ -337,6 +344,7 @@ export interface FileRoutesById {
   '/seuraa/$token': typeof SeuraaTokenRoute
   '/urheilija/$token': typeof UrheilijaTokenRoute
   '/announcer/': typeof AnnouncerIndexRoute
+  '/planner/': typeof PlannerIndexRoute
   '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
@@ -377,6 +385,7 @@ export interface FileRouteTypes {
     | '/seuraa/$token'
     | '/urheilija/$token'
     | '/announcer/'
+    | '/planner/'
     | '/print/'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
@@ -390,7 +399,6 @@ export interface FileRouteTypes {
     | '/hauskat-tilastot'
     | '/kilpailukalenteri'
     | '/login'
-    | '/planner'
     | '/reset-password'
     | '/running-ops'
     | '/scoreboard'
@@ -413,6 +421,7 @@ export interface FileRouteTypes {
     | '/seuraa/$token'
     | '/urheilija/$token'
     | '/announcer'
+    | '/planner'
     | '/print'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
@@ -451,6 +460,7 @@ export interface FileRouteTypes {
     | '/seuraa/$token'
     | '/urheilija/$token'
     | '/announcer/'
+    | '/planner/'
     | '/print/'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
@@ -466,7 +476,7 @@ export interface RootRouteChildren {
   HauskatTilastotRoute: typeof HauskatTilastotRoute
   KilpailukalenteriRoute: typeof KilpailukalenteriRoute
   LoginRoute: typeof LoginRoute
-  PlannerRoute: typeof PlannerRoute
+  PlannerRoute: typeof PlannerRouteWithChildren
   PrintRoute: typeof PrintRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   RunningOpsRoute: typeof RunningOpsRoute
@@ -601,6 +611,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/print/'
       preLoaderRoute: typeof PrintIndexRouteImport
       parentRoute: typeof PrintRoute
+    }
+    '/planner/': {
+      id: '/planner/'
+      path: '/'
+      fullPath: '/planner/'
+      preLoaderRoute: typeof PlannerIndexRouteImport
+      parentRoute: typeof PlannerRoute
     }
     '/announcer/': {
       id: '/announcer/'
@@ -763,6 +780,17 @@ const AnnouncerRouteWithChildren = AnnouncerRoute._addFileChildren(
   AnnouncerRouteChildren,
 )
 
+interface PlannerRouteChildren {
+  PlannerIndexRoute: typeof PlannerIndexRoute
+}
+
+const PlannerRouteChildren: PlannerRouteChildren = {
+  PlannerIndexRoute: PlannerIndexRoute,
+}
+
+const PlannerRouteWithChildren =
+  PlannerRoute._addFileChildren(PlannerRouteChildren)
+
 interface PrintRouteChildren {
   PrintClubRoute: typeof PrintClubRoute
   PrintWatchedRoute: typeof PrintWatchedRoute
@@ -814,7 +842,7 @@ const rootRouteChildren: RootRouteChildren = {
   HauskatTilastotRoute: HauskatTilastotRoute,
   KilpailukalenteriRoute: KilpailukalenteriRoute,
   LoginRoute: LoginRoute,
-  PlannerRoute: PlannerRoute,
+  PlannerRoute: PlannerRouteWithChildren,
   PrintRoute: PrintRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   RunningOpsRoute: RunningOpsRoute,
