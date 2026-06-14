@@ -1,61 +1,106 @@
-## Mitä tehdään
 
-Kolme erillistä korjausta käyttäjän esimerkki-Excelin (YAG22 lauantai) ja havaitun bugin pohjalta.
+# Lajien keston ennustusmalli
 
-### 1) Korjaa "Lisää laji" -valikon tyhjä ikäryhmälista
+Rakennetaan datapohjainen kestoennuste plannerille `athlete_results.captured_at` -aikaleimoista. Eteneminen vaiheittain — vahvistus pyydetään ennen jokaista vaihetta.
 
-**Juurisyy:** `get_event_catalog_full()` RPC palauttaa nyt aina virheen `canceling statement due to statement timeout` (testattu suoraan REST-päätepisteeseen). Se aggregoi koko `athlete_results`-taulun ilman aikarajaa, joten kysely kestää yli serverin timeoutin. Frontti saa virheen, `catalog`-state jää tyhjäksi → Ikäryhmä-pudotusvalikossa ei näy yhtään vaihtoehtoa.
+## Huomiot ennen aloitusta
 
-**Korjaus:**
-- Uusi migraatio joka korvaa `get_event_catalog_full()`:n versiolla, joka rajaa lähteen viimeisten ~3 vuoden kilpailuihin (`WHERE ar.competition_date >= now() - interval '3 years'`) ja käyttää `HAVING COUNT(*) >= 1`. Sama tulosrakenne, paljon nopeampi.
-- Lisätään tukeva indeksi vain jos puuttuu: `CREATE INDEX IF NOT EXISTS idx_ar_age_event ON public.athlete_results(age_class, event_name)`.
+- **`age_class` on jo erillisenä sarakkeena** `athlete_results`-taulussa, joten ei tarvitse parsia event_namesta. Käytetään sitä suoraan `group_name`-arvona.
+- **Olemassa on jo `event_duration_overrides`-taulu** (manuaaliset overridet) ja `get_competition_structure` / `list_planner_template_competitions` -funktiot, jotka tekevät vastaavaa per-kisa-tilastointia. Uusi `event_duration_stats` on globaali aggregaatti — täydentää, ei korvaa, näitä.
+- **Edge Function vs server function**: Pyydetty Edge Function — käytetään sitä, koska laskenta on raskas ja halutaan ajaa erillään käyttäjän pyynnöstä. (Tämän projektin oletus olisi TanStack `createServerFn`, mutta Edge Function toimii tähän hyvin ja eristää workerin kuormituksen.)
+- **Track-laji "erien määrä"**: `athlete_results`-datassa ei ole eräkohtaista tietoa. Skaalataan osallistujamäärällä ja oletetaan 8/erä (säädettävissä). Tämä on rajoitus jonka mainitsen koodissa kommentilla.
 
-### 2) Aikataulu-näkymä Excelin mallin mukaiseksi
+## VAIHE 1 — Tietokantataulu `event_duration_stats`
 
-**Tavoite (YAG22 Lauantai -välilehti):** kaksi peräkkäistä ruudukkoa, joissa molemmissa:
-- yläreuna: kellonajat 5 min sarakkeissa (kokotuntilabelit + 5 min jaotus)
-- rivit: yläosassa **suorituspaikkakohtainen** aikataulu (yksi rivi/suorituspaikka), alaosassa **ikäryhmäkohtainen** aikataulu (yksi rivi/ikäluokka)
-- tapahtumat näkyvät värillisinä palkkeina, joiden pituus = kesto, sisältönä esim. `T15 (5) 5min/erä`
+Migraatio luo taulun:
 
-**Toteutus:**
-Nykyinen koko näytön Gantt (`src/components/planner/PlannerFullGantt.tsx`) on jo arkkitehtuurisesti tämä — sitä laajennetaan, ei aloiteta tyhjästä:
-- Käytetään sitä myös sisäänupotettuna `/planner/:id` aikataulu-välilehdellä `PlannerGantt`-komponentin tilalla, jotta sama Excel-tyylinen näkymä on käytössä molemmissa paikoissa.
-- Lisätään palkin labeliin sama muotoilu kuin Excelissä: juoksuissa `<ikäluokka> (<erien määrä>) <min>/erä`, kentälajeissa `<ikäluokka> <laji>` ja oikealla puolella vihjeenä kokonaiskesto (esim. `40min`).
-- Värikoodaus pysyy ikäryhmän mukaan (Excel-mukainen pastelli).
-- Ikäryhmäosion rivijärjestys: T-sarjat ennen P-sarjoja, sitten N/M (sama `ageClassSort` kuin nyt).
-- Kellonaika-akseli alkaa lähimmästä tasatunnista ennen päivän aikaikkunan alkua ja loppuu seuraavaan tasatuntiin lopun jälkeen (jo tehty Full-Ganttissa).
+| sarake | tyyppi |
+|---|---|
+| id | uuid PK |
+| event_name | text |
+| group_name | text (= age_class) |
+| category | text ('Track' / 'Field') |
+| sub_category | text |
+| n_samples | integer |
+| median_duration_min | real |
+| p90_duration_min | real |
+| median_participants | real |
+| max_participants | integer |
+| last_updated | timestamptz default now() |
 
-Vanha sarakkeittainen pysty-Gantt-toteutus (`PlannerGantt` funktio `planner.$planId.tsx` rivit ~1263–1509) poistetaan kun se on korvattu — yksi totuus, yksi näkymä.
+- UNIQUE(event_name, group_name)
+- Indeksi (event_name, group_name) hakua varten
+- RLS: SELECT authenticated, kaikki muutokset vain service_role (Edge Function käyttää service rolea)
+- GRANT SELECT authenticated, GRANT ALL service_role
 
-### 3) "Vie Excel" → visuaalinen Excel YAG22-mallin mukaan
+**Vahvistus pyydetään ennen migraation ajamista.**
 
-**Nykyinen ongelma:** Excel-vienti on pelkkä taulukkomuotoinen luettelo riveinä. Käyttäjä haluaa saman visuaalisen ruudukon kuin näytöllä.
+## VAIHE 2 — Edge Function `compute-duration-stats`
 
-**Toteutus uudella tiedostolla `src/lib/planner-schedule-xlsx.ts`:**
-Käyttää `xlsx`-kirjastoa (jo asennettu). Per päivä uusi välilehti, nimi `<weekday>` (esim. `Lauantai`).
+`supabase/functions/compute-duration-stats/index.ts`:
 
-Layout per välilehti (vastaa YAG22-mallia):
-- Rivi 1: `<plan name>`
-- Rivi 2: päivän nimi
-- Rivi 4 sarake A: `Suorituspaikkakohtainen aikataulu`
-- Rivit 4–5: kellonajat (sarakkeet B+, yksi sarake = 5 min). Rivi 4 = tasatuntilabel kohdistettuna oikean sarakkeen yli, rivi 5 = `5/10/15/…/55`.
-- Rivit 7 → n: yksi rivi per suorituspaikka. Sarakkeessa A suorituspaikan nimi.
-- Tapahtumapalkki = soluyhdistys lähtöhetkestä loppuhetkeen (5 min raster), tausta = ikäluokan väri, soluteksti `<ikäluokka> <laji>` tai juoksuille `<ikäluokka> (<erät>) <min>/erä`. Reuna ohut musta.
-- Tyhjä rivi väliin, sitten `Ikäryhmäkohtainen aikataulu` -otsikko samoilla aikasarakkeilla, rivit per ikäluokka.
-- Sarakkeen A leveys ~22, sarakkeet B+ leveys ~3 (kapea ruutu = palkin tarkkuus).
-- Rivikorkeus ~22.
-- Konfliktipalkki: punainen reuna.
+1. Auth-check: vain admin (`is_admin_user()` tai email-tarkistus tokenista).
+2. Iteroi `athlete_results` paginointina (esim. 10k riviä kerrallaan) lukien vain tarvittavat sarakkeet: `competition_id, event_id, event_name, age_class, sub_category, event_category, captured_at, athlete_key`.
+3. Muistissa aggregointi (Map):
+   - **Per (competition_id, event_id)**: min/max `captured_at`, distinct athlete_keys → kesto + osallistujamäärä.
+   - Suodatus: kesto 1–600 min, vähintään 2 osallistujaa (yksin = ei keston mittausta).
+4. Aggregointi uudelleen **per (event_name, age_class)** → kerää kestot ja osallistujamäärät arrayhin → laske n, mediaani, p90, mediaani-osallistujat, max-osallistujat. category johdetaan `event_category`-sarakkeesta.
+5. Upsert `event_duration_stats`-tauluun (UNIQUE event_name+group_name).
+6. Palauta JSON: `{ rows_processed, runs_aggregated, stats_upserted, duration_ms }`.
 
-`downloadPlannerScheduleVisualXlsx({plan, venues, events, schedule, conflictIds})` korvaa nykyisen `exportExcel`-funktion `ScheduleTab`:ssa.
+`supabase/config.toml`: `verify_jwt = true` jotta admin-tarkistus toimii kutsujan tokenilla.
 
-## Tekniset huomiot
+## VAIHE 3 — Admin-näkymä `/admin/duration-stats`
 
-- `xlsx`-kirjasto: värit ja soluyhdistykset toimivat `XLSX.utils.book_new()` + `ws['!merges']` + `cell.s = { fill, border, alignment }` kautta. Jos perusversion `xlsx` ei tue tyylejä, lisätään riippuvuus `xlsx-js-style` (saman APIn yhteensopiva fork) ennen toteutusta — tämä päätetään buildvaiheessa.
-- Migraatio tehdään `supabase--migration`-työkalulla, ei suoraan SQL-tiedostoeditoinnilla.
-- Edge case: jos päivän aikaikkuna puuttuu, näytetään sama opaste kuin nyt eikä luoda välilehteä siltä päivältä.
+Uusi route `src/routes/_authenticated/admin.duration-stats.tsx` (tai vastaava nykyisten admin-routejen sijaintien mukaan):
 
-## Mitä EI tehdä
+- Pääsy: `is_admin_user()` (sama kuin muissa admin-näkymissä).
+- "Päivitä kestolaskelmat" -nappi → kutsuu Edge Functionia (mutation + toast tuloksesta + spinner).
+- Taulukko (React Query, `event_duration_stats` -taulusta):
+  - Sarakkeet: Laji, Sarja, n, Mediaani (min), P90 (min), Mediaani-osallistujat, Päivitetty.
+  - Oletussorttaus n_samples desc.
+  - Hakukenttä joka suodattaa client-sidena event_name TAI group_name.
+- Linkki nykyiseen `/admin`-hubiin.
 
-- Ei kosketa PDF-vientiä — se jo toimii tekstiluettelona pyydetysti.
-- Ei muuteta solverin logiikkaa.
-- Ei lisätä uusia kenttiä `plan_events`-tauluun.
+## VAIHE 4 — `src/lib/planner-estimate.ts` -päivitys
+
+- Uusi hook / fetch: `useEventDurationStats()` React Querylla, `staleTime: 60 * 60 * 1000`.
+- `estimateEventDuration(event_name, group_name, participantsOrHeats)`:
+  - Haku `(event_name, group_name)` → jos löytyy: palauta `{ minutes, confidence, source: 'data' }`.
+  - **Track**: `minutes = median_duration_min * (heats / median_heats)`. Erien määrä = `ceil(participants / 8)`, mediaani-erät = `ceil(median_participants / 8)`.
+  - **Field**: `minutes = median_duration_min * (participants / median_participants)`.
+  - Jos ei löydy: nykyinen fallback (override → sääntö) ja `source: 'fallback'`, `confidence: 0`.
+  - `confidence` = `min(1, n_samples / 10)` (0…1).
+- Tyypit päivitetään `EventEstimate`-rajapintaan.
+- Olemassa olevat kutsupaikat (`planner-solver.ts`, planner-näkymät) saavat uuden kentät, mutta vanhat numeeriset kutsupaikat toimivat ilman muutoksia (lisätään apufunktio).
+
+## VAIHE 5 — Plannerin "Lajit"-välilehti
+
+Tiedosto: `src/routes/planner.$planId.tsx` (Lajit-välilehden komponentti) tai eriytetty `PlannerEventsTab`.
+
+- Jokaiselle lajiriville:
+  - Näytä kestoarvio minuutteina kolumnissa.
+  - Badge:
+    - `n_samples >= 5` → `<Badge variant="default">datapohjainen · {n} näytettä</Badge>`
+    - `n_samples 1–4` → `<Badge variant="secondary">vähän dataa · {n}</Badge>`
+    - ei löydy → `<Badge variant="outline">oletus</Badge>`
+  - Tooltip (shadcn `Tooltip`) hover/focus: mediaani, P90, n_samples, mediaani-osallistujat. Fallback-tilassa tooltip selittää että käytetään sääntöä.
+
+## Teknistä
+
+- Migraatio: `event_duration_stats` taulu + indeksit + RLS + GRANTit yhtenä SQL-migraationa.
+- Edge Function käyttää `supabaseAdmin`-clientiä (service role), kutsujan JWT validoidaan admin-roolin tarkistukseen.
+- Frontti käyttää `supabase`-browser-clientiä `event_duration_stats`-hakuihin (SELECT-policy sallii authenticated).
+- Ei muutoksia `athlete_results`-tauluun.
+- Ei muutoksia nykyiseen `planner-solver.ts`-logiikkaan paitsi että se saa parempia kestoarvioita `planner-estimate.ts`-rajapinnan kautta.
+
+## Rajaukset (mitä EI tehdä tässä)
+
+- Ei opi konfliktisääntöjä (heittolajit, toimitsijaresurssit) — se on eri vaihe.
+- Ei taustaajoa cron-jobina — vain manuaalinen admin-nappi tässä vaiheessa.
+- Ei korvaa `event_duration_overrides`-taulun manuaalisia arvoja; overridet jäävät prioriteetiltaan ylimmäksi.
+- Ei muuta Excel-vientiä eikä Gantt-näkymää.
+
+---
+
+**Aloitan VAIHEESTA 1** kun annat luvan: luon `event_duration_stats`-taulun migraationa.
