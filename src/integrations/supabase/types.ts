@@ -838,6 +838,118 @@ export type Database = {
         }
         Relationships: []
       }
+      stadium_conflict_groups: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          max_concurrent: number
+          name: string
+          stadium_id: string
+          updated_at: string
+          venue_ids: string[]
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          max_concurrent?: number
+          name: string
+          stadium_id: string
+          updated_at?: string
+          venue_ids?: string[]
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          max_concurrent?: number
+          name?: string
+          stadium_id?: string
+          updated_at?: string
+          venue_ids?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stadium_conflict_groups_stadium_id_fkey"
+            columns: ["stadium_id"]
+            isOneToOne: false
+            referencedRelation: "stadiums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stadium_venues: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          notes: string | null
+          sort_order: number
+          stadium_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          name: string
+          notes?: string | null
+          sort_order?: number
+          stadium_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          notes?: string | null
+          sort_order?: number
+          stadium_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stadium_venues_stadium_id_fkey"
+            columns: ["stadium_id"]
+            isOneToOne: false
+            referencedRelation: "stadiums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stadiums: {
+        Row: {
+          created_at: string
+          id: string
+          location: string | null
+          name: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location?: string | null
+          name: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location?: string | null
+          name?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       team_invites: {
         Row: {
           created_at: string

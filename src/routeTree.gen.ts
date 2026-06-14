@@ -24,10 +24,12 @@ import { Route as KilpailukalenteriRouteImport } from './routes/kilpailukalenter
 import { Route as HauskatTilastotRouteImport } from './routes/hauskat-tilastot'
 import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StadiumsIndexRouteImport } from './routes/stadiums.index'
 import { Route as PrintIndexRouteImport } from './routes/print.index'
 import { Route as PlannerIndexRouteImport } from './routes/planner.index'
 import { Route as AnnouncerIndexRouteImport } from './routes/announcer.index'
 import { Route as UrheilijaTokenRouteImport } from './routes/urheilija.$token'
+import { Route as StadiumsStadiumIdRouteImport } from './routes/stadiums.$stadiumId'
 import { Route as SeuraaTokenRouteImport } from './routes/seuraa.$token'
 import { Route as SettingsTeamsRouteImport } from './routes/settings.teams'
 import { Route as SettingsNoteLinksRouteImport } from './routes/settings.note-links'
@@ -124,6 +126,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StadiumsIndexRoute = StadiumsIndexRouteImport.update({
+  id: '/stadiums/',
+  path: '/stadiums/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrintIndexRoute = PrintIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -142,6 +149,11 @@ const AnnouncerIndexRoute = AnnouncerIndexRouteImport.update({
 const UrheilijaTokenRoute = UrheilijaTokenRouteImport.update({
   id: '/urheilija/$token',
   path: '/urheilija/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StadiumsStadiumIdRoute = StadiumsStadiumIdRouteImport.update({
+  id: '/stadiums/$stadiumId',
+  path: '/stadiums/$stadiumId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SeuraaTokenRoute = SeuraaTokenRouteImport.update({
@@ -279,10 +291,12 @@ export interface FileRoutesByFullPath {
   '/settings/note-links': typeof SettingsNoteLinksRoute
   '/settings/teams': typeof SettingsTeamsRoute
   '/seuraa/$token': typeof SeuraaTokenRoute
+  '/stadiums/$stadiumId': typeof StadiumsStadiumIdRoute
   '/urheilija/$token': typeof UrheilijaTokenRoute
   '/announcer/': typeof AnnouncerIndexRoute
   '/planner/': typeof PlannerIndexRoute
   '/print/': typeof PrintIndexRoute
+  '/stadiums/': typeof StadiumsIndexRoute
   '/planner/$planId/gantt': typeof PlannerPlanIdGanttRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
@@ -317,10 +331,12 @@ export interface FileRoutesByTo {
   '/settings/note-links': typeof SettingsNoteLinksRoute
   '/settings/teams': typeof SettingsTeamsRoute
   '/seuraa/$token': typeof SeuraaTokenRoute
+  '/stadiums/$stadiumId': typeof StadiumsStadiumIdRoute
   '/urheilija/$token': typeof UrheilijaTokenRoute
   '/announcer': typeof AnnouncerIndexRoute
   '/planner': typeof PlannerIndexRoute
   '/print': typeof PrintIndexRoute
+  '/stadiums': typeof StadiumsIndexRoute
   '/planner/$planId/gantt': typeof PlannerPlanIdGanttRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
@@ -359,10 +375,12 @@ export interface FileRoutesById {
   '/settings/note-links': typeof SettingsNoteLinksRoute
   '/settings/teams': typeof SettingsTeamsRoute
   '/seuraa/$token': typeof SeuraaTokenRoute
+  '/stadiums/$stadiumId': typeof StadiumsStadiumIdRoute
   '/urheilija/$token': typeof UrheilijaTokenRoute
   '/announcer/': typeof AnnouncerIndexRoute
   '/planner/': typeof PlannerIndexRoute
   '/print/': typeof PrintIndexRoute
+  '/stadiums/': typeof StadiumsIndexRoute
   '/planner/$planId/gantt': typeof PlannerPlanIdGanttRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
@@ -402,10 +420,12 @@ export interface FileRouteTypes {
     | '/settings/note-links'
     | '/settings/teams'
     | '/seuraa/$token'
+    | '/stadiums/$stadiumId'
     | '/urheilija/$token'
     | '/announcer/'
     | '/planner/'
     | '/print/'
+    | '/stadiums/'
     | '/planner/$planId/gantt'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
@@ -440,10 +460,12 @@ export interface FileRouteTypes {
     | '/settings/note-links'
     | '/settings/teams'
     | '/seuraa/$token'
+    | '/stadiums/$stadiumId'
     | '/urheilija/$token'
     | '/announcer'
     | '/planner'
     | '/print'
+    | '/stadiums'
     | '/planner/$planId/gantt'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
@@ -481,10 +503,12 @@ export interface FileRouteTypes {
     | '/settings/note-links'
     | '/settings/teams'
     | '/seuraa/$token'
+    | '/stadiums/$stadiumId'
     | '/urheilija/$token'
     | '/announcer/'
     | '/planner/'
     | '/print/'
+    | '/stadiums/'
     | '/planner/$planId/gantt'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
@@ -514,7 +538,9 @@ export interface RootRouteChildren {
   AdminClubLocationsRoute: typeof AdminClubLocationsRoute
   AthleteKeyRoute: typeof AthleteKeyRoute
   SeuraaTokenRoute: typeof SeuraaTokenRoute
+  StadiumsStadiumIdRoute: typeof StadiumsStadiumIdRoute
   UrheilijaTokenRoute: typeof UrheilijaTokenRoute
+  StadiumsIndexRoute: typeof StadiumsIndexRoute
   RoundEventIdRoundIdRoute: typeof RoundEventIdRoundIdRoute
   ApiPublicHooksHarvestKilpailukalenteriRoute: typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   ApiPublicHooksHarvestResultsRoute: typeof ApiPublicHooksHarvestResultsRoute
@@ -629,6 +655,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/stadiums/': {
+      id: '/stadiums/'
+      path: '/stadiums'
+      fullPath: '/stadiums/'
+      preLoaderRoute: typeof StadiumsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/print/': {
       id: '/print/'
       path: '/'
@@ -655,6 +688,13 @@ declare module '@tanstack/react-router' {
       path: '/urheilija/$token'
       fullPath: '/urheilija/$token'
       preLoaderRoute: typeof UrheilijaTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stadiums/$stadiumId': {
+      id: '/stadiums/$stadiumId'
+      path: '/stadiums/$stadiumId'
+      fullPath: '/stadiums/$stadiumId'
+      preLoaderRoute: typeof StadiumsStadiumIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/seuraa/$token': {
@@ -908,7 +948,9 @@ const rootRouteChildren: RootRouteChildren = {
   AdminClubLocationsRoute: AdminClubLocationsRoute,
   AthleteKeyRoute: AthleteKeyRoute,
   SeuraaTokenRoute: SeuraaTokenRoute,
+  StadiumsStadiumIdRoute: StadiumsStadiumIdRoute,
   UrheilijaTokenRoute: UrheilijaTokenRoute,
+  StadiumsIndexRoute: StadiumsIndexRoute,
   RoundEventIdRoundIdRoute: RoundEventIdRoundIdRoute,
   ApiPublicHooksHarvestKilpailukalenteriRoute:
     ApiPublicHooksHarvestKilpailukalenteriRoute,
