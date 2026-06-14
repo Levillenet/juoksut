@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { ArrowLeft, Trash2, Plus, Wand2, Save, Download, LayoutGrid, Sparkles } from "lucide-react";
 import * as XLSX from "xlsx";
+import { downloadPlannerSchedulePdf } from "@/lib/planner-schedule-pdf";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
