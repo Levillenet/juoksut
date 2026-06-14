@@ -384,6 +384,23 @@ export function detectConflicts(
           reason: `Päällekkäisyys paikalla ${venueMap.get(venueId)?.name ?? venueId}`,
         });
       }
+      const prevEv = evMap.get(arr[i - 1].plan_event_id);
+      const curEv = evMap.get(arr[i].plan_event_id);
+      if (prevEv && curEv) {
+        const need = getDistanceChangeoverMin(prevEv.event_name, curEv.event_name, true);
+        if (need > 0) {
+          const gap =
+            (new Date(arr[i].starts_at).getTime() -
+              new Date(arr[i - 1].ends_at).getTime()) /
+            60000;
+          if (gap < need) {
+            out.push({
+              id: arr[i].id,
+              reason: `Matkanvaihto paikalla ${venueMap.get(venueId)?.name ?? venueId}: ${prevEv.event_name} → ${curEv.event_name} tarvitsee ${need} min siirron (nyt ${Math.round(gap)} min).`,
+            });
+          }
+        }
+      }
     }
     let inHurdleBlock = false;
     let blockHasFlat = false;
