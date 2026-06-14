@@ -570,7 +570,6 @@ export function PlannerFullGantt({
     .filter((a) => showEmpty || ageHas(a))
     .map((a) => ({ id: a, label: a }));
 
-  const scrollRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!isHighlightActive || !scrollRef.current) return;
     const first = scrollRef.current.querySelector<HTMLElement>(
