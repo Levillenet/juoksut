@@ -38,9 +38,16 @@ const SEVERITY_ORDER: Record<ConflictSeverity, number> = {
   warning: 1,
 };
 
-const PX_PER_5MIN = 22; // 264 px per tunti
 const ROW_HEIGHT = 64;
-const LEFT_COL = 220;
+// Sticky left column with venue/age labels. Smaller on mobile.
+const LEFT_COL_DESKTOP = 180;
+const LEFT_COL_MOBILE = 120;
+// pixels-per-minute bounds (user can zoom in/out within these)
+const MIN_PX_PER_MIN = 2;
+const MAX_PX_PER_MIN = 50;
+// auto-fit bounds (default when no user zoom)
+const AUTOFIT_MIN = 4;
+const AUTOFIT_MAX = 20;
 
 function ageClassSort(a: string, b: string): number {
   const order = (s: string) => {
