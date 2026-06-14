@@ -81,6 +81,7 @@ interface VenueState {
   id: string;
   busyUntil: number;
   lastWasHurdle: boolean;
+  lastEventName: string | null;
 }
 
 interface AgeState {
@@ -89,6 +90,8 @@ interface AgeState {
 
 export function solve(input: SolverInput): SolverResult {
   const warnings: string[] = [];
+  const allowChange = input.allowDistanceChangeSameVenue !== false;
+  const minChangeGap = Math.max(0, input.minDistanceChangeGapMin ?? 5);
   if (input.windows.length === 0) {
     return { items: [], warnings: ["Ei aikaikkunoita määritelty."] };
   }
