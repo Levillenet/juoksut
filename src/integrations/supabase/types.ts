@@ -332,6 +332,48 @@ export type Database = {
         }
         Relationships: []
       }
+      event_duration_stats: {
+        Row: {
+          category: string
+          event_name: string
+          group_name: string
+          id: string
+          last_updated: string
+          max_participants: number | null
+          median_duration_min: number | null
+          median_participants: number | null
+          n_samples: number
+          p90_duration_min: number | null
+          sub_category: string
+        }
+        Insert: {
+          category?: string
+          event_name: string
+          group_name: string
+          id?: string
+          last_updated?: string
+          max_participants?: number | null
+          median_duration_min?: number | null
+          median_participants?: number | null
+          n_samples?: number
+          p90_duration_min?: number | null
+          sub_category?: string
+        }
+        Update: {
+          category?: string
+          event_name?: string
+          group_name?: string
+          id?: string
+          last_updated?: string
+          max_participants?: number | null
+          median_duration_min?: number | null
+          median_participants?: number | null
+          n_samples?: number
+          p90_duration_min?: number | null
+          sub_category?: string
+        }
+        Relationships: []
+      }
       external_competitions: {
         Row: {
           classification: string
