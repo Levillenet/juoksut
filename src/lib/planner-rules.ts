@@ -103,7 +103,7 @@ export function computeRuleEstimate(input: RuleInput): RuleResult {
 
   switch (kind) {
     case "track": {
-      const lanes = Math.max(1, input.heat_size ?? defaultHeatSize(input.event_name));
+      const lanes = Math.max(1, input.heat_size ?? defaultHeatSize(input.event_name, input.sub_category));
       const perHeat = minutesPerHeat(input.event_name, input.sub_category);
       const heats = Math.max(1, Math.ceil(n / lanes));
       const minutes = heats * perHeat;
@@ -114,20 +114,22 @@ export function computeRuleEstimate(input: RuleInput): RuleResult {
       };
     }
     case "jump_pit": {
-      const raw = (n * 1.2) / stations + 15;
+      // Valmisteluaika kasvaa isoilla porukoilla (YAG 2022 -datan mukaan).
+      const valm = 15 + Math.max(0, n - 30) * 0.3;
+      const raw = (n * 1.2) / stations + valm;
       const minutes = Math.round(raw);
       return {
         minutes,
-        formula: `${n} × 1,2 min / ${stations} paikka${stations === 1 ? "" : "a"} + 15 min valm. = ${minutes} min`,
+        formula: `${n} × 1,2 min / ${stations} paikka${stations === 1 ? "" : "a"} + ${Math.round(valm)} min valm. = ${minutes} min`,
         kind,
       };
     }
     case "high_jump": {
-      const raw = 60 + Math.max(0, n - 10) * 2;
+      const raw = 60 + Math.max(0, n - 10) * 1.2;
       const minutes = clamp(Math.round(raw), 45, 150);
       return {
         minutes,
-        formula: `60 + max(0; ${n} − 10) × 2 = ${Math.round(raw)} min (rajat 45–150) → ${minutes} min`,
+        formula: `60 + max(0; ${n} − 10) × 1,2 = ${Math.round(raw)} min (rajat 45–150) → ${minutes} min`,
         kind,
       };
     }
