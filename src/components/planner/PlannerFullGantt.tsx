@@ -556,5 +556,6 @@ export function PlannerFullGantt({
         />
       </div>
     </div>
+    </TooltipProvider>
   );
 }
