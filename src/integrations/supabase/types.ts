@@ -245,6 +245,7 @@ export type Database = {
       competition_plans: {
         Row: {
           created_at: string
+          day_windows: Json | null
           default_between_heats_min: number
           default_hurdle_setup_min: number
           default_hurdle_teardown_min: number
@@ -253,6 +254,7 @@ export type Database = {
           default_setup_vertical_min: number
           ends_at: string
           id: string
+          is_multi_day: boolean
           name: string
           notes: string | null
           starts_at: string
@@ -261,6 +263,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          day_windows?: Json | null
           default_between_heats_min?: number
           default_hurdle_setup_min?: number
           default_hurdle_teardown_min?: number
@@ -269,6 +272,7 @@ export type Database = {
           default_setup_vertical_min?: number
           ends_at: string
           id?: string
+          is_multi_day?: boolean
           name: string
           notes?: string | null
           starts_at: string
@@ -277,6 +281,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          day_windows?: Json | null
           default_between_heats_min?: number
           default_hurdle_setup_min?: number
           default_hurdle_teardown_min?: number
@@ -285,6 +290,7 @@ export type Database = {
           default_setup_vertical_min?: number
           ends_at?: string
           id?: string
+          is_multi_day?: boolean
           name?: string
           notes?: string | null
           starts_at?: string
@@ -536,6 +542,7 @@ export type Database = {
       plan_events: {
         Row: {
           age_class: string
+          allowed_days: string[] | null
           between_heats_min: number | null
           created_at: string
           event_name: string
@@ -556,6 +563,7 @@ export type Database = {
         }
         Insert: {
           age_class: string
+          allowed_days?: string[] | null
           between_heats_min?: number | null
           created_at?: string
           event_name: string
@@ -576,6 +584,7 @@ export type Database = {
         }
         Update: {
           age_class?: string
+          allowed_days?: string[] | null
           between_heats_min?: number | null
           created_at?: string
           event_name?: string
@@ -958,7 +967,28 @@ export type Database = {
           updated_count: number
         }[]
       }
+      get_competition_structure: {
+        Args: { p_competition_id: number }
+        Returns: {
+          age_class: string
+          duration_min: number
+          event_key: string
+          event_name_display: string
+          first_capture: string
+          last_capture: string
+          participants: number
+        }[]
+      }
       get_event_catalog: {
+        Args: never
+        Returns: {
+          age_class: string
+          event_key: string
+          event_name_display: string
+          sample_count: number
+        }[]
+      }
+      get_event_catalog_full: {
         Args: never
         Returns: {
           age_class: string
@@ -1040,6 +1070,19 @@ export type Database = {
       is_team_owner: {
         Args: { _team: string; _user: string }
         Returns: boolean
+      }
+      list_planner_template_competitions: {
+        Args: { p_year: number }
+        Returns: {
+          age_class_count: number
+          competition_date: string
+          competition_id: number
+          competition_name: string
+          duration_days: number
+          event_count: number
+          location: string
+          result_count: number
+        }[]
       }
       mark_pbs_for_competitions: {
         Args: { comp_ids: number[] }
