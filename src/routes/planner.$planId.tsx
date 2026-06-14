@@ -903,9 +903,6 @@ function CalendarView({
                 );
               })}
 
-                  </div>
-                );
-              })}
             </div>
           );
         })}
