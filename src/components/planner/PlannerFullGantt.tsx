@@ -202,7 +202,10 @@ export function PlannerFullGantt({
     const baseLeft = parseFloat(el.dataset.baseLeft || "0");
     const finalLeft = parseFloat(el.style.left || `${baseLeft}`);
     const minutes = Math.round((finalLeft - baseLeft) / PX_PER_5MIN) * 5;
-    if (minutes === 0) return;
+    if (minutes === 0) {
+      onSelectItem?.(d.id);
+      return;
+    }
     const newStart = new Date(d.origStart + minutes * 60000);
     const newEnd = new Date(d.origEnd + minutes * 60000);
     updateTime.mutate({
