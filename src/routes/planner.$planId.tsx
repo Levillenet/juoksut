@@ -122,6 +122,29 @@ function PlanEditor() {
     },
     staleTime: 60 * 60 * 1000,
   });
+  const stadiumsQ = useQuery({
+    queryKey: ["planner", "stadiums"],
+    queryFn: async (): Promise<StadiumRow[]> => {
+      const { data, error } = await supabase
+        .from("stadiums")
+        .select("id, user_id, name, location, notes")
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as StadiumRow[];
+    },
+    staleTime: 60 * 1000,
+  });
+  const conflictGroupsQ = useQuery({
+    queryKey: ["planner", "conflict-groups", planId],
+    queryFn: async (): Promise<ConflictGroupRow[]> => {
+      const { data, error } = await supabase
+        .from("plan_conflict_groups")
+        .select("*")
+        .eq("plan_id", planId);
+      if (error) throw error;
+      return (data ?? []) as ConflictGroupRow[];
+    },
+  });
 
   const invalidate = (k: string) => qc.invalidateQueries({ queryKey: ["planner", k, planId] });
   const invalidateAll = () => {
@@ -129,6 +152,7 @@ function PlanEditor() {
     invalidate("venues");
     invalidate("events");
     invalidate("schedule");
+    invalidate("conflict-groups");
   };
 
   if (planQ.isLoading) return <div className="p-8 text-sm">Ladataan…</div>;
@@ -138,6 +162,8 @@ function PlanEditor() {
   const events = eventsQ.data ?? [];
   const schedule = scheduleQ.data ?? [];
   const catalog = catalogQ.data ?? [];
+  const stadiums = stadiumsQ.data ?? [];
+  const conflictGroups = conflictGroupsQ.data ?? [];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
