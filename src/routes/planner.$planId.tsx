@@ -1364,12 +1364,14 @@ function ScheduleTab({
   venues,
   events,
   schedule,
+  conflictGroups,
   onChange,
 }: {
   plan: PlanRow;
   venues: VenueRow[];
   events: PlanEventRow[];
   schedule: ScheduleItemRow[];
+  conflictGroups: ConflictGroupRow[];
   onChange: () => void;
 }) {
   const [warnings, setWarnings] = useState<string[]>([]);
