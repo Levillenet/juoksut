@@ -1278,6 +1278,7 @@ function EventsTab({
               ? (parseInt((name.match(/(\d{2,5})\s*m\b/) || [])[1] || "0", 10) >= 1000 ? 16 : 8)
               : 8,
             final_format: "direct",
+            officials_count: getDefaultOfficialsCount(name, null),
             sort_order: events.length,
           });
           onChange();
