@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   resolveDayWindows,
@@ -10,15 +11,30 @@ import {
 } from "@/lib/planner-types";
 import { resolveTimings } from "@/lib/planner-timings";
 import { getEventColorClass } from "@/lib/planner-defaults";
+import type { Conflict, ConflictSeverity } from "@/lib/planner-solver";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Props {
   plan: PlanRow;
   venues: VenueRow[];
   events: PlanEventRow[];
   schedule: ScheduleItemRow[];
-  conflicts: Array<{ id: string; reason: string }>;
+  conflicts: Conflict[];
+  /** Aikatauluitemien id:t joita korostetaan hetkellisesti. */
+  highlightIds?: string[];
   onChange: () => void;
 }
+
+const SEVERITY_ORDER: Record<ConflictSeverity, number> = {
+  critical: 3,
+  high: 2,
+  warning: 1,
+};
 
 const PX_PER_5MIN = 22; // 264 px per tunti
 const ROW_HEIGHT = 64;
