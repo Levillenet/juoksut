@@ -813,7 +813,15 @@ function EventsTab({
                     const isHurdleField =
                       key === "hurdle_setup_min" || key === "hurdle_teardown_min";
                     const isHurdleEvt = /aita|aidat|hurdle/i.test(e.event_name);
+                    const isPerHeatField = key === "between_heats_min";
                     if (isHurdleField && !isHurdleEvt) {
+                      return (
+                        <td key={key} className="py-1 pr-2 text-right text-muted-foreground">
+                          –
+                        </td>
+                      );
+                    }
+                    if (isPerHeatField && !isTrack) {
                       return (
                         <td key={key} className="py-1 pr-2 text-right text-muted-foreground">
                           –
