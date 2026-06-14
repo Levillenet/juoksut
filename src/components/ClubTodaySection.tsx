@@ -9,9 +9,9 @@ import {
   fetchRelayLegsForRows,
   fetchTodayClubs,
   getRelayLegs,
-  normalizeEventName,
   type ClubTodayRow,
 } from "@/lib/club-today";
+import { pbEventKey } from "@/lib/pb-key";
 import { formatImprovement } from "@/lib/records";
 import { formatRelayLegsFromRows } from "@/lib/tuloslista";
 
