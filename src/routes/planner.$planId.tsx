@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { ArrowLeft, Trash2, Plus, Wand2, Save, Download, LayoutGrid, Sparkles } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -943,6 +943,14 @@ function EventPickerDialog({
   const [customAge, setCustomAge] = useState("");
   const [customName, setCustomName] = useState("");
 
+  // Keep `age` in sync once the catalog finishes loading or changes.
+  useEffect(() => {
+    if (ageClasses.length === 0) return;
+    if (!age || !ageClasses.includes(age)) {
+      setAge(ageClasses[0]);
+    }
+  }, [ageClasses, age]);
+
   const eventOptions = useMemo(
     () =>
       catalog
@@ -1192,6 +1200,12 @@ function ScheduleTab({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold">Aikataulu</h2>
         <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link to="/planner/$planId/gantt" params={{ planId: plan.id }}>
+              <LayoutGrid className="mr-2 h-4 w-4" />
+              Avaa koko näytön aikataulu
+            </Link>
+          </Button>
           <Button onClick={generate} disabled={generating}>
             <Wand2 className="mr-2 h-4 w-4" />
             {generating ? "Generoidaan…" : "Generoi aikataulu"}

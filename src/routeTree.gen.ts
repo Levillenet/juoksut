@@ -42,6 +42,7 @@ import { Route as AnnouncerCombinedRouteImport } from './routes/announcer.combin
 import { Route as AdminClubLocationsRouteImport } from './routes/admin.club-locations'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
+import { Route as PlannerPlanIdGanttRouteImport } from './routes/planner.$planId.gantt'
 import { Route as ApiPublicHooksHarvestResultsRouteImport } from './routes/api/public/hooks/harvest-results'
 import { Route as ApiPublicHooksHarvestKilpailukalenteriRouteImport } from './routes/api/public/hooks/harvest-kilpailukalenteri'
 import { Route as ApiPublicTuloslistaLiveV1CompetitionIdRouteImport } from './routes/api/public/tuloslista/live/v1/competition/$id'
@@ -213,6 +214,11 @@ const RoundEventIdRoundIdRoute = RoundEventIdRoundIdRouteImport.update({
   path: '/round/$eventId/$roundId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlannerPlanIdGanttRoute = PlannerPlanIdGanttRouteImport.update({
+  id: '/gantt',
+  path: '/gantt',
+  getParentRoute: () => PlannerPlanIdRoute,
+} as any)
 const ApiPublicHooksHarvestResultsRoute =
   ApiPublicHooksHarvestResultsRouteImport.update({
     id: '/api/public/hooks/harvest-results',
@@ -266,7 +272,7 @@ export interface FileRoutesByFullPath {
   '/announcer/live': typeof AnnouncerLiveRoute
   '/announcer/planning': typeof AnnouncerPlanningRoute
   '/athlete/$key': typeof AthleteKeyRoute
-  '/planner/$planId': typeof PlannerPlanIdRoute
+  '/planner/$planId': typeof PlannerPlanIdRouteWithChildren
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
   '/print/yag-calling': typeof PrintYagCallingRoute
@@ -277,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/announcer/': typeof AnnouncerIndexRoute
   '/planner/': typeof PlannerIndexRoute
   '/print/': typeof PrintIndexRoute
+  '/planner/$planId/gantt': typeof PlannerPlanIdGanttRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
@@ -303,7 +310,7 @@ export interface FileRoutesByTo {
   '/announcer/live': typeof AnnouncerLiveRoute
   '/announcer/planning': typeof AnnouncerPlanningRoute
   '/athlete/$key': typeof AthleteKeyRoute
-  '/planner/$planId': typeof PlannerPlanIdRoute
+  '/planner/$planId': typeof PlannerPlanIdRouteWithChildren
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
   '/print/yag-calling': typeof PrintYagCallingRoute
@@ -314,6 +321,7 @@ export interface FileRoutesByTo {
   '/announcer': typeof AnnouncerIndexRoute
   '/planner': typeof PlannerIndexRoute
   '/print': typeof PrintIndexRoute
+  '/planner/$planId/gantt': typeof PlannerPlanIdGanttRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
@@ -344,7 +352,7 @@ export interface FileRoutesById {
   '/announcer/live': typeof AnnouncerLiveRoute
   '/announcer/planning': typeof AnnouncerPlanningRoute
   '/athlete/$key': typeof AthleteKeyRoute
-  '/planner/$planId': typeof PlannerPlanIdRoute
+  '/planner/$planId': typeof PlannerPlanIdRouteWithChildren
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
   '/print/yag-calling': typeof PrintYagCallingRoute
@@ -355,6 +363,7 @@ export interface FileRoutesById {
   '/announcer/': typeof AnnouncerIndexRoute
   '/planner/': typeof PlannerIndexRoute
   '/print/': typeof PrintIndexRoute
+  '/planner/$planId/gantt': typeof PlannerPlanIdGanttRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
@@ -397,6 +406,7 @@ export interface FileRouteTypes {
     | '/announcer/'
     | '/planner/'
     | '/print/'
+    | '/planner/$planId/gantt'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
     | '/api/public/hooks/harvest-results'
@@ -434,6 +444,7 @@ export interface FileRouteTypes {
     | '/announcer'
     | '/planner'
     | '/print'
+    | '/planner/$planId/gantt'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
     | '/api/public/hooks/harvest-results'
@@ -474,6 +485,7 @@ export interface FileRouteTypes {
     | '/announcer/'
     | '/planner/'
     | '/print/'
+    | '/planner/$planId/gantt'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
     | '/api/public/hooks/harvest-results'
@@ -743,6 +755,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RoundEventIdRoundIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/planner/$planId/gantt': {
+      id: '/planner/$planId/gantt'
+      path: '/gantt'
+      fullPath: '/planner/$planId/gantt'
+      preLoaderRoute: typeof PlannerPlanIdGanttRouteImport
+      parentRoute: typeof PlannerPlanIdRoute
+    }
     '/api/public/hooks/harvest-results': {
       id: '/api/public/hooks/harvest-results'
       path: '/api/public/hooks/harvest-results'
@@ -799,13 +818,25 @@ const AnnouncerRouteWithChildren = AnnouncerRoute._addFileChildren(
   AnnouncerRouteChildren,
 )
 
+interface PlannerPlanIdRouteChildren {
+  PlannerPlanIdGanttRoute: typeof PlannerPlanIdGanttRoute
+}
+
+const PlannerPlanIdRouteChildren: PlannerPlanIdRouteChildren = {
+  PlannerPlanIdGanttRoute: PlannerPlanIdGanttRoute,
+}
+
+const PlannerPlanIdRouteWithChildren = PlannerPlanIdRoute._addFileChildren(
+  PlannerPlanIdRouteChildren,
+)
+
 interface PlannerRouteChildren {
-  PlannerPlanIdRoute: typeof PlannerPlanIdRoute
+  PlannerPlanIdRoute: typeof PlannerPlanIdRouteWithChildren
   PlannerIndexRoute: typeof PlannerIndexRoute
 }
 
 const PlannerRouteChildren: PlannerRouteChildren = {
-  PlannerPlanIdRoute: PlannerPlanIdRoute,
+  PlannerPlanIdRoute: PlannerPlanIdRouteWithChildren,
   PlannerIndexRoute: PlannerIndexRoute,
 }
 
