@@ -308,6 +308,8 @@ function BasicsTab({
     notes: plan.notes ?? "",
     totalOfficials: plan.total_officials_available ?? 10,
     officialsChangeover: plan.officials_changeover_min ?? 10,
+    allowDistanceChange: plan.allow_distance_change_same_venue ?? true,
+    minDistanceChangeGap: plan.min_distance_change_gap_min ?? 5,
   });
   const [demoBusy, setDemoBusy] = useState(false);
 
