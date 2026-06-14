@@ -176,7 +176,7 @@ export function PlannerFullGantt({
     const width = Math.max(36, (dur / 5) * PX_PER_5MIN - 2);
     const top = rowIdx * ROW_HEIGHT + 3;
     const conflictReason = conflictMap.get(s.id);
-    const heats = s.heats_count ?? 1;
+    const heats = 1;
     const phase = s.phase;
     const heatLabel = t.isTrack && heats > 1 ? ` (${heats}) ${t.minutesPerHeatMin}min/erä` : "";
     return (
