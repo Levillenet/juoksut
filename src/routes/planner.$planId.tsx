@@ -995,6 +995,12 @@ function EventsTab({
               <th className="py-1 pr-2 text-right" title="Aitojen purku">
                 Aidat−
               </th>
+              <th
+                className="py-1 pr-2 text-right"
+                title="Toimitsijoita tarvitaan tähän lajiin. Voit muokata jos kentälläsi on erikoisjärjestely."
+              >
+                Toimitsijoita
+              </th>
               {plan.is_multi_day && <th className="py-1 pr-2">Sallitut päivät</th>}
               <th></th>
             </tr>
