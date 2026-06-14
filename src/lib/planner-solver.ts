@@ -155,13 +155,18 @@ export function solve(input: SolverInput): SolverResult {
         });
       }
       if (ev.finalBMin) {
+        // KORJAUS 2: final_b alkaa heti final_a:n päättymisestä (max 2 min)
+        // ja samoilla suorituspaikoilla. Ei riipu suoraan heatsista.
         segments.push({
           ...baseSeg,
           phase: "final_b",
           durationMin: ev.finalBMin,
           needsStations: 1,
-          afterEventIds: [heatsId],
-          recoveryAfterPrev: input.defaultRecoveryMin,
+          afterEventIds: [],
+          recoveryAfterPrev: 0,
+          afterPhaseKey: `${ev.id}|final_a`,
+          maxGapAfterPhaseMin: 2,
+          sameVenueAsPhase: true,
         });
       }
     } else {
