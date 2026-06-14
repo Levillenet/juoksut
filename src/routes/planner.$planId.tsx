@@ -543,6 +543,19 @@ function BasicsTab({
       )}
 
       <h3 className="pt-2 text-sm font-semibold text-muted-foreground">
+        Toimitsijat
+      </h3>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {numField("totalOfficials", "Toimitsijoita saatavilla yhteensä")}
+        {numField("officialsChangeover", "Siirtymäaika lajien välillä (min)")}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Sama toimitsija voi vetää useamman lajin samassa kisassa, jos lajien välillä on
+        riittävä tauko. Tällä hetkellä Aikataulu-välilehti laskee karkean huippukuorman
+        olettaen että jokainen samaan aikaan käynnissä oleva laji tarvitsee omat toimitsijansa.
+      </p>
+
+      <h3 className="pt-2 text-sm font-semibold text-muted-foreground">
         Aika-asetusten oletukset
       </h3>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
