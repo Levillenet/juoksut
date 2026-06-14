@@ -130,10 +130,12 @@ export function solve(input: SolverInput): SolverResult {
     };
     if (ev.final_format === "a_b") {
       const heatsId = ev.id;
+      // KORJAUS 4: estimateMinutes = alkuerien kesto (computeRuleEstimate palauttaa heats × perHeat).
+      // A/B-finaalit ovat omat segmentit, niiden kestoja ei vähennetä heatsista.
       segments.push({
         ...baseSeg,
         phase: "heats",
-        durationMin: Math.max(5, ev.estimateMinutes - (ev.finalAMin ?? 0) - (ev.finalBMin ?? 0)),
+        durationMin: Math.max(5, ev.estimateMinutes),
         afterEventIds: [],
         recoveryAfterPrev: 0,
       });
@@ -168,12 +170,16 @@ export function solve(input: SolverInput): SolverResult {
     }
   }
 
+  // KORJAUS 1: vaihejärjestys saman eventin sisällä on kova rajoite.
+  // heats (0) ennen final_a (1) ennen final_b (2). Single = 0.
+  const phaseOrder = (p: SchedulePhase): number =>
+    p === "heats" ? 0 : p === "final_a" ? 1 : p === "final_b" ? 2 : 0;
+
   // 2) Järjestys:
-  //   1) ryhmittele saman matkan juoksulajit yhteen (BBB_run_<dist>)
-  //   2) aita-lajit omaan blokkiin (AAA_hurdles_<dist>)
-  //   3) kenttälajit (CCC_evt_<id>)
-  // Saman ryhmän sisällä pisin & rinnakkaisin ensin.
+  //   - Saman eventin vaiheet aina heats → final_a → final_b (kova rajoite).
+  //   - Muuten ryhmittele saman matkan juoksulajit; pisin & rinnakkaisin ensin.
   segments.sort((a, b) => {
+    if (a.eventId === b.eventId) return phaseOrder(a.phase) - phaseOrder(b.phase);
     if (a.groupKey !== b.groupKey) return a.groupKey.localeCompare(b.groupKey);
     return b.durationMin * b.needsStations - a.durationMin * a.needsStations;
   });
