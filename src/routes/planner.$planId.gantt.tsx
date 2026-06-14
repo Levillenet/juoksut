@@ -1,7 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { ArrowLeft } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +20,18 @@ export const Route = createFileRoute("/planner/$planId/gantt")({
 
 function PlannerFullGanttPage() {
   const { planId } = Route.useParams();
+  const navigate = useNavigate();
   const qc = useQueryClient();
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        navigate({ to: "/planner/$planId", params: { planId } });
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [navigate, planId]);
 
   const planQ = useQuery({
     queryKey: ["planner", "plan", planId],

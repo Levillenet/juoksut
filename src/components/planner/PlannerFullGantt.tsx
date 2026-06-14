@@ -143,20 +143,34 @@ export function PlannerFullGantt({
 
   // ── Responsive layout & zoom ─────────────────────────────────────────
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [scrollState, setScrollState] = useState({ left: 0, width: 1, view: 1 });
   const [containerWidth, setContainerWidth] = useState<number>(() =>
     typeof window === "undefined" ? 1200 : window.innerWidth,
   );
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setScrollState({
+      left: el.scrollLeft,
+      width: Math.max(1, el.scrollWidth),
+      view: Math.max(1, el.clientWidth),
+    });
+  }, []);
+
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver((entries) => {
       const w = entries[0]?.contentRect.width;
-      if (w && Math.abs(w - containerWidth) > 4) setContainerWidth(w);
+      if (w) {
+        setContainerWidth((prev) => (Math.abs(w - prev) > 4 ? w : prev));
+        window.requestAnimationFrame(updateScrollState);
+      }
     });
     ro.observe(el);
     return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [updateScrollState]);
 
   const isMobile = containerWidth > 0 && containerWidth < 768;
   const LEFT_COL = isMobile ? LEFT_COL_MOBILE : LEFT_COL_DESKTOP;
@@ -189,6 +203,11 @@ export function PlannerFullGantt({
   const PX_PER_5MIN = pxPerMin * 5;
   const totalWidth = LEFT_COL + (totalMin / 5) * PX_PER_5MIN;
   const zoomPercent = Math.round((pxPerMin / autoFitPxMin) * 100);
+  const miniThumbWidth = Math.min(100, (scrollState.view / scrollState.width) * 100);
+  const miniThumbLeft = Math.min(
+    Math.max(0, (scrollState.left / scrollState.width) * 100),
+    Math.max(0, 100 - miniThumbWidth),
+  );
 
   const zoomIn = useCallback(
     () => setZoomFactor((z) => Math.min(z * 1.5, MAX_PX_PER_MIN / Math.max(0.01, autoFitPxMin))),
@@ -217,6 +236,10 @@ export function PlannerFullGantt({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [zoomIn, zoomOut, zoomReset]);
+
+  useEffect(() => {
+    updateScrollState();
+  }, [totalWidth, containerWidth, updateScrollState]);
 
   const dragRef = useRef<{
     id: string;
@@ -309,7 +332,7 @@ export function PlannerFullGantt({
     const startOff = (new Date(s.starts_at).getTime() - startMs) / 60000;
     const dur = (new Date(s.ends_at).getTime() - new Date(s.starts_at).getTime()) / 60000;
     if (startOff + dur < 0 || startOff > totalMin) return null;
-    const left = LEFT_COL + (startOff / 5) * PX_PER_5MIN;
+    const left = (startOff / 5) * PX_PER_5MIN;
     const width = Math.max(18, (dur / 5) * PX_PER_5MIN - 2);
     const top = rowIdx * ROW_HEIGHT + 3;
     const conflict = conflictMap.get(s.id);
@@ -463,7 +486,7 @@ export function PlannerFullGantt({
 
   const TimeAxis = () => (
     <div
-      className="sticky top-0 z-30 flex border-b bg-background shadow-sm"
+        className="sticky top-0 z-30 flex border-b bg-background shadow-sm"
       style={{ width: totalWidth, height: 44 }}
     >
       <div
@@ -479,7 +502,7 @@ export function PlannerFullGantt({
           return (
             <div
               key={`h-${m}`}
-              className="absolute top-0 border-l-2 border-border px-1 text-sm font-bold"
+              className="absolute top-0 border-l-2 border-border px-1 text-base font-bold"
               style={{ left: (m / 5) * PX_PER_5MIN, height: 24, lineHeight: "24px" }}
             >
               {d.getHours()}
@@ -537,28 +560,24 @@ export function PlannerFullGantt({
   }) => (
     <div className="border-b" style={{ width: totalWidth }}>
       <div
-        className="sticky left-0 z-20 border-b bg-muted/40 px-2 py-1 text-xs font-bold uppercase tracking-wide"
+        className="sticky left-0 z-20 border-b bg-background px-2 py-1 text-xs font-bold uppercase tracking-wide shadow-md"
         style={{ width: LEFT_COL }}
       >
         {title}
       </div>
       <div className="relative" style={{ height: rows.length * ROW_HEIGHT }}>
         {/* Row labels (sticky left) */}
-        {rows.map((r, i) => (
-          <div
-            key={`lbl-${r.id}`}
-            className="sticky left-0 z-10 flex items-center border-b border-r bg-background px-2 text-xs shadow-md"
-            style={{
-              width: LEFT_COL,
-              height: ROW_HEIGHT,
-              top: 0,
-              position: "absolute",
-              transform: `translateY(${i * ROW_HEIGHT}px)`,
-            }}
-          >
-            <span className="truncate font-medium">{r.label}</span>
-          </div>
-        ))}
+        <div className="sticky left-0 z-20 bg-background shadow-md" style={{ width: LEFT_COL }}>
+          {rows.map((r) => (
+            <div
+              key={`lbl-${r.id}`}
+              className="flex items-center border-b border-r bg-background px-2 text-xs"
+              style={{ height: ROW_HEIGHT }}
+            >
+              <span className="truncate font-medium">{r.label}</span>
+            </div>
+          ))}
+        </div>
         {/* Grid lines + bars */}
         <div
           className="absolute top-0"
@@ -683,6 +702,7 @@ export function PlannerFullGantt({
       <div
         ref={scrollRef}
         className="relative flex-1 overflow-auto"
+        onScroll={updateScrollState}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
       >
@@ -699,6 +719,14 @@ export function PlannerFullGantt({
             dayItems.filter((s) => evMap.get(s.plan_event_id)?.age_class === age)
           }
         />
+      </div>
+      <div className="border-t bg-card px-3 py-1.5">
+        <div className="relative h-2 overflow-hidden rounded-full bg-muted">
+          <div
+            className="absolute top-0 h-2 rounded-full bg-primary/70"
+            style={{ left: `${miniThumbLeft}%`, width: `${miniThumbWidth}%` }}
+          />
+        </div>
       </div>
     </div>
     </TooltipProvider>
