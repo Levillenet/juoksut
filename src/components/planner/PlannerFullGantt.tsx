@@ -567,21 +567,17 @@ export function PlannerFullGantt({
       </div>
       <div className="relative" style={{ height: rows.length * ROW_HEIGHT }}>
         {/* Row labels (sticky left) */}
-        {rows.map((r, i) => (
-          <div
-            key={`lbl-${r.id}`}
-            className="sticky left-0 z-10 flex items-center border-b border-r bg-background px-2 text-xs shadow-md"
-            style={{
-              width: LEFT_COL,
-              height: ROW_HEIGHT,
-              top: 0,
-              position: "absolute",
-              transform: `translateY(${i * ROW_HEIGHT}px)`,
-            }}
-          >
-            <span className="truncate font-medium">{r.label}</span>
-          </div>
-        ))}
+        <div className="sticky left-0 z-20 bg-background shadow-md" style={{ width: LEFT_COL }}>
+          {rows.map((r) => (
+            <div
+              key={`lbl-${r.id}`}
+              className="flex items-center border-b border-r bg-background px-2 text-xs"
+              style={{ height: ROW_HEIGHT }}
+            >
+              <span className="truncate font-medium">{r.label}</span>
+            </div>
+          ))}
+        </div>
         {/* Grid lines + bars */}
         <div
           className="absolute top-0"
