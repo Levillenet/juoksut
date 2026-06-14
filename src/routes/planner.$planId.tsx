@@ -6,6 +6,7 @@ import { ArrowLeft, Trash2, Plus, Wand2, Save, Download, LayoutGrid, Sparkles, A
 import { downloadPlannerSchedulePdf } from "@/lib/planner-schedule-pdf";
 import { downloadPlannerScheduleVisualXlsx } from "@/lib/planner-schedule-xlsx";
 import { PlannerFullGantt } from "@/components/planner/PlannerFullGantt";
+import { ScheduleItemSheet } from "@/components/planner/ScheduleItemSheet";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
