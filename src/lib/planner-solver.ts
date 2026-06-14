@@ -344,6 +344,15 @@ export function solve(input: SolverInput): SolverResult {
   return { items, warnings };
 }
 
+export type ConflictSeverity = "critical" | "high" | "warning";
+export interface Conflict {
+  id: string;
+  reason: string;
+  severity: ConflictSeverity;
+  /** Muut aikatauluitemit jotka liittyvät samaan konfliktiin. */
+  relatedIds?: string[];
+}
+
 /** Konfliktitarkistus käyttäjän muokkaamalle aikataululle. */
 export function detectConflicts(
   items: ScheduleItemRow[],
@@ -351,10 +360,10 @@ export function detectConflicts(
   venues: VenueRow[],
   defaultRecoveryMin: number,
   conflictGroups: ConflictGroupRow[] = [],
-): Array<{ id: string; reason: string }> {
+): Conflict[] {
   const evMap = new Map(events.map((e) => [e.id, e]));
   const venueMap = new Map(venues.map((v) => [v.id, v]));
-  const out: Array<{ id: string; reason: string }> = [];
+  const out: Conflict[] = [];
 
   // Suorituspaikan tyyppi vs. laji
   for (const it of items) {
@@ -364,6 +373,7 @@ export function detectConflicts(
     if (!isVenueForEvent(v.kind, ev.event_name)) {
       out.push({
         id: it.id,
+        severity: "high",
         reason: `Laji "${ev.event_name}" ei kuulu suorituspaikalle ${v.name}`,
       });
     }
@@ -381,6 +391,8 @@ export function detectConflicts(
       if (arr[i].starts_at < arr[i - 1].ends_at) {
         out.push({
           id: arr[i].id,
+          severity: "high",
+          relatedIds: [arr[i - 1].id],
           reason: `Päällekkäisyys paikalla ${venueMap.get(venueId)?.name ?? venueId}`,
         });
       }
@@ -396,6 +408,8 @@ export function detectConflicts(
           if (gap < need) {
             out.push({
               id: arr[i].id,
+              severity: "warning",
+              relatedIds: [arr[i - 1].id],
               reason: `Matkanvaihto paikalla ${venueMap.get(venueId)?.name ?? venueId}: ${prevEv.event_name} → ${curEv.event_name} tarvitsee ${need} min siirron (nyt ${Math.round(gap)} min).`,
             });
           }
@@ -412,6 +426,7 @@ export function detectConflicts(
         if (blockHasFlat && inHurdleBlock) {
           out.push({
             id: it.id,
+            severity: "warning",
             reason: `Aitablokki rikkoutuu paikalla ${venueMap.get(venueId)?.name ?? venueId}`,
           });
         }
@@ -435,7 +450,12 @@ export function detectConflicts(
     arr.sort((a, b) => a.starts_at.localeCompare(b.starts_at));
     for (let i = 1; i < arr.length; i++) {
       if (arr[i].starts_at < arr[i - 1].ends_at) {
-        out.push({ id: arr[i].id, reason: `Sama ikäryhmä ${age} päällekkäin` });
+        out.push({
+          id: arr[i].id,
+          severity: "critical",
+          relatedIds: [arr[i - 1].id],
+          reason: `Sama ikäryhmä ${age} päällekkäin`,
+        });
       }
     }
   }
@@ -456,6 +476,8 @@ export function detectConflicts(
         const ev = evMap.get(eventId);
         out.push({
           id: f.id,
+          severity: "high",
+          relatedIds: [heats.id],
           reason: `Palautusaika alle ${defaultRecoveryMin} min (${Math.round(gapMin)} min) – ${ev?.event_name ?? ""}`,
         });
       }
@@ -471,7 +493,6 @@ export function detectConflicts(
       const relevant = items
         .filter((it) => activeVenueIds.includes(it.venue_id))
         .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
-      // Sweep-line: laske samanaikaisten määrä jokaisessa alkupisteessä
       for (let i = 0; i < relevant.length; i++) {
         const it = relevant[i];
         const overlapping = relevant.filter(
@@ -480,6 +501,8 @@ export function detectConflicts(
         if (overlapping.length + 1 > g.max_concurrent) {
           out.push({
             id: it.id,
+            severity: "high",
+            relatedIds: overlapping.map((o) => o.id),
             reason: `Rajoiteryhmä "${g.name}" rikkoutuu (max ${g.max_concurrent} samaan aikaan)`,
           });
         }
