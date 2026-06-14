@@ -82,6 +82,14 @@ export function solve(input: SolverInput): SolverResult {
   if (input.windows.length === 0) {
     return { items: [], warnings: ["Ei aikaikkunoita määritelty."] };
   }
+  // Käytä vain included-paikkoja
+  const usableVenues = input.venues.filter((v) => v.included !== false);
+  const conflictGroups = (input.conflictGroups ?? []).map((g) => ({
+    ...g,
+    venue_ids: g.venue_ids.filter((vid) => usableVenues.some((v) => v.id === vid)),
+  }));
+  // Aikajanat per rajoiteryhmä: lista (startMs,endMs) sijoitetuista segmenteistä
+  const groupBusy: Array<Array<{ s: number; e: number }>> = conflictGroups.map(() => []);
 
   // 1) Pilko lajit segmenteiksi
   const segments: Segment[] = [];
