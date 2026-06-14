@@ -299,6 +299,7 @@ export function detectConflicts(
   events: PlanEventRow[],
   venues: VenueRow[],
   defaultRecoveryMin: number,
+  conflictGroups: ConflictGroupRow[] = [],
 ): Array<{ id: string; reason: string }> {
   const evMap = new Map(events.map((e) => [e.id, e]));
   const venueMap = new Map(venues.map((v) => [v.id, v]));
