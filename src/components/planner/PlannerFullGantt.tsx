@@ -629,15 +629,44 @@ export function PlannerFullGantt({
               })}
             </button>
           ))}
-        <label className="ml-auto flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={showEmpty}
-            onChange={(e) => setShowEmpty(e.target.checked)}
-            className="h-3.5 w-3.5 accent-primary"
-          />
-          Näytä myös tyhjät paikat
-        </label>
+        <div className="ml-auto flex items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={showEmpty}
+              onChange={(e) => setShowEmpty(e.target.checked)}
+              className="h-3.5 w-3.5 accent-primary"
+            />
+            Näytä myös tyhjät paikat
+          </label>
+          <div className="flex items-center gap-0.5 rounded-md border bg-background p-0.5">
+            <button
+              type="button"
+              onClick={zoomOut}
+              title="Zoom out (Ctrl+−)"
+              className="grid h-7 w-7 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={zoomReset}
+              title="Reset zoom (Ctrl+0)"
+              className="flex h-7 min-w-[3rem] items-center justify-center gap-1 rounded px-1.5 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <RotateCcw className="h-3 w-3" />
+              {zoomPercent}%
+            </button>
+            <button
+              type="button"
+              onClick={zoomIn}
+              title="Zoom in (Ctrl++)"
+              className="grid h-7 w-7 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-card/50 px-3 py-1.5 text-[10px] text-muted-foreground">
         {LEGEND.map((l) => (
