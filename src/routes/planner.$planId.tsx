@@ -19,6 +19,7 @@ import {
 } from "@/lib/planner-types";
 import { estimateDuration } from "@/lib/planner-estimate";
 import { solve, detectConflicts } from "@/lib/planner-solver";
+import { resolveTimings } from "@/lib/planner-timings";
 
 export const Route = createFileRoute("/planner/$planId")({
   component: PlanEditor,
