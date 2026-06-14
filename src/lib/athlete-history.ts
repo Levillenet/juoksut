@@ -5,6 +5,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { parseResult } from "./result-parse";
+import { normalizeEventName as _normalizeEventName } from "./event-name";
+import { pbEventKey, pbEventLabel, isSpecSensitive } from "./pb-key";
 
 export interface AthleteResultRow {
   id: string;
@@ -134,19 +136,7 @@ export interface EventGroup {
  *  - "N30 Pituus Ryhmä 1"                      → "Pituus"
  */
 export function normalizeEventName(name: string): string {
-  if (!name) return "";
-  let s = name
-    .replace(/^(?:[MNTmnt][0-9]*|[Pp][0-9]+)\s+/, "")
-    .replace(/^[0-9]+-ottelu\s+/i, "");
-  // Drop everything from " - R<digit>" onwards (heat schedules).
-  s = s.replace(/\s*-\s*R\d.*$/i, "");
-  // Drop trailing parenthesised notes.
-  s = s.replace(/\s*\([^)]*\)\s*$/g, "");
-  // Drop trailing "kilpailu N" / "kierros N" / "erä N".
-  s = s.replace(/\s+(?:kilpailu|kierros|erä)\s*\d+\s*$/i, "");
-  // Drop trailing "Ryhmä N".
-  s = s.replace(/\s+ryhmä\s*\d+\s*$/i, "");
-  return s.replace(/\s+/g, " ").trim();
+  return _normalizeEventName(name);
 }
 
 /** Numeric rank for an age class, so the PB selection can prefer the
@@ -168,11 +158,13 @@ export function ageClassRank(ageClass: string | null | undefined): number {
 export function groupByEvent(rows: AthleteResultRow[]): EventGroup[] {
   const map = new Map<string, EventGroup>();
   for (const r of rows) {
-    const normName = normalizeEventName(r.event_name);
-    const key = `${normName}|${r.sub_category}|${r.event_category}`;
+    // For hurdles/throws the spec (height/weight) is part of the group key,
+    // so a result with different equipment is shown as its own event.
+    const specKeyPart = pbEventKey(r);
+    const key = `${specKeyPart}|${r.sub_category}|${r.event_category}`;
     if (!map.has(key)) {
       map.set(key, {
-        eventName: normName,
+        eventName: pbEventLabel(r),
         category: r.event_category,
         subCategory: r.sub_category,
         lowerBetter: isLowerBetter(r.event_category, r.sub_category),
@@ -191,13 +183,18 @@ export function groupByEvent(rows: AthleteResultRow[]): EventGroup[] {
     const better = (a: AthleteResultRow, b: AthleteResultRow) =>
       g.lowerBetter ? (a.result_numeric ?? Infinity) < (b.result_numeric ?? Infinity)
                     : (a.result_numeric ?? -Infinity) > (b.result_numeric ?? -Infinity);
-    // Only consider rows from the highest age class the athlete has
-    // competed in for this event — lower age classes are hidden from PBs.
     const ranked = g.rows.filter((r) => r.result_numeric != null);
-    const maxRank = ranked.reduce((m, r) => Math.max(m, ageClassRank(r.age_class)), 0);
-    const pbCandidates = ranked.filter(
-      (r) => ageClassRank(r.age_class) === maxRank,
-    );
+    // For spec-sensitive events (hurdles/throws) the group already isolates
+    // a single spec, so all rows in the group are valid PB candidates.
+    // For other events we still prefer the athlete's highest age class.
+    const specSensitive = ranked.some((r) => isSpecSensitive(r.event_name));
+    let pbCandidates: AthleteResultRow[];
+    if (specSensitive) {
+      pbCandidates = ranked;
+    } else {
+      const maxRank = ranked.reduce((m, r) => Math.max(m, ageClassRank(r.age_class)), 0);
+      pbCandidates = ranked.filter((r) => ageClassRank(r.age_class) === maxRank);
+    }
     let best: AthleteResultRow | null = null;
     let bestIn: AthleteResultRow | null = null;
     let bestOut: AthleteResultRow | null = null;

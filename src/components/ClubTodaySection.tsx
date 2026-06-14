@@ -9,9 +9,9 @@ import {
   fetchRelayLegsForRows,
   fetchTodayClubs,
   getRelayLegs,
-  normalizeEventName,
   type ClubTodayRow,
 } from "@/lib/club-today";
+import { pbEventKey } from "@/lib/pb-key";
 import { formatImprovement } from "@/lib/records";
 import { formatRelayLegsFromRows } from "@/lib/tuloslista";
 
@@ -285,7 +285,7 @@ export function ClubTodaySection({
                     </h3>
                     <ul className="divide-y divide-border rounded-lg border bg-background/50">
                       {g.rows.map((r, idx) => {
-                        const pb = pbs[`${r.athlete_key}|${normalizeEventName(r.event_name)}`];
+                        const pb = pbs[`${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`];
                         const lowerBetter = r.event_category === "Track";
                         const beatsPrev =
                           pb != null &&

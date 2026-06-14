@@ -116,25 +116,27 @@ export async function fetchClubPbs(
   // group by normalized name in memory.
   let query = supabase
     .from("athlete_results")
-    .select("athlete_key, event_name, event_category, sub_category, result_text, result_numeric, competition_date")
+    .select("athlete_key, event_name, event_category, sub_category, age_class, result_text, result_numeric, competition_date")
     .in("athlete_key", athleteKeys)
     .not("result_numeric", "is", null)
     .limit(10000);
   if (beforeISO) query = query.lt("captured_at", beforeISO);
   const { data, error } = await query;
   if (error) throw error;
+  const { pbEventKey } = await import("./pb-key");
   const map: ClubPbMap = {};
   for (const r of (data ?? []) as Array<{
     athlete_key: string;
     event_name: string;
     event_category: string;
     sub_category: string;
+    age_class: string | null;
     result_text: string;
     result_numeric: number;
   }>) {
     if (r.result_numeric == null) continue;
     if (isRoadOrCrossCountry(r)) continue;
-    const key = `${r.athlete_key}|${normalizeEventName(r.event_name)}`;
+    const key = `${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`;
     const lower = r.event_category === "Track";
     const cur = map[key];
     if (

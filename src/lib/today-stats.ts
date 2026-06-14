@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { helsinkiDayBounds } from "./daily-best";
 import { isLowerBetter } from "./athlete-history";
 import { normalizeEventName } from "./season-leaders";
+import { pbEventKey } from "./pb-key";
 import { seasonRange } from "./season-stats";
 import { isRoadOrCrossCountry } from "./event-filters";
 import { fetchCompetitionList, filterToday } from "./competition-list";
@@ -126,7 +127,7 @@ async function fetchAllTimePriorBests(
       const { data, error } = await supabase
         .from("athlete_results")
         .select(
-          "athlete_key, event_name, event_category, sub_category, result_numeric",
+          "athlete_key, event_name, event_category, sub_category, age_class, result_numeric",
         )
         .in("athlete_key", keysSlice)
         .in("event_name", eventNames)
@@ -139,12 +140,13 @@ async function fetchAllTimePriorBests(
         event_name: string;
         event_category: string;
         sub_category: string;
+        age_class: string | null;
         result_numeric: number | null;
       }>;
       const filtered = rows.filter((r) => !isRoadOrCrossCountry(r));
       for (const r of filtered) {
         if (r.result_numeric == null) continue;
-        const key = `${r.athlete_key}|${normalizeEventName(r.event_name)}`;
+        const key = `${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`;
         const lower = isLowerBetter(r.event_category, r.sub_category);
         const cur = best.get(key);
         if (cur == null || (lower ? r.result_numeric < cur : r.result_numeric > cur)) {
@@ -188,8 +190,7 @@ export async function fetchTodayStats(): Promise<TodayStats> {
   for (const r of today) {
     if (r.result_numeric == null) continue;
     if (!r.athlete_key) continue;
-    const norm = normalizeEventName(r.event_name);
-    const key = `${r.athlete_key}|${norm}`;
+    const key = `${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`;
     const lower = isLowerBetter(r.event_category, r.sub_category);
     const cur = todayAthleteBest.get(key);
     if (

@@ -10,6 +10,7 @@ import {
   isLowerBetter,
   normalizeEventName,
 } from "@/lib/athlete-history";
+import { pbEventKey } from "@/lib/pb-key";
 
 interface HistoricalBest {
   resultText: string;
@@ -21,12 +22,16 @@ interface BaselineEntry {
   sb: HistoricalBest | null;
 }
 
-// competitionId -> (`${athleteKey}|${normalizedEvent}` -> entry)
+// competitionId -> (pbEventKey + athleteKey -> entry)
 const cache = new Map<number, Map<string, BaselineEntry>>();
 const inflight = new Map<number, Promise<Map<string, BaselineEntry>>>();
 
-function lookupKey(athleteKey: string, normalizedEvent: string): string {
-  return `${athleteKey}|${normalizedEvent.toLowerCase()}`;
+function lookupKeyFor(
+  athleteKey: string,
+  eventName: string,
+  ageClass: string | null | undefined,
+): string {
+  return `${athleteKey}|${pbEventKey({ event_name: eventName, age_class: ageClass }).toLowerCase()}`;
 }
 
 const PAGE_SIZE = 1000;
@@ -40,6 +45,7 @@ interface Row {
   result_text: string;
   result_numeric: number | null;
   competition_date: string | null;
+  age_class: string | null;
 }
 
 /** Current season = calendar year of "now". Best effort fallback for SB. */
@@ -87,7 +93,7 @@ async function fetchHistoryForKeys(
       const { data, error } = await supabase
         .from("athlete_results")
         .select(
-          "athlete_key, event_name, event_category, sub_category, result_text, result_numeric, competition_date",
+          "athlete_key, event_name, event_category, sub_category, result_text, result_numeric, competition_date, age_class",
         )
         .in("athlete_key", chunk)
         .neq("competition_id", excludeCompetitionId)
@@ -112,7 +118,7 @@ function buildBaselineMap(rows: Row[]): Map<string, BaselineEntry> {
     const norm = normalizeEventName(r.event_name);
     if (!norm) continue;
     const lower = isLowerBetter(r.event_category, r.sub_category);
-    const k = lookupKey(r.athlete_key, norm);
+    const k = lookupKeyFor(r.athlete_key, r.event_name, r.age_class);
     let entry = map.get(k);
     if (!entry) {
       entry = { pb: null, sb: null };
@@ -207,12 +213,13 @@ export function getHistoricalBest(
   competitionId: number,
   athleteKey: string,
   eventName: string,
+  ageClass?: string | null,
 ): string | null {
   const map = cache.get(competitionId);
   if (!map) return null;
   const norm = normalizeEventName(eventName);
   if (!norm) return null;
-  return map.get(lookupKey(athleteKey, norm))?.pb?.resultText ?? null;
+  return map.get(lookupKeyFor(athleteKey, eventName, ageClass))?.pb?.resultText ?? null;
 }
 
 /** Synchronous lookup for the athlete's season best (current calendar year). */
@@ -220,12 +227,13 @@ export function getHistoricalSeasonBest(
   competitionId: number,
   athleteKey: string,
   eventName: string,
+  ageClass?: string | null,
 ): string | null {
   const map = cache.get(competitionId);
   if (!map) return null;
   const norm = normalizeEventName(eventName);
   if (!norm) return null;
-  return map.get(lookupKey(athleteKey, norm))?.sb?.resultText ?? null;
+  return map.get(lookupKeyFor(athleteKey, eventName, ageClass))?.sb?.resultText ?? null;
 }
 
 /** React hook: loads (or returns cached) historical baseline and re-renders

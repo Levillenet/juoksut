@@ -114,16 +114,16 @@ export function getCachedBaseline(
 export function effectiveRecord(
   eventId: number,
   alloc: { Id: number; PB: string; SB: string },
-  history?: { competitionId: number; athleteKey: string; eventName: string } | null,
+  history?: { competitionId: number; athleteKey: string; eventName: string; ageClass?: string | null } | null,
 ): { pb: string; sb: string } {
   const b = getCachedBaseline(eventId, alloc.Id);
   let pb = b?.pb || alloc.PB || "";
   if (!pb && history) {
-    pb = getHistoricalBest(history.competitionId, history.athleteKey, history.eventName) ?? "";
+    pb = getHistoricalBest(history.competitionId, history.athleteKey, history.eventName, history.ageClass) ?? "";
   }
   let sb = b?.sb || alloc.SB || "";
   if (!sb && history) {
-    sb = getHistoricalSeasonBest(history.competitionId, history.athleteKey, history.eventName) ?? "";
+    sb = getHistoricalSeasonBest(history.competitionId, history.athleteKey, history.eventName, history.ageClass) ?? "";
   }
   return { pb, sb };
 }
