@@ -309,6 +309,7 @@ export function solve(input: SolverInput): SolverResult {
       for (const v of placedVenues) {
         v.busyUntil = segEnd;
         if (seg.isHurdles) v.lastWasHurdle = true;
+        if (segIsRun) v.lastEventName = seg.eventName;
       }
       ageStates.set(seg.ageClass, { busyUntil: segEnd });
       const prevEnd = eventEnds.get(seg.eventId) ?? 0;
