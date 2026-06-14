@@ -204,7 +204,7 @@ function PlanEditor() {
         className={`mx-auto space-y-6 py-6 ${
           tab === "schedule"
             ? "w-full max-w-none px-2 sm:px-4"
-            : "max-w-6xl px-4"
+            : "max-w-2xl px-4"
         }`}
       >
         {tab === "basics" && (
