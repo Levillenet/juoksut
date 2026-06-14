@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { ArrowLeft, Trash2, Plus, Wand2, Save, Download, LayoutGrid, Sparkles, AlertTriangle } from "lucide-react";
 import { downloadPlannerSchedulePdf } from "@/lib/planner-schedule-pdf";
 import { downloadPlannerScheduleVisualXlsx } from "@/lib/planner-schedule-xlsx";
 import { PlannerFullGantt } from "@/components/planner/PlannerFullGantt";
+import { ScheduleItemSheet } from "@/components/planner/ScheduleItemSheet";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -1470,6 +1472,7 @@ function ScheduleTab({
   const [warnings, setWarnings] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
   const [highlightIds, setHighlightIds] = useState<string[]>([]);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const highlightTimeout = useRef<number | null>(null);
   const highlightConflict = (ids: string[]) => {
     if (highlightTimeout.current) window.clearTimeout(highlightTimeout.current);
@@ -1573,6 +1576,23 @@ function ScheduleTab({
     [schedule, events, venues, plan.default_recovery_min, conflictGroups],
   );
 
+  // Toast kun konfliktit muuttuvat käyttäjän muokkausten jälkeen
+  const prevConflictIds = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const current = new Set(conflicts.map((c) => `${c.id}:${c.reason}`));
+    const prev = prevConflictIds.current;
+    if (prev) {
+      const added = [...current].filter((k) => !prev.has(k));
+      const removed = [...prev].filter((k) => !current.has(k));
+      if (added.length > 0) {
+        toast.warning(`Uusi konflikti: ${added[0].split(":").slice(1).join(":")}`);
+      } else if (removed.length > 0 && current.size < prev.size) {
+        toast.success("Konflikti ratkaistu ✓");
+      }
+    }
+    prevConflictIds.current = current;
+  }, [conflicts]);
+
   const officials = useMemo(
     () => computeOfficialsTimeline(schedule, events, plan.total_officials_available ?? 10),
     [schedule, events, plan.total_officials_available],
@@ -1653,9 +1673,23 @@ function ScheduleTab({
           schedule={schedule}
           conflicts={conflicts}
           highlightIds={highlightIds}
+          onSelectItem={setSelectedItemId}
           onChange={onChange}
         />
       </div>
+
+      <ScheduleItemSheet
+        open={selectedItemId != null}
+        onOpenChange={(o: boolean) => !o && setSelectedItemId(null)}
+        itemId={selectedItemId}
+        plan={plan}
+        schedule={schedule}
+        events={events}
+        venues={venues}
+        conflicts={conflicts}
+        onChange={onChange}
+        onSelect={setSelectedItemId}
+      />
     </section>
   );
 }
