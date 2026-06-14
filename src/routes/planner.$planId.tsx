@@ -750,20 +750,37 @@ function EventsTab({
                     />
                   </td>
                   <td className="py-1 pr-2 text-right">
-                    <Input
-                      type="number"
-                      className="w-20 text-right"
-                      value={e.station_count}
-                      onChange={(ev) =>
-                        update.mutate({
-                          id: e.id,
-                          station_count: Math.max(1, parseInt(ev.target.value) || 1),
-                        })
-                      }
-                    />
-                    <div className="text-[9px] text-muted-foreground">
-                      {isTrack ? "ratoja" : "paikkoja"}
-                    </div>
+                    {isTrack ? (
+                      <>
+                        <Input
+                          type="number"
+                          className="w-20 text-right"
+                          value={e.heat_size}
+                          onChange={(ev) =>
+                            update.mutate({
+                              id: e.id,
+                              heat_size: Math.max(1, parseInt(ev.target.value) || 1),
+                            })
+                          }
+                        />
+                        <div className="text-[9px] text-muted-foreground">lanea/erä</div>
+                      </>
+                    ) : (
+                      <>
+                        <Input
+                          type="number"
+                          className="w-20 text-right"
+                          value={e.station_count}
+                          onChange={(ev) =>
+                            update.mutate({
+                              id: e.id,
+                              station_count: Math.max(1, parseInt(ev.target.value) || 1),
+                            })
+                          }
+                        />
+                        <div className="text-[9px] text-muted-foreground">paikkoja</div>
+                      </>
+                    )}
                   </td>
                   <td className="py-1 pr-2">
                     <select
@@ -800,6 +817,27 @@ function EventsTab({
                       />
                     )}
                   </td>
+                  {(() => {
+                    const r = computeRuleEstimate({
+                      event_name: e.event_name,
+                      sub_category: e.sub_category,
+                      participants: e.participants,
+                      station_count: e.station_count,
+                      heat_size: e.heat_size,
+                    });
+                    return (
+                      <td
+                        className="py-1 pr-2 text-right font-medium tabular-nums"
+                        title={r.formula}
+                      >
+                        {e.override_duration_min != null ? (
+                          <span className="text-muted-foreground line-through">{r.minutes}</span>
+                        ) : (
+                          <>{r.minutes} min</>
+                        )}
+                      </td>
+                    );
+                  })()}
                   <td className="py-1 pr-2 text-right">
                     <Input
                       type="number"
