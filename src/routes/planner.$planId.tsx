@@ -1636,3 +1636,124 @@ function Field({
     </label>
   );
 }
+
+// ─── Toimitsijapaneeli ───────────────────────────────────────────────────
+function OfficialsPanel({
+  officials,
+  eventLabel,
+  hasSchedule,
+}: {
+  officials: ReturnType<typeof computeOfficialsTimeline>;
+  eventLabel: (id: string) => string;
+  hasSchedule: boolean;
+}) {
+  if (!hasSchedule) return null;
+
+  const { available, avg, peak, peakStartMs, overloads, intervals } = officials;
+  const peakLabel = peakStartMs != null ? formatHHMM(peakStartMs) : "–";
+
+  // Yksinkertainen SVG-viivakaavio
+  const width = 800;
+  const height = 70;
+  const padL = 36;
+  const padR = 8;
+  const padT = 6;
+  const padB = 16;
+  const plotW = width - padL - padR;
+  const plotH = height - padT - padB;
+  const minT = intervals.length > 0 ? intervals[0].startMs : 0;
+  const maxT = intervals.length > 0 ? intervals[intervals.length - 1].endMs : 1;
+  const maxY = Math.max(peak, available, 1);
+  const xFor = (t: number) =>
+    padL + ((t - minT) / Math.max(1, maxT - minT)) * plotW;
+  const yFor = (v: number) => padT + plotH - (v / maxY) * plotH;
+  const availY = yFor(available);
+
+  // Bars per intervalli
+  return (
+    <div className="rounded-lg border bg-card p-3 text-xs">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <div className="font-semibold">Toimitsijat</div>
+        <div className="tabular-nums">
+          <span className="text-muted-foreground">Keskiarvo</span>{" "}
+          <strong>{avg.toFixed(1)}</strong>
+          <span className="mx-1 text-muted-foreground">·</span>
+          <span className="text-muted-foreground">Saatavilla</span>{" "}
+          <strong>{available}</strong>
+          <span className="mx-1 text-muted-foreground">·</span>
+          <span className="text-muted-foreground">Huippu</span>{" "}
+          <strong className={peak > available ? "text-destructive" : ""}>{peak}</strong>{" "}
+          <span className="text-muted-foreground">klo {peakLabel}</span>
+        </div>
+      </div>
+
+      {intervals.length > 0 && (
+        <svg width="100%" viewBox={`0 0 ${width} ${height}`} className="block">
+          {/* available-viiva */}
+          <line
+            x1={padL}
+            x2={width - padR}
+            y1={availY}
+            y2={availY}
+            stroke="hsl(var(--muted-foreground))"
+            strokeDasharray="3 3"
+            strokeWidth={1}
+          />
+          {intervals.map((iv, i) => {
+            const x = xFor(iv.startMs);
+            const w = Math.max(1, xFor(iv.endMs) - x);
+            const y = yFor(iv.demand);
+            const h = padT + plotH - y;
+            const over = iv.demand > available;
+            return (
+              <rect
+                key={i}
+                x={x}
+                y={y}
+                width={w}
+                height={h}
+                fill={over ? "hsl(var(--destructive))" : "hsl(var(--primary))"}
+                opacity={over ? 0.7 : 0.45}
+              />
+            );
+          })}
+          {/* y-merkit */}
+          <text x={4} y={padT + 8} fontSize={9} fill="hsl(var(--muted-foreground))">
+            {maxY}
+          </text>
+          <text x={4} y={availY + 3} fontSize={9} fill="hsl(var(--muted-foreground))">
+            {available}
+          </text>
+        </svg>
+      )}
+
+      {overloads.length > 0 ? (
+        <div className="mt-2 rounded border border-destructive/40 bg-destructive/10 p-2">
+          <div className="font-semibold text-destructive">
+            Toimitsijapula {overloads.length} ajanjaksolla
+          </div>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5">
+            {overloads.slice(0, 8).map((o, i) => (
+              <li key={i}>
+                Klo {formatHHMM(o.startMs)}–{formatHHMM(o.endMs)} tarvitaan{" "}
+                <strong>{o.demand}</strong> toimitsijaa, saatavilla {available}{" "}
+                ({o.demand - available} puuttuu).{" "}
+                <span className="text-muted-foreground">
+                  Lajit: {o.eventIds.map(eventLabel).join(", ")}
+                </span>
+              </li>
+            ))}
+            {overloads.length > 8 && (
+              <li className="text-muted-foreground">…ja {overloads.length - 8} muuta.</li>
+            )}
+          </ul>
+        </div>
+      ) : (
+        <div className="mt-1 text-muted-foreground">
+          Toimitsijoita riittää koko aikataulussa.
+        </div>
+      )}
+    </div>
+  );
+}
+
