@@ -1491,6 +1491,13 @@ function ScheduleTab({
       setWarnings(["Lisää ensin suorituspaikat ja lajit."]);
       return;
     }
+    const manualCount = schedule.filter((s) => !s.auto_generated).length;
+    if (manualCount > 0) {
+      const ok = window.confirm(
+        `Generointi poistaa kaikki aiemmat aikataulurivit, myös ${manualCount} manuaalisesti muokattua. Jatketaanko?`,
+      );
+      if (!ok) return;
+    }
     setGenerating(true);
     try {
       const ests = await Promise.all(
