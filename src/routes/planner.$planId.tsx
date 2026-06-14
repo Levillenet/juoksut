@@ -438,7 +438,12 @@ function EventsTab({
               <th className="py-1 pr-2">Finaalit</th>
               <th className="py-1 pr-2 text-right">A-finaalin koko</th>
               <th className="py-1 pr-2 text-right">Oma kesto (min)</th>
+              <th className="py-1 pr-2 text-right" title="Valmisteluaika ennen lajia (askelmerkit yms.)">Valm.</th>
+              <th className="py-1 pr-2 text-right" title="Juoksuerien välinen järjestäytymisaika">Eräväli</th>
+              <th className="py-1 pr-2 text-right" title="Aitojen pystytys (vain aitalajit)">Aidat+</th>
+              <th className="py-1 pr-2 text-right" title="Aitojen purku (vain aitalajit)">Aidat-</th>
               <th></th>
+
             </tr>
           </thead>
           <tbody>
