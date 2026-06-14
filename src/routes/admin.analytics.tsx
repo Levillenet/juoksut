@@ -222,6 +222,12 @@ function Page() {
             </Link>
             <Wrench className="h-5 w-5 text-primary" />
             <h1 className="text-lg font-semibold">Admin-valikko</h1>
+            <Link
+              to="/planner"
+              className="ml-2 rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-secondary"
+            >
+              Aikataulun suunnittelija →
+            </Link>
           </div>
           <div className="flex shrink-0 gap-0.5 rounded-full border border-border bg-card p-0.5 text-[11px] font-medium">
             {(["analytics", "durations"] as const).map((t) => (

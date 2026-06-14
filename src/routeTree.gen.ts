@@ -18,12 +18,14 @@ import { Route as ScoreboardRouteImport } from './routes/scoreboard'
 import { Route as RunningOpsRouteImport } from './routes/running-ops'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrintRouteImport } from './routes/print'
+import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as KilpailukalenteriRouteImport } from './routes/kilpailukalenteri'
 import { Route as HauskatTilastotRouteImport } from './routes/hauskat-tilastot'
 import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PrintIndexRouteImport } from './routes/print.index'
+import { Route as PlannerIndexRouteImport } from './routes/planner.index'
 import { Route as AnnouncerIndexRouteImport } from './routes/announcer.index'
 import { Route as UrheilijaTokenRouteImport } from './routes/urheilija.$token'
 import { Route as SeuraaTokenRouteImport } from './routes/seuraa.$token'
@@ -32,6 +34,7 @@ import { Route as SettingsNoteLinksRouteImport } from './routes/settings.note-li
 import { Route as PrintYagCallingRouteImport } from './routes/print.yag-calling'
 import { Route as PrintWatchedRouteImport } from './routes/print.watched'
 import { Route as PrintClubRouteImport } from './routes/print.club'
+import { Route as PlannerPlanIdRouteImport } from './routes/planner.$planId'
 import { Route as AthleteKeyRouteImport } from './routes/athlete.$key'
 import { Route as AnnouncerPlanningRouteImport } from './routes/announcer.planning'
 import { Route as AnnouncerLiveRouteImport } from './routes/announcer.live'
@@ -90,6 +93,11 @@ const PrintRoute = PrintRouteImport.update({
   path: '/print',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlannerRoute = PlannerRouteImport.update({
+  id: '/planner',
+  path: '/planner',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -119,6 +127,11 @@ const PrintIndexRoute = PrintIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PrintRoute,
+} as any)
+const PlannerIndexRoute = PlannerIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PlannerRoute,
 } as any)
 const AnnouncerIndexRoute = AnnouncerIndexRouteImport.update({
   id: '/',
@@ -159,6 +172,11 @@ const PrintClubRoute = PrintClubRouteImport.update({
   id: '/club',
   path: '/club',
   getParentRoute: () => PrintRoute,
+} as any)
+const PlannerPlanIdRoute = PlannerPlanIdRouteImport.update({
+  id: '/$planId',
+  path: '/$planId',
+  getParentRoute: () => PlannerRoute,
 } as any)
 const AthleteKeyRoute = AthleteKeyRouteImport.update({
   id: '/athlete/$key',
@@ -232,6 +250,7 @@ export interface FileRoutesByFullPath {
   '/hauskat-tilastot': typeof HauskatTilastotRoute
   '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
+  '/planner': typeof PlannerRouteWithChildren
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/running-ops': typeof RunningOpsRoute
@@ -247,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/announcer/live': typeof AnnouncerLiveRoute
   '/announcer/planning': typeof AnnouncerPlanningRoute
   '/athlete/$key': typeof AthleteKeyRoute
+  '/planner/$planId': typeof PlannerPlanIdRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
   '/print/yag-calling': typeof PrintYagCallingRoute
@@ -255,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/seuraa/$token': typeof SeuraaTokenRoute
   '/urheilija/$token': typeof UrheilijaTokenRoute
   '/announcer/': typeof AnnouncerIndexRoute
+  '/planner/': typeof PlannerIndexRoute
   '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
@@ -282,6 +303,7 @@ export interface FileRoutesByTo {
   '/announcer/live': typeof AnnouncerLiveRoute
   '/announcer/planning': typeof AnnouncerPlanningRoute
   '/athlete/$key': typeof AthleteKeyRoute
+  '/planner/$planId': typeof PlannerPlanIdRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
   '/print/yag-calling': typeof PrintYagCallingRoute
@@ -290,6 +312,7 @@ export interface FileRoutesByTo {
   '/seuraa/$token': typeof SeuraaTokenRoute
   '/urheilija/$token': typeof UrheilijaTokenRoute
   '/announcer': typeof AnnouncerIndexRoute
+  '/planner': typeof PlannerIndexRoute
   '/print': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
@@ -305,6 +328,7 @@ export interface FileRoutesById {
   '/hauskat-tilastot': typeof HauskatTilastotRoute
   '/kilpailukalenteri': typeof KilpailukalenteriRoute
   '/login': typeof LoginRoute
+  '/planner': typeof PlannerRouteWithChildren
   '/print': typeof PrintRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/running-ops': typeof RunningOpsRoute
@@ -320,6 +344,7 @@ export interface FileRoutesById {
   '/announcer/live': typeof AnnouncerLiveRoute
   '/announcer/planning': typeof AnnouncerPlanningRoute
   '/athlete/$key': typeof AthleteKeyRoute
+  '/planner/$planId': typeof PlannerPlanIdRoute
   '/print/club': typeof PrintClubRoute
   '/print/watched': typeof PrintWatchedRoute
   '/print/yag-calling': typeof PrintYagCallingRoute
@@ -328,6 +353,7 @@ export interface FileRoutesById {
   '/seuraa/$token': typeof SeuraaTokenRoute
   '/urheilija/$token': typeof UrheilijaTokenRoute
   '/announcer/': typeof AnnouncerIndexRoute
+  '/planner/': typeof PlannerIndexRoute
   '/print/': typeof PrintIndexRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
@@ -344,6 +370,7 @@ export interface FileRouteTypes {
     | '/hauskat-tilastot'
     | '/kilpailukalenteri'
     | '/login'
+    | '/planner'
     | '/print'
     | '/reset-password'
     | '/running-ops'
@@ -359,6 +386,7 @@ export interface FileRouteTypes {
     | '/announcer/live'
     | '/announcer/planning'
     | '/athlete/$key'
+    | '/planner/$planId'
     | '/print/club'
     | '/print/watched'
     | '/print/yag-calling'
@@ -367,6 +395,7 @@ export interface FileRouteTypes {
     | '/seuraa/$token'
     | '/urheilija/$token'
     | '/announcer/'
+    | '/planner/'
     | '/print/'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
@@ -394,6 +423,7 @@ export interface FileRouteTypes {
     | '/announcer/live'
     | '/announcer/planning'
     | '/athlete/$key'
+    | '/planner/$planId'
     | '/print/club'
     | '/print/watched'
     | '/print/yag-calling'
@@ -402,6 +432,7 @@ export interface FileRouteTypes {
     | '/seuraa/$token'
     | '/urheilija/$token'
     | '/announcer'
+    | '/planner'
     | '/print'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
@@ -416,6 +447,7 @@ export interface FileRouteTypes {
     | '/hauskat-tilastot'
     | '/kilpailukalenteri'
     | '/login'
+    | '/planner'
     | '/print'
     | '/reset-password'
     | '/running-ops'
@@ -431,6 +463,7 @@ export interface FileRouteTypes {
     | '/announcer/live'
     | '/announcer/planning'
     | '/athlete/$key'
+    | '/planner/$planId'
     | '/print/club'
     | '/print/watched'
     | '/print/yag-calling'
@@ -439,6 +472,7 @@ export interface FileRouteTypes {
     | '/seuraa/$token'
     | '/urheilija/$token'
     | '/announcer/'
+    | '/planner/'
     | '/print/'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
@@ -454,6 +488,7 @@ export interface RootRouteChildren {
   HauskatTilastotRoute: typeof HauskatTilastotRoute
   KilpailukalenteriRoute: typeof KilpailukalenteriRoute
   LoginRoute: typeof LoginRoute
+  PlannerRoute: typeof PlannerRouteWithChildren
   PrintRoute: typeof PrintRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   RunningOpsRoute: typeof RunningOpsRoute
@@ -540,6 +575,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrintRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/planner': {
+      id: '/planner'
+      path: '/planner'
+      fullPath: '/planner'
+      preLoaderRoute: typeof PlannerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -581,6 +623,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/print/'
       preLoaderRoute: typeof PrintIndexRouteImport
       parentRoute: typeof PrintRoute
+    }
+    '/planner/': {
+      id: '/planner/'
+      path: '/'
+      fullPath: '/planner/'
+      preLoaderRoute: typeof PlannerIndexRouteImport
+      parentRoute: typeof PlannerRoute
     }
     '/announcer/': {
       id: '/announcer/'
@@ -637,6 +686,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/print/club'
       preLoaderRoute: typeof PrintClubRouteImport
       parentRoute: typeof PrintRoute
+    }
+    '/planner/$planId': {
+      id: '/planner/$planId'
+      path: '/$planId'
+      fullPath: '/planner/$planId'
+      preLoaderRoute: typeof PlannerPlanIdRouteImport
+      parentRoute: typeof PlannerRoute
     }
     '/athlete/$key': {
       id: '/athlete/$key'
@@ -743,6 +799,19 @@ const AnnouncerRouteWithChildren = AnnouncerRoute._addFileChildren(
   AnnouncerRouteChildren,
 )
 
+interface PlannerRouteChildren {
+  PlannerPlanIdRoute: typeof PlannerPlanIdRoute
+  PlannerIndexRoute: typeof PlannerIndexRoute
+}
+
+const PlannerRouteChildren: PlannerRouteChildren = {
+  PlannerPlanIdRoute: PlannerPlanIdRoute,
+  PlannerIndexRoute: PlannerIndexRoute,
+}
+
+const PlannerRouteWithChildren =
+  PlannerRoute._addFileChildren(PlannerRouteChildren)
+
 interface PrintRouteChildren {
   PrintClubRoute: typeof PrintClubRoute
   PrintWatchedRoute: typeof PrintWatchedRoute
@@ -794,6 +863,7 @@ const rootRouteChildren: RootRouteChildren = {
   HauskatTilastotRoute: HauskatTilastotRoute,
   KilpailukalenteriRoute: KilpailukalenteriRoute,
   LoginRoute: LoginRoute,
+  PlannerRoute: PlannerRouteWithChildren,
   PrintRoute: PrintRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   RunningOpsRoute: RunningOpsRoute,
