@@ -242,6 +242,75 @@ export type Database = {
         }
         Relationships: []
       }
+      competition_plans: {
+        Row: {
+          created_at: string
+          default_recovery_min: number
+          ends_at: string
+          id: string
+          name: string
+          notes: string | null
+          starts_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_recovery_min?: number
+          ends_at: string
+          id?: string
+          name: string
+          notes?: string | null
+          starts_at: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_recovery_min?: number
+          ends_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          starts_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      event_duration_overrides: {
+        Row: {
+          age_class: string | null
+          base_min: number
+          created_at: string
+          event_key: string
+          id: string
+          notes: string | null
+          per_participant_min: number
+          updated_at: string
+        }
+        Insert: {
+          age_class?: string | null
+          base_min?: number
+          created_at?: string
+          event_key: string
+          id?: string
+          notes?: string | null
+          per_participant_min?: number
+          updated_at?: string
+        }
+        Update: {
+          age_class?: string | null
+          base_min?: number
+          created_at?: string
+          event_key?: string
+          id?: string
+          notes?: string | null
+          per_participant_min?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       external_competitions: {
         Row: {
           classification: string
@@ -448,6 +517,164 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      plan_events: {
+        Row: {
+          age_class: string
+          created_at: string
+          event_name: string
+          final_cut: number | null
+          final_format: string
+          id: string
+          notes: string | null
+          override_duration_min: number | null
+          participants: number
+          plan_id: string
+          sort_order: number
+          station_count: number
+          sub_category: string | null
+          updated_at: string
+        }
+        Insert: {
+          age_class: string
+          created_at?: string
+          event_name: string
+          final_cut?: number | null
+          final_format?: string
+          id?: string
+          notes?: string | null
+          override_duration_min?: number | null
+          participants?: number
+          plan_id: string
+          sort_order?: number
+          station_count?: number
+          sub_category?: string | null
+          updated_at?: string
+        }
+        Update: {
+          age_class?: string
+          created_at?: string
+          event_name?: string
+          final_cut?: number | null
+          final_format?: string
+          id?: string
+          notes?: string | null
+          override_duration_min?: number | null
+          participants?: number
+          plan_id?: string
+          sort_order?: number
+          station_count?: number
+          sub_category?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_events_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "competition_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_schedule_items: {
+        Row: {
+          auto_generated: boolean
+          created_at: string
+          ends_at: string
+          id: string
+          notes: string | null
+          phase: string
+          plan_event_id: string
+          plan_id: string
+          starts_at: string
+          venue_id: string
+        }
+        Insert: {
+          auto_generated?: boolean
+          created_at?: string
+          ends_at: string
+          id?: string
+          notes?: string | null
+          phase?: string
+          plan_event_id: string
+          plan_id: string
+          starts_at: string
+          venue_id: string
+        }
+        Update: {
+          auto_generated?: boolean
+          created_at?: string
+          ends_at?: string
+          id?: string
+          notes?: string | null
+          phase?: string
+          plan_event_id?: string
+          plan_id?: string
+          starts_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_schedule_items_plan_event_id_fkey"
+            columns: ["plan_event_id"]
+            isOneToOne: false
+            referencedRelation: "plan_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_schedule_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "competition_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_schedule_items_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "plan_venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_venues: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          notes: string | null
+          plan_id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name: string
+          notes?: string | null
+          plan_id: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          notes?: string | null
+          plan_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_venues_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "competition_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       record_baseline: {
         Row: {
@@ -702,6 +929,15 @@ export type Database = {
         Returns: {
           affected_competitions: number[]
           updated_count: number
+        }[]
+      }
+      get_event_catalog: {
+        Args: never
+        Returns: {
+          age_class: string
+          event_key: string
+          event_name_display: string
+          sample_count: number
         }[]
       }
       get_shared_athlete: {
