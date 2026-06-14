@@ -29,7 +29,7 @@ import {
   type DayWindow,
 } from "@/lib/planner-types";
 import { estimateDuration } from "@/lib/planner-estimate";
-import { computeRuleEstimate, classifyEvent } from "@/lib/planner-rules";
+import { computeRuleEstimate } from "@/lib/planner-rules";
 import { solve, detectConflicts } from "@/lib/planner-solver";
 import { resolveTimings } from "@/lib/planner-timings";
 import { DEFAULT_VENUES, buildDefaultVenueRows } from "@/lib/planner-defaults";
