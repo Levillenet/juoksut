@@ -4,7 +4,7 @@
 // become a PB in an older class — and vice versa. Falls back to age_class
 // when the spec table doesn't know the row.
 
-import { normalizeEventName } from "./athlete-history";
+import { normalizeEventName } from "./event-name";
 import { eventSpecKey, eventSpecLabel, getEventSpec } from "./event-specs";
 
 export interface PbKeyInput {
