@@ -1643,6 +1643,15 @@ function ScheduleTab({
             <Wand2 className="mr-2 h-4 w-4" />
             {generating ? "Generoidaan…" : "Generoi aikataulu"}
           </Button>
+        </div>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Generointi poistaa kaikki aiemmat aikataulurivit (myös manuaaliset muokkaukset) ja luo aikataulun tyhjästä.
+      </p>
+
+      <div className="hidden">
+        {/* spacer removed below */}
           <Button variant="secondary" onClick={exportExcel} disabled={schedule.length === 0}>
             <Download className="mr-2 h-4 w-4" />
             Vie Excel
