@@ -164,7 +164,9 @@ export async function fillPlanFromCompetition(
       station_count: 1,
       final_format: isField ? "direct" : s.participants > 8 ? "a_b" : "direct",
       final_cut: isField ? null : 8,
-      override_duration_min: s.duration_min > 5 ? s.duration_min : null,
+      // ÄLÄ käytä RPC:n duration_min:iä — se mittaa tuloksensyöttöikkunaa,
+      // ei lajin todellista kestoa. Anna sääntöpohjaisen estimaattorin laskea.
+      override_duration_min: null,
       sort_order: order++,
     };
   });
