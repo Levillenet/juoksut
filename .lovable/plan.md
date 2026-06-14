@@ -1,27 +1,62 @@
 
-# VAIHE 2 — Edge Function `compute-duration-stats` (lopullinen)
+# VAIHE 3 — Sääntöpohjainen kestoarvio (YAG 2022 -kaavat)
 
-Lisäykset hyväksytty:
-- Mappaus `athlete_results.age_class` → `event_duration_stats.group_name`.
-- JSON-palaute sisältää `sample_results` (10 ensimmäistä tilastoa n_samples desc).
+Tavoite: `planner-estimate.ts` käyttää sääntöjä, ei `event_duration_stats`-mediaaneja eikä `athlete_results`-regressiota. Taulu jää diagnostiikkaan.
 
-## Toteutus
+## A) Migraatio: `plan_events`
 
-1. **Migraatio**: `ALTER TABLE event_duration_stats ADD COLUMN p10_duration_min REAL` (tehty).
-2. **`supabase/functions/compute-duration-stats/index.ts`**:
-   - POST, CORS, admin-tarkistus `is_admin_user()` RPC:llä kutsujan JWT:stä.
-   - Paginoitu luku `athlete_results`-taulusta (10k riviä kerrallaan) service rolella.
-   - Ryhmittely (competition_id, event_id, day=YYYY-MM-DD UTC) → kerää min/max captured_at + distinct athlete_keys.
-   - Run-suodatus: `1 ≤ duration_min ≤ 600` JA `participants ≥ 2`.
-   - Toinen ryhmittely (event_name, age_class), kerää kestot+osallistujat.
-   - Jätä tilasto pois jos `n_samples < 3`.
-   - Laske n, median, p10, p90 kestoista; median + max osallistujista; category/sub_category = enemmistö.
-   - Upsert `event_duration_stats` (onConflict event_name,group_name), 500/chunk.
-   - Poista vanhentuneet rivit (`last_updated < run_start`).
-   - Palauta: `ok, rows_processed, runs_considered, runs_accepted, stats_upserted, stats_skipped_low_n, stats_deleted_stale, duration_ms, sample_results[10]`.
-3. **Deploy + aja kerran** `supabase--curl_edge_functions`-työkalulla (preview-session, admin-JWT).
-4. **Näytä palautteen summary + sample_results**.
+Lisää sarakkeet:
+- `station_count integer NOT NULL DEFAULT 1` — *jo olemassa* (tarkistetaan; jos on, skipataan)
+- `heat_size integer NOT NULL DEFAULT 8` — osallistujia per erä juoksuissa
 
-Ei admin-UI:tä, ei `planner-estimate.ts`-muutoksia, ei cronia.
+(planner-types.ts:n `PlanEventRow` päivitetään vastaamaan.)
 
-**Siirry build-modeen jatkaaksesi.**
+## B) `src/lib/planner-rules.ts` (uusi)
+
+Pieni, puhdas moduuli joka sisältää kaavat ja palauttaa `{ minutes, formula }`:
+
+- **Juoksu**: tunnista matka/aidat `event_name`-stringistä → lookup `min_per_heat`-taulukosta. `lanes = matka ≥ 1000m ? 16 : heat_size (oletus 8)`. `heats = ceil(participants/lanes)`. `minutes = heats × min_per_heat`. Formula: `"75 osall. / 8 lanea = 10 erää × 4 min = 40 min"`.
+- **Pituus/3-loikka**: `participants × 1.2 / station_count + 15`. Formula näyttää jakaja+valmistelu.
+- **Korkeus**: `clamp(60 + max(0, n-10) × 2, 45, 150)`.
+- **Seiväs**: `clamp(75 + max(0, n-8) × 4, 60, 180)`.
+- **Kuula/kiekko/moukari**: `clamp(25 + n × 1.5, 30, 90)`.
+- **Keihäs**: `clamp(30 + n × 1.7, 35, 100)`.
+
+Lajityypin tunnistus jaetaan `planner-timings.ts`:n nykyisten `isHurdleEvent` / `isJumpPitEvent` / `isVerticalEvent` / `isTrackEvent` -funktioiden kanssa + heittolajeille uusi `throwKind(name) -> 'shot'|'discus'|'hammer'|'javelin'|null`.
+
+## C) `planner-estimate.ts` uusiksi
+
+Korvataan nykyinen regressio/override/rule-yhdistelmä:
+
+1. **Override** (`event_duration_overrides` tai `override_duration_min` rivillä) → käytä sitä, `source = "override"`.
+2. Muuten kutsu `computeRuleEstimate(input)` → `source = "rule"`.
+3. **EI** enää `loadHistory`/`linearRegression`-kutsuja, EI `event_duration_stats`-lukua.
+4. Palautteen `detail`-kenttä = ihmisluettava kaava (esim. `"75 / 8 = 10 erää × 4 min"`). `sampleSize = 0`.
+5. Juoksun A/B-finaalilogiikka säilytetään ennallaan.
+
+## D) UI: kestoarvio tooltipissa
+
+Plannerin Lajit-välilehti (tiedosto: etsitään `planner.$planId.tsx`:stä):
+- Rivillä näytetään `estimateMinutes` min + pieni info-ikoni.
+- Tooltip = `detail`-kenttä (kaava).
+- Lisätään number-input `heat_size` (juoksuille) — `station_count` on jo UI:ssa heittopaikoille/hyppypaikoille.
+
+## E) Mitä EI muuteta
+
+- `event_duration_stats`-taulu ja `compute-duration-stats`-funktio jäävät (diagnostiikka).
+- `event_duration_overrides` säilyy ja voittaa edelleen kaavan.
+- `planner-timings.ts` säilyy (per-heat-aika tulee silti `defaultMinutesPerHeat`-funktiosta, joka päivitetään käyttämään samaa lookup-taulukkoa kuin uusi `planner-rules.ts` — yksi totuus).
+
+## Implementointijärjestys
+
+1. Migraatio: `heat_size`-sarake `plan_events`:iin (tarkista `station_count`).
+2. `src/lib/planner-rules.ts` + `planner-types.ts`-päivitys.
+3. Refaktoroi `planner-estimate.ts` (poista `loadHistory`, `linearRegression`).
+4. UI: `heat_size`-kenttä + tooltip Lajit-välilehdellä.
+5. Yhtenäistä `planner-defaults.ts:defaultMinutesPerHeat` käyttämään samaa taulukkoa.
+
+## Avoimet kysymykset
+
+- **Kävely (3000m kävely jne.)**: kaavasi ei mainitse niitä. Säilytetäänkö nykyiset arvot (`planner-defaults.ts` rivit 126–127: 10/18 min/erä) heat-pohjaisessa laskennassa? Oletan **kyllä** — listataan samaan lookup-taulukkoon.
+- **1500m**: kaavasi sanoo "1000m, 1500m: 4 min / 16 osall.". Vahvistus: 4 min/erä myös 1500m:lle?
+- **Aidat 60m vs 80/100m**: kaava antaa molemmille 6 min — sovelletaan myös lyhyempiin ikäluokkien aitamatkoihin (esim. 50m aidat T11)?
