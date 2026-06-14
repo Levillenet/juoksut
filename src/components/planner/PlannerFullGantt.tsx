@@ -143,20 +143,34 @@ export function PlannerFullGantt({
 
   // ── Responsive layout & zoom ─────────────────────────────────────────
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [scrollState, setScrollState] = useState({ left: 0, width: 1, view: 1 });
   const [containerWidth, setContainerWidth] = useState<number>(() =>
     typeof window === "undefined" ? 1200 : window.innerWidth,
   );
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setScrollState({
+      left: el.scrollLeft,
+      width: Math.max(1, el.scrollWidth),
+      view: Math.max(1, el.clientWidth),
+    });
+  }, []);
+
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver((entries) => {
       const w = entries[0]?.contentRect.width;
-      if (w && Math.abs(w - containerWidth) > 4) setContainerWidth(w);
+      if (w) {
+        setContainerWidth((prev) => (Math.abs(w - prev) > 4 ? w : prev));
+        window.requestAnimationFrame(updateScrollState);
+      }
     });
     ro.observe(el);
     return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [updateScrollState]);
 
   const isMobile = containerWidth > 0 && containerWidth < 768;
   const LEFT_COL = isMobile ? LEFT_COL_MOBILE : LEFT_COL_DESKTOP;
