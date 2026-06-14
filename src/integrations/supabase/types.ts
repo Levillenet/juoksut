@@ -257,6 +257,7 @@ export type Database = {
           is_multi_day: boolean
           name: string
           notes: string | null
+          stadium_id: string | null
           starts_at: string
           updated_at: string
           user_id: string
@@ -275,6 +276,7 @@ export type Database = {
           is_multi_day?: boolean
           name: string
           notes?: string | null
+          stadium_id?: string | null
           starts_at: string
           updated_at?: string
           user_id: string
@@ -293,11 +295,20 @@ export type Database = {
           is_multi_day?: boolean
           name?: string
           notes?: string | null
+          stadium_id?: string | null
           starts_at?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "competition_plans_stadium_id_fkey"
+            columns: ["stadium_id"]
+            isOneToOne: false
+            referencedRelation: "stadiums"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       event_duration_overrides: {
         Row: {
@@ -584,6 +595,57 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_conflict_groups: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          max_concurrent: number
+          name: string
+          plan_id: string
+          source_stadium_group_id: string | null
+          updated_at: string
+          venue_ids: string[]
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          max_concurrent?: number
+          name: string
+          plan_id: string
+          source_stadium_group_id?: string | null
+          updated_at?: string
+          venue_ids?: string[]
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          max_concurrent?: number
+          name?: string
+          plan_id?: string
+          source_stadium_group_id?: string | null
+          updated_at?: string
+          venue_ids?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_conflict_groups_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "competition_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_conflict_groups_source_stadium_group_id_fkey"
+            columns: ["source_stadium_group_id"]
+            isOneToOne: false
+            referencedRelation: "stadium_conflict_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_events: {
         Row: {
           age_class: string
@@ -726,29 +788,35 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          included: boolean
           kind: string
           name: string
           notes: string | null
           plan_id: string
           sort_order: number
+          stadium_venue_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
+          included?: boolean
           kind?: string
           name: string
           notes?: string | null
           plan_id: string
           sort_order?: number
+          stadium_venue_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
+          included?: boolean
           kind?: string
           name?: string
           notes?: string | null
           plan_id?: string
           sort_order?: number
+          stadium_venue_id?: string | null
         }
         Relationships: [
           {
@@ -756,6 +824,13 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "competition_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_venues_stadium_venue_id_fkey"
+            columns: ["stadium_venue_id"]
+            isOneToOne: false
+            referencedRelation: "stadium_venues"
             referencedColumns: ["id"]
           },
         ]
