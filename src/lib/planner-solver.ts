@@ -347,6 +347,10 @@ export function solve(input: SolverInput): SolverResult {
       ageStates.set(seg.ageClass, { busyUntil: segEnd });
       const prevEnd = eventEnds.get(seg.eventId) ?? 0;
       eventEnds.set(seg.eventId, Math.max(prevEnd, segEnd));
+      // KORJAUS 2: tallenna phase-tila final_b:tä varten.
+      const phaseKey = `${seg.eventId}|${seg.phase}`;
+      phaseEnds.set(phaseKey, segEnd);
+      phaseVenues.set(phaseKey, placedVenues.map((v) => v.id));
 
       // Päivitä konfliktiryhmien aikajanat
       const placedIds = placedVenues.map((v) => v.id);
