@@ -1672,9 +1672,23 @@ function ScheduleTab({
           schedule={schedule}
           conflicts={conflicts}
           highlightIds={highlightIds}
+          onSelectItem={setSelectedItemId}
           onChange={onChange}
         />
       </div>
+
+      <ScheduleItemSheet
+        open={selectedItemId != null}
+        onOpenChange={(o) => !o && setSelectedItemId(null)}
+        itemId={selectedItemId}
+        plan={plan}
+        schedule={schedule}
+        events={events}
+        venues={venues}
+        conflicts={conflicts}
+        onChange={onChange}
+        onSelect={setSelectedItemId}
+      />
     </section>
   );
 }
