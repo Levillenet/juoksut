@@ -394,5 +394,30 @@ export function detectConflicts(
     }
   }
 
+  // Konfliktiryhmät: aikahetkellä max_concurrent ylittyminen
+  if (conflictGroups.length > 0) {
+    const includedVenueIds = new Set(venues.filter((v) => v.included !== false).map((v) => v.id));
+    for (const g of conflictGroups) {
+      const activeVenueIds = g.venue_ids.filter((id) => includedVenueIds.has(id));
+      if (activeVenueIds.length === 0) continue;
+      const relevant = items
+        .filter((it) => activeVenueIds.includes(it.venue_id))
+        .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+      // Sweep-line: laske samanaikaisten määrä jokaisessa alkupisteessä
+      for (let i = 0; i < relevant.length; i++) {
+        const it = relevant[i];
+        const overlapping = relevant.filter(
+          (o, j) => j !== i && o.starts_at < it.ends_at && o.ends_at > it.starts_at,
+        );
+        if (overlapping.length + 1 > g.max_concurrent) {
+          out.push({
+            id: it.id,
+            reason: `Rajoiteryhmä "${g.name}" rikkoutuu (max ${g.max_concurrent} samaan aikaan)`,
+          });
+        }
+      }
+    }
+  }
+
   return out;
 }
