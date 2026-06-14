@@ -156,3 +156,79 @@ export function getDefaultOfficialsCount(eventName: string, category: string | n
 
   return 3;
 }
+
+/** Parsi matka metreinä lajinimestä; null jos ei tunnistettu juoksumatka. */
+export function parseDistanceM(eventName: string): number | null {
+  const n = (eventName ?? "").toLowerCase();
+  const km = n.match(/(\d+(?:[.,]\d+)?)\s*km\b/);
+  if (km) return Math.round(parseFloat(km[1].replace(",", ".")) * 1000);
+  const m = n.match(/(\d{2,5})\s*m\b/);
+  if (m) return parseInt(m[1], 10);
+  return null;
+}
+
+export function isHurdleEvent(eventName: string): boolean {
+  return /aita|aidat|hurdle/i.test(eventName ?? "");
+}
+
+/** Onko juoksulaji (mukaan lukien aidat). */
+export function isRunningEvent(eventName: string): boolean {
+  const n = (eventName ?? "").toLowerCase();
+  return parseDistanceM(eventName) != null || /aita|aidat|hurdle|kävely|kavely|walk/.test(n);
+}
+
+/**
+ * Matkanvaihtoaika (min) samalla suorituspaikalla peräkkäin järjestettäville juoksulajeille.
+ * Jos eri suorituspaikat (sameVenue=false) → 0.
+ * Jos sama matka ja molemmat samaa tyyppiä (sileä/aita) → 0.
+ * Säännöt vastaavat tyypillisen pikajuoksusuoran lähtötelineiden siirtoa.
+ */
+export function getDistanceChangeoverMin(
+  prevEvent: string | null | undefined,
+  nextEvent: string,
+  sameVenue: boolean,
+): number {
+  if (!sameVenue) return 0;
+  if (!prevEvent) return 0;
+
+  const prevD = parseDistanceM(prevEvent);
+  const nextD = parseDistanceM(nextEvent);
+  if (prevD == null || nextD == null) return 0;
+
+  const prevH = isHurdleEvent(prevEvent);
+  const nextH = isHurdleEvent(nextEvent);
+
+  // Aitavaihto suuntaan tai toiseen
+  if (prevH !== nextH) return 15;
+
+  // Sama matka & sama tyyppi → ei siirtoa
+  if (prevD === nextD) return 0;
+
+  const lo = Math.min(prevD, nextD);
+  const hi = Math.max(prevD, nextD);
+
+  // Suora ↔ kaarrematka (≤100m → ≥200m)
+  if (lo <= 100 && hi >= 200) return 10;
+
+  // 200m ↔ 400m+ (samalta lähtöpaikalta)
+  if (lo >= 200) return 5;
+
+  // Lyhyet pikajuoksut keskenään
+  if (lo <= 100 && hi <= 100) {
+    if (lo === 40 && hi === 60) return 5;
+    if (lo === 60 && hi === 100) return 10;
+    if (lo === 40 && hi === 100) return 12;
+    // muut yhdistelmät (esim. 50/80)
+    return Math.max(5, Math.round((hi - lo) / 10));
+  }
+
+  return 5;
+}
+
+/** Ryhmittelyavain juoksulajeille: sama matka & tyyppi → sama avain. */
+export function runningGroupKey(eventName: string): string | null {
+  const d = parseDistanceM(eventName);
+  if (d == null) return null;
+  const h = isHurdleEvent(eventName) ? "H" : "F";
+  return `${h}-${d}`;
+}
