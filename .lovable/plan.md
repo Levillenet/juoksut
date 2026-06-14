@@ -1,67 +1,62 @@
-## Ongelma
+## Tavoite
 
-PB-laskenta ei huomioi lajin spesifikaatiota:
-- **Aidat**: aidan korkeus ja lukumäärä vaihtelevat sarjasta toiseen (esim. T11 vs T13 60 m aidat)
-- **Heitot (kuula, kiekko, keihäs, moukari)**: välineen paino vaihtelee sarjoittain (esim. P15 kuula 4 kg vs M kuula 7,26 kg)
+Lisätään admin-näkymään työkalu, jolla kilpailusta saa Excel-tiedoston, jossa kullekin lajille näkyy aloitusaika, osanottajamäärä, viimeisen tuloksen tallennusaika ja siitä laskettu kesto. Juoksulajeille lisäksi erien lukumäärä ja osanottajat yhteensä kaikista eristä.
 
-Nuoremmassa sarjassa kevyemmällä välineellä tehty heitto ei saa olla PB vanhemmassa sarjassa, eikä toisinpäin. Sama koskee aitoja.
+## Muutokset
 
-Nyt PB lasketaan pelkän normalisoidun lajinimen perusteella sekä `athlete-history.ts:groupByEvent`, `history-baseline.ts`, `today-stats.ts`, `club-today.ts`, `season-leaders.ts` ja Supabase-funktion `mark_pbs_for_competitions` osalta.
+### 1. Reitti uudelleennimettynä: `/admin/analytics` → "Admin-valikko"
 
-## Ratkaisu
+- `src/routes/admin.analytics.tsx`: vaihdetaan otsikko **"Käyttöanalytiikka"** → **"Admin-valikko"** ja `head` meta `title: "Admin-valikko"`.
+- Lisätään sivun alkuun kevyt tab-/osio-rakenne: **Käyttöanalytiikka** (nykyinen sisältö) ja **Lajien kestot** (uusi). Reittipolku säilyy `/admin/analytics`-osoitteessa toistaiseksi, jotta admin-bookmarkit eivät rikkoudu.
 
-### 1) Spesifikaatiotaulukot
+### 2. Uusi osio "Lajien kestot"
 
-Uusi `src/lib/event-specs.ts` joka kattaa:
+UI sisältää:
+- Kilpailun valinta (oletuksena nykyinen `useCompetitionId()`-arvo, vaihdettavissa numerokentällä).
+- Painike **"Lataa ja vie Excel"** sekä yhteenvetotaulukko esikatselua varten.
 
-**Aidat** (SUL nuorten kilpailusäännöt) — per sarja (sukupuoli + ikä) + matka:
-- T/P 9–17: 60 m / 80 m / 100 m / 110 m / 300 m aidat → korkeus (cm) + aitojen lukumäärä
-- T19/T22/N: 100 m aidat 84 cm, 400 m aidat 76,2 cm
-- P19/P22/M: 110 m aidat 99,1/106,7 cm, 400 m aidat 91,4 cm
-- Veteraanisarjat M/N 35+ matalammat
+Lataaminen tekee rinnakkain:
+1. `fetchRounds(competitionId)` (tuloslista-aikataulu, jo olemassa `src/lib/tuloslista.ts`).
+2. Per laji `fetchEvent(competitionId, eventId)` → saadaan `Rounds[].Heats[]` ja kunkin lajin Track/Field-luonne. Pyynnöt batchataan (esim. 6 rinnakkain) menemättä päälle palvelimen rajoja.
+3. Yksi Supabase-kysely: `athlete_results` taulusta `competition_id = ?` — palautetaan `event_id`, `captured_at`, `athlete_key`. Lasketaan paikallisesti `max(captured_at)` ja `count(distinct athlete_key)` per lajiin.
 
-**Heitot** (kuula, kiekko, keihäs, moukari) — per sarja:
-- Kuula: T9–T11 2 kg, T12–T13 3 kg, T14–T15 3 kg, T16–T17 3 kg, N19+ 4 kg; P9–P11 2 kg, P12–P13 3 kg, P14–P15 4 kg, P16–P17 5 kg, P19 6 kg, M22 7,26 kg
-- Kiekko: T9–T13 600 g, T14–T17 1 kg, N+ 1 kg; P-sarjat porrastettu 600 g → 2 kg → M 2 kg
-- Keihäs: T13–T15 400 g, T16–T17 500 g, N+ 600 g; P13–P15 500 g, P16–P17 600 g, P19+ 700 g, M 800 g
-- Moukari: vastaava porrastus 3–7,26 kg
+### 3. Yhden rivin lasenta (per laji)
 
-Funktiot:
-- `getEventSpec(ageClass, gender, eventName) → { kind: "hurdles"|"throw", ...details } | null`
-- `eventSpecKey(ageClass, gender, eventName) → string | null` (esim. `"H-60-50-8"`, `"T-shot-3000"`)
-- Fallback: jos sarja puuttuu taulukosta, käytä `age_class`-merkkijonoa, jotta ennätykset eivät vuoda sarjojen yli.
+| Sarake | Lähde |
+| --- | --- |
+| Laji-ID | `EventId` |
+| Lajin nimi | `EventName` |
+| Sarja / ryhmä | `Name` / `GroupName` |
+| Kategoria | Track / Field (suomennettuna) |
+| Alkamisaika | aikataulun varhaisin `BeginDateTimeWithTZ` lajin kaikkien Round-rivien yli (Helsinki-aika) |
+| Erien määrä (vain juoksut) | `Rounds[].Heats.length` summa |
+| Osanottajat ilm. (aikataulu) | `Round.CountConfirmed` (tai `CountEnrolled` jos confirmed puuttuu); juoksuilla summa kaikista eristä |
+| Osanottajat tuloksissa | `athlete_results`: distinct `athlete_key` per event_id |
+| Viimeinen tulos | `max(captured_at)` |
+| Kesto (min) | `(viimeinen tulos − alkamisaika)` minuutteina; tyhjä jos ei tuloksia |
+| Status | tuloslistan `Status` (esim. Virallinen / Käynnissä) |
 
-### 2) Yleinen PB-avain
+Huom: kesto perustuu omaan `captured_at`-aikaleimaamme (harvesterin syke ~minuutteja). Tämä todetaan vienti­tiedoston yläriville selitteenä.
 
-Uusi `src/lib/pb-key.ts`:
-```ts
-export function pbEventKey(row): string
-```
-- Aidat/heitot: `${normalizeEventName}|${eventSpecKey ?? age_class}`
-- Muut: `normalizeEventName(event_name)`
+### 4. Excel-vienti
 
-### 3) Käyttö lukukerroksessa
+- Lisätään `xlsx`-paketti (`bun add xlsx`) ja muodostetaan tiedosto selainpuolella `XLSX.utils.json_to_sheet` + `XLSX.writeFile`.
+- Tiedostonimi: `lajien-kestot-<competitionId>-<YYYY-MM-DD>.xlsx`.
+- Kaksi välilehteä: **"Kaikki lajit"** (yllä kuvattu taulukko) ja **"Juoksut yhteenveto"** (vain Track-lajit, sarakkeet: laji, erät, osanottajat yhteensä).
 
-Päivitä PB-avain näissä:
-- `src/lib/athlete-history.ts` `groupByEvent` — ryhmittelyavain + näyttönimi sisältää speksin (esim. "Kuula (4 kg)", "60 m aidat (60 cm)")
-- `src/lib/history-baseline.ts` — `lookupKey`/`buildBaselineMap` ottaa `age_class` mukaan; lisää `age_class` `fetchHistoryForKeys`/`get_shared_watch_history` -sarakkeisiin
-- `src/lib/today-stats.ts`, `src/lib/club-today.ts`, `src/lib/season-leaders.ts` — pb-mapien avaimet
-- `src/components/ClubTodaySection.tsx` ym. paikat jotka rakentavat avaimen käsin
+### 5. Tekninen toteutus
 
-### 4) Supabase RPC
+- Uusi pieni moduuli `src/lib/event-durations.ts`:
+  - `buildEventDurationRows(competitionId)` → palauttaa rivit yllä olevassa muodossa.
+  - Hyödyntää `fetchRounds`, `fetchEvent` ja yhden Supabase-kyselyn.
+- Uusi komponentti `src/components/admin/EventDurationsSection.tsx`, renderöidään `admin.analytics.tsx`-sivulle uutena osiona.
+- Käyttää nykyistä admin-gateä (`ADMIN_EMAIL`-tarkistus). Ei uusia RLS-policyjä — `athlete_results` on jo luettavissa kirjautuneelle adminille nykyisillä säännöillä; jos kysely epäonnistuu oikeuksien takia, fallback `createServerFn`:lla admin-tarkistuksen kanssa (käyttää `supabaseAdmin`).
 
-Uusi SQL-immutable-funktio `public.event_pb_key(event_name, sub_category, age_class)` joka sisältää saman aitojen + heittojen logiikan. Muuta `mark_pbs_for_competitions` käyttämään sitä `normalize_event_name`:n sijaan, jotta `athlete_results.was_pb` lasketaan oikein.
+### 6. Tulevaisuuden käyttö
 
-### 5) `get_shared_watch_history`
+Data on suunniteltu uudelleenkäytettäväksi tulevassa kilpailujen aikataulutus­työkalussa: sama `buildEventDurationRows` voidaan ajaa useammalta vanhalta kisalta ja koostaa ennusteita lajien kestoista.
 
-Lisää `age_class` palautettaviin sarakkeisiin (tarvitaan baselinessa jaetuilla seurantalinkeillä).
+## Ulkopuolelle jää
 
-## Vaikutus käyttäjälle
-
-- Aidoissa ja heitoissa PB/SB-tähti vain kun tulos voittaa saman speksin (korkeus & aitojen määrä / välineen paino) aiemman tuloksen
-- Urheilijasivulla heitot/aidat näkyvät erikseen jokaiselle speksille (esim. "Kuula 3 kg" ja "Kuula 4 kg" omina riveinään)
-- Muut lajit ennallaan
-
-## Vahvistuspyyntö
-
-Kelpaako: rakennetaan yksi yhteinen spec-taulukko aidoille ja kaikille heitoille (kuula, kiekko, keihäs, moukari), näytetään speksi näyttönimessä, ja päivitetään myös SQL-RPC `was_pb`-leimaan?
+- Ei vielä historiakoostetta useammalta kisalta (rakenne valmistellaan, mutta UI tehdään myöhemmin).
+- Ei muuteta `/admin/analytics`-osoitetta itseään; vain otsikko ja sivun rakenne. Mahdollinen siirto `/admin`-juureen voidaan tehdä, kun valikkoon tulee lisää työkaluja.
