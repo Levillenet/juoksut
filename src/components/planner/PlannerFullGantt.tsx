@@ -140,7 +140,83 @@ export function PlannerFullGantt({
   }, [win]);
 
   const totalMin = (endMs - startMs) / 60000;
-  const totalWidth = LEFT_COL + totalMin / 5 * PX_PER_5MIN;
+
+  // ── Responsive layout & zoom ─────────────────────────────────────────
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(() =>
+    typeof window === "undefined" ? 1200 : window.innerWidth,
+  );
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w && Math.abs(w - containerWidth) > 4) setContainerWidth(w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const isMobile = containerWidth > 0 && containerWidth < 768;
+  const LEFT_COL = isMobile ? LEFT_COL_MOBILE : LEFT_COL_DESKTOP;
+
+  const zoomKey = `planner_gantt_zoom_${plan.id}`;
+  const [zoomFactor, setZoomFactor] = useState<number>(() => {
+    if (typeof window === "undefined") return 1;
+    const raw = window.localStorage.getItem(zoomKey);
+    const n = raw ? parseFloat(raw) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(zoomKey, String(zoomFactor));
+    } catch {
+      /* noop */
+    }
+  }, [zoomFactor, zoomKey]);
+
+  const autoFitPxMin = useMemo(() => {
+    if (!totalMin || containerWidth <= 0) return 8;
+    const avail = Math.max(200, containerWidth - LEFT_COL - 24);
+    return Math.max(AUTOFIT_MIN, Math.min(AUTOFIT_MAX, avail / totalMin));
+  }, [totalMin, containerWidth, LEFT_COL]);
+
+  const pxPerMin = Math.max(
+    MIN_PX_PER_MIN,
+    Math.min(MAX_PX_PER_MIN, autoFitPxMin * zoomFactor),
+  );
+  const PX_PER_5MIN = pxPerMin * 5;
+  const totalWidth = LEFT_COL + (totalMin / 5) * PX_PER_5MIN;
+  const zoomPercent = Math.round((pxPerMin / autoFitPxMin) * 100);
+
+  const zoomIn = useCallback(
+    () => setZoomFactor((z) => Math.min(z * 1.5, MAX_PX_PER_MIN / Math.max(0.01, autoFitPxMin))),
+    [autoFitPxMin],
+  );
+  const zoomOut = useCallback(
+    () => setZoomFactor((z) => Math.max(z * 0.67, MIN_PX_PER_MIN / Math.max(0.01, autoFitPxMin))),
+    [autoFitPxMin],
+  );
+  const zoomReset = useCallback(() => setZoomFactor(1), []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        zoomIn();
+      } else if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        zoomOut();
+      } else if (e.key === "0") {
+        e.preventDefault();
+        zoomReset();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoomIn, zoomOut, zoomReset]);
 
   const dragRef = useRef<{
     id: string;
