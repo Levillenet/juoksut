@@ -695,17 +695,23 @@ function EventsTab({
               <th className="py-1 pr-2 text-right">Osanottajat</th>
               <th
                 className="py-1 pr-2 text-right"
-                title="Kentälajeissa rinnakkaisten suorituspaikkojen määrä, juoksulajeissa käytettyjen ratojen lukumäärä"
+                title="Kentälajeissa rinnakkaisten suorituspaikkojen määrä, juoksulajeissa lanea per erä (oletus 8; ≥1000 m → 16)"
               >
-                Paikkoja/Ratoja
+                Paikkoja/Lanea
               </th>
               <th className="py-1 pr-2">Finaalit</th>
               <th className="py-1 pr-2 text-right">A-finaalin koko</th>
               <th
                 className="py-1 pr-2 text-right"
-                title="Ohittaa automaattisen kestoarvion (lasketaan livetuloslistasta)"
+                title="Sääntöpohjainen kestoarvio (YAG 2022). Vie hiiri päälle nähdäksesi kaava."
               >
-                Ohita kesto (min)
+                Kesto
+              </th>
+              <th
+                className="py-1 pr-2 text-right"
+                title="Ohittaa automaattisen kestoarvion"
+              >
+                Ohita (min)
               </th>
               <th className="py-1 pr-2 text-right" title="Valmisteluaika ennen lajia (askelmerkit, lämmittely)">
                 Valm.
