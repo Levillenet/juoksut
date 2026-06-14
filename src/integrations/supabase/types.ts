@@ -343,6 +343,7 @@ export type Database = {
           median_duration_min: number | null
           median_participants: number | null
           n_samples: number
+          p10_duration_min: number | null
           p90_duration_min: number | null
           sub_category: string
         }
@@ -356,6 +357,7 @@ export type Database = {
           median_duration_min?: number | null
           median_participants?: number | null
           n_samples?: number
+          p10_duration_min?: number | null
           p90_duration_min?: number | null
           sub_category?: string
         }
@@ -369,6 +371,7 @@ export type Database = {
           median_duration_min?: number | null
           median_participants?: number | null
           n_samples?: number
+          p10_duration_min?: number | null
           p90_duration_min?: number | null
           sub_category?: string
         }
