@@ -27,6 +27,8 @@ interface Props {
   conflicts: Conflict[];
   /** Aikatauluitemien id:t joita korostetaan hetkellisesti. */
   highlightIds?: string[];
+  /** Kun käyttäjä klikkaa palkkia (ei vetää). */
+  onSelectItem?: (id: string) => void;
   onChange: () => void;
 }
 
