@@ -365,9 +365,9 @@ export function PlannerFullGantt({
 
   return (
     <div className="flex h-full flex-col">
-      {windows.length > 1 && (
-        <div className="flex gap-1 border-b bg-card px-3 py-2">
-          {windows.map((w, i) => (
+      <div className="flex flex-wrap items-center gap-2 border-b bg-card px-3 py-2">
+        {windows.length > 1 &&
+          windows.map((w, i) => (
             <button
               key={w.date}
               onClick={() => setDayIdx(i)}
@@ -384,8 +384,16 @@ export function PlannerFullGantt({
               })}
             </button>
           ))}
-        </div>
-      )}
+        <label className="ml-auto flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={showEmpty}
+            onChange={(e) => setShowEmpty(e.target.checked)}
+            className="h-3.5 w-3.5 accent-primary"
+          />
+          Näytä myös tyhjät paikat
+        </label>
+      </div>
       <div
         className="relative flex-1 overflow-auto"
         onPointerMove={onPointerMove}
