@@ -1434,6 +1434,7 @@ function ScheduleTab({
         defaultRecoveryMin: plan.default_recovery_min,
         venues,
         events: enriched,
+        conflictGroups,
       });
 
       await supabase
@@ -1466,8 +1467,8 @@ function ScheduleTab({
   };
 
   const conflicts = useMemo(
-    () => detectConflicts(schedule, events, venues, plan.default_recovery_min),
-    [schedule, events, venues, plan.default_recovery_min],
+    () => detectConflicts(schedule, events, venues, plan.default_recovery_min, conflictGroups),
+    [schedule, events, venues, plan.default_recovery_min, conflictGroups],
   );
 
   const exportExcel = () => {
