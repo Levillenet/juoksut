@@ -156,12 +156,8 @@ export function ageClassRank(ageClass: string | null | undefined): number {
 }
 
 export function groupByEvent(rows: AthleteResultRow[]): EventGroup[] {
-  // Lazy import to avoid cycles
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { pbEventKey, pbEventLabel, isSpecSensitive } = require("./pb-key") as typeof import("./pb-key");
   const map = new Map<string, EventGroup>();
   for (const r of rows) {
-    const normName = normalizeEventName(r.event_name);
     // For hurdles/throws the spec (height/weight) is part of the group key,
     // so a result with different equipment is shown as its own event.
     const specKeyPart = pbEventKey(r);
