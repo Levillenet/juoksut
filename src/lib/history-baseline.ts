@@ -93,7 +93,7 @@ async function fetchHistoryForKeys(
       const { data, error } = await supabase
         .from("athlete_results")
         .select(
-          "athlete_key, event_name, event_category, sub_category, result_text, result_numeric, competition_date",
+          "athlete_key, event_name, event_category, sub_category, result_text, result_numeric, competition_date, age_class",
         )
         .in("athlete_key", chunk)
         .neq("competition_id", excludeCompetitionId)
