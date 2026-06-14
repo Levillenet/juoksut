@@ -7,7 +7,13 @@ import type {
   SchedulePhase,
   ConflictGroupRow,
 } from "./planner-types";
-import { isVenueForEvent } from "./planner-defaults";
+import {
+  isVenueForEvent,
+  getDistanceChangeoverMin,
+  runningGroupKey,
+  parseDistanceM,
+  isHurdleEvent,
+} from "./planner-defaults";
 
 export interface SolverInputEvent extends PlanEventRow {
   estimateMinutes: number;
