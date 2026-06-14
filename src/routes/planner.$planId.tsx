@@ -253,13 +253,45 @@ function PlanEditor() {
 // ─── Perustiedot ─────────────────────────────────────────────────────────
 function BasicsTab({
   plan,
+  stadiums,
+  stadiumVenueCount,
+  stadiumConflictCount,
   onChange,
+  onStadiumChanged,
   onDemoFilled,
 }: {
   plan: PlanRow;
+  stadiums: StadiumRow[];
+  stadiumVenueCount: number;
+  stadiumConflictCount: number;
   onChange: () => void;
+  onStadiumChanged: () => void;
   onDemoFilled: () => void;
 }) {
+  const [stadiumBusy, setStadiumBusy] = useState(false);
+  const currentStadium = stadiums.find((s) => s.id === plan.stadium_id) ?? null;
+
+  const handleStadiumChange = async (newId: string | null) => {
+    if (newId === plan.stadium_id) return;
+    if (plan.stadium_id && (stadiumVenueCount > 0 || stadiumConflictCount > 0)) {
+      const ok = confirm(
+        `Nykyiseltä stadionilta on tuotu ${stadiumVenueCount} suorituspaikkaa ja ${stadiumConflictCount} rajoiteryhmää. Ne poistetaan. Käsin lisätyt säilyvät. Jatketaanko?`,
+      );
+      if (!ok) return;
+    }
+    setStadiumBusy(true);
+    try {
+      if (plan.stadium_id) await removeStadiumFromPlan(plan.id);
+      if (newId) await applyStadiumToPlan(plan.id, newId);
+      else {
+        // jos newId null mutta plan.stadium_id oli null, ei tehdä mitään
+      }
+      onStadiumChanged();
+    } finally {
+      setStadiumBusy(false);
+    }
+  };
+
   const [form, setForm] = useState({
     name: plan.name,
     starts: fmtDateTimeInput(plan.starts_at),
