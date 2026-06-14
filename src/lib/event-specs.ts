@@ -3,7 +3,7 @@
 // `age_class`-merkkijonoa fallback-avaimena, jolloin ennätys ei voi vuotaa eri
 // sarjan yli vahingossa.
 
-import { normalizeEventName } from "./athlete-history";
+import { normalizeEventName } from "./event-name";
 
 export type ThrowKind = "shot" | "discus" | "javelin" | "hammer";
 
