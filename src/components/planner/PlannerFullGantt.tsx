@@ -203,6 +203,11 @@ export function PlannerFullGantt({
   const PX_PER_5MIN = pxPerMin * 5;
   const totalWidth = LEFT_COL + (totalMin / 5) * PX_PER_5MIN;
   const zoomPercent = Math.round((pxPerMin / autoFitPxMin) * 100);
+  const miniThumbWidth = Math.min(100, (scrollState.view / scrollState.width) * 100);
+  const miniThumbLeft = Math.min(
+    Math.max(0, (scrollState.left / scrollState.width) * 100),
+    Math.max(0, 100 - miniThumbWidth),
+  );
 
   const zoomIn = useCallback(
     () => setZoomFactor((z) => Math.min(z * 1.5, MAX_PX_PER_MIN / Math.max(0.01, autoFitPxMin))),
@@ -231,6 +236,10 @@ export function PlannerFullGantt({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [zoomIn, zoomOut, zoomReset]);
+
+  useEffect(() => {
+    updateScrollState();
+  }, [totalWidth, containerWidth, updateScrollState]);
 
   const dragRef = useRef<{
     id: string;
