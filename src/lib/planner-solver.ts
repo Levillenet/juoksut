@@ -157,7 +157,7 @@ export function solve(input: SolverInput): SolverResult {
 
   // 3) Tilakoneet per päivä — venue/age "busyUntil" on globaali aikaleima (ms),
   // mutta segmentti kokeilee jokaista sallittua päivää järjestyksessä.
-  const venueStates: VenueState[] = input.venues.map((v) => ({
+  const venueStates: VenueState[] = usableVenues.map((v) => ({
     id: v.id,
     busyUntil: 0,
     lastWasHurdle: false,
@@ -169,7 +169,25 @@ export function solve(input: SolverInput): SolverResult {
   // Reset venue busy alkuun ensimmäisen ikkunan alkuun
   for (const v of venueStates) v.busyUntil = input.windows[0].startMs;
 
-  const venueKindById = new Map(input.venues.map((v) => [v.id, v.kind]));
+  const venueKindById = new Map(usableVenues.map((v) => [v.id, v.kind]));
+
+  // Apufunktio: löytyykö rajoiteryhmissä esteitä annetulla välillä?
+  // Palauttaa aikaleiman johon mennessä este vapautuu (tai 0 jos ei estettä).
+  const groupBlockUntil = (placedIds: string[], startMs: number, endMs: number): number => {
+    let blockUntil = 0;
+    for (let i = 0; i < conflictGroups.length; i++) {
+      const g = conflictGroups[i];
+      const usesGroup = placedIds.some((id) => g.venue_ids.includes(id));
+      if (!usesGroup) continue;
+      const overlapping = groupBusy[i].filter((b) => b.s < endMs && b.e > startMs);
+      if (overlapping.length + 1 > g.max_concurrent) {
+        const soonestFree = Math.min(...overlapping.map((b) => b.e));
+        if (soonestFree > blockUntil) blockUntil = soonestFree;
+      }
+    }
+    return blockUntil;
+  };
+
   for (const seg of segments) {
     const eligibleStates = venueStates.filter((vs) => {
       const kind = venueKindById.get(vs.id);
@@ -195,14 +213,22 @@ export function solve(input: SolverInput): SolverResult {
       let candidateStart = Math.max(win.startMs, ageBusyUntil, prevEventEnd);
       let placedVenues: VenueState[] = [];
 
-      for (let attempts = 0; attempts < 200; attempts++) {
+      for (let attempts = 0; attempts < 400; attempts++) {
         const sorted = eligibleStates.slice().sort((a, b) => a.busyUntil - b.busyUntil);
         const ready = sorted.filter(
           (v) => v.busyUntil <= candidateStart - setupMs && candidateStart >= win.startMs,
         );
         if (ready.length >= seg.needsStations) {
-          placedVenues = ready.slice(0, seg.needsStations);
-          break;
+          const cand = ready.slice(0, seg.needsStations);
+          const candEnd = candidateStart + seg.durationMin * 60000;
+          const blocked = groupBlockUntil(cand.map((v) => v.id), candidateStart, candEnd);
+          if (blocked === 0) {
+            placedVenues = cand;
+            break;
+          }
+          candidateStart = blocked;
+          if (candidateStart > win.endMs) break;
+          continue;
         }
         const next = sorted[seg.needsStations - 1].busyUntil + setupMs;
         const newCandidate = Math.max(next, ageBusyUntil, prevEventEnd, win.startMs);
@@ -237,6 +263,14 @@ export function solve(input: SolverInput): SolverResult {
       ageStates.set(seg.ageClass, { busyUntil: segEnd });
       const prevEnd = eventEnds.get(seg.eventId) ?? 0;
       eventEnds.set(seg.eventId, Math.max(prevEnd, segEnd));
+
+      // Päivitä konfliktiryhmien aikajanat
+      const placedIds = placedVenues.map((v) => v.id);
+      for (let i = 0; i < conflictGroups.length; i++) {
+        if (placedIds.some((id) => conflictGroups[i].venue_ids.includes(id))) {
+          groupBusy[i].push({ s: candidateStart, e: segEnd });
+        }
+      }
 
       items.push({
         plan_event_id: seg.eventId,
