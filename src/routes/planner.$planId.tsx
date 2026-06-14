@@ -36,9 +36,10 @@ import { estimateDuration } from "@/lib/planner-estimate";
 import { computeRuleEstimate } from "@/lib/planner-rules";
 import { solve, detectConflicts } from "@/lib/planner-solver";
 import { resolveTimings } from "@/lib/planner-timings";
-import { DEFAULT_VENUES, buildDefaultVenueRows, isVenueForEvent } from "@/lib/planner-defaults";
+import { DEFAULT_VENUES, buildDefaultVenueRows, isVenueForEvent, getDefaultOfficialsCount } from "@/lib/planner-defaults";
 import { fillPlanWithDemo } from "@/lib/planner-demo";
 import { applyStadiumToPlan, removeStadiumFromPlan } from "@/lib/planner-stadium";
+import { computeOfficialsTimeline, formatHHMM } from "@/lib/planner-officials";
 
 export const Route = createFileRoute("/planner/$planId")({
   component: PlanEditor,
@@ -305,6 +306,8 @@ function BasicsTab({
     isMultiDay: plan.is_multi_day,
     dayWindows: (plan.day_windows ?? []) as DayWindow[],
     notes: plan.notes ?? "",
+    totalOfficials: plan.total_officials_available ?? 10,
+    officialsChangeover: plan.officials_changeover_min ?? 10,
   });
   const [demoBusy, setDemoBusy] = useState(false);
 
@@ -325,6 +328,8 @@ function BasicsTab({
           is_multi_day: form.isMultiDay,
           day_windows: form.isMultiDay ? (form.dayWindows as unknown as never) : null,
           notes: form.notes,
+          total_officials_available: form.totalOfficials,
+          officials_changeover_min: form.officialsChangeover,
         })
         .eq("id", plan.id);
       if (error) throw error;
@@ -536,6 +541,19 @@ function BasicsTab({
           </div>
         </div>
       )}
+
+      <h3 className="pt-2 text-sm font-semibold text-muted-foreground">
+        Toimitsijat
+      </h3>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {numField("totalOfficials", "Toimitsijoita saatavilla yhteensä")}
+        {numField("officialsChangeover", "Siirtymäaika lajien välillä (min)")}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Sama toimitsija voi vetää useamman lajin samassa kisassa, jos lajien välillä on
+        riittävä tauko. Tällä hetkellä Aikataulu-välilehti laskee karkean huippukuorman
+        olettaen että jokainen samaan aikaan käynnissä oleva laji tarvitsee omat toimitsijansa.
+      </p>
 
       <h3 className="pt-2 text-sm font-semibold text-muted-foreground">
         Aika-asetusten oletukset
@@ -977,6 +995,12 @@ function EventsTab({
               <th className="py-1 pr-2 text-right" title="Aitojen purku">
                 Aidat−
               </th>
+              <th
+                className="py-1 pr-2 text-right"
+                title="Toimitsijoita tarvitaan tähän lajiin. Voit muokata jos kentälläsi on erikoisjärjestely."
+              >
+                Toimitsijoita
+              </th>
               {plan.is_multi_day && <th className="py-1 pr-2">Sallitut päivät</th>}
               <th></th>
             </tr>
@@ -1149,6 +1173,42 @@ function EventsTab({
                       </td>
                     );
                   })}
+                  {(() => {
+                    const defaultOff = getDefaultOfficialsCount(e.event_name, e.sub_category);
+                    const overridden = e.officials_count_overridden;
+                    return (
+                      <td className="py-1 pr-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Input
+                            type="number"
+                            className="w-16 text-right"
+                            value={e.officials_count ?? defaultOff}
+                            onChange={(ev) => {
+                              const v = Math.max(0, parseInt(ev.target.value) || 0);
+                              update.mutate({
+                                id: e.id,
+                                officials_count: v,
+                                officials_count_overridden: true,
+                              });
+                            }}
+                            title={
+                              overridden
+                                ? `Käsin asetettu. Oletus säännöstä: ${defaultOff}.`
+                                : `Oletus säännöstä: ${defaultOff}. Voit muokata.`
+                            }
+                          />
+                          {overridden && (
+                            <span
+                              className="text-[9px] text-amber-600"
+                              title={`Käsin muokattu (oletus ${defaultOff})`}
+                            >
+                              muok.
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })()}
                   {plan.is_multi_day && (
                     <td className="py-1 pr-2">
                       <div className="flex flex-wrap gap-1">
@@ -1218,6 +1278,7 @@ function EventsTab({
               ? (parseInt((name.match(/(\d{2,5})\s*m\b/) || [])[1] || "0", 10) >= 1000 ? 16 : 8)
               : 8,
             final_format: "direct",
+            officials_count: getDefaultOfficialsCount(name, null),
             sort_order: events.length,
           });
           onChange();
@@ -1471,6 +1532,16 @@ function ScheduleTab({
     [schedule, events, venues, plan.default_recovery_min, conflictGroups],
   );
 
+  const officials = useMemo(
+    () => computeOfficialsTimeline(schedule, events, plan.total_officials_available ?? 10),
+    [schedule, events, plan.total_officials_available],
+  );
+
+  const eventLabel = (id: string) => {
+    const ev = events.find((e) => e.id === id);
+    return ev ? `${ev.age_class} ${ev.event_name}` : id;
+  };
+
   const exportExcel = () => {
     const conflictIds = new Set(conflicts.map((c) => c.id));
     downloadPlannerScheduleVisualXlsx({ plan, venues, events, schedule, conflictIds });
@@ -1528,6 +1599,13 @@ function ScheduleTab({
         </div>
       )}
 
+      <OfficialsPanel
+        officials={officials}
+        eventLabel={eventLabel}
+        hasSchedule={schedule.length > 0}
+      />
+
+
       <div className="overflow-hidden rounded-lg border" style={{ height: "calc(100vh - 260px)", minHeight: 480 }}>
         <PlannerFullGantt
           plan={plan}
@@ -1558,3 +1636,124 @@ function Field({
     </label>
   );
 }
+
+// ─── Toimitsijapaneeli ───────────────────────────────────────────────────
+function OfficialsPanel({
+  officials,
+  eventLabel,
+  hasSchedule,
+}: {
+  officials: ReturnType<typeof computeOfficialsTimeline>;
+  eventLabel: (id: string) => string;
+  hasSchedule: boolean;
+}) {
+  if (!hasSchedule) return null;
+
+  const { available, avg, peak, peakStartMs, overloads, intervals } = officials;
+  const peakLabel = peakStartMs != null ? formatHHMM(peakStartMs) : "–";
+
+  // Yksinkertainen SVG-viivakaavio
+  const width = 800;
+  const height = 70;
+  const padL = 36;
+  const padR = 8;
+  const padT = 6;
+  const padB = 16;
+  const plotW = width - padL - padR;
+  const plotH = height - padT - padB;
+  const minT = intervals.length > 0 ? intervals[0].startMs : 0;
+  const maxT = intervals.length > 0 ? intervals[intervals.length - 1].endMs : 1;
+  const maxY = Math.max(peak, available, 1);
+  const xFor = (t: number) =>
+    padL + ((t - minT) / Math.max(1, maxT - minT)) * plotW;
+  const yFor = (v: number) => padT + plotH - (v / maxY) * plotH;
+  const availY = yFor(available);
+
+  // Bars per intervalli
+  return (
+    <div className="rounded-lg border bg-card p-3 text-xs">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <div className="font-semibold">Toimitsijat</div>
+        <div className="tabular-nums">
+          <span className="text-muted-foreground">Keskiarvo</span>{" "}
+          <strong>{avg.toFixed(1)}</strong>
+          <span className="mx-1 text-muted-foreground">·</span>
+          <span className="text-muted-foreground">Saatavilla</span>{" "}
+          <strong>{available}</strong>
+          <span className="mx-1 text-muted-foreground">·</span>
+          <span className="text-muted-foreground">Huippu</span>{" "}
+          <strong className={peak > available ? "text-destructive" : ""}>{peak}</strong>{" "}
+          <span className="text-muted-foreground">klo {peakLabel}</span>
+        </div>
+      </div>
+
+      {intervals.length > 0 && (
+        <svg width="100%" viewBox={`0 0 ${width} ${height}`} className="block">
+          {/* available-viiva */}
+          <line
+            x1={padL}
+            x2={width - padR}
+            y1={availY}
+            y2={availY}
+            stroke="hsl(var(--muted-foreground))"
+            strokeDasharray="3 3"
+            strokeWidth={1}
+          />
+          {intervals.map((iv, i) => {
+            const x = xFor(iv.startMs);
+            const w = Math.max(1, xFor(iv.endMs) - x);
+            const y = yFor(iv.demand);
+            const h = padT + plotH - y;
+            const over = iv.demand > available;
+            return (
+              <rect
+                key={i}
+                x={x}
+                y={y}
+                width={w}
+                height={h}
+                fill={over ? "hsl(var(--destructive))" : "hsl(var(--primary))"}
+                opacity={over ? 0.7 : 0.45}
+              />
+            );
+          })}
+          {/* y-merkit */}
+          <text x={4} y={padT + 8} fontSize={9} fill="hsl(var(--muted-foreground))">
+            {maxY}
+          </text>
+          <text x={4} y={availY + 3} fontSize={9} fill="hsl(var(--muted-foreground))">
+            {available}
+          </text>
+        </svg>
+      )}
+
+      {overloads.length > 0 ? (
+        <div className="mt-2 rounded border border-destructive/40 bg-destructive/10 p-2">
+          <div className="font-semibold text-destructive">
+            Toimitsijapula {overloads.length} ajanjaksolla
+          </div>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5">
+            {overloads.slice(0, 8).map((o, i) => (
+              <li key={i}>
+                Klo {formatHHMM(o.startMs)}–{formatHHMM(o.endMs)} tarvitaan{" "}
+                <strong>{o.demand}</strong> toimitsijaa, saatavilla {available}{" "}
+                ({o.demand - available} puuttuu).{" "}
+                <span className="text-muted-foreground">
+                  Lajit: {o.eventIds.map(eventLabel).join(", ")}
+                </span>
+              </li>
+            ))}
+            {overloads.length > 8 && (
+              <li className="text-muted-foreground">…ja {overloads.length - 8} muuta.</li>
+            )}
+          </ul>
+        </div>
+      ) : (
+        <div className="mt-1 text-muted-foreground">
+          Toimitsijoita riittää koko aikataulussa.
+        </div>
+      )}
+    </div>
+  );
+}
+

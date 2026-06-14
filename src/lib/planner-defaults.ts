@@ -124,3 +124,35 @@ export function isVenueForEvent(kind: VenueKind, eventName: string): boolean {
 export function defaultMinutesPerHeat(eventName: string): number {
   return minutesPerHeat(eventName);
 }
+
+/**
+ * Toimitsijoiden oletusmäärä lajille.
+ * Säännöt YAG-aikataulutusohjeen pohjalta.
+ */
+export function getDefaultOfficialsCount(eventName: string, category: string | null | undefined): number {
+  const n = (eventName ?? "").toLowerCase();
+  const cat = (category ?? "").toLowerCase();
+  const isTrackByName = /\d{2,5}\s*m\b|\d+\s*km|aita|aidat|hurdle|kävely|kavely|walk/.test(n);
+  const isTrack = cat === "track" || isTrackByName;
+
+  if (isTrack) {
+    if (/aita|aidat|hurdle/.test(n)) return 6;          // 2 lähettäjää + 1 + 3 aidan asetteluun
+    if (/kävely|kavely|walk/.test(n)) return 4;         // + tarkkailijat
+    const distMatch = n.match(/(\d+(?:[.,]\d+)?)\s*(km|m)\b/);
+    if (distMatch) {
+      const num = parseFloat(distMatch[1].replace(",", "."));
+      const meters = distMatch[2] === "km" ? num * 1000 : num;
+      if (meters >= 800) return 3;
+      return 3;
+    }
+    return 3;
+  }
+
+  // Kenttälajit
+  if (/pituus|long ?jump|kolmiloikka|triple/.test(n)) return 4;   // tasohyppy
+  if (/korkeus|high ?jump|seiväs|seivas|pole ?vault/.test(n)) return 4; // pystyhyppy
+  if (/moukari|hammer|keihäs|keihas|javelin/.test(n)) return 6;   // pitkä heitto
+  if (/kuula|shot|kiekko|discus/.test(n)) return 5;               // muut heitot
+
+  return 3;
+}
