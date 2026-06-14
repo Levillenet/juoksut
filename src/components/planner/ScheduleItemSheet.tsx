@@ -3,8 +3,6 @@ import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import {
   Clock,
-  ArrowLeft,
-  ArrowRight,
   MapPin,
   Copy,
   Trash2,
