@@ -4,6 +4,8 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { ArrowLeft, Trash2, Plus, Wand2, Save, Download, LayoutGrid, Sparkles } from "lucide-react";
 import * as XLSX from "xlsx";
 import { downloadPlannerSchedulePdf } from "@/lib/planner-schedule-pdf";
+import { downloadPlannerScheduleVisualXlsx } from "@/lib/planner-schedule-xlsx";
+import { PlannerFullGantt } from "@/components/planner/PlannerFullGantt";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
