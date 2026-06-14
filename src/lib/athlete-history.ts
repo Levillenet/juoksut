@@ -136,19 +136,7 @@ export interface EventGroup {
  *  - "N30 Pituus Ryhmä 1"                      → "Pituus"
  */
 export function normalizeEventName(name: string): string {
-  if (!name) return "";
-  let s = name
-    .replace(/^(?:[MNTmnt][0-9]*|[Pp][0-9]+)\s+/, "")
-    .replace(/^[0-9]+-ottelu\s+/i, "");
-  // Drop everything from " - R<digit>" onwards (heat schedules).
-  s = s.replace(/\s*-\s*R\d.*$/i, "");
-  // Drop trailing parenthesised notes.
-  s = s.replace(/\s*\([^)]*\)\s*$/g, "");
-  // Drop trailing "kilpailu N" / "kierros N" / "erä N".
-  s = s.replace(/\s+(?:kilpailu|kierros|erä)\s*\d+\s*$/i, "");
-  // Drop trailing "Ryhmä N".
-  s = s.replace(/\s+ryhmä\s*\d+\s*$/i, "");
-  return s.replace(/\s+/g, " ").trim();
+  return _normalizeEventName(name);
 }
 
 /** Numeric rank for an age class, so the PB selection can prefer the
