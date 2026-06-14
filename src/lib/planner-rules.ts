@@ -56,9 +56,9 @@ export function minutesPerHeat(eventName: string, sub?: string | null): number {
   }
   if (isHurdles(eventName, sub)) return 6;
   if (d == null) return 5;
-  if (d >= 3000) return 10;
-  if (d >= 1500) return 4;
-  if (d >= 1000) return 4;
+  if (d >= 3000) return 18;
+  if (d >= 1500) return 10;
+  if (d >= 1000) return 8;
   if (d >= 600) return 8;
   if (d === 400) return 6;
   if (d >= 200) return 5;
@@ -67,10 +67,14 @@ export function minutesPerHeat(eventName: string, sub?: string | null): number {
   return 5;
 }
 
-/** Oletus-lanea per erä: 16 pitkillä (≥1000m) matkoilla, muuten 8. */
-export function defaultHeatSize(eventName: string): number {
+/** Oletus-lanea per erä. Aitajuoksuissa 16; pitkillä matkoilla 16–30; muuten 8. */
+export function defaultHeatSize(eventName: string, sub?: string | null): number {
+  if (isHurdles(eventName, sub)) return 16;
   const d = parseTrackDistanceM(eventName);
-  return d != null && d >= 1000 ? 16 : 8;
+  if (d != null && d >= 3000) return 30;
+  if (d != null && d >= 1500) return 20;
+  if (d != null && d >= 1000) return 16;
+  return 8;
 }
 
 export function isTrackEventName(eventName: string, sub?: string | null): boolean {
@@ -99,7 +103,7 @@ export function computeRuleEstimate(input: RuleInput): RuleResult {
 
   switch (kind) {
     case "track": {
-      const lanes = Math.max(1, input.heat_size ?? defaultHeatSize(input.event_name));
+      const lanes = Math.max(1, input.heat_size ?? defaultHeatSize(input.event_name, input.sub_category));
       const perHeat = minutesPerHeat(input.event_name, input.sub_category);
       const heats = Math.max(1, Math.ceil(n / lanes));
       const minutes = heats * perHeat;
@@ -110,20 +114,22 @@ export function computeRuleEstimate(input: RuleInput): RuleResult {
       };
     }
     case "jump_pit": {
-      const raw = (n * 1.2) / stations + 15;
+      // Valmisteluaika kasvaa isoilla porukoilla (YAG 2022 -datan mukaan).
+      const valm = 15 + Math.max(0, n - 30) * 0.3;
+      const raw = (n * 1.2) / stations + valm;
       const minutes = Math.round(raw);
       return {
         minutes,
-        formula: `${n} × 1,2 min / ${stations} paikka${stations === 1 ? "" : "a"} + 15 min valm. = ${minutes} min`,
+        formula: `${n} × 1,2 min / ${stations} paikka${stations === 1 ? "" : "a"} + ${Math.round(valm)} min valm. = ${minutes} min`,
         kind,
       };
     }
     case "high_jump": {
-      const raw = 60 + Math.max(0, n - 10) * 2;
+      const raw = 60 + Math.max(0, n - 10) * 1.2;
       const minutes = clamp(Math.round(raw), 45, 150);
       return {
         minutes,
-        formula: `60 + max(0; ${n} − 10) × 2 = ${Math.round(raw)} min (rajat 45–150) → ${minutes} min`,
+        formula: `60 + max(0; ${n} − 10) × 1,2 = ${Math.round(raw)} min (rajat 45–150) → ${minutes} min`,
         kind,
       };
     }
