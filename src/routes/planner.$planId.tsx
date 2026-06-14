@@ -1491,6 +1491,13 @@ function ScheduleTab({
       setWarnings(["Lisää ensin suorituspaikat ja lajit."]);
       return;
     }
+    const manualCount = schedule.filter((s) => !s.auto_generated).length;
+    if (manualCount > 0) {
+      const ok = window.confirm(
+        `Generointi poistaa kaikki aiemmat aikataulurivit, myös ${manualCount} manuaalisesti muokattua. Jatketaanko?`,
+      );
+      if (!ok) return;
+    }
     setGenerating(true);
     try {
       const ests = await Promise.all(
@@ -1548,11 +1555,13 @@ function ScheduleTab({
         minDistanceChangeGapMin: plan.min_distance_change_gap_min,
       });
 
+      // Poista KAIKKI aikataulurivit (myös manuaaliset) ennen uutta generointia.
+      // Muuten manuaalisesti raahatut rivit (auto_generated=false) jäisivät
+      // eloon ja duplikoituisivat uusien auto-rivien kanssa.
       await supabase
         .from("plan_schedule_items")
         .delete()
-        .eq("plan_id", plan.id)
-        .eq("auto_generated", true);
+        .eq("plan_id", plan.id);
       const rows = result.items.flatMap((it) =>
         it.venue_ids.map((venueId) => ({
           plan_id: plan.id,
@@ -1644,6 +1653,10 @@ function ScheduleTab({
           </Button>
         </div>
       </div>
+
+      <p className="text-xs text-muted-foreground">
+        Generointi poistaa kaikki aiemmat aikataulurivit (myös manuaaliset muokkaukset) ja luo aikataulun tyhjästä.
+      </p>
 
       {warnings.length > 0 && (
         <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
