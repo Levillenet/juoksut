@@ -223,7 +223,7 @@ export function PlannerFullGantt({
     const left = LEFT_COL + (startOff / 5) * PX_PER_5MIN;
     const width = Math.max(18, (dur / 5) * PX_PER_5MIN - 2);
     const top = rowIdx * ROW_HEIGHT + 3;
-    const conflictReason = conflictMap.get(s.id);
+    const conflict = conflictMap.get(s.id);
     const heats = t.isTrack ? Math.max(1, Math.ceil((ev.participants || 0) / 8)) : 1;
     const phase = s.phase;
     const primary = `${ev.age_class} ${ev.event_name}`;
@@ -238,61 +238,132 @@ export function PlannerFullGantt({
     const fontSize = width < 50 ? 10 : 11;
 
     const color = getEventColorClass(ev.event_name, ev.sub_category);
-    return (
-      <div
-        key={`${keyPrefix}-${s.id}`}
-        data-bar-id={s.id}
-        data-base-left={left}
-        onPointerDown={(e) => onPointerDown(e, s)}
-        title={conflictReason ?? `${primary} (${phase}) · ${subtitle}`}
-        className={`absolute cursor-grab touch-none select-none overflow-hidden rounded px-1 py-0.5 leading-tight shadow-sm active:cursor-grabbing ${color.bg} ${color.text} ${
-          conflictReason ? "border-2 border-red-500 ring-1 ring-red-500" : `border ${color.border}`
-        }`}
-        style={{
-          left,
-          top,
-          width,
-          height: ROW_HEIGHT - 6,
-          fontSize: `${fontSize}px`,
-        }}
-      >
-        {tiny ? (
-          <div className="font-semibold" style={{ fontSize: "10px" }}>
-            {ev.age_class}
-          </div>
-        ) : veryNarrow ? (
+    const venue = venueMap.get(s.venue_id);
+
+    const sevBorder =
+      conflict?.severity === "critical"
+        ? "border-[3px] border-red-600 ring-2 ring-red-300/70"
+        : conflict?.severity === "high"
+          ? "border-2 border-orange-500"
+          : conflict?.severity === "warning"
+            ? "border border-yellow-500"
+            : `border ${color.border}`;
+
+    const isHl = highlightSet.has(s.id);
+    const dimmed = isHighlightActive && !isHl;
+    const flash = isHl ? "ring-4 ring-primary animate-pulse" : "";
+
+    const fmt = (iso: string) =>
+      new Date(iso).toLocaleTimeString("fi-FI", { hour: "2-digit", minute: "2-digit" });
+
+    const tooltipNode = (
+      <div className="space-y-1.5">
+        <div className="text-sm font-semibold">{primary}</div>
+        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
+          <span className="text-muted-foreground">Aika</span>
+          <span>
+            {fmt(s.starts_at)} – {fmt(s.ends_at)} ({Math.round(dur)} min)
+          </span>
+          <span className="text-muted-foreground">Osallistujia</span>
+          <span>{ev.participants || 0}</span>
+          {t.isTrack && heats > 1 && (
+            <>
+              <span className="text-muted-foreground">Eriä</span>
+              <span>{heats}</span>
+            </>
+          )}
+          <span className="text-muted-foreground">Toimitsijoita</span>
+          <span>{ev.officials_count}</span>
+          <span className="text-muted-foreground">Paikka</span>
+          <span>{venue?.name ?? "—"}</span>
+          <span className="text-muted-foreground">Vaihe</span>
+          <span>{phase}</span>
+        </div>
+        {conflict ? (
           <div
-            className="font-semibold"
-            style={{
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-              wordBreak: "break-word",
-            }}
+            className={`flex items-start gap-1.5 rounded border px-2 py-1 text-xs ${
+              conflict.severity === "critical"
+                ? "border-red-500 bg-red-50 text-red-900"
+                : conflict.severity === "high"
+                  ? "border-orange-500 bg-orange-50 text-orange-900"
+                  : "border-yellow-500 bg-yellow-50 text-yellow-900"
+            }`}
           >
-            {primary}
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>{conflict.reason}</span>
           </div>
         ) : (
-          <>
-            <div
-              className="font-semibold"
-              style={{
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-                wordBreak: "break-word",
-              }}
-            >
-              {primary}
-            </div>
-            <div className="truncate text-foreground/70" style={{ fontSize: "10px" }}>
-              {subtitle}
-            </div>
-          </>
+          <div className="text-xs text-emerald-700">✓ OK</div>
         )}
       </div>
+    );
+
+    return (
+      <Tooltip key={`${keyPrefix}-${s.id}`}>
+        <TooltipTrigger asChild>
+          <div
+            data-bar-id={s.id}
+            data-base-left={left}
+            onPointerDown={(e) => onPointerDown(e, s)}
+            className={`absolute cursor-grab touch-none select-none overflow-hidden rounded px-1 py-0.5 leading-tight shadow-sm transition-opacity active:cursor-grabbing ${color.bg} ${color.text} ${sevBorder} ${flash} ${
+              dimmed ? "opacity-25" : ""
+            }`}
+            style={{
+              left,
+              top,
+              width,
+              height: ROW_HEIGHT - 6,
+              fontSize: `${fontSize}px`,
+            }}
+          >
+            {conflict && width >= 28 && (
+              <div className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-600 text-white shadow">
+                <AlertTriangle size={9} strokeWidth={3} />
+              </div>
+            )}
+            {tiny ? (
+              <div className="font-semibold" style={{ fontSize: "10px" }}>
+                {ev.age_class}
+              </div>
+            ) : veryNarrow ? (
+              <div
+                className="font-semibold"
+                style={{
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                  wordBreak: "break-word",
+                }}
+              >
+                {primary}
+              </div>
+            ) : (
+              <>
+                <div
+                  className="font-semibold"
+                  style={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    wordBreak: "break-word",
+                    paddingRight: conflict ? 14 : 0,
+                  }}
+                >
+                  {primary}
+                </div>
+                <div className="truncate text-foreground/70" style={{ fontSize: "10px" }}>
+                  {subtitle}
+                </div>
+              </>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={6} className="max-w-xs">
+          {tooltipNode}
+        </TooltipContent>
+      </Tooltip>
     );
   };
 
