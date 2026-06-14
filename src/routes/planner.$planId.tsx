@@ -643,7 +643,7 @@ function VenuesTab({
     if (v.included) continue;
     const matching = Object.keys(eventsByKind).filter((name) => {
       try {
-        return isVenueForEventSafe(v.kind, name);
+        return isVenueForEvent(v.kind, name);
       } catch {
         return false;
       }
