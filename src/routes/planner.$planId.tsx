@@ -1574,6 +1574,23 @@ function ScheduleTab({
     [schedule, events, venues, plan.default_recovery_min, conflictGroups],
   );
 
+  // Toast kun konfliktit muuttuvat käyttäjän muokkausten jälkeen
+  const prevConflictIds = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const current = new Set(conflicts.map((c) => `${c.id}:${c.reason}`));
+    const prev = prevConflictIds.current;
+    if (prev) {
+      const added = [...current].filter((k) => !prev.has(k));
+      const removed = [...prev].filter((k) => !current.has(k));
+      if (added.length > 0) {
+        toast.warning(`Uusi konflikti: ${added[0].split(":").slice(1).join(":")}`);
+      } else if (removed.length > 0 && current.size < prev.size) {
+        toast.success("Konflikti ratkaistu ✓");
+      }
+    }
+    prevConflictIds.current = current;
+  }, [conflicts]);
+
   const officials = useMemo(
     () => computeOfficialsTimeline(schedule, events, plan.total_officials_available ?? 10),
     [schedule, events, plan.total_officials_available],
