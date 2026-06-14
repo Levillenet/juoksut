@@ -5,6 +5,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { parseResult } from "./result-parse";
+import { normalizeEventName as _normalizeEventName } from "./event-name";
+import { pbEventKey, pbEventLabel, isSpecSensitive } from "./pb-key";
 
 export interface AthleteResultRow {
   id: string;
