@@ -1691,7 +1691,7 @@ function ConflictsList({
     const name = ev ? `${ev.age_class} ${ev.event_name}` : "—";
     return `${name} (${fmt(it.starts_at)}–${fmt(it.ends_at)})`;
   };
-  const sevRank = { critical: 0, high: 1, warning: 2 };
+  const sevRank: Record<ConflictSeverity, number> = { critical: 0, high: 1, warning: 2 };
   const sorted = [...conflicts].sort((a, b) => sevRank[a.severity] - sevRank[b.severity]);
 
   return (
