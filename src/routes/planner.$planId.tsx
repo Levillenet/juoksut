@@ -1599,6 +1599,13 @@ function ScheduleTab({
         </div>
       )}
 
+      <OfficialsPanel
+        officials={officials}
+        eventLabel={eventLabel}
+        hasSchedule={schedule.length > 0}
+      />
+
+
       <div className="overflow-hidden rounded-lg border" style={{ height: "calc(100vh - 260px)", minHeight: 480 }}>
         <PlannerFullGantt
           plan={plan}
