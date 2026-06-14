@@ -257,8 +257,10 @@ export type Database = {
           is_multi_day: boolean
           name: string
           notes: string | null
+          officials_changeover_min: number | null
           stadium_id: string | null
           starts_at: string
+          total_officials_available: number | null
           updated_at: string
           user_id: string
         }
@@ -276,8 +278,10 @@ export type Database = {
           is_multi_day?: boolean
           name: string
           notes?: string | null
+          officials_changeover_min?: number | null
           stadium_id?: string | null
           starts_at: string
+          total_officials_available?: number | null
           updated_at?: string
           user_id: string
         }
@@ -295,8 +299,10 @@ export type Database = {
           is_multi_day?: boolean
           name?: string
           notes?: string | null
+          officials_changeover_min?: number | null
           stadium_id?: string | null
           starts_at?: string
+          total_officials_available?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -660,6 +666,9 @@ export type Database = {
           hurdle_teardown_min: number | null
           id: string
           notes: string | null
+          officials_count: number | null
+          officials_count_overridden: boolean
+          officials_role_breakdown: Json | null
           override_duration_min: number | null
           participants: number
           plan_id: string
@@ -682,6 +691,9 @@ export type Database = {
           hurdle_teardown_min?: number | null
           id?: string
           notes?: string | null
+          officials_count?: number | null
+          officials_count_overridden?: boolean
+          officials_role_breakdown?: Json | null
           override_duration_min?: number | null
           participants?: number
           plan_id: string
@@ -704,6 +716,9 @@ export type Database = {
           hurdle_teardown_min?: number | null
           id?: string
           notes?: string | null
+          officials_count?: number | null
+          officials_count_overridden?: boolean
+          officials_role_breakdown?: Json | null
           override_duration_min?: number | null
           participants?: number
           plan_id?: string
