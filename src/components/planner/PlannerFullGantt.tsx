@@ -537,6 +537,7 @@ export function PlannerFullGantt({
         </span>
       </div>
       <div
+        ref={scrollRef}
         className="relative flex-1 overflow-auto"
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
