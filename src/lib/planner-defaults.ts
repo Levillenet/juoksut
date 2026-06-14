@@ -59,14 +59,14 @@ export const DEFAULT_VENUES: DefaultVenueSpec[] = [
   {
     key: "shot",
     label: "Kuulakehä",
-    kind: "throw_ring",
+    kind: "shot_ring",
     suggested: 1,
     nameFor: (i, total) => (total > 1 ? `Kuulakehä ${i + 1}` : "Kuulakehä"),
   },
   {
     key: "discus",
-    label: "Kiekkokehä",
-    kind: "throw_ring",
+    label: "Kiekkokehä (häkki)",
+    kind: "throw_cage",
     suggested: 1,
     nameFor: (i, total) => (total > 1 ? `Kiekkokehä ${i + 1}` : "Kiekkokehä"),
   },
@@ -79,8 +79,8 @@ export const DEFAULT_VENUES: DefaultVenueSpec[] = [
   },
   {
     key: "hammer",
-    label: "Moukarikehä",
-    kind: "throw_ring",
+    label: "Moukarikehä (häkki)",
+    kind: "throw_cage",
     suggested: 1,
     nameFor: (i, total) => (total > 1 ? `Moukarikehä ${i + 1}` : "Moukarikehä"),
   },
@@ -102,18 +102,18 @@ export function buildDefaultVenueRows(
 
 /** Onko laji sellainen, joka tyypillisesti tehdään tällä venue-tyypillä. */
 export function isVenueForEvent(kind: VenueKind, eventName: string): boolean {
-  const n = eventName.toLowerCase();
+  const n = (eventName ?? "").toLowerCase();
   if (/aita|aidat|hurdle/.test(n)) return kind === "track_straight" || kind === "track_oval";
   if (/pituus|long ?jump/.test(n)) return kind === "jump_pit";
   if (/kolmiloikka|triple/.test(n)) return kind === "jump_pit";
   if (/korkeus|high ?jump/.test(n)) return kind === "high_jump";
   if (/seiväs|seivas|pole ?vault/.test(n)) return kind === "pole_vault";
-  if (/kuula|shot/.test(n)) return kind === "throw_ring";
-  if (/kiekko|discus/.test(n)) return kind === "throw_ring";
+  if (/kuula|shot/.test(n)) return kind === "shot_ring" || kind === "throw_ring";
+  if (/kiekko|discus/.test(n)) return kind === "throw_cage" || kind === "throw_ring";
+  if (/moukari|hammer/.test(n)) return kind === "throw_cage" || kind === "throw_ring";
   if (/keihäs|keihas|javelin/.test(n)) return kind === "throw_runway";
-  if (/moukari|hammer/.test(n)) return kind === "throw_ring";
   if (/\d{2,5}\s*m\b|\d+\s*km/.test(n)) return kind === "track_straight" || kind === "track_oval";
-  return true;
+  return kind === "other";
 }
 
 /**

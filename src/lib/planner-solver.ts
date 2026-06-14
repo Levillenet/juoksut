@@ -6,6 +6,7 @@ import type {
   ScheduleItemRow,
   SchedulePhase,
 } from "./planner-types";
+import { isVenueForEvent } from "./planner-defaults";
 
 export interface SolverInputEvent extends PlanEventRow {
   estimateMinutes: number;
@@ -34,6 +35,7 @@ export interface SolverInput {
 
 interface Segment {
   eventId: string;
+  eventName: string;
   ageClass: string;
   phase: SchedulePhase;
   durationMin: number;
@@ -86,6 +88,7 @@ export function solve(input: SolverInput): SolverResult {
       : null;
     const baseSeg = {
       eventId: ev.id,
+      eventName: ev.event_name,
       ageClass: ev.age_class,
       setupBeforeMin: ev.setupBeforeMin,
       needsStations: Math.max(1, ev.station_count),
@@ -155,10 +158,15 @@ export function solve(input: SolverInput): SolverResult {
   // Reset venue busy alkuun ensimmäisen ikkunan alkuun
   for (const v of venueStates) v.busyUntil = input.windows[0].startMs;
 
+  const venueKindById = new Map(input.venues.map((v) => [v.id, v.kind]));
   for (const seg of segments) {
-    if (venueStates.length < seg.needsStations) {
+    const eligibleStates = venueStates.filter((vs) => {
+      const kind = venueKindById.get(vs.id);
+      return kind ? isVenueForEvent(kind, seg.eventName) : false;
+    });
+    if (eligibleStates.length < seg.needsStations) {
       warnings.push(
-        `${seg.ageClass} – ei riittävästi suorituspaikkoja (${seg.needsStations} tarvitaan, ${venueStates.length} olemassa).`,
+        `${seg.ageClass} ${seg.eventName} – ei sopivaa suorituspaikkaa (${seg.needsStations} tarvitaan).`,
       );
       continue;
     }
@@ -177,7 +185,7 @@ export function solve(input: SolverInput): SolverResult {
       let placedVenues: VenueState[] = [];
 
       for (let attempts = 0; attempts < 200; attempts++) {
-        const sorted = venueStates.slice().sort((a, b) => a.busyUntil - b.busyUntil);
+        const sorted = eligibleStates.slice().sort((a, b) => a.busyUntil - b.busyUntil);
         const ready = sorted.filter(
           (v) => v.busyUntil <= candidateStart - setupMs && candidateStart >= win.startMs,
         );
@@ -250,6 +258,19 @@ export function detectConflicts(
   const evMap = new Map(events.map((e) => [e.id, e]));
   const venueMap = new Map(venues.map((v) => [v.id, v]));
   const out: Array<{ id: string; reason: string }> = [];
+
+  // Suorituspaikan tyyppi vs. laji
+  for (const it of items) {
+    const ev = evMap.get(it.plan_event_id);
+    const v = venueMap.get(it.venue_id);
+    if (!ev || !v) continue;
+    if (!isVenueForEvent(v.kind, ev.event_name)) {
+      out.push({
+        id: it.id,
+        reason: `Laji "${ev.event_name}" ei kuulu suorituspaikalle ${v.name}`,
+      });
+    }
+  }
 
   const byVenue = new Map<string, ScheduleItemRow[]>();
   for (const it of items) {
