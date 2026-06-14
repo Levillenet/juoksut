@@ -199,10 +199,28 @@ function PlanEditor() {
 
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
         {tab === "basics" && (
-          <BasicsTab plan={plan} onChange={() => invalidate("plan")} onDemoFilled={invalidateAll} />
+          <BasicsTab
+            plan={plan}
+            stadiums={stadiums}
+            stadiumVenueCount={venues.filter((v) => v.stadium_venue_id).length}
+            stadiumConflictCount={conflictGroups.filter((g) => g.source_stadium_group_id).length}
+            onChange={() => invalidate("plan")}
+            onStadiumChanged={invalidateAll}
+            onDemoFilled={invalidateAll}
+          />
         )}
         {tab === "venues" && (
-          <VenuesTab planId={planId} venues={venues} onChange={() => invalidate("venues")} />
+          <VenuesTab
+            plan={plan}
+            planId={planId}
+            venues={venues}
+            events={events}
+            conflictGroups={conflictGroups}
+            onChange={() => {
+              invalidate("venues");
+              invalidate("conflict-groups");
+            }}
+          />
         )}
         {tab === "events" && (
           <EventsTab
@@ -220,6 +238,7 @@ function PlanEditor() {
             venues={venues}
             events={events}
             schedule={schedule}
+            conflictGroups={conflictGroups}
             onChange={() => {
               invalidate("schedule");
               invalidate("events");
