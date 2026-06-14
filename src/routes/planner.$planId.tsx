@@ -396,6 +396,45 @@ function BasicsTab({
         </Field>
       </div>
 
+      <div className="rounded-md border bg-secondary/20 p-3">
+        <Field label="Stadion">
+          <select
+            disabled={stadiumBusy}
+            className="rounded-md border border-input bg-background px-2 py-2 text-sm"
+            value={plan.stadium_id ?? ""}
+            onChange={(e) => handleStadiumChange(e.target.value || null)}
+          >
+            <option value="">Ei stadionia (vapaa muoto)</option>
+            {stadiums.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}{s.location ? ` — ${s.location}` : ""}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <div className="mt-2 flex items-center justify-between gap-3">
+          {currentStadium ? (
+            <p className="text-xs text-muted-foreground">
+              <strong>{stadiumVenueCount}</strong> suorituspaikkaa, <strong>{stadiumConflictCount}</strong> rajoitetta tuotu stadionilta.
+              Mene <em>Suorituspaikat</em>-välilehdelle valitsemaan mitkä tässä kisassa otetaan käyttöön.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Ei stadionia — suorituspaikat määritellään käsin Suorituspaikat-välilehdellä.
+            </p>
+          )}
+          <a
+            href="/stadiums"
+            target="_blank"
+            rel="noreferrer"
+            className="shrink-0 text-xs text-primary underline-offset-2 hover:underline"
+          >
+            Hallinnoi stadioneja ↗
+          </a>
+        </div>
+      </div>
+
+
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
