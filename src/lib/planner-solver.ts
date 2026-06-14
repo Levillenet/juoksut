@@ -259,6 +259,19 @@ export function detectConflicts(
   const venueMap = new Map(venues.map((v) => [v.id, v]));
   const out: Array<{ id: string; reason: string }> = [];
 
+  // Suorituspaikan tyyppi vs. laji
+  for (const it of items) {
+    const ev = evMap.get(it.plan_event_id);
+    const v = venueMap.get(it.venue_id);
+    if (!ev || !v) continue;
+    if (!isVenueForEvent(v.kind, ev.event_name)) {
+      out.push({
+        id: it.id,
+        reason: `Laji "${ev.event_name}" ei kuulu suorituspaikalle ${v.name}`,
+      });
+    }
+  }
+
   const byVenue = new Map<string, ScheduleItemRow[]>();
   for (const it of items) {
     const arr = byVenue.get(it.venue_id) ?? [];
