@@ -593,6 +593,7 @@ export type Database = {
           event_name: string
           final_cut: number | null
           final_format: string
+          heat_size: number
           hurdle_setup_min: number | null
           hurdle_teardown_min: number | null
           id: string
@@ -614,6 +615,7 @@ export type Database = {
           event_name: string
           final_cut?: number | null
           final_format?: string
+          heat_size?: number
           hurdle_setup_min?: number | null
           hurdle_teardown_min?: number | null
           id?: string
@@ -635,6 +637,7 @@ export type Database = {
           event_name?: string
           final_cut?: number | null
           final_format?: string
+          heat_size?: number
           hurdle_setup_min?: number | null
           hurdle_teardown_min?: number | null
           id?: string
