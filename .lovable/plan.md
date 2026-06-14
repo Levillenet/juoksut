@@ -1,62 +1,74 @@
+## Stadionien integrointi planneriin
 
-# VAIHE 3 — Sääntöpohjainen kestoarvio (YAG 2022 -kaavat)
+Iso muutos joka koskee tietokantaa, plannerin UI:tä (3 välilehteä) ja solveria. Toteutus 4 vaiheessa, jokainen vaihe testattavissa erikseen.
 
-Tavoite: `planner-estimate.ts` käyttää sääntöjä, ei `event_duration_stats`-mediaaneja eikä `athlete_results`-regressiota. Taulu jää diagnostiikkaan.
+### Vaihe 1 — Tietokanta
 
-## A) Migraatio: `plan_events`
+**Migraatio 1: laajenna `plan_venues`**
+- `stadium_venue_id uuid REFERENCES public.stadium_venues(id) ON DELETE SET NULL`
+- `included boolean NOT NULL DEFAULT true`
 
-Lisää sarakkeet:
-- `station_count integer NOT NULL DEFAULT 1` — *jo olemassa* (tarkistetaan; jos on, skipataan)
-- `heat_size integer NOT NULL DEFAULT 8` — osallistujia per erä juoksuissa
+**Migraatio 2: laajenna `competition_plans`**
+- `stadium_id uuid REFERENCES public.stadiums(id) ON DELETE SET NULL`
 
-(planner-types.ts:n `PlanEventRow` päivitetään vastaamaan.)
+**Migraatio 3: uusi taulu `plan_conflict_groups`**
+Rakenne kopio `stadium_conflict_groups`:sta:
+- `id`, `plan_id` (FK competition_plans CASCADE), `name`, `description`, `venue_ids uuid[]` (viittaa plan_venues.id), `max_concurrent int default 1`, `source_stadium_group_id uuid NULL` (alkuperäisen viite, jotta voidaan tunnistaa kopio), timestamps
+- RLS: omistaja saman planin kautta (`competition_plans.user_id = auth.uid()`)
+- GRANT authenticated/service_role, RLS päälle
 
-## B) `src/lib/planner-rules.ts` (uusi)
+### Vaihe 2 — Perustiedot-välilehti
 
-Pieni, puhdas moduuli joka sisältää kaavat ja palauttaa `{ minutes, formula }`:
+`BasicsTab`:
+- Uusi kenttä **Stadion**: `<Select>` joka listaa käyttäjän stadionit + "Ei stadionia" + linkki "Luo uusi stadion ↗" (avaa `/stadiums` uudessa välilehdessä)
+- Kun valinta muuttuu **ei → on**: kutsu `applyStadiumToPlan(planId, stadiumId)`:
+  1. Hae `stadium_venues` + `stadium_conflict_groups`
+  2. Lisää puuttuvat plan_venues-rivit (`included=false`, `stadium_venue_id` asetettu, name/kind kopioidaan)
+  3. Kopioi conflict groups → `plan_conflict_groups` mapaten venue_id:t uusiin plan_venue-id:hin
+- Kun valinta muuttuu **on → ei tai toinen stadion**: varoita modal-dialogilla ("poistetaan X paikkaa ja Y rajoitetta jotka tulivat stadionilta, säilyy käyttäjän käsin lisäämät"). Vahvistuksen jälkeen poista rivit joilla `stadium_venue_id IS NOT NULL` ja conflict groupsit joilla `source_stadium_group_id IS NOT NULL`.
+- Infolaatikko stadionin alla: "N suorituspaikkaa, M rajoitetta. Mene Suorituspaikat-välilehdelle valitsemaan mitä tässä kisassa käytetään."
 
-- **Juoksu**: tunnista matka/aidat `event_name`-stringistä → lookup `min_per_heat`-taulukosta. `lanes = matka ≥ 1000m ? 16 : heat_size (oletus 8)`. `heats = ceil(participants/lanes)`. `minutes = heats × min_per_heat`. Formula: `"75 osall. / 8 lanea = 10 erää × 4 min = 40 min"`.
-- **Pituus/3-loikka**: `participants × 1.2 / station_count + 15`. Formula näyttää jakaja+valmistelu.
-- **Korkeus**: `clamp(60 + max(0, n-10) × 2, 45, 150)`.
-- **Seiväs**: `clamp(75 + max(0, n-8) × 4, 60, 180)`.
-- **Kuula/kiekko/moukari**: `clamp(25 + n × 1.5, 30, 90)`.
-- **Keihäs**: `clamp(30 + n × 1.7, 35, 100)`.
+### Vaihe 3 — Suorituspaikat-välilehti
 
-Lajityypin tunnistus jaetaan `planner-timings.ts`:n nykyisten `isHurdleEvent` / `isJumpPitEvent` / `isVerticalEvent` / `isTrackEvent` -funktioiden kanssa + heittolajeille uusi `throwKind(name) -> 'shot'|'discus'|'hammer'|'javelin'|null`.
+`VenuesTab` ehdollisesti:
 
-## C) `planner-estimate.ts` uusiksi
+**Jos `plan.stadium_id` ei null:**
+- Lista plan_venues-riveistä joilla `stadium_venue_id IS NOT NULL`, ryhmitelty `kind`-mukaan ("Juoksuradat", "Hyppypaikat", "Heittopaikat", "Muut")
+- Jokaisella rivillä rastiruutu `included` (toggle päivittää suoraan kantaan)
+- Käyttäjän käsin lisäämät paikat (stadium_venue_id IS NULL) omassa "Lisätyt paikat" -lohkossa, jossa nykyinen muokkaus
+- "Lisää oma paikka" -painike säilyy
+- Infolaatikko: "K aktiivista rajoitetta" + lista nimistä
+- **Varoitukset** (computed, ei tallenneta):
+  - Jos `included=false` ja jokin event käyttää `plan_events.venue_id = v.id` → punainen banneri "Lajit X, Y käyttävät tätä paikkaa"
+  - Jos rajoiteryhmän venueista osa on `included=false` → harmaa info "Rajoite ei aktiivinen: N/M paikkaa pois käytöstä"
 
-Korvataan nykyinen regressio/override/rule-yhdistelmä:
+**Jos `plan.stadium_id` null:** nykyinen toteutus muuttumattomana.
 
-1. **Override** (`event_duration_overrides` tai `override_duration_min` rivillä) → käytä sitä, `source = "override"`.
-2. Muuten kutsu `computeRuleEstimate(input)` → `source = "rule"`.
-3. **EI** enää `loadHistory`/`linearRegression`-kutsuja, EI `event_duration_stats`-lukua.
-4. Palautteen `detail`-kenttä = ihmisluettava kaava (esim. `"75 / 8 = 10 erää × 4 min"`). `sampleSize = 0`.
-5. Juoksun A/B-finaalilogiikka säilytetään ennallaan.
+### Vaihe 4 — Solver + konfliktien tunnistus
 
-## D) UI: kestoarvio tooltipissa
+`planner-solver.ts`:
+- Hae `plan_conflict_groups` parametrina (`conflictGroups: ConflictGroup[]`)
+- Suodata käytetyt venuet: vain `included=true`
+- Aikataulutuksessa lisärajoite: jokaiselle aikahetkelle, jokaista konfliktiryhmää kohti, samaan aikaan aktiivisten eventtien lukumäärä joiden venue_id ∈ group.venue_ids ≤ `max_concurrent`. Toteutus: greedy-sijoittelussa tarkistus ennen aikaslotin valintaa.
+- `detectConflicts`: lisää uusi tyyppi `"venue_group"` joka palauttaa loukatut event-id:t kun ryhmäkapasiteetti ylittyy.
 
-Plannerin Lajit-välilehti (tiedosto: etsitään `planner.$planId.tsx`:stä):
-- Rivillä näytetään `estimateMinutes` min + pieni info-ikoni.
-- Tooltip = `detail`-kenttä (kaava).
-- Lisätään number-input `heat_size` (juoksuille) — `station_count` on jo UI:ssa heittopaikoille/hyppypaikoille.
+UI gantissa: konfliktit värjätään kuten nykyiset.
 
-## E) Mitä EI muuteta
+### Tiedostot
 
-- `event_duration_stats`-taulu ja `compute-duration-stats`-funktio jäävät (diagnostiikka).
-- `event_duration_overrides` säilyy ja voittaa edelleen kaavan.
-- `planner-timings.ts` säilyy (per-heat-aika tulee silti `defaultMinutesPerHeat`-funktiosta, joka päivitetään käyttämään samaa lookup-taulukkoa kuin uusi `planner-rules.ts` — yksi totuus).
+**Uudet/migraatiot**
+- 3 supabase-migraatiota
 
-## Implementointijärjestys
+**Muokattavat**
+- `src/integrations/supabase/types.ts` (auto-gen migraation jälkeen)
+- `src/routes/planner.$planId.tsx` — BasicsTab, VenuesTab, prop-välitys
+- `src/lib/planner-types.ts` — `VenueRow` saa `stadium_venue_id`, `included`; uusi `ConflictGroup`
+- `src/lib/planner-solver.ts` — konfliktiryhmien rajoite + detectConflicts
+- Uusi `src/lib/planner-stadium.ts` — `applyStadiumToPlan`, `removeStadiumFromPlan`
 
-1. Migraatio: `heat_size`-sarake `plan_events`:iin (tarkista `station_count`).
-2. `src/lib/planner-rules.ts` + `planner-types.ts`-päivitys.
-3. Refaktoroi `planner-estimate.ts` (poista `loadHistory`, `linearRegression`).
-4. UI: `heat_size`-kenttä + tooltip Lajit-välilehdellä.
-5. Yhtenäistä `planner-defaults.ts:defaultMinutesPerHeat` käyttämään samaa taulukkoa.
+### Avoimet kysymykset
+1. Kun stadion vaihdetaan toiseen, säilytetäänkö käyttäjän käsin lisäämät plan_venues? **Ehdotus: kyllä.**
+2. Pitääkö plan_venues.included näkyä myös aikataulu-välilehdellä (vain included-paikat aikatauluun)? **Ehdotus: kyllä, oletuksena solver käyttää vain included=true.**
+3. Saako saman conflict groupin sisällön muokata vapaasti vai vain `max_concurrent` & nimi? **Ehdotus: kaikki muokattavissa, source-viite jätetään diagnostiikaksi.**
 
-## Avoimet kysymykset
-
-- **Kävely (3000m kävely jne.)**: kaavasi ei mainitse niitä. Säilytetäänkö nykyiset arvot (`planner-defaults.ts` rivit 126–127: 10/18 min/erä) heat-pohjaisessa laskennassa? Oletan **kyllä** — listataan samaan lookup-taulukkoon.
-- **1500m**: kaavasi sanoo "1000m, 1500m: 4 min / 16 osall.". Vahvistus: 4 min/erä myös 1500m:lle?
-- **Aidat 60m vs 80/100m**: kaava antaa molemmille 6 min — sovelletaan myös lyhyempiin ikäluokkien aitamatkoihin (esim. 50m aidat T11)?
+Aloitan Vaihe 1 -migraatioilla heti kun hyväksyt suunnitelman.

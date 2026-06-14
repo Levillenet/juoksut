@@ -28,12 +28,17 @@ import {
   type FinalFormat,
   type DayWindow,
 } from "@/lib/planner-types";
+import type {
+  ConflictGroupRow,
+  StadiumRow,
+} from "@/lib/planner-types";
 import { estimateDuration } from "@/lib/planner-estimate";
 import { computeRuleEstimate } from "@/lib/planner-rules";
 import { solve, detectConflicts } from "@/lib/planner-solver";
 import { resolveTimings } from "@/lib/planner-timings";
-import { DEFAULT_VENUES, buildDefaultVenueRows } from "@/lib/planner-defaults";
+import { DEFAULT_VENUES, buildDefaultVenueRows, isVenueForEvent } from "@/lib/planner-defaults";
 import { fillPlanWithDemo } from "@/lib/planner-demo";
+import { applyStadiumToPlan, removeStadiumFromPlan } from "@/lib/planner-stadium";
 
 export const Route = createFileRoute("/planner/$planId")({
   component: PlanEditor,
@@ -117,6 +122,29 @@ function PlanEditor() {
     },
     staleTime: 60 * 60 * 1000,
   });
+  const stadiumsQ = useQuery({
+    queryKey: ["planner", "stadiums"],
+    queryFn: async (): Promise<StadiumRow[]> => {
+      const { data, error } = await supabase
+        .from("stadiums")
+        .select("id, user_id, name, location, notes")
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as StadiumRow[];
+    },
+    staleTime: 60 * 1000,
+  });
+  const conflictGroupsQ = useQuery({
+    queryKey: ["planner", "conflict-groups", planId],
+    queryFn: async (): Promise<ConflictGroupRow[]> => {
+      const { data, error } = await supabase
+        .from("plan_conflict_groups")
+        .select("*")
+        .eq("plan_id", planId);
+      if (error) throw error;
+      return (data ?? []) as ConflictGroupRow[];
+    },
+  });
 
   const invalidate = (k: string) => qc.invalidateQueries({ queryKey: ["planner", k, planId] });
   const invalidateAll = () => {
@@ -124,6 +152,7 @@ function PlanEditor() {
     invalidate("venues");
     invalidate("events");
     invalidate("schedule");
+    invalidate("conflict-groups");
   };
 
   if (planQ.isLoading) return <div className="p-8 text-sm">Ladataan…</div>;
@@ -133,6 +162,8 @@ function PlanEditor() {
   const events = eventsQ.data ?? [];
   const schedule = scheduleQ.data ?? [];
   const catalog = catalogQ.data ?? [];
+  const stadiums = stadiumsQ.data ?? [];
+  const conflictGroups = conflictGroupsQ.data ?? [];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -168,10 +199,28 @@ function PlanEditor() {
 
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
         {tab === "basics" && (
-          <BasicsTab plan={plan} onChange={() => invalidate("plan")} onDemoFilled={invalidateAll} />
+          <BasicsTab
+            plan={plan}
+            stadiums={stadiums}
+            stadiumVenueCount={venues.filter((v) => v.stadium_venue_id).length}
+            stadiumConflictCount={conflictGroups.filter((g) => g.source_stadium_group_id).length}
+            onChange={() => invalidate("plan")}
+            onStadiumChanged={invalidateAll}
+            onDemoFilled={invalidateAll}
+          />
         )}
         {tab === "venues" && (
-          <VenuesTab planId={planId} venues={venues} onChange={() => invalidate("venues")} />
+          <VenuesTab
+            plan={plan}
+            planId={planId}
+            venues={venues}
+            events={events}
+            conflictGroups={conflictGroups}
+            onChange={() => {
+              invalidate("venues");
+              invalidate("conflict-groups");
+            }}
+          />
         )}
         {tab === "events" && (
           <EventsTab
@@ -189,6 +238,7 @@ function PlanEditor() {
             venues={venues}
             events={events}
             schedule={schedule}
+            conflictGroups={conflictGroups}
             onChange={() => {
               invalidate("schedule");
               invalidate("events");
@@ -203,13 +253,45 @@ function PlanEditor() {
 // ─── Perustiedot ─────────────────────────────────────────────────────────
 function BasicsTab({
   plan,
+  stadiums,
+  stadiumVenueCount,
+  stadiumConflictCount,
   onChange,
+  onStadiumChanged,
   onDemoFilled,
 }: {
   plan: PlanRow;
+  stadiums: StadiumRow[];
+  stadiumVenueCount: number;
+  stadiumConflictCount: number;
   onChange: () => void;
+  onStadiumChanged: () => void;
   onDemoFilled: () => void;
 }) {
+  const [stadiumBusy, setStadiumBusy] = useState(false);
+  const currentStadium = stadiums.find((s) => s.id === plan.stadium_id) ?? null;
+
+  const handleStadiumChange = async (newId: string | null) => {
+    if (newId === plan.stadium_id) return;
+    if (plan.stadium_id && (stadiumVenueCount > 0 || stadiumConflictCount > 0)) {
+      const ok = confirm(
+        `Nykyiseltä stadionilta on tuotu ${stadiumVenueCount} suorituspaikkaa ja ${stadiumConflictCount} rajoiteryhmää. Ne poistetaan. Käsin lisätyt säilyvät. Jatketaanko?`,
+      );
+      if (!ok) return;
+    }
+    setStadiumBusy(true);
+    try {
+      if (plan.stadium_id) await removeStadiumFromPlan(plan.id);
+      if (newId) await applyStadiumToPlan(plan.id, newId);
+      else {
+        // jos newId null mutta plan.stadium_id oli null, ei tehdä mitään
+      }
+      onStadiumChanged();
+    } finally {
+      setStadiumBusy(false);
+    }
+  };
+
   const [form, setForm] = useState({
     name: plan.name,
     starts: fmtDateTimeInput(plan.starts_at),
@@ -313,6 +395,45 @@ function BasicsTab({
           />
         </Field>
       </div>
+
+      <div className="rounded-md border bg-secondary/20 p-3">
+        <Field label="Stadion">
+          <select
+            disabled={stadiumBusy}
+            className="rounded-md border border-input bg-background px-2 py-2 text-sm"
+            value={plan.stadium_id ?? ""}
+            onChange={(e) => handleStadiumChange(e.target.value || null)}
+          >
+            <option value="">Ei stadionia (vapaa muoto)</option>
+            {stadiums.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}{s.location ? ` — ${s.location}` : ""}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <div className="mt-2 flex items-center justify-between gap-3">
+          {currentStadium ? (
+            <p className="text-xs text-muted-foreground">
+              <strong>{stadiumVenueCount}</strong> suorituspaikkaa, <strong>{stadiumConflictCount}</strong> rajoitetta tuotu stadionilta.
+              Mene <em>Suorituspaikat</em>-välilehdelle valitsemaan mitkä tässä kisassa otetaan käyttöön.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Ei stadionia — suorituspaikat määritellään käsin Suorituspaikat-välilehdellä.
+            </p>
+          )}
+          <a
+            href="/stadiums"
+            target="_blank"
+            rel="noreferrer"
+            className="shrink-0 text-xs text-primary underline-offset-2 hover:underline"
+          >
+            Hallinnoi stadioneja ↗
+          </a>
+        </div>
+      </div>
+
 
       <label className="flex items-center gap-2 text-sm">
         <input
@@ -448,13 +569,32 @@ function BasicsTab({
 }
 
 // ─── Suorituspaikat ───────────────────────────────────────────────────────
+function venueCategory(kind: VenueKind): "track" | "jump" | "throw" | "other" {
+  if (kind === "track_straight" || kind === "track_oval") return "track";
+  if (kind === "jump_pit" || kind === "high_jump" || kind === "pole_vault") return "jump";
+  if (kind === "shot_ring" || kind === "throw_cage" || kind === "throw_ring" || kind === "throw_runway") return "throw";
+  return "other";
+}
+const VENUE_CATEGORY_LABEL: Record<"track" | "jump" | "throw" | "other", string> = {
+  track: "Juoksuradat",
+  jump: "Hyppypaikat",
+  throw: "Heittopaikat",
+  other: "Muut",
+};
+
 function VenuesTab({
+  plan,
   planId,
   venues,
+  events,
+  conflictGroups,
   onChange,
 }: {
+  plan: PlanRow;
   planId: string;
   venues: VenueRow[];
+  events: PlanEventRow[];
+  conflictGroups: ConflictGroupRow[];
   onChange: () => void;
 }) {
   const [defaultsOpen, setDefaultsOpen] = useState(false);
@@ -486,58 +626,168 @@ function VenuesTab({
     onSuccess: onChange,
   });
 
+  const hasStadium = plan.stadium_id != null;
+  const stadiumVenues = venues.filter((v) => v.stadium_venue_id != null);
+  const manualVenues = venues.filter((v) => v.stadium_venue_id == null);
+
+  // Käytä-tilan analyysi
+  const includedIds = new Set(venues.filter((v) => v.included).map((v) => v.id));
+  const eventsByKind = events.reduce<Record<string, PlanEventRow[]>>((acc, e) => {
+    (acc[e.event_name] ??= []).push(e);
+    return acc;
+  }, {});
+
+  // Varoitukset: paikka pois käytöstä mutta lajeja matchaa kindin perusteella
+  const exclusionWarnings: Array<{ venue: VenueRow; eventNames: string[] }> = [];
+  for (const v of venues) {
+    if (v.included) continue;
+    const matching = Object.keys(eventsByKind).filter((name) => {
+      try {
+        return isVenueForEvent(v.kind, name);
+      } catch {
+        return false;
+      }
+    });
+    if (matching.length > 0) {
+      exclusionWarnings.push({ venue: v, eventNames: matching.slice(0, 4) });
+    }
+  }
+
+  const renderRow = (v: VenueRow) => (
+    <div key={v.id} className="grid grid-cols-12 items-center gap-2">
+      <label className="col-span-1 flex justify-center">
+        <input
+          type="checkbox"
+          checked={v.included}
+          onChange={(e) => update.mutate({ id: v.id, included: e.target.checked })}
+          className="h-4 w-4"
+          title="Käytetäänkö tässä kisassa?"
+        />
+      </label>
+      <Input
+        className="col-span-5"
+        value={v.name}
+        disabled={v.stadium_venue_id != null}
+        onChange={(e) => update.mutate({ id: v.id, name: e.target.value })}
+      />
+      <select
+        className="col-span-4 rounded-md border border-input bg-background px-2 py-2 text-sm"
+        value={v.kind}
+        disabled={v.stadium_venue_id != null}
+        onChange={(e) => update.mutate({ id: v.id, kind: e.target.value as VenueKind })}
+      >
+        {(Object.keys(VENUE_KIND_LABEL) as VenueKind[]).map((k) => (
+          <option key={k} value={k}>
+            {VENUE_KIND_LABEL[k]}
+          </option>
+        ))}
+      </select>
+      {v.stadium_venue_id == null ? (
+        <Button size="icon" variant="ghost" className="col-span-2" onClick={() => del.mutate(v.id)}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      ) : (
+        <span className="col-span-2 text-[10px] text-muted-foreground">stadionilta</span>
+      )}
+    </div>
+  );
+
   return (
     <section className="space-y-3 rounded-xl border bg-card p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">Suorituspaikat</h2>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setDefaultsOpen(true)}>
-            <LayoutGrid className="mr-1 h-4 w-4" />
-            YU-kentän oletus
-          </Button>
+          {!hasStadium && (
+            <Button size="sm" variant="outline" onClick={() => setDefaultsOpen(true)}>
+              <LayoutGrid className="mr-1 h-4 w-4" />
+              YU-kentän oletus
+            </Button>
+          )}
           <Button size="sm" onClick={() => add.mutate()}>
             <Plus className="mr-1 h-4 w-4" />
-            Lisää
+            Lisää oma paikka
           </Button>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Jokainen rivi = yksi rinnakkainen suorituspaikka. Esim. kaksi pituuskuoppaa →
-        kaksi riviä "Pituuskuoppa A" ja "Pituuskuoppa B".
-      </p>
-      <div className="space-y-2">
-        {venues.map((v) => (
-          <div key={v.id} className="grid grid-cols-12 items-center gap-2">
-            <Input
-              className="col-span-5"
-              value={v.name}
-              onChange={(e) => update.mutate({ id: v.id, name: e.target.value })}
-            />
-            <select
-              className="col-span-5 rounded-md border border-input bg-background px-2 py-2 text-sm"
-              value={v.kind}
-              onChange={(e) => update.mutate({ id: v.id, kind: e.target.value as VenueKind })}
-            >
-              {(Object.keys(VENUE_KIND_LABEL) as VenueKind[]).map((k) => (
-                <option key={k} value={k}>
-                  {VENUE_KIND_LABEL[k]}
-                </option>
-              ))}
-            </select>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="col-span-2"
-              onClick={() => del.mutate(v.id)}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
+
+      {hasStadium && (
+        <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs">
+          <div className="font-semibold">
+            {conflictGroups.length} rajoiteryhmää käytössä
           </div>
-        ))}
-        {venues.length === 0 && (
-          <p className="text-sm text-muted-foreground">Ei vielä suorituspaikkoja.</p>
-        )}
-      </div>
+          {conflictGroups.length > 0 && (
+            <ul className="mt-1 list-disc pl-5">
+              {conflictGroups.map((g) => {
+                const includedCount = g.venue_ids.filter((id) => includedIds.has(id)).length;
+                const totalCount = g.venue_ids.length;
+                const inactive = includedCount < totalCount;
+                return (
+                  <li key={g.id} className={inactive ? "text-muted-foreground" : ""}>
+                    <strong>{g.name}</strong> — max {g.max_concurrent} samaan aikaan
+                    {inactive && (
+                      <span className="ml-1 italic">
+                        (ei aktiivinen: {totalCount - includedCount}/{totalCount} paikkaa pois käytöstä)
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {exclusionWarnings.length > 0 && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs">
+          <div className="font-semibold">Huom: pois käytöstä rastittu paikka voi olla tarpeen</div>
+          <ul className="mt-1 list-disc pl-5">
+            {exclusionWarnings.map(({ venue, eventNames }) => (
+              <li key={venue.id}>
+                <strong>{venue.name}</strong> — voi sopia lajeille {eventNames.join(", ")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {hasStadium ? (
+        <>
+          {(["track", "jump", "throw", "other"] as const).map((cat) => {
+            const rows = stadiumVenues.filter((v) => venueCategory(v.kind) === cat);
+            if (rows.length === 0) return null;
+            return (
+              <div key={cat} className="space-y-1">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {VENUE_CATEGORY_LABEL[cat]} ({rows.filter((r) => r.included).length}/{rows.length})
+                </h3>
+                <div className="space-y-2">{rows.map(renderRow)}</div>
+              </div>
+            );
+          })}
+          {manualVenues.length > 0 && (
+            <div className="space-y-1 border-t pt-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Käsin lisätyt
+              </h3>
+              <div className="space-y-2">{manualVenues.map(renderRow)}</div>
+            </div>
+          )}
+          {stadiumVenues.length === 0 && manualVenues.length === 0 && (
+            <p className="text-sm text-muted-foreground">Stadionilla ei ole suorituspaikkoja.</p>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            Jokainen rivi = yksi rinnakkainen suorituspaikka. Esim. kaksi pituuskuoppaa →
+            kaksi riviä "Pituuskuoppa A" ja "Pituuskuoppa B".
+          </p>
+          <div className="space-y-2">{venues.map(renderRow)}</div>
+          {venues.length === 0 && (
+            <p className="text-sm text-muted-foreground">Ei vielä suorituspaikkoja.</p>
+          )}
+        </>
+      )}
 
       <DefaultVenuesDialog
         open={defaultsOpen}
@@ -549,6 +799,8 @@ function VenuesTab({
     </section>
   );
 }
+
+
 
 function DefaultVenuesDialog({
   open,
@@ -1112,12 +1364,14 @@ function ScheduleTab({
   venues,
   events,
   schedule,
+  conflictGroups,
   onChange,
 }: {
   plan: PlanRow;
   venues: VenueRow[];
   events: PlanEventRow[];
   schedule: ScheduleItemRow[];
+  conflictGroups: ConflictGroupRow[];
   onChange: () => void;
 }) {
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -1180,6 +1434,7 @@ function ScheduleTab({
         defaultRecoveryMin: plan.default_recovery_min,
         venues,
         events: enriched,
+        conflictGroups,
       });
 
       await supabase
@@ -1212,8 +1467,8 @@ function ScheduleTab({
   };
 
   const conflicts = useMemo(
-    () => detectConflicts(schedule, events, venues, plan.default_recovery_min),
-    [schedule, events, venues, plan.default_recovery_min],
+    () => detectConflicts(schedule, events, venues, plan.default_recovery_min, conflictGroups),
+    [schedule, events, venues, plan.default_recovery_min, conflictGroups],
   );
 
   const exportExcel = () => {

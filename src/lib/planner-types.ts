@@ -53,6 +53,7 @@ export interface PlanRow {
   is_multi_day: boolean;
   day_windows: DayWindow[] | null;
   notes: string | null;
+  stadium_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -64,6 +65,44 @@ export interface VenueRow {
   kind: VenueKind;
   sort_order: number;
   notes: string | null;
+  stadium_venue_id: string | null;
+  included: boolean;
+}
+
+export interface ConflictGroupRow {
+  id: string;
+  plan_id: string;
+  name: string;
+  description: string | null;
+  venue_ids: string[];
+  max_concurrent: number;
+  source_stadium_group_id: string | null;
+}
+
+export interface StadiumRow {
+  id: string;
+  user_id: string;
+  name: string;
+  location: string | null;
+  notes: string | null;
+}
+
+export interface StadiumVenueRow {
+  id: string;
+  stadium_id: string;
+  name: string;
+  kind: VenueKind;
+  sort_order: number;
+  notes: string | null;
+}
+
+export interface StadiumConflictGroupRow {
+  id: string;
+  stadium_id: string;
+  name: string;
+  description: string | null;
+  venue_ids: string[];
+  max_concurrent: number;
 }
 
 export interface PlanEventRow {
