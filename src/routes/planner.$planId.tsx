@@ -1196,6 +1196,11 @@ function ScheduleTab({
     XLSX.writeFile(wb, `aikataulu-${plan.name.replace(/\s+/g, "_")}.xlsx`);
   };
 
+  const exportPdf = () => {
+    const conflictIds = new Set(conflicts.flatMap((c) => c.itemIds));
+    downloadPlannerSchedulePdf({ plan, venues, events, schedule, conflictIds });
+  };
+
   return (
     <section className="space-y-3 rounded-xl border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
