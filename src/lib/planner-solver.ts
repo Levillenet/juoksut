@@ -7,7 +7,13 @@ import type {
   SchedulePhase,
   ConflictGroupRow,
 } from "./planner-types";
-import { isVenueForEvent } from "./planner-defaults";
+import {
+  isVenueForEvent,
+  getDistanceChangeoverMin,
+  runningGroupKey,
+  parseDistanceM,
+  isHurdleEvent,
+} from "./planner-defaults";
 
 export interface SolverInputEvent extends PlanEventRow {
   estimateMinutes: number;
@@ -34,6 +40,10 @@ export interface SolverInput {
   events: SolverInputEvent[];
   /** Suorituspaikkojen rajoiteryhmät: max N samaan aikaan käytössä. */
   conflictGroups?: ConflictGroupRow[];
+  /** Saako eri juoksumatkoja sijoittaa samalle suorituspaikalle? (oletus true) */
+  allowDistanceChangeSameVenue?: boolean;
+  /** Minimitauko (min) matkanvaihdon yhteydessä samalla suorituspaikalla. (oletus 5) */
+  minDistanceChangeGapMin?: number;
 }
 
 interface Segment {
@@ -71,6 +81,7 @@ interface VenueState {
   id: string;
   busyUntil: number;
   lastWasHurdle: boolean;
+  lastEventName: string | null;
 }
 
 interface AgeState {
@@ -79,6 +90,8 @@ interface AgeState {
 
 export function solve(input: SolverInput): SolverResult {
   const warnings: string[] = [];
+  const allowChange = input.allowDistanceChangeSameVenue !== false;
+  const minChangeGap = Math.max(0, input.minDistanceChangeGapMin ?? 5);
   if (input.windows.length === 0) {
     return { items: [], warnings: ["Ei aikaikkunoita määritelty."] };
   }
@@ -97,6 +110,12 @@ export function solve(input: SolverInput): SolverResult {
     const allowedDays = ev.allowed_days && ev.allowed_days.length > 0
       ? new Set(ev.allowed_days)
       : null;
+    const runKey = runningGroupKey(ev.event_name);
+    const groupKey = ev.isHurdles
+      ? `AAA_hurdles_${runKey ?? ev.id}`
+      : runKey
+        ? `BBB_run_${runKey}`
+        : `CCC_evt_${ev.id}`;
     const baseSeg = {
       eventId: ev.id,
       eventName: ev.event_name,
@@ -106,7 +125,7 @@ export function solve(input: SolverInput): SolverResult {
       isHurdles: ev.isHurdles,
       hurdleSetupMin: ev.hurdleSetupMin,
       hurdleTeardownMin: ev.hurdleTeardownMin,
-      groupKey: ev.isHurdles ? "AAA_hurdles" : `evt_${ev.id}`,
+      groupKey,
       allowedDays,
     };
     if (ev.final_format === "a_b") {
@@ -149,7 +168,11 @@ export function solve(input: SolverInput): SolverResult {
     }
   }
 
-  // 2) Järjestys: aitablokit ensin, sitten pisimmät & rinnakkaisemmat.
+  // 2) Järjestys:
+  //   1) ryhmittele saman matkan juoksulajit yhteen (BBB_run_<dist>)
+  //   2) aita-lajit omaan blokkiin (AAA_hurdles_<dist>)
+  //   3) kenttälajit (CCC_evt_<id>)
+  // Saman ryhmän sisällä pisin & rinnakkaisin ensin.
   segments.sort((a, b) => {
     if (a.groupKey !== b.groupKey) return a.groupKey.localeCompare(b.groupKey);
     return b.durationMin * b.needsStations - a.durationMin * a.needsStations;
@@ -161,6 +184,7 @@ export function solve(input: SolverInput): SolverResult {
     id: v.id,
     busyUntil: 0,
     lastWasHurdle: false,
+    lastEventName: null,
   }));
   const ageStates = new Map<string, AgeState>();
   const eventEnds = new Map<string, number>();
@@ -189,9 +213,32 @@ export function solve(input: SolverInput): SolverResult {
   };
 
   for (const seg of segments) {
+    const segIsRun = parseDistanceM(seg.eventName) != null || isHurdleEvent(seg.eventName);
+    const segDist = parseDistanceM(seg.eventName);
+    const segHurdle = isHurdleEvent(seg.eventName);
+
+    // Per-venue siirtoaika (ms) edellisestä juoksulajista tähän segmenttiin.
+    const venueChangeoverMs = (vs: VenueState): number => {
+      if (!vs.lastEventName) return 0;
+      const co = getDistanceChangeoverMin(vs.lastEventName, seg.eventName, true);
+      if (co === 0) return 0;
+      return Math.max(co, minChangeGap) * 60000;
+    };
+
+
     const eligibleStates = venueStates.filter((vs) => {
       const kind = venueKindById.get(vs.id);
-      return kind ? isVenueForEvent(kind, seg.eventName) : false;
+      if (!kind || !isVenueForEvent(kind, seg.eventName)) return false;
+      // Jos käyttäjä ei salli matkanvaihtoa samalla suorituspaikalla,
+      // estä juoksupaikat joilla on aiempi eri matkan/tyypin juoksu.
+      if (!allowChange && segIsRun && vs.lastEventName) {
+        const prevDist = parseDistanceM(vs.lastEventName);
+        const prevHurdle = isHurdleEvent(vs.lastEventName);
+        if (prevDist != null && (prevDist !== segDist || prevHurdle !== segHurdle)) {
+          return false;
+        }
+      }
+      return true;
     });
     if (eligibleStates.length < seg.needsStations) {
       warnings.push(
@@ -210,13 +257,16 @@ export function solve(input: SolverInput): SolverResult {
         .map((id) => (eventEnds.get(id) ?? 0) + seg.recoveryAfterPrev * 60000)
         .reduce((a, b) => Math.max(a, b), 0);
 
+      // Per-venue "free at" huomioi siirtoajan.
+      const freeAt = (vs: VenueState) => vs.busyUntil + venueChangeoverMs(vs);
+
       let candidateStart = Math.max(win.startMs, ageBusyUntil, prevEventEnd);
       let placedVenues: VenueState[] = [];
 
       for (let attempts = 0; attempts < 400; attempts++) {
-        const sorted = eligibleStates.slice().sort((a, b) => a.busyUntil - b.busyUntil);
+        const sorted = eligibleStates.slice().sort((a, b) => freeAt(a) - freeAt(b));
         const ready = sorted.filter(
-          (v) => v.busyUntil <= candidateStart - setupMs && candidateStart >= win.startMs,
+          (v) => freeAt(v) <= candidateStart - setupMs && candidateStart >= win.startMs,
         );
         if (ready.length >= seg.needsStations) {
           const cand = ready.slice(0, seg.needsStations);
@@ -230,7 +280,7 @@ export function solve(input: SolverInput): SolverResult {
           if (candidateStart > win.endMs) break;
           continue;
         }
-        const next = sorted[seg.needsStations - 1].busyUntil + setupMs;
+        const next = freeAt(sorted[seg.needsStations - 1]) + setupMs;
         const newCandidate = Math.max(next, ageBusyUntil, prevEventEnd, win.startMs);
         if (newCandidate <= candidateStart) break; // ei etene
         candidateStart = newCandidate;
@@ -259,6 +309,7 @@ export function solve(input: SolverInput): SolverResult {
       for (const v of placedVenues) {
         v.busyUntil = segEnd;
         if (seg.isHurdles) v.lastWasHurdle = true;
+        if (segIsRun) v.lastEventName = seg.eventName;
       }
       ageStates.set(seg.ageClass, { busyUntil: segEnd });
       const prevEnd = eventEnds.get(seg.eventId) ?? 0;
@@ -332,6 +383,23 @@ export function detectConflicts(
           id: arr[i].id,
           reason: `Päällekkäisyys paikalla ${venueMap.get(venueId)?.name ?? venueId}`,
         });
+      }
+      const prevEv = evMap.get(arr[i - 1].plan_event_id);
+      const curEv = evMap.get(arr[i].plan_event_id);
+      if (prevEv && curEv) {
+        const need = getDistanceChangeoverMin(prevEv.event_name, curEv.event_name, true);
+        if (need > 0) {
+          const gap =
+            (new Date(arr[i].starts_at).getTime() -
+              new Date(arr[i - 1].ends_at).getTime()) /
+            60000;
+          if (gap < need) {
+            out.push({
+              id: arr[i].id,
+              reason: `Matkanvaihto paikalla ${venueMap.get(venueId)?.name ?? venueId}: ${prevEv.event_name} → ${curEv.event_name} tarvitsee ${need} min siirron (nyt ${Math.round(gap)} min).`,
+            });
+          }
+        }
       }
     }
     let inHurdleBlock = false;

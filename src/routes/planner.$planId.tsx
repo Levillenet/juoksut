@@ -308,6 +308,8 @@ function BasicsTab({
     notes: plan.notes ?? "",
     totalOfficials: plan.total_officials_available ?? 10,
     officialsChangeover: plan.officials_changeover_min ?? 10,
+    allowDistanceChange: plan.allow_distance_change_same_venue ?? true,
+    minDistanceChangeGap: plan.min_distance_change_gap_min ?? 5,
   });
   const [demoBusy, setDemoBusy] = useState(false);
 
@@ -330,6 +332,8 @@ function BasicsTab({
           notes: form.notes,
           total_officials_available: form.totalOfficials,
           officials_changeover_min: form.officialsChangeover,
+          allow_distance_change_same_venue: form.allowDistanceChange,
+          min_distance_change_gap_min: form.minDistanceChangeGap,
         })
         .eq("id", plan.id);
       if (error) throw error;
@@ -554,6 +558,34 @@ function BasicsTab({
         riittävä tauko. Tällä hetkellä Aikataulu-välilehti laskee karkean huippukuorman
         olettaen että jokainen samaan aikaan käynnissä oleva laji tarvitsee omat toimitsijansa.
       </p>
+
+      <h3 className="pt-2 text-sm font-semibold text-muted-foreground">
+        Juoksulajien sijoittelu
+      </h3>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={form.allowDistanceChange}
+          onChange={(e) => setForm({ ...form, allowDistanceChange: e.target.checked })}
+        />
+        <span>
+          <span className="font-medium">Salli matkanvaihto samalla suorituspaikalla</span>
+          <span className="block text-xs text-muted-foreground">
+            Jos pois päältä, solveri ei sijoita eri matkoja samalle juoksuradalle/-suoralle.
+            Esim. kaikki 40 m omalle suoralle, 60 m omalleen.
+          </span>
+        </span>
+      </label>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {numField(
+          "minDistanceChangeGap",
+          "Minimitauko matkanvaihdon välillä (min)",
+          "Käytetään sääntöpohjaisen siirtoajan lattiana (40↔60 m 5 min, 60↔100 m 10 min, aitavaihto 15 min jne.)",
+        )}
+      </div>
+
+
 
       <h3 className="pt-2 text-sm font-semibold text-muted-foreground">
         Aika-asetusten oletukset
@@ -1496,6 +1528,8 @@ function ScheduleTab({
         venues,
         events: enriched,
         conflictGroups,
+        allowDistanceChangeSameVenue: plan.allow_distance_change_same_venue,
+        minDistanceChangeGapMin: plan.min_distance_change_gap_min,
       });
 
       await supabase

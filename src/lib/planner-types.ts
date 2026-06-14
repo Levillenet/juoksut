@@ -56,6 +56,8 @@ export interface PlanRow {
   stadium_id: string | null;
   total_officials_available: number;
   officials_changeover_min: number;
+  allow_distance_change_same_venue: boolean;
+  min_distance_change_gap_min: number;
   created_at: string;
   updated_at: string;
 }
