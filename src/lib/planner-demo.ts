@@ -80,7 +80,17 @@ export async function fillPlanWithDemo({
 
   // 5) Yksi rivi per (ikäluokka, lajinimi) — vältä duplikaatit
   const seen = new Set<string>();
-  const eventRows: Array<Record<string, unknown>> = [];
+  type EventInsert = {
+    plan_id: string;
+    age_class: string;
+    event_name: string;
+    participants: number;
+    station_count: number;
+    final_format: "direct" | "a_b";
+    final_cut: number | null;
+    sort_order: number;
+  };
+  const eventRows: EventInsert[] = [];
   let order = 0;
   for (const e of selected) {
     const key = `${e.age_class}|${e.event_name_display.toLowerCase()}`;
