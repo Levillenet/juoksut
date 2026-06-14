@@ -29,6 +29,7 @@ import {
   type DayWindow,
 } from "@/lib/planner-types";
 import { estimateDuration } from "@/lib/planner-estimate";
+import { computeRuleEstimate } from "@/lib/planner-rules";
 import { solve, detectConflicts } from "@/lib/planner-solver";
 import { resolveTimings } from "@/lib/planner-timings";
 import { DEFAULT_VENUES, buildDefaultVenueRows } from "@/lib/planner-defaults";
@@ -694,17 +695,23 @@ function EventsTab({
               <th className="py-1 pr-2 text-right">Osanottajat</th>
               <th
                 className="py-1 pr-2 text-right"
-                title="Kentälajeissa rinnakkaisten suorituspaikkojen määrä, juoksulajeissa käytettyjen ratojen lukumäärä"
+                title="Kentälajeissa rinnakkaisten suorituspaikkojen määrä, juoksulajeissa lanea per erä (oletus 8; ≥1000 m → 16)"
               >
-                Paikkoja/Ratoja
+                Paikkoja/Lanea
               </th>
               <th className="py-1 pr-2">Finaalit</th>
               <th className="py-1 pr-2 text-right">A-finaalin koko</th>
               <th
                 className="py-1 pr-2 text-right"
-                title="Ohittaa automaattisen kestoarvion (lasketaan livetuloslistasta)"
+                title="Sääntöpohjainen kestoarvio (YAG 2022). Vie hiiri päälle nähdäksesi kaava."
               >
-                Ohita kesto (min)
+                Kesto
+              </th>
+              <th
+                className="py-1 pr-2 text-right"
+                title="Ohittaa automaattisen kestoarvion"
+              >
+                Ohita (min)
               </th>
               <th className="py-1 pr-2 text-right" title="Valmisteluaika ennen lajia (askelmerkit, lämmittely)">
                 Valm.
@@ -743,20 +750,37 @@ function EventsTab({
                     />
                   </td>
                   <td className="py-1 pr-2 text-right">
-                    <Input
-                      type="number"
-                      className="w-20 text-right"
-                      value={e.station_count}
-                      onChange={(ev) =>
-                        update.mutate({
-                          id: e.id,
-                          station_count: Math.max(1, parseInt(ev.target.value) || 1),
-                        })
-                      }
-                    />
-                    <div className="text-[9px] text-muted-foreground">
-                      {isTrack ? "ratoja" : "paikkoja"}
-                    </div>
+                    {isTrack ? (
+                      <>
+                        <Input
+                          type="number"
+                          className="w-20 text-right"
+                          value={e.heat_size}
+                          onChange={(ev) =>
+                            update.mutate({
+                              id: e.id,
+                              heat_size: Math.max(1, parseInt(ev.target.value) || 1),
+                            })
+                          }
+                        />
+                        <div className="text-[9px] text-muted-foreground">lanea/erä</div>
+                      </>
+                    ) : (
+                      <>
+                        <Input
+                          type="number"
+                          className="w-20 text-right"
+                          value={e.station_count}
+                          onChange={(ev) =>
+                            update.mutate({
+                              id: e.id,
+                              station_count: Math.max(1, parseInt(ev.target.value) || 1),
+                            })
+                          }
+                        />
+                        <div className="text-[9px] text-muted-foreground">paikkoja</div>
+                      </>
+                    )}
                   </td>
                   <td className="py-1 pr-2">
                     <select
@@ -793,6 +817,27 @@ function EventsTab({
                       />
                     )}
                   </td>
+                  {(() => {
+                    const r = computeRuleEstimate({
+                      event_name: e.event_name,
+                      sub_category: e.sub_category,
+                      participants: e.participants,
+                      station_count: e.station_count,
+                      heat_size: e.heat_size,
+                    });
+                    return (
+                      <td
+                        className="py-1 pr-2 text-right font-medium tabular-nums"
+                        title={r.formula}
+                      >
+                        {e.override_duration_min != null ? (
+                          <span className="text-muted-foreground line-through">{r.minutes}</span>
+                        ) : (
+                          <>{r.minutes} min</>
+                        )}
+                      </td>
+                    );
+                  })()}
                   <td className="py-1 pr-2 text-right">
                     <Input
                       type="number"
@@ -917,6 +962,9 @@ function EventsTab({
             event_name: name,
             participants: 8,
             station_count: 1,
+            heat_size: /\d{2,5}\s*m\b|\d+\s*km|aita|hurdle/i.test(name)
+              ? (parseInt((name.match(/(\d{2,5})\s*m\b/) || [])[1] || "0", 10) >= 1000 ? 16 : 8)
+              : 8,
             final_format: "direct",
             sort_order: events.length,
           });
@@ -1098,6 +1146,7 @@ function ScheduleTab({
             participants: e.participants,
             sub_category: e.sub_category,
             station_count: e.station_count,
+            heat_size: e.heat_size,
             final_format: e.final_format,
             final_cut: e.final_cut,
           });
@@ -1110,7 +1159,7 @@ function ScheduleTab({
       );
       const enriched = events.map((e, i) => {
         const t = resolveTimings(e, plan);
-        const lanes = Math.max(1, e.station_count);
+        const lanes = Math.max(1, e.heat_size || 8);
         const heats = t.isTrack ? Math.max(1, Math.ceil(e.participants / lanes)) : 1;
         // Juoksulajeissa kesto = erien lukumäärä × aika per erä (ohittaa estimaatin).
         const trackDuration = t.isTrack ? heats * t.minutesPerHeatMin : null;

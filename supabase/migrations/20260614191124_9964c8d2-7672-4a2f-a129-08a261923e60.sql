@@ -1,0 +1,1 @@
+ALTER TABLE public.plan_events ADD COLUMN IF NOT EXISTS heat_size integer NOT NULL DEFAULT 8;

@@ -76,6 +76,7 @@ export interface PlanEventRow {
   final_format: FinalFormat;
   final_cut: number | null;
   station_count: number;
+  heat_size: number;
   override_duration_min: number | null;
   setup_before_min: number | null;
   between_heats_min: number | null;
