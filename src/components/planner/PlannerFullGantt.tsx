@@ -34,11 +34,15 @@ function ageClassSort(a: string, b: string): number {
   return order(a) - order(b);
 }
 
-function colorFor(ageClass: string): string {
-  let h = 0;
-  for (let i = 0; i < ageClass.length; i++) h = (h * 31 + ageClass.charCodeAt(i)) % 360;
-  return `hsl(${h} 70% 70% / 0.55)`;
-}
+const LEGEND: Array<{ label: string; cls: string }> = [
+  { label: "Pikajuoksut", cls: "bg-sky-200 border-sky-400" },
+  { label: "Pidemmät juoksut", cls: "bg-blue-200 border-blue-400" },
+  { label: "Tasohypyt", cls: "bg-emerald-200 border-emerald-400" },
+  { label: "Pystyhypyt", cls: "bg-green-300 border-green-500" },
+  { label: "Kuula", cls: "bg-amber-200 border-amber-400" },
+  { label: "Pitkät heitot", cls: "bg-orange-300 border-orange-500" },
+  { label: "Yhdistetyt", cls: "bg-purple-200 border-purple-400" },
+];
 
 export function PlannerFullGantt({
   plan,
