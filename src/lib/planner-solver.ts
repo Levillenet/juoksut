@@ -349,6 +349,19 @@ export function solve(input: SolverInput): SolverResult {
       phaseEnds.set(phaseKey, segEnd);
       phaseVenues.set(phaseKey, placedVenues.map((v) => v.id));
 
+      // ASIA 1: varoita jos tauko viite-vaiheen päättymisestä ylittää sallitun maksimin.
+      if (seg.afterPhaseKey && seg.maxGapAfterPhaseMin != null) {
+        const refEnd = phaseEnds.get(seg.afterPhaseKey);
+        if (refEnd != null) {
+          const gapMin = (candidateStart - refEnd) / 60000;
+          if (gapMin > seg.maxGapAfterPhaseMin) {
+            warnings.push(
+              `${seg.ageClass} ${seg.eventName} ${seg.phase}: tauko edellisestä vaiheesta ${Math.round(gapMin)} min (max ${seg.maxGapAfterPhaseMin} min).`,
+            );
+          }
+        }
+      }
+
       // Päivitä konfliktiryhmien aikajanat
       const placedIds = placedVenues.map((v) => v.id);
       for (let i = 0; i < conflictGroups.length; i++) {
