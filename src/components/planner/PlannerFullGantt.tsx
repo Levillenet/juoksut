@@ -173,20 +173,30 @@ export function PlannerFullGantt({
     const dur = (new Date(s.ends_at).getTime() - new Date(s.starts_at).getTime()) / 60000;
     if (startOff + dur < 0 || startOff > totalMin) return null;
     const left = LEFT_COL + (startOff / 5) * PX_PER_5MIN;
-    const width = Math.max(36, (dur / 5) * PX_PER_5MIN - 2);
+    const width = Math.max(18, (dur / 5) * PX_PER_5MIN - 2);
     const top = rowIdx * ROW_HEIGHT + 3;
     const conflictReason = conflictMap.get(s.id);
     const heats = t.isTrack ? Math.max(1, Math.ceil((ev.participants || 0) / 8)) : 1;
     const phase = s.phase;
-    const heatLabel = t.isTrack && heats > 0 ? ` (${heats}) ${t.minutesPerHeatMin}min/erä` : "";
+    const primary = `${ev.age_class} ${ev.event_name}`;
+    const subParts: string[] = [];
+    if (ev.participants) subParts.push(`${ev.participants} osall.`);
+    if (t.isTrack && heats > 1) subParts.push(`${heats} erää`);
+    subParts.push(`${Math.round(dur)} min`);
+    const subtitle = subParts.join(" · ");
+
+    const tiny = width < 22;
+    const veryNarrow = width < 30;
+    const fontSize = width < 50 ? 10 : 11;
+
     return (
       <div
         key={`${keyPrefix}-${s.id}`}
         data-bar-id={s.id}
         data-base-left={left}
         onPointerDown={(e) => onPointerDown(e, s)}
-        title={conflictReason ?? `${ev.age_class} ${ev.event_name} (${phase})`}
-        className={`absolute cursor-grab touch-none select-none overflow-hidden rounded border px-1.5 py-0.5 text-[10px] leading-tight shadow-sm active:cursor-grabbing ${
+        title={conflictReason ?? `${primary} (${phase}) · ${subtitle}`}
+        className={`absolute cursor-grab touch-none select-none overflow-hidden rounded border px-1 py-0.5 leading-tight shadow-sm active:cursor-grabbing ${
           conflictReason ? "border-destructive ring-1 ring-destructive" : "border-border/60"
         }`}
         style={{
@@ -195,13 +205,45 @@ export function PlannerFullGantt({
           width,
           height: ROW_HEIGHT - 6,
           background: colorFor(ev.age_class),
+          fontSize: `${fontSize}px`,
         }}
       >
-        <div className="truncate font-semibold">
-          {ev.age_class}
-          {heatLabel}
-        </div>
-        <div className="truncate">{ev.event_name}{ev.participants ? ` · ${ev.participants}` : ""}</div>
+        {tiny ? (
+          <div className="font-semibold" style={{ fontSize: "10px" }}>
+            {ev.age_class}
+          </div>
+        ) : veryNarrow ? (
+          <div
+            className="font-semibold"
+            style={{
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              wordBreak: "break-word",
+            }}
+          >
+            {primary}
+          </div>
+        ) : (
+          <>
+            <div
+              className="font-semibold"
+              style={{
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                wordBreak: "break-word",
+              }}
+            >
+              {primary}
+            </div>
+            <div className="truncate text-foreground/70" style={{ fontSize: "10px" }}>
+              {subtitle}
+            </div>
+          </>
+        )}
       </div>
     );
   };
