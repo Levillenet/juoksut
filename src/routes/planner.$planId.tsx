@@ -1528,6 +1528,8 @@ function ScheduleTab({
         venues,
         events: enriched,
         conflictGroups,
+        allowDistanceChangeSameVenue: plan.allow_distance_change_same_venue,
+        minDistanceChangeGapMin: plan.min_distance_change_gap_min,
       });
 
       await supabase
