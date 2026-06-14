@@ -3,9 +3,12 @@
 // muuten lajityyppikohtainen fallback.
 
 import { supabase } from "@/integrations/supabase/client";
-import { isRunningEvent } from "@/lib/tuloslista";
 import { normalizeEventName } from "@/lib/event-name";
 import { eventSpecKey } from "@/lib/event-specs";
+
+// Hyödynnetään pelkkää isRunningEvent-tietoa ei tarvita, deletoidaan importti.
+// (categorize() päättelee tyypin lajinimestä ja sub_categorystä)
+
 
 export interface EstimateInput {
   event_name: string;
