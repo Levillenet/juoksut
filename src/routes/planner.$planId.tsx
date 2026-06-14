@@ -1225,17 +1225,16 @@ function ScheduleTab({
         </div>
       )}
 
-      <PlannerGantt
-        plan={plan}
-        venues={venues}
-        events={events}
-        schedule={schedule}
-        conflicts={conflicts}
-        onChange={onChange}
-      />
-    </section>
-  );
-}
+      <div className="overflow-hidden rounded-lg border" style={{ height: "calc(100vh - 260px)", minHeight: 480 }}>
+        <PlannerFullGantt
+          plan={plan}
+          venues={venues}
+          events={events}
+          schedule={schedule}
+          conflicts={conflicts}
+          onChange={onChange}
+        />
+      </div>
 
 function PlannerGantt({
   plan,
