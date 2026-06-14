@@ -1630,14 +1630,12 @@ function ScheduleTab({
         </div>
       )}
       {conflicts.length > 0 && (
-        <div className="rounded border border-destructive/40 bg-destructive/10 p-2 text-xs">
-          <div className="font-semibold">Konfliktit:</div>
-          <ul className="list-disc pl-5">
-            {conflicts.map((c, i) => (
-              <li key={i}>{c.reason}</li>
-            ))}
-          </ul>
-        </div>
+        <ConflictsList
+          conflicts={conflicts}
+          events={events}
+          schedule={schedule}
+          onHighlight={highlightConflict}
+        />
       )}
 
       <OfficialsPanel
