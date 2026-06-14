@@ -12,7 +12,8 @@ export interface SolverInputEvent extends PlanEventRow {
   finalAMin: number | null;
   finalBMin: number | null;
   setupBeforeMin: number;
-  betweenHeatsMin: number;
+  /** Aika per erä juoksulajissa (sisältää järjestäytymisen). */
+  minutesPerHeatMin: number;
   hurdleSetupMin: number;
   hurdleTeardownMin: number;
   isHurdles: boolean;

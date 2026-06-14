@@ -419,10 +419,14 @@ function BasicsTab({
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {numField("setupField", "Pituus/kolmiloikka valmistelu (min)", "Askelmerkit yms.")}
         {numField("setupVertical", "Korkeus/seiväs valmistelu (min)", "Lämmittelyhypyt")}
-        {numField("betweenHeats", "Juoksuerien väli (min)")}
         {numField("hurdleSetup", "Aitojen pystytys (min)")}
         {numField("hurdleTeardown", "Aitojen purku (min)")}
       </div>
+      <p className="text-xs text-muted-foreground">
+        Juoksulajien kesto lasketaan kaavalla <strong>erien määrä × aika/erä</strong>.
+        Aika per erä asetetaan lajikohtaisesti lajilistalla (oletuksena YAG 2022 ‑ohjearvot,
+        esim. 60 m = 4 min, 100 m = 5 min, 800 m = 8 min).
+      </p>
 
       <Field label="Muistiinpanot">
         <textarea
@@ -700,11 +704,11 @@ function EventsTab({
               >
                 Ohita kesto (min)
               </th>
-              <th className="py-1 pr-2 text-right" title="Valmisteluaika ennen lajia">
+              <th className="py-1 pr-2 text-right" title="Valmisteluaika ennen lajia (askelmerkit, lämmittely)">
                 Valm.
               </th>
-              <th className="py-1 pr-2 text-right" title="Juoksuerien välinen aika">
-                Eräväli
+              <th className="py-1 pr-2 text-right" title="Juoksuissa: yhden erän kesto (sisältää järjestäytymisen). Lasketaan: erien määrä × aika/erä.">
+                Aika/erä
               </th>
               <th className="py-1 pr-2 text-right" title="Aitojen pystytys">
                 Aidat+
@@ -813,7 +817,15 @@ function EventsTab({
                     const isHurdleField =
                       key === "hurdle_setup_min" || key === "hurdle_teardown_min";
                     const isHurdleEvt = /aita|aidat|hurdle/i.test(e.event_name);
+                    const isPerHeatField = key === "between_heats_min";
                     if (isHurdleField && !isHurdleEvt) {
+                      return (
+                        <td key={key} className="py-1 pr-2 text-right text-muted-foreground">
+                          –
+                        </td>
+                      );
+                    }
+                    if (isPerHeatField && !isTrack) {
                       return (
                         <td key={key} className="py-1 pr-2 text-right text-muted-foreground">
                           –
@@ -1088,14 +1100,16 @@ function ScheduleTab({
       );
       const enriched = events.map((e, i) => {
         const t = resolveTimings(e, plan);
-        const heats = t.isTrack ? Math.max(1, Math.ceil(e.participants / 8)) : 1;
-        const heatGapAdd = t.isTrack ? (heats - 1) * t.betweenHeatsMin : 0;
+        const lanes = Math.max(1, e.station_count);
+        const heats = t.isTrack ? Math.max(1, Math.ceil(e.participants / lanes)) : 1;
+        // Juoksulajeissa kesto = erien lukumäärä × aika per erä (ohittaa estimaatin).
+        const trackDuration = t.isTrack ? heats * t.minutesPerHeatMin : null;
         return {
           ...e,
           ...ests[i],
-          estimateMinutes: ests[i].estimateMinutes + heatGapAdd,
+          estimateMinutes: trackDuration ?? ests[i].estimateMinutes,
           setupBeforeMin: t.setupBeforeMin,
-          betweenHeatsMin: t.betweenHeatsMin,
+          minutesPerHeatMin: t.minutesPerHeatMin,
           hurdleSetupMin: t.hurdleSetupMin,
           hurdleTeardownMin: t.hurdleTeardownMin,
           isHurdles: t.isHurdles,
@@ -1162,7 +1176,7 @@ function ScheduleTab({
         Suorituspaikka: v?.name ?? "",
         Osanottajat: ev?.participants ?? "",
         "Valm. (min)": t?.setupBeforeMin ?? "",
-        "Eräväli (min)": t?.isTrack ? t.betweenHeatsMin : "",
+        "Aika/erä (min)": t?.isTrack ? t.minutesPerHeatMin : "",
         "Aitojen setup (min)": t?.isHurdles ? t.hurdleSetupMin : "",
         "Aitojen purku (min)": t?.isHurdles ? t.hurdleTeardownMin : "",
       };

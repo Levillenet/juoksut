@@ -1,10 +1,12 @@
 // Apufunktiot lajikohtaisten valmistelu- ja siirtymäaikojen päättelyyn.
 
 import type { PlanEventRow, PlanRow } from "./planner-types";
+import { defaultMinutesPerHeat } from "./planner-defaults";
 
 export interface ResolvedTimings {
   setupBeforeMin: number;
-  betweenHeatsMin: number;
+  /** Aika per erä (min) juoksulajeissa — sisältää järjestäytymisen. */
+  minutesPerHeatMin: number;
   hurdleSetupMin: number;
   hurdleTeardownMin: number;
   isHurdles: boolean;
@@ -78,9 +80,13 @@ export function resolveTimings(
 
   const setupDefault = suggestSetupBeforeMin(ev, plan);
 
+  // `between_heats_min`-saraketta käytetään nyt yhteisellä semantiikalla "aika per erä"
+  // (legacy nimi tietokannassa). Default tulee YAG 2022 -ohjearvoista lajinimen perusteella.
+  const perHeatDefault = isTrack ? defaultMinutesPerHeat(ev.event_name) : 0;
+
   return {
     setupBeforeMin: ev.setup_before_min ?? setupDefault,
-    betweenHeatsMin: ev.between_heats_min ?? (isTrack ? plan.default_between_heats_min : 0),
+    minutesPerHeatMin: ev.between_heats_min ?? perHeatDefault,
     hurdleSetupMin: isHurdles
       ? (ev.hurdle_setup_min ?? plan.default_hurdle_setup_min)
       : 0,
