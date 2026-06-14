@@ -800,17 +800,6 @@ function VenuesTab({
   );
 }
 
-// Apufunktio joka käyttää planner-defaults isVenueForEvent ilman heittoa.
-function isVenueForEventSafe(kind: VenueKind, eventName: string): boolean {
-  try {
-    // dynaaminen import vältetään: käytetään suoraan
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return isVenueForEventImpl(kind, eventName);
-  } catch {
-    return false;
-  }
-}
-import { isVenueForEvent as isVenueForEventImpl } from "@/lib/planner-defaults";
 
 
 function DefaultVenuesDialog({
