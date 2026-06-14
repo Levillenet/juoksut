@@ -5,6 +5,7 @@ import type {
   VenueRow,
   ScheduleItemRow,
   SchedulePhase,
+  ConflictGroupRow,
 } from "./planner-types";
 import { isVenueForEvent } from "./planner-defaults";
 
@@ -31,6 +32,8 @@ export interface SolverInput {
   defaultRecoveryMin: number;
   venues: VenueRow[];
   events: SolverInputEvent[];
+  /** Suorituspaikkojen rajoiteryhmät: max N samaan aikaan käytössä. */
+  conflictGroups?: ConflictGroupRow[];
 }
 
 interface Segment {
