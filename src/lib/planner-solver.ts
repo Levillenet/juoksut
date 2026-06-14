@@ -474,17 +474,59 @@ export function detectConflicts(
   }
   for (const [eventId, arr] of itemsByEvent) {
     const heats = arr.find((i) => i.phase === "heats");
-    if (!heats) continue;
-    for (const f of arr) {
-      if (f.phase !== "final_a" && f.phase !== "final_b") continue;
-      const gapMin = (new Date(f.starts_at).getTime() - new Date(heats.ends_at).getTime()) / 60000;
-      if (gapMin < defaultRecoveryMin) {
-        const ev = evMap.get(eventId);
+    const finalA = arr.find((i) => i.phase === "final_a");
+    const finalB = arr.find((i) => i.phase === "final_b");
+    const ev = evMap.get(eventId);
+
+    // KORJAUS 6a: finaali ennen alkueriä (kriittinen — fyysisesti mahdoton)
+    if (heats) {
+      for (const f of [finalA, finalB]) {
+        if (!f) continue;
+        if (f.starts_at < heats.starts_at) {
+          out.push({
+            id: f.id,
+            severity: "critical",
+            relatedIds: [heats.id],
+            reason: `Finaali (${f.phase}) ennen alkueriä – ${ev?.event_name ?? ""}`,
+          });
+        }
+      }
+    }
+
+    // Palautusaika heats → finaali
+    if (heats) {
+      for (const f of [finalA, finalB]) {
+        if (!f) continue;
+        const gapMin =
+          (new Date(f.starts_at).getTime() - new Date(heats.ends_at).getTime()) / 60000;
+        if (gapMin >= 0 && gapMin < defaultRecoveryMin) {
+          out.push({
+            id: f.id,
+            severity: "high",
+            relatedIds: [heats.id],
+            reason: `Palautusaika alle ${defaultRecoveryMin} min (${Math.round(gapMin)} min) – ${ev?.event_name ?? ""}`,
+          });
+        }
+      }
+    }
+
+    // KORJAUS 6b: final_b pitää olla heti final_a:n jälkeen (max 5 min)
+    if (finalA && finalB) {
+      const gapMin =
+        (new Date(finalB.starts_at).getTime() - new Date(finalA.ends_at).getTime()) / 60000;
+      if (gapMin < 0) {
         out.push({
-          id: f.id,
+          id: finalB.id,
+          severity: "critical",
+          relatedIds: [finalA.id],
+          reason: `B-finaali alkaa ennen A-finaalin päättymistä – ${ev?.event_name ?? ""}`,
+        });
+      } else if (gapMin > 5) {
+        out.push({
+          id: finalB.id,
           severity: "high",
-          relatedIds: [heats.id],
-          reason: `Palautusaika alle ${defaultRecoveryMin} min (${Math.round(gapMin)} min) – ${ev?.event_name ?? ""}`,
+          relatedIds: [finalA.id],
+          reason: `A- ja B-finaalin välissä ${Math.round(gapMin)} min (max 5 min) – ${ev?.event_name ?? ""}`,
         });
       }
     }
