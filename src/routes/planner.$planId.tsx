@@ -1143,6 +1143,7 @@ function ScheduleTab({
             participants: e.participants,
             sub_category: e.sub_category,
             station_count: e.station_count,
+            heat_size: e.heat_size,
             final_format: e.final_format,
             final_cut: e.final_cut,
           });
@@ -1155,7 +1156,7 @@ function ScheduleTab({
       );
       const enriched = events.map((e, i) => {
         const t = resolveTimings(e, plan);
-        const lanes = Math.max(1, e.station_count);
+        const lanes = Math.max(1, e.heat_size || 8);
         const heats = t.isTrack ? Math.max(1, Math.ceil(e.participants / lanes)) : 1;
         // Juoksulajeissa kesto = erien lukumäärä × aika per erä (ohittaa estimaatin).
         const trackDuration = t.isTrack ? heats * t.minutesPerHeatMin : null;
