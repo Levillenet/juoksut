@@ -1200,6 +1200,12 @@ function ScheduleTab({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold">Aikataulu</h2>
         <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link to="/planner/$planId/gantt" params={{ planId: plan.id }}>
+              <LayoutGrid className="mr-2 h-4 w-4" />
+              Avaa koko näytön aikataulu
+            </Link>
+          </Button>
           <Button onClick={generate} disabled={generating}>
             <Wand2 className="mr-2 h-4 w-4" />
             {generating ? "Generoidaan…" : "Generoi aikataulu"}
