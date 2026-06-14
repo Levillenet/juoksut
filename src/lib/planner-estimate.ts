@@ -93,7 +93,7 @@ async function loadHistory(eventName: string, ageClass: string): Promise<History
     if (!r.event_id || !r.captured_at) continue;
     // Filtteri: jos meillä on spec-suffix (esim. aita H-60-50-8), vaadi sama spec.
     if (specSuffix) {
-      const rowSpec = eventSpecKey(r.age_class ?? "", undefined, r.event_name ?? "");
+      const rowSpec = eventSpecKey(r.age_class ?? "", r.event_name ?? "");
       if (rowSpec !== specSuffix) continue;
     }
     const key = `${r.competition_id}:${r.event_id}`;
