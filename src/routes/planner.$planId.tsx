@@ -36,7 +36,7 @@ import { estimateDuration } from "@/lib/planner-estimate";
 import { computeRuleEstimate } from "@/lib/planner-rules";
 import { solve, detectConflicts } from "@/lib/planner-solver";
 import { resolveTimings } from "@/lib/planner-timings";
-import { DEFAULT_VENUES, buildDefaultVenueRows } from "@/lib/planner-defaults";
+import { DEFAULT_VENUES, buildDefaultVenueRows, isVenueForEvent } from "@/lib/planner-defaults";
 import { fillPlanWithDemo } from "@/lib/planner-demo";
 import { applyStadiumToPlan, removeStadiumFromPlan } from "@/lib/planner-stadium";
 
