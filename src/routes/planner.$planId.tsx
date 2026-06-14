@@ -203,7 +203,7 @@ function PlanEditor() {
       <main
         className={`mx-auto space-y-6 py-6 ${
           tab === "schedule"
-            ? "max-w-screen-2xl px-2 sm:px-4"
+            ? "w-full max-w-none px-2 sm:px-4"
             : "max-w-6xl px-4"
         }`}
       >
