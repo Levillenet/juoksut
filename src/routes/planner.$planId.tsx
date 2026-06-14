@@ -34,7 +34,7 @@ import type {
 } from "@/lib/planner-types";
 import { estimateDuration } from "@/lib/planner-estimate";
 import { computeRuleEstimate } from "@/lib/planner-rules";
-import { solve, detectConflicts } from "@/lib/planner-solver";
+import { solve, detectConflicts, type Conflict, type ConflictSeverity } from "@/lib/planner-solver";
 import { resolveTimings } from "@/lib/planner-timings";
 import { DEFAULT_VENUES, buildDefaultVenueRows, isVenueForEvent, getDefaultOfficialsCount } from "@/lib/planner-defaults";
 import { fillPlanWithDemo } from "@/lib/planner-demo";
