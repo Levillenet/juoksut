@@ -207,16 +207,7 @@ export function downloadPlannerScheduleVisualXlsx({
 }: Args) {
   const wb = XLSX.utils.book_new();
   const windows = resolveDayWindows(plan);
-  if (windows.length === 0) {
-    // fallback: yksi välilehti
-    windows.push({
-      date: plan.starts_at.slice(0, 10),
-      start: "08:00",
-      end: "20:00",
-      startMs: new Date(plan.starts_at).getTime(),
-      endMs: new Date(plan.ends_at).getTime(),
-    } as ReturnType<typeof resolveDayWindows>[number]);
-  }
+  if (windows.length === 0) return;
   const evMap = new Map(events.map((e) => [e.id, e]));
 
   for (const win of windows) {
