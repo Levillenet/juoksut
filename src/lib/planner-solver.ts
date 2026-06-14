@@ -6,6 +6,7 @@ import type {
   ScheduleItemRow,
   SchedulePhase,
 } from "./planner-types";
+import { isVenueForEvent } from "./planner-defaults";
 
 export interface SolverInputEvent extends PlanEventRow {
   estimateMinutes: number;
