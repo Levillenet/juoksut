@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { ArrowLeft, Trash2, Plus, Wand2, Save, Download, LayoutGrid, Sparkles } from "lucide-react";
 import * as XLSX from "xlsx";
+import { downloadPlannerSchedulePdf } from "@/lib/planner-schedule-pdf";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -1195,6 +1196,11 @@ function ScheduleTab({
     XLSX.writeFile(wb, `aikataulu-${plan.name.replace(/\s+/g, "_")}.xlsx`);
   };
 
+  const exportPdf = () => {
+    const conflictIds = new Set(conflicts.map((c) => c.id));
+    downloadPlannerSchedulePdf({ plan, venues, events, schedule, conflictIds });
+  };
+
   return (
     <section className="space-y-3 rounded-xl border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1213,6 +1219,10 @@ function ScheduleTab({
           <Button variant="secondary" onClick={exportExcel} disabled={schedule.length === 0}>
             <Download className="mr-2 h-4 w-4" />
             Vie Excel
+          </Button>
+          <Button variant="secondary" onClick={exportPdf} disabled={schedule.length === 0}>
+            <Download className="mr-2 h-4 w-4" />
+            Tulosta PDF
           </Button>
         </div>
       </div>
