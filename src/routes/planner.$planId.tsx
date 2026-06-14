@@ -1287,7 +1287,7 @@ function PlannerGantt({
   const startMs = win?.startMs ?? 0;
   const endMs = win?.endMs ?? 0;
   const totalMin = Math.max(60, (endMs - startMs) / 60000);
-  const pxPerMin = 1.4;
+  const pxPerMin = 3;
   const totalHeight = totalMin * pxPerMin;
 
   const dragRef = useRef<{
@@ -1394,12 +1394,12 @@ function PlannerGantt({
       <p className="text-[10px] text-muted-foreground">
         Vihje: vedä palkkia pystysuunnassa siirtääksesi sitä aikajanalla (5 min napsahdus).
       </p>
-      <div className="overflow-auto rounded-lg border">
+      <div className="overflow-auto rounded-lg border" style={{ maxHeight: "calc(100vh - 220px)" }}>
         <div
           className="relative grid"
           style={{
-            gridTemplateColumns: `64px repeat(${venues.length}, minmax(140px, 1fr))`,
-            minWidth: 64 + venues.length * 140,
+            gridTemplateColumns: `90px repeat(${venues.length}, minmax(220px, 1fr))`,
+            minWidth: 90 + venues.length * 220,
           }}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
