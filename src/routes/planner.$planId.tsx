@@ -572,7 +572,22 @@ function ScheduleTab({
           };
         }),
       );
-      const enriched = events.map((e, i) => ({ ...e, ...ests[i] }));
+      const enriched = events.map((e, i) => {
+        const t = resolveTimings(e, plan);
+        // Lisää erien välinen aika juoksulajeille arvioon.
+        const heats = t.isTrack ? Math.max(1, Math.ceil(e.participants / 8)) : 1;
+        const heatGapAdd = t.isTrack ? (heats - 1) * t.betweenHeatsMin : 0;
+        return {
+          ...e,
+          ...ests[i],
+          estimateMinutes: ests[i].estimateMinutes + heatGapAdd,
+          setupBeforeMin: t.setupBeforeMin,
+          betweenHeatsMin: t.betweenHeatsMin,
+          hurdleSetupMin: t.hurdleSetupMin,
+          hurdleTeardownMin: t.hurdleTeardownMin,
+          isHurdles: t.isHurdles,
+        };
+      });
       const result = solve({
         startISO: plan.starts_at,
         endISO: plan.ends_at,
@@ -580,6 +595,7 @@ function ScheduleTab({
         venues,
         events: enriched,
       });
+
       // Tallenna: tyhjennä auto-generated rivit ja korvaa
       await supabase
         .from("plan_schedule_items")
