@@ -127,6 +127,9 @@ export interface PlanEventRow {
   allowed_days: string[] | null;
   notes: string | null;
   sort_order: number;
+  officials_count: number;
+  officials_count_overridden: boolean;
+  officials_role_breakdown: Record<string, number> | null;
 }
 
 export interface ScheduleItemRow {
