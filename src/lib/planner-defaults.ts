@@ -104,16 +104,29 @@ export function buildDefaultVenueRows(
 /** Onko laji sellainen, joka tyypillisesti tehdään tällä venue-tyypillä. */
 export function isVenueForEvent(kind: VenueKind, eventName: string): boolean {
   const n = (eventName ?? "").toLowerCase();
-  if (/aita|aidat|hurdle/.test(n)) return kind === "track_straight" || kind === "track_oval";
+  // Aidat: lyhyet (≤110 m) molemmilla, pitkät (300/400 m) vain ovaalilla.
+  if (/aita|aidat|hurdle/.test(n)) {
+    const m = n.match(/(\d{2,4})\s*m\b/);
+    const d = m ? parseInt(m[1], 10) : null;
+    if (d != null && d >= 200) return kind === "track_oval";
+    return kind === "track_straight" || kind === "track_oval";
+  }
   if (/pituus|long ?jump/.test(n)) return kind === "jump_pit";
   if (/kolmiloikka|triple/.test(n)) return kind === "jump_pit";
   if (/korkeus|high ?jump/.test(n)) return kind === "high_jump";
   if (/seiväs|seivas|pole ?vault/.test(n)) return kind === "pole_vault";
-  if (/kuula|shot/.test(n)) return kind === "shot_ring" || kind === "throw_ring";
+  if (/kuula|shot/.test(n)) return kind === "shot_ring" || kind === "throw_ring" || kind === "throw_cage";
   if (/kiekko|discus/.test(n)) return kind === "throw_cage" || kind === "throw_ring";
   if (/moukari|hammer/.test(n)) return kind === "throw_cage" || kind === "throw_ring";
   if (/keihäs|keihas|javelin/.test(n)) return kind === "throw_runway";
-  if (/\d{2,5}\s*m\b|\d+\s*km/.test(n)) return kind === "track_straight" || kind === "track_oval";
+  // Juoksulajit: lyhyet (< 300 m) molemmilla; pitkät vain ovaalilla.
+  const distMatch = n.match(/(\d+(?:[.,]\d+)?)\s*(km|m)\b/);
+  if (distMatch) {
+    const num = parseFloat(distMatch[1].replace(",", "."));
+    const meters = distMatch[2] === "km" ? num * 1000 : num;
+    if (meters >= 300) return kind === "track_oval";
+    return kind === "track_straight" || kind === "track_oval";
+  }
   return kind === "other";
 }
 
