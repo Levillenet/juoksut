@@ -122,8 +122,5 @@ export function isVenueForEvent(kind: VenueKind, eventName: string): boolean {
  * Delegoituu `planner-rules.ts`:lle (yksi totuus).
  */
 export function defaultMinutesPerHeat(eventName: string): number {
-  // Lazy-tuonti välttää sykli/kierroriskin.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { minutesPerHeat } = require("./planner-rules") as typeof import("./planner-rules");
   return minutesPerHeat(eventName);
 }
