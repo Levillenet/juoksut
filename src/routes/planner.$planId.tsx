@@ -419,10 +419,14 @@ function BasicsTab({
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {numField("setupField", "Pituus/kolmiloikka valmistelu (min)", "Askelmerkit yms.")}
         {numField("setupVertical", "Korkeus/seiväs valmistelu (min)", "Lämmittelyhypyt")}
-        {numField("betweenHeats", "Juoksuerien väli (min)")}
         {numField("hurdleSetup", "Aitojen pystytys (min)")}
         {numField("hurdleTeardown", "Aitojen purku (min)")}
       </div>
+      <p className="text-xs text-muted-foreground">
+        Juoksulajien kesto lasketaan kaavalla <strong>erien määrä × aika/erä</strong>.
+        Aika per erä asetetaan lajikohtaisesti lajilistalla (oletuksena YAG 2022 ‑ohjearvot,
+        esim. 60 m = 4 min, 100 m = 5 min, 800 m = 8 min).
+      </p>
 
       <Field label="Muistiinpanot">
         <textarea
