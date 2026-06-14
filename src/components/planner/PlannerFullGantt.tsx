@@ -547,7 +547,7 @@ export function PlannerFullGantt({
         {rows.map((r, i) => (
           <div
             key={`lbl-${r.id}`}
-            className="sticky left-0 z-10 flex items-center border-b border-r bg-card px-2 text-xs"
+            className="sticky left-0 z-10 flex items-center border-b border-r bg-background px-2 text-xs shadow-md"
             style={{
               width: LEFT_COL,
               height: ROW_HEIGHT,
