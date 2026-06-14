@@ -232,3 +232,51 @@ export function runningGroupKey(eventName: string): string | null {
   const h = isHurdleEvent(eventName) ? "H" : "F";
   return `${h}-${d}`;
 }
+
+export interface EventColor {
+  bg: string;
+  border: string;
+  text: string;
+  group: "sprint" | "run" | "horizontal" | "vertical" | "shortThrow" | "longThrow" | "combined" | "other";
+}
+
+/** Systemaattinen väri lajityypin mukaan. */
+export function getEventColorClass(eventName: string, category: string | null | undefined): EventColor {
+  const n = (eventName ?? "").toLowerCase();
+  const cat = (category ?? "").toLowerCase();
+
+  // Yhdistetyt lajit
+  if (/moniottelu|pentathlon|heptathlon|decathlon|nelo|viisi|seitsem|kymmenottelu/.test(n)) {
+    return { bg: "bg-purple-100", border: "border-purple-300", text: "text-purple-900", group: "combined" };
+  }
+
+  // Juoksut
+  const dist = parseDistanceM(eventName);
+  const isWalk = /kävely|kavely|walk/.test(n);
+  const isRun = dist != null || isWalk || /aita|aidat|hurdle/.test(n) || cat === "track";
+  if (isRun) {
+    const isSprint = dist != null && dist <= 110 && !isWalk;
+    if (isSprint) {
+      return { bg: "bg-sky-100", border: "border-sky-300", text: "text-sky-900", group: "sprint" };
+    }
+    return { bg: "bg-blue-100", border: "border-blue-300", text: "text-blue-900", group: "run" };
+  }
+
+  // Hypyt
+  if (/pituus|long ?jump|kolmiloikka|triple/.test(n)) {
+    return { bg: "bg-emerald-100", border: "border-emerald-300", text: "text-emerald-900", group: "horizontal" };
+  }
+  if (/korkeus|high ?jump|seiväs|seivas|pole ?vault/.test(n)) {
+    return { bg: "bg-green-200", border: "border-green-400", text: "text-green-900", group: "vertical" };
+  }
+
+  // Heitot
+  if (/kuula|shot/.test(n)) {
+    return { bg: "bg-amber-100", border: "border-amber-300", text: "text-amber-900", group: "shortThrow" };
+  }
+  if (/kiekko|discus|moukari|hammer|keihäs|keihas|javelin/.test(n)) {
+    return { bg: "bg-orange-200", border: "border-orange-400", text: "text-orange-900", group: "longThrow" };
+  }
+
+  return { bg: "bg-gray-100", border: "border-gray-300", text: "text-gray-900", group: "other" };
+}

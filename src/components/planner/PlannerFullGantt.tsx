@@ -9,6 +9,7 @@ import {
   type ScheduleItemRow,
 } from "@/lib/planner-types";
 import { resolveTimings } from "@/lib/planner-timings";
+import { getEventColorClass } from "@/lib/planner-defaults";
 
 interface Props {
   plan: PlanRow;
@@ -33,11 +34,15 @@ function ageClassSort(a: string, b: string): number {
   return order(a) - order(b);
 }
 
-function colorFor(ageClass: string): string {
-  let h = 0;
-  for (let i = 0; i < ageClass.length; i++) h = (h * 31 + ageClass.charCodeAt(i)) % 360;
-  return `hsl(${h} 70% 70% / 0.55)`;
-}
+const LEGEND: Array<{ label: string; cls: string }> = [
+  { label: "Pikajuoksut", cls: "bg-sky-200 border-sky-400" },
+  { label: "Pidemmät juoksut", cls: "bg-blue-200 border-blue-400" },
+  { label: "Tasohypyt", cls: "bg-emerald-200 border-emerald-400" },
+  { label: "Pystyhypyt", cls: "bg-green-300 border-green-500" },
+  { label: "Kuula", cls: "bg-amber-200 border-amber-400" },
+  { label: "Pitkät heitot", cls: "bg-orange-300 border-orange-500" },
+  { label: "Yhdistetyt", cls: "bg-purple-200 border-purple-400" },
+];
 
 export function PlannerFullGantt({
   plan,
@@ -190,6 +195,7 @@ export function PlannerFullGantt({
     const veryNarrow = width < 30;
     const fontSize = width < 50 ? 10 : 11;
 
+    const color = getEventColorClass(ev.event_name, ev.sub_category);
     return (
       <div
         key={`${keyPrefix}-${s.id}`}
@@ -197,15 +203,14 @@ export function PlannerFullGantt({
         data-base-left={left}
         onPointerDown={(e) => onPointerDown(e, s)}
         title={conflictReason ?? `${primary} (${phase}) · ${subtitle}`}
-        className={`absolute cursor-grab touch-none select-none overflow-hidden rounded border px-1 py-0.5 leading-tight shadow-sm active:cursor-grabbing ${
-          conflictReason ? "border-destructive ring-1 ring-destructive" : "border-border/60"
+        className={`absolute cursor-grab touch-none select-none overflow-hidden rounded px-1 py-0.5 leading-tight shadow-sm active:cursor-grabbing ${color.bg} ${color.text} ${
+          conflictReason ? "border-2 border-red-500 ring-1 ring-red-500" : `border ${color.border}`
         }`}
         style={{
           left,
           top,
           width,
           height: ROW_HEIGHT - 6,
-          background: colorFor(ev.age_class),
           fontSize: `${fontSize}px`,
         }}
       >
@@ -393,6 +398,18 @@ export function PlannerFullGantt({
           />
           Näytä myös tyhjät paikat
         </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-card/50 px-3 py-1.5 text-[10px] text-muted-foreground">
+        {LEGEND.map((l) => (
+          <span key={l.label} className="flex items-center gap-1">
+            <span className={`inline-block h-2.5 w-2.5 rounded border ${l.cls}`} />
+            {l.label}
+          </span>
+        ))}
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded border-2 border-red-500 bg-background" />
+          Konflikti
+        </span>
       </div>
       <div
         className="relative flex-1 overflow-auto"
