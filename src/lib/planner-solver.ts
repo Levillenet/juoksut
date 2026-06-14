@@ -383,7 +383,7 @@ export function solve(input: SolverInput): SolverResult {
     }
     if (!placed) {
       warnings.push(
-        `${seg.ageClass} ${seg.phase} – ei mahdu mihinkään sallittuun päivään.`,
+        `${seg.ageClass} ${seg.eventName} ${seg.phase} – ei mahdu mihinkään sallittuun päivään.`,
       );
     }
   }
