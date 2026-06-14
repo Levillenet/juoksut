@@ -24,6 +24,16 @@ export const VENUE_KIND_LABEL: Record<VenueKind, string> = {
 export type FinalFormat = "direct" | "a_b";
 export type SchedulePhase = "single" | "heats" | "final_a" | "final_b";
 
+/** Monipäivätapahtuman päiväikkunan tieto. */
+export interface DayWindow {
+  /** ISO-päivämäärä YYYY-MM-DD */
+  date: string;
+  /** Päivän aloitusaika (HH:mm) */
+  start: string;
+  /** Päivän lopetusaika (HH:mm) */
+  end: string;
+}
+
 export interface PlanRow {
   id: string;
   user_id: string;
@@ -36,6 +46,8 @@ export interface PlanRow {
   default_between_heats_min: number;
   default_hurdle_setup_min: number;
   default_hurdle_teardown_min: number;
+  is_multi_day: boolean;
+  day_windows: DayWindow[] | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -65,10 +77,11 @@ export interface PlanEventRow {
   between_heats_min: number | null;
   hurdle_setup_min: number | null;
   hurdle_teardown_min: number | null;
+  /** Sallitut päivät (YYYY-MM-DD). null = vapaa. */
+  allowed_days: string[] | null;
   notes: string | null;
   sort_order: number;
 }
-
 
 export interface ScheduleItemRow {
   id: string;
@@ -87,4 +100,19 @@ export interface CatalogEntry {
   event_name_display: string;
   event_key: string;
   sample_count: number;
+}
+
+/** Päivittää tapahtuman alku- ja loppuajan day_windowsin perusteella tai luo yksipäiväisen oletuksen. */
+export function resolveDayWindows(plan: PlanRow): Array<{ startMs: number; endMs: number; date: string }> {
+  if (plan.is_multi_day && plan.day_windows && plan.day_windows.length > 0) {
+    return plan.day_windows.map((d) => {
+      const start = new Date(`${d.date}T${d.start}:00`);
+      const end = new Date(`${d.date}T${d.end}:00`);
+      return { startMs: start.getTime(), endMs: end.getTime(), date: d.date };
+    });
+  }
+  const s = new Date(plan.starts_at);
+  const e = new Date(plan.ends_at);
+  const date = `${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, "0")}-${String(s.getDate()).padStart(2, "0")}`;
+  return [{ startMs: s.getTime(), endMs: e.getTime(), date }];
 }
