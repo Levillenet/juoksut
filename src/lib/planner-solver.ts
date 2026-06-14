@@ -204,6 +204,9 @@ export function solve(input: SolverInput): SolverResult {
   }));
   const ageStates = new Map<string, AgeState>();
   const eventEnds = new Map<string, number>();
+  // KORJAUS 2: per-vaihe loppuajat ja käytetyt suorituspaikat (avain: "<eventId>|<phase>").
+  const phaseEnds = new Map<string, number>();
+  const phaseVenues = new Map<string, string[]>();
   const items: SolverResultItem[] = [];
 
   // Reset venue busy alkuun ensimmäisen ikkunan alkuun
