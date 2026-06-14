@@ -212,18 +212,19 @@ export function solve(input: SolverInput): SolverResult {
     return blockUntil;
   };
 
-  // Per-venue siirtoaika (ms) edellisestä juoksulajista tähän segmenttiin.
-  const venueChangeoverMs = (vs: VenueState): number => {
-    if (!vs.lastEventName) return 0;
-    const co = getDistanceChangeoverMin(vs.lastEventName, seg.eventName, true);
-    if (co === 0) return 0;
-    return Math.max(co, minChangeGap) * 60000;
-  };
-
   for (const seg of segments) {
     const segIsRun = parseDistanceM(seg.eventName) != null || isHurdleEvent(seg.eventName);
     const segDist = parseDistanceM(seg.eventName);
     const segHurdle = isHurdleEvent(seg.eventName);
+
+    // Per-venue siirtoaika (ms) edellisestä juoksulajista tähän segmenttiin.
+    const venueChangeoverMs = (vs: VenueState): number => {
+      if (!vs.lastEventName) return 0;
+      const co = getDistanceChangeoverMin(vs.lastEventName, seg.eventName, true);
+      if (co === 0) return 0;
+      return Math.max(co, minChangeGap) * 60000;
+    };
+
 
     const eligibleStates = venueStates.filter((vs) => {
       const kind = venueKindById.get(vs.id);
