@@ -1173,6 +1173,42 @@ function EventsTab({
                       </td>
                     );
                   })}
+                  {(() => {
+                    const defaultOff = getDefaultOfficialsCount(e.event_name, e.sub_category);
+                    const overridden = e.officials_count_overridden;
+                    return (
+                      <td className="py-1 pr-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Input
+                            type="number"
+                            className="w-16 text-right"
+                            value={e.officials_count ?? defaultOff}
+                            onChange={(ev) => {
+                              const v = Math.max(0, parseInt(ev.target.value) || 0);
+                              update.mutate({
+                                id: e.id,
+                                officials_count: v,
+                                officials_count_overridden: true,
+                              });
+                            }}
+                            title={
+                              overridden
+                                ? `Käsin asetettu. Oletus säännöstä: ${defaultOff}.`
+                                : `Oletus säännöstä: ${defaultOff}. Voit muokata.`
+                            }
+                          />
+                          {overridden && (
+                            <span
+                              className="text-[9px] text-amber-600"
+                              title={`Käsin muokattu (oletus ${defaultOff})`}
+                            >
+                              muok.
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })()}
                   {plan.is_multi_day && (
                     <td className="py-1 pr-2">
                       <div className="flex flex-wrap gap-1">
