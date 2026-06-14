@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ArrowLeft, Trash2, Plus, Wand2, Save, Download, LayoutGrid, Sparkles } from "lucide-react";
-import * as XLSX from "xlsx";
 import { downloadPlannerSchedulePdf } from "@/lib/planner-schedule-pdf";
+import { downloadPlannerScheduleVisualXlsx } from "@/lib/planner-schedule-xlsx";
+import { PlannerFullGantt } from "@/components/planner/PlannerFullGantt";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -1167,33 +1168,8 @@ function ScheduleTab({
   );
 
   const exportExcel = () => {
-    const evMap = new Map(events.map((e) => [e.id, e]));
-    const vMap = new Map(venues.map((v) => [v.id, v]));
-    const rows = schedule.map((s) => {
-      const ev = evMap.get(s.plan_event_id);
-      const v = vMap.get(s.venue_id);
-      const t = ev ? resolveTimings(ev, plan) : null;
-      const startMs = new Date(s.starts_at).getTime();
-      const setupStart = t ? new Date(startMs - t.setupBeforeMin * 60000) : null;
-      return {
-        "Valmistelu alkaa": setupStart ? setupStart.toLocaleString("fi-FI") : "",
-        "Kilpailu alkaa": new Date(s.starts_at).toLocaleString("fi-FI"),
-        "Kilpailu päättyy": new Date(s.ends_at).toLocaleString("fi-FI"),
-        Ikäryhmä: ev?.age_class ?? "",
-        Laji: ev?.event_name ?? "",
-        Vaihe: s.phase,
-        Suorituspaikka: v?.name ?? "",
-        Osanottajat: ev?.participants ?? "",
-        "Valm. (min)": t?.setupBeforeMin ?? "",
-        "Aika/erä (min)": t?.isTrack ? t.minutesPerHeatMin : "",
-        "Aitojen setup (min)": t?.isHurdles ? t.hurdleSetupMin : "",
-        "Aitojen purku (min)": t?.isHurdles ? t.hurdleTeardownMin : "",
-      };
-    });
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Aikataulu");
-    XLSX.writeFile(wb, `aikataulu-${plan.name.replace(/\s+/g, "_")}.xlsx`);
+    const conflictIds = new Set(conflicts.map((c) => c.id));
+    downloadPlannerScheduleVisualXlsx({ plan, venues, events, schedule, conflictIds });
   };
 
   const exportPdf = () => {
@@ -1248,263 +1224,17 @@ function ScheduleTab({
         </div>
       )}
 
-      <PlannerGantt
-        plan={plan}
-        venues={venues}
-        events={events}
-        schedule={schedule}
-        conflicts={conflicts}
-        onChange={onChange}
-      />
-    </section>
-  );
-}
-
-function PlannerGantt({
-  plan,
-  venues,
-  events,
-  schedule,
-  conflicts,
-  onChange,
-}: {
-  plan: PlanRow;
-  venues: VenueRow[];
-  events: PlanEventRow[];
-  schedule: ScheduleItemRow[];
-  conflicts: Array<{ id: string; reason: string }>;
-  onChange: () => void;
-}) {
-  const windows = useMemo(() => resolveDayWindows(plan), [plan]);
-  const [dayIdx, setDayIdx] = useState(0);
-  const evMap = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
-  const conflictMap = useMemo(
-    () => new Map(conflicts.map((c) => [c.id, c.reason])),
-    [conflicts],
-  );
-
-  const win = windows[Math.min(dayIdx, windows.length - 1)];
-  const startMs = win?.startMs ?? 0;
-  const endMs = win?.endMs ?? 0;
-  const totalMin = Math.max(60, (endMs - startMs) / 60000);
-  const pxPerMin = 3;
-  const totalHeight = totalMin * pxPerMin;
-
-  const dragRef = useRef<{
-    id: string;
-    startY: number;
-    origStart: number;
-    origEnd: number;
-  } | null>(null);
-
-  const updateTime = useMutation({
-    mutationFn: async (p: { id: string; starts_at: string; ends_at: string }) => {
-      const { error } = await supabase
-        .from("plan_schedule_items")
-        .update({ starts_at: p.starts_at, ends_at: p.ends_at, auto_generated: false })
-        .eq("id", p.id);
-      if (error) throw error;
-    },
-    onSuccess: onChange,
-  });
-
-  const ticks: number[] = [];
-  for (let m = 0; m <= totalMin; m += 30) ticks.push(m);
-
-  const colorFor = (ageClass: string): string => {
-    let h = 0;
-    for (let i = 0; i < ageClass.length; i++) h = (h * 31 + ageClass.charCodeAt(i)) % 360;
-    return `hsl(${h} 70% 70% / 0.55)`;
-  };
-
-  if (venues.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Lisää suorituspaikat välilehdellä "Suorituspaikat" nähdäksesi kalenterin.
-      </p>
-    );
-  }
-
-  const dayItems = schedule.filter((s) => {
-    const t = new Date(s.starts_at).getTime();
-    return t >= startMs && t < endMs + 12 * 3600 * 1000;
-  });
-
-  const onPointerDown = (e: React.PointerEvent, item: ScheduleItemRow) => {
-    if ((e.target as HTMLElement).closest("button")) return;
-    e.preventDefault();
-    const orig = new Date(item.starts_at).getTime();
-    const origEnd = new Date(item.ends_at).getTime();
-    dragRef.current = { id: item.id, startY: e.clientY, origStart: orig, origEnd };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  };
-  const onPointerMove = (e: React.PointerEvent) => {
-    const d = dragRef.current;
-    if (!d) return;
-    const dy = e.clientY - d.startY;
-    const minutes = Math.round(dy / pxPerMin / 5) * 5;
-    const newStart = d.origStart + minutes * 60000;
-    const dur = d.origEnd - d.origStart;
-    const el = document.getElementById(`gantt-bar-${d.id}`);
-    if (el) {
-      const off = (newStart - startMs) / 60000;
-      el.style.top = `${off * pxPerMin}px`;
-      void dur;
-    }
-  };
-  const onPointerUp = (e: React.PointerEvent) => {
-    const d = dragRef.current;
-    dragRef.current = null;
-    if (!d) return;
-    const dy = e.clientY - d.startY;
-    const minutes = Math.round(dy / pxPerMin / 5) * 5;
-    if (minutes === 0) return;
-    const newStart = new Date(d.origStart + minutes * 60000);
-    const newEnd = new Date(d.origEnd + minutes * 60000);
-    updateTime.mutate({
-      id: d.id,
-      starts_at: newStart.toISOString(),
-      ends_at: newEnd.toISOString(),
-    });
-  };
-
-  return (
-    <div className="space-y-2">
-      {windows.length > 1 && (
-        <div className="flex gap-1">
-          {windows.map((w, i) => (
-            <button
-              key={w.date}
-              onClick={() => setDayIdx(i)}
-              className={`rounded-md px-3 py-1 text-xs ${
-                i === dayIdx
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-muted-foreground"
-              }`}
-            >
-              {new Date(w.date).toLocaleDateString("fi-FI", {
-                weekday: "short",
-                day: "numeric",
-                month: "numeric",
-              })}
-            </button>
-          ))}
-        </div>
-      )}
-      <p className="text-[10px] text-muted-foreground">
-        Vihje: vedä palkkia pystysuunnassa siirtääksesi sitä aikajanalla (5 min napsahdus).
-      </p>
-      <div className="overflow-auto rounded-lg border" style={{ maxHeight: "calc(100vh - 220px)" }}>
-        <div
-          className="relative grid"
-          style={{
-            gridTemplateColumns: `90px repeat(${venues.length}, minmax(220px, 1fr))`,
-            minWidth: 90 + venues.length * 220,
-          }}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-        >
-          <div className="sticky top-0 z-10 border-b bg-card px-2 py-1 text-xs font-semibold">
-            Aika
-          </div>
-          {venues.map((v) => (
-            <div
-              key={v.id}
-              className="sticky top-0 z-10 border-b border-l bg-card px-2 py-1 text-xs font-semibold"
-            >
-              {v.name}
-            </div>
-          ))}
-
-          <div className="relative border-r" style={{ height: totalHeight }}>
-            {ticks.map((m) => (
-              <div
-                key={m}
-                className="absolute left-0 right-0 border-t border-border/40 pl-1 text-[10px] text-muted-foreground"
-                style={{ top: m * pxPerMin }}
-              >
-                {new Date(startMs + m * 60000).toLocaleTimeString("fi-FI", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </div>
-            ))}
-          </div>
-
-          {venues.map((v) => {
-            const items = dayItems.filter((s) => s.venue_id === v.id);
-            return (
-              <div
-                key={v.id}
-                className="relative border-l"
-                style={{ height: totalHeight }}
-              >
-                {ticks.map((m) => (
-                  <div
-                    key={m}
-                    className="absolute left-0 right-0 border-t border-border/30"
-                    style={{ top: m * pxPerMin }}
-                  />
-                ))}
-                {items.map((s) => {
-                  const ev = evMap.get(s.plan_event_id);
-                  const t = ev ? resolveTimings(ev, plan) : null;
-                  const startOff = (new Date(s.starts_at).getTime() - startMs) / 60000;
-                  const dur =
-                    (new Date(s.ends_at).getTime() - new Date(s.starts_at).getTime()) / 60000;
-                  const setupMin = t?.setupBeforeMin ?? 0;
-                  const isHurdleEvt = !!t?.isHurdles;
-                  const conflictReason = conflictMap.get(s.id);
-                  return (
-                    <div key={s.id}>
-                      {setupMin > 0 && (
-                        <div
-                          className="absolute left-0.5 right-0.5 overflow-hidden rounded-t border border-dashed border-border/50 px-1 text-[9px] italic leading-tight"
-                          style={{
-                            top: (startOff - setupMin) * pxPerMin,
-                            height: setupMin * pxPerMin,
-                            background: ev ? colorFor(ev.age_class) : "hsl(0 0% 80% / 0.25)",
-                            opacity: 0.35,
-                          }}
-                          title={`Valmistelu ${setupMin} min`}
-                        >
-                          Valm. {setupMin}′
-                        </div>
-                      )}
-                      <div
-                        id={`gantt-bar-${s.id}`}
-                        onPointerDown={(e) => onPointerDown(e, s)}
-                        className={`absolute left-0.5 right-0.5 cursor-grab touch-none select-none overflow-hidden rounded border px-1 py-0.5 text-[10px] leading-tight shadow-sm active:cursor-grabbing ${
-                          conflictReason ? "border-destructive ring-1 ring-destructive" : "border-border/60"
-                        }`}
-                        style={{
-                          top: startOff * pxPerMin,
-                          height: Math.max(16, dur * pxPerMin - 1),
-                          background: ev ? colorFor(ev.age_class) : "hsl(0 0% 80% / 0.5)",
-                        }}
-                        title={
-                          conflictReason ??
-                          `${ev?.age_class} ${ev?.event_name} (${s.phase})`
-                        }
-                      >
-                        <div className="font-semibold">
-                          {isHurdleEvt && <span title="Aitajuoksu">⫼ </span>}
-                          {ev?.age_class}
-                        </div>
-                        <div className="truncate">{ev?.event_name}</div>
-                        {s.phase !== "single" && (
-                          <div className="text-[9px] text-muted-foreground">{s.phase}</div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
+      <div className="overflow-hidden rounded-lg border" style={{ height: "calc(100vh - 260px)", minHeight: 480 }}>
+        <PlannerFullGantt
+          plan={plan}
+          venues={venues}
+          events={events}
+          schedule={schedule}
+          conflicts={conflicts}
+          onChange={onChange}
+        />
       </div>
-    </div>
+    </section>
   );
 }
 

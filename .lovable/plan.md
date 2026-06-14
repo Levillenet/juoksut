@@ -1,55 +1,61 @@
-# Lajien sitominen oikeisiin suorituspaikkoihin
+## Mitä tehdään
 
-## Ongelma
+Kolme erillistä korjausta käyttäjän esimerkki-Excelin (YAG22 lauantai) ja havaitun bugin pohjalta.
 
-Solver (`src/lib/planner-solver.ts`) sijoittaa lajeja **kaikille** vapaille suorituspaikoille kindistä riippumatta — esim. kuula voi päätyä juoksuradalle. Olemassa oleva `isVenueForEvent(kind, eventName)` (`src/lib/planner-defaults.ts`) ei ole kytkettynä solveriin. Lisäksi `VenueKind`-luettelo niputtaa kaikki heitot `throw_ring`iin, joten kuula, kiekko ja moukari kelpaavat samoille kehille — vaikka todellisuudessa kuula heitetään kuulakehässä ja kiekko/moukari moukarikehässä (häkki).
+### 1) Korjaa "Lisää laji" -valikon tyhjä ikäryhmälista
 
-## Ratkaisu
+**Juurisyy:** `get_event_catalog_full()` RPC palauttaa nyt aina virheen `canceling statement due to statement timeout` (testattu suoraan REST-päätepisteeseen). Se aggregoi koko `athlete_results`-taulun ilman aikarajaa, joten kysely kestää yli serverin timeoutin. Frontti saa virheen, `catalog`-state jää tyhjäksi → Ikäryhmä-pudotusvalikossa ei näy yhtään vaihtoehtoa.
 
-1) **Lisätään tarkempi `VenueKind`-jaottelu** heitoille `src/lib/planner-types.ts`:
-   - `shot_ring` – Kuulakehä (kuula)
-   - `throw_cage` – Moukarikehä / heittohäkki (kiekko, moukari)
-   - `throw_runway` – Keihäsvauhdinotto (keihäs) — ennallaan
-   - `throw_ring` säilytetään yhteensopivuuden vuoksi yleisenä "muu kehä" -tyyppinä, mutta uudet oletuspaikat eivät käytä sitä.
-   - Päivitetään `VENUE_KIND_LABEL`.
+**Korjaus:**
+- Uusi migraatio joka korvaa `get_event_catalog_full()`:n versiolla, joka rajaa lähteen viimeisten ~3 vuoden kilpailuihin (`WHERE ar.competition_date >= now() - interval '3 years'`) ja käyttää `HAVING COUNT(*) >= 1`. Sama tulosrakenne, paljon nopeampi.
+- Lisätään tukeva indeksi vain jos puuttuu: `CREATE INDEX IF NOT EXISTS idx_ar_age_event ON public.athlete_results(age_class, event_name)`.
 
-2) **Päivitetään oletuspaikat** `src/lib/planner-defaults.ts`:
-   - `shot` → `kind: "shot_ring"`
-   - `discus` → `kind: "throw_cage"` (jaettu "Moukari-/kiekkohäkki" käytännössä, mutta nimi pysyy "Kiekkokehä" / sallitaan myös moukari)
-   - `hammer` → `kind: "throw_cage"`
+### 2) Aikataulu-näkymä Excelin mallin mukaiseksi
 
-3) **Päivitetään `isVenueForEvent`**:
-   - `kuula|shot` → vain `shot_ring`
-   - `kiekko|discus` → vain `throw_cage`
-   - `moukari|hammer` → vain `throw_cage`
-   - `keihäs|javelin` → vain `throw_runway`
-   - `pituus|kolmiloikka` → vain `jump_pit`
-   - `korkeus` → vain `high_jump`
-   - `seiväs` → vain `pole_vault`
-   - `aidat` ja juoksulajit → `track_straight` tai `track_oval`
-   - Generic fallback ei enää palauta `true`:tä — palauttaa `false`, jotta tuntematon paikka ei vahingossa kelpaa.
+**Tavoite (YAG22 Lauantai -välilehti):** kaksi peräkkäistä ruudukkoa, joissa molemmissa:
+- yläreuna: kellonajat 5 min sarakkeissa (kokotuntilabelit + 5 min jaotus)
+- rivit: yläosassa **suorituspaikkakohtainen** aikataulu (yksi rivi/suorituspaikka), alaosassa **ikäryhmäkohtainen** aikataulu (yksi rivi/ikäluokka)
+- tapahtumat näkyvät värillisinä palkkeina, joiden pituus = kesto, sisältönä esim. `T15 (5) 5min/erä`
 
-4) **Kytketään suodatus solveriin** `src/lib/planner-solver.ts`:
-   - Segmentin sisään lasketaan `compatibleVenues = input.venues.filter(v => isVenueForEvent(v.kind, ev.event_name))`.
-   - Korvataan `venueStates`-globaali käyttö per-segment `eligibleStates`-listalla.
-   - Jos `eligibleStates.length < needsStations`, lisätään varoitus: `"<age> <laji> – ei sopivaa suorituspaikkaa (tarvitaan tyyppi X)"` ja jatketaan.
-   - Vapauttaminen (`busyUntil`-päivitys) tapahtuu vain valituille `placedVenues`-paikoille kuten nykyisinkin.
+**Toteutus:**
+Nykyinen koko näytön Gantt (`src/components/planner/PlannerFullGantt.tsx`) on jo arkkitehtuurisesti tämä — sitä laajennetaan, ei aloiteta tyhjästä:
+- Käytetään sitä myös sisäänupotettuna `/planner/:id` aikataulu-välilehdellä `PlannerGantt`-komponentin tilalla, jotta sama Excel-tyylinen näkymä on käytössä molemmissa paikoissa.
+- Lisätään palkin labeliin sama muotoilu kuin Excelissä: juoksuissa `<ikäluokka> (<erien määrä>) <min>/erä`, kentälajeissa `<ikäluokka> <laji>` ja oikealla puolella vihjeenä kokonaiskesto (esim. `40min`).
+- Värikoodaus pysyy ikäryhmän mukaan (Excel-mukainen pastelli).
+- Ikäryhmäosion rivijärjestys: T-sarjat ennen P-sarjoja, sitten N/M (sama `ageClassSort` kuin nyt).
+- Kellonaika-akseli alkaa lähimmästä tasatunnista ennen päivän aikaikkunan alkua ja loppuu seuraavaan tasatuntiin lopun jälkeen (jo tehty Full-Ganttissa).
 
-5) **Konfliktitarkistus** `detectConflicts` (`planner-solver.ts`): lisätään uusi tarkistus, joka merkitsee aikatauluitemin punaiseksi, jos `venue.kind` ei sovi `event_name`iin (käyttäjän manuaalinen drag voi rikkoa sääntöä). Reason: `"Laji ei kuulu suorituspaikalle <venue>"`.
+Vanha sarakkeittainen pysty-Gantt-toteutus (`PlannerGantt` funktio `planner.$planId.tsx` rivit ~1263–1509) poistetaan kun se on korvattu — yksi totuus, yksi näkymä.
 
-6) **Migraatio uusille kindeille**: Tietokannan `plan_venues.kind` on todennäköisesti `text`/enum. Tarkistetaan ensin `plan_venues`-skeema `supabase--read_query`illä; jos kind on enum, lisätään arvot `shot_ring` ja `throw_cage`. Jos sarake on pelkkä `text`, ei tarvita migraatiota. Käytössä olevat rivit `kind = 'throw_ring'` siirretään parhaaseen vastineeseen nimellä:
-   - nimi sisältää "kuula" → `shot_ring`
-   - nimi sisältää "moukari" tai "kiekko" → `throw_cage`
-   - muuten ennallaan.
+### 3) "Vie Excel" → visuaalinen Excel YAG22-mallin mukaan
 
-## Muutettavat tiedostot
+**Nykyinen ongelma:** Excel-vienti on pelkkä taulukkomuotoinen luettelo riveinä. Käyttäjä haluaa saman visuaalisen ruudukon kuin näytöllä.
 
-- `src/lib/planner-types.ts` — uudet `VenueKind`-arvot + label.
-- `src/lib/planner-defaults.ts` — oletuspaikkojen kindit + `isVenueForEvent` tiukennus.
-- `src/lib/planner-solver.ts` — suodatus segmenttikohtaisesti + konfliktitarkistus.
-- (mahdollinen) Supabase-migraatio enumin laajennukseen ja olemassa olevien `throw_ring`-rivien luokittelu uudelleen.
+**Toteutus uudella tiedostolla `src/lib/planner-schedule-xlsx.ts`:**
+Käyttää `xlsx`-kirjastoa (jo asennettu). Per päivä uusi välilehti, nimi `<weekday>` (esim. `Lauantai`).
+
+Layout per välilehti (vastaa YAG22-mallia):
+- Rivi 1: `<plan name>`
+- Rivi 2: päivän nimi
+- Rivi 4 sarake A: `Suorituspaikkakohtainen aikataulu`
+- Rivit 4–5: kellonajat (sarakkeet B+, yksi sarake = 5 min). Rivi 4 = tasatuntilabel kohdistettuna oikean sarakkeen yli, rivi 5 = `5/10/15/…/55`.
+- Rivit 7 → n: yksi rivi per suorituspaikka. Sarakkeessa A suorituspaikan nimi.
+- Tapahtumapalkki = soluyhdistys lähtöhetkestä loppuhetkeen (5 min raster), tausta = ikäluokan väri, soluteksti `<ikäluokka> <laji>` tai juoksuille `<ikäluokka> (<erät>) <min>/erä`. Reuna ohut musta.
+- Tyhjä rivi väliin, sitten `Ikäryhmäkohtainen aikataulu` -otsikko samoilla aikasarakkeilla, rivit per ikäluokka.
+- Sarakkeen A leveys ~22, sarakkeet B+ leveys ~3 (kapea ruutu = palkin tarkkuus).
+- Rivikorkeus ~22.
+- Konfliktipalkki: punainen reuna.
+
+`downloadPlannerScheduleVisualXlsx({plan, venues, events, schedule, conflictIds})` korvaa nykyisen `exportExcel`-funktion `ScheduleTab`:ssa.
+
+## Tekniset huomiot
+
+- `xlsx`-kirjasto: värit ja soluyhdistykset toimivat `XLSX.utils.book_new()` + `ws['!merges']` + `cell.s = { fill, border, alignment }` kautta. Jos perusversion `xlsx` ei tue tyylejä, lisätään riippuvuus `xlsx-js-style` (saman APIn yhteensopiva fork) ennen toteutusta — tämä päätetään buildvaiheessa.
+- Migraatio tehdään `supabase--migration`-työkalulla, ei suoraan SQL-tiedostoeditoinnilla.
+- Edge case: jos päivän aikaikkuna puuttuu, näytetään sama opaste kuin nyt eikä luoda välilehteä siltä päivältä.
 
 ## Mitä EI tehdä
 
-- Ei muuteta PDF/Excel-vientiä, gantt-näkymää eikä UI-reittejä.
-- Ei kosketa solverin aikalogiikkaa muuten kuin suodatuksen osalta.
+- Ei kosketa PDF-vientiä — se jo toimii tekstiluettelona pyydetysti.
+- Ei muuteta solverin logiikkaa.
+- Ei lisätä uusia kenttiä `plan_events`-tauluun.
