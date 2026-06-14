@@ -860,24 +860,49 @@ function CalendarView({
               ))}
               {items.map((s) => {
                 const ev = evMap.get(s.plan_event_id);
+                const t = ev ? resolveTimings(ev, plan) : null;
                 const startOff = (new Date(s.starts_at).getTime() - startMs) / 60000;
                 const dur = (new Date(s.ends_at).getTime() - new Date(s.starts_at).getTime()) / 60000;
+                const setupMin = t?.setupBeforeMin ?? 0;
+                const isHurdleEvt = !!t?.isHurdles;
                 return (
-                  <div
-                    key={s.id}
-                    className="absolute left-0.5 right-0.5 overflow-hidden rounded border border-border/60 px-1 py-0.5 text-[10px] leading-tight shadow-sm"
-                    style={{
-                      top: startOff * pxPerMin,
-                      height: Math.max(16, dur * pxPerMin - 1),
-                      background: ev ? colorFor(ev.age_class) : "hsl(0 0% 80% / 0.5)",
-                    }}
-                    title={`${ev?.age_class} ${ev?.event_name} (${s.phase})`}
-                  >
-                    <div className="font-semibold">{ev?.age_class}</div>
-                    <div className="truncate">{ev?.event_name}</div>
-                    {s.phase !== "single" && (
-                      <div className="text-[9px] text-muted-foreground">{s.phase}</div>
+                  <div key={s.id}>
+                    {setupMin > 0 && (
+                      <div
+                        className="absolute left-0.5 right-0.5 overflow-hidden rounded-t border border-dashed border-border/50 px-1 text-[9px] italic leading-tight"
+                        style={{
+                          top: (startOff - setupMin) * pxPerMin,
+                          height: setupMin * pxPerMin,
+                          background: ev ? colorFor(ev.age_class) : "hsl(0 0% 80% / 0.25)",
+                          opacity: 0.35,
+                        }}
+                        title={`Valmistelu ${setupMin} min`}
+                      >
+                        Valm. {setupMin}′
+                      </div>
                     )}
+                    <div
+                      className="absolute left-0.5 right-0.5 overflow-hidden rounded border border-border/60 px-1 py-0.5 text-[10px] leading-tight shadow-sm"
+                      style={{
+                        top: startOff * pxPerMin,
+                        height: Math.max(16, dur * pxPerMin - 1),
+                        background: ev ? colorFor(ev.age_class) : "hsl(0 0% 80% / 0.5)",
+                      }}
+                      title={`${ev?.age_class} ${ev?.event_name} (${s.phase})`}
+                    >
+                      <div className="font-semibold">
+                        {isHurdleEvt && <span title="Aitajuoksu">⫼ </span>}
+                        {ev?.age_class}
+                      </div>
+                      <div className="truncate">{ev?.event_name}</div>
+                      {s.phase !== "single" && (
+                        <div className="text-[9px] text-muted-foreground">{s.phase}</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
                   </div>
                 );
               })}
