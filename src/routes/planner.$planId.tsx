@@ -560,6 +560,34 @@ function BasicsTab({
       </p>
 
       <h3 className="pt-2 text-sm font-semibold text-muted-foreground">
+        Juoksulajien sijoittelu
+      </h3>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={form.allowDistanceChange}
+          onChange={(e) => setForm({ ...form, allowDistanceChange: e.target.checked })}
+        />
+        <span>
+          <span className="font-medium">Salli matkanvaihto samalla suorituspaikalla</span>
+          <span className="block text-xs text-muted-foreground">
+            Jos pois päältä, solveri ei sijoita eri matkoja samalle juoksuradalle/-suoralle.
+            Esim. kaikki 40 m omalle suoralle, 60 m omalleen.
+          </span>
+        </span>
+      </label>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {numField(
+          "minDistanceChangeGap",
+          "Minimitauko matkanvaihdon välillä (min)",
+          "Käytetään sääntöpohjaisen siirtoajan lattiana (40↔60 m 5 min, 60↔100 m 10 min, aitavaihto 15 min jne.)",
+        )}
+      </div>
+
+
+
+      <h3 className="pt-2 text-sm font-semibold text-muted-foreground">
         Aika-asetusten oletukset
       </h3>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
