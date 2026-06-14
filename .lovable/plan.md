@@ -1,74 +1,86 @@
-## Stadionien integrointi planneriin
+## Diagnoosi
 
-Iso muutos joka koskee tietokantaa, plannerin UI:tä (3 välilehteä) ja solveria. Toteutus 4 vaiheessa, jokainen vaihe testattavissa erikseen.
+Tarkistin koodin ja Karstula-suunnitelman datan (`plan_events`).
 
-### Vaihe 1 — Tietokanta
+**Pääsyy molempiin oireisiin: `planner-demo.ts` täyttää `override_duration_min`-kentän RPC:n palauttamasta `duration_min`-arvosta.**
 
-**Migraatio 1: laajenna `plan_venues`**
-- `stadium_venue_id uuid REFERENCES public.stadium_venues(id) ON DELETE SET NULL`
-- `included boolean NOT NULL DEFAULT true`
+```ts
+// src/lib/planner-demo.ts:167
+override_duration_min: s.duration_min > 5 ? s.duration_min : null,
+```
 
-**Migraatio 2: laajenna `competition_plans`**
-- `stadium_id uuid REFERENCES public.stadiums(id) ON DELETE SET NULL`
+RPC `get_competition_structure` laskee `duration_min = (max(captured_at) - min(captured_at))/60` eli **tuloksensyöttöikkunan**, ei lajin todellista kestoa. Tämä on sama tilastoharha, jonka `planner-estimate.ts:n` kommentti varoittaa välttämään.
 
-**Migraatio 3: uusi taulu `plan_conflict_groups`**
-Rakenne kopio `stadium_conflict_groups`:sta:
-- `id`, `plan_id` (FK competition_plans CASCADE), `name`, `description`, `venue_ids uuid[]` (viittaa plan_venues.id), `max_concurrent int default 1`, `source_stadium_group_id uuid NULL` (alkuperäisen viite, jotta voidaan tunnistaa kopio), timestamps
-- RLS: omistaja saman planin kautta (`competition_plans.user_id = auth.uid()`)
-- GRANT authenticated/service_role, RLS päälle
+Konkreettiset arvot Karstula-suunnitelmassa:
+- `N15 Kuula` 16 osall. → override 8 min (pitäisi olla ~55 min)
+- `P10 Kuula` 19 osall. → override 6 min
+- `P8 Pituus` 29 osall. → override 8 min
+- `T13 Kuula` 61 osall. → override 303 min (5 h)
+- `P13 Kuula` 26 osall. → override 83 min
+- `T11 Pituus` 81 osall. → override 38 min (liian lyhyt)
 
-### Vaihe 2 — Perustiedot-välilehti
+Tämän vuoksi VIRHE 2:n "T9 Pituus 8 min" syntyy: estimaattorin sääntö (`(7×1,2)/1 + 15 = 23 min`) on oikein, mutta `override_duration_min` ohittaa sen ennen kuin sääntö pääsee laskemaan.
 
-`BasicsTab`:
-- Uusi kenttä **Stadion**: `<Select>` joka listaa käyttäjän stadionit + "Ei stadionia" + linkki "Luo uusi stadion ↗" (avaa `/stadiums` uudessa välilehdessä)
-- Kun valinta muuttuu **ei → on**: kutsu `applyStadiumToPlan(planId, stadiumId)`:
-  1. Hae `stadium_venues` + `stadium_conflict_groups`
-  2. Lisää puuttuvat plan_venues-rivit (`included=false`, `stadium_venue_id` asetettu, name/kind kopioidaan)
-  3. Kopioi conflict groups → `plan_conflict_groups` mapaten venue_id:t uusiin plan_venue-id:hin
-- Kun valinta muuttuu **on → ei tai toinen stadion**: varoita modal-dialogilla ("poistetaan X paikkaa ja Y rajoitetta jotka tulivat stadionilta, säilyy käyttäjän käsin lisäämät"). Vahvistuksen jälkeen poista rivit joilla `stadium_venue_id IS NOT NULL` ja conflict groupsit joilla `source_stadium_group_id IS NOT NULL`.
-- Infolaatikko stadionin alla: "N suorituspaikkaa, M rajoitetta. Mene Suorituspaikat-välilehdelle valitsemaan mitä tässä kisassa käytetään."
+**VIRHE 1 (sama laji kahdesti eri paikoilla, eri kellonajoilla):**
+- `plan_events`-tauluissa EI ole duplikaattirivejä (varmistettu kyselyllä — cnt=1 kaikille pituus/korkeus/kuula-riveille tässä suunnitelmassa).
+- Solver tuottaa **yhden** segmentin per laji. Kun `station_count = 2`, segmentti sijoitetaan kahdelle paikalle **samaan aikaikkunaan** (sama `starts_at`/`ends_at`) ja persistointi (rivit 1556–1565) tekee siitä kaksi `plan_schedule_items`-riviä — visuaalisesti kaksi RINNAKKAISTA palkkia, ei kahta peräkkäistä.
+- Ainoa tapa, jolla "T7 Pituus" voi näkyä kahdella ERI aikavälillä, on että käyttäjä on Lajit-välilehdellä luonut sen kaksi kertaa, tai sama age_class esiintyy datassa kahdessa hieman eri muodossa (esim. `T7` vs `t7` -typo). Tarvitsen kuvankaappauksen tai tarkemman lajinimen vahvistaakseni — Karstulan nykydatassa ei ole T7-rivejä lainkaan.
 
-### Vaihe 3 — Suorituspaikat-välilehti
+## Korjaussuunnitelma
 
-`VenuesTab` ehdollisesti:
+### Muutos 1: `src/lib/planner-demo.ts`
+Poista `override_duration_min`-arvon asettaminen tuloksensyöttöikkunan kestosta. Jätä aina `null`, jolloin `estimateDuration` käyttää sääntöpohjaista YAG 2022 -kaavaa.
 
-**Jos `plan.stadium_id` ei null:**
-- Lista plan_venues-riveistä joilla `stadium_venue_id IS NOT NULL`, ryhmitelty `kind`-mukaan ("Juoksuradat", "Hyppypaikat", "Heittopaikat", "Muut")
-- Jokaisella rivillä rastiruutu `included` (toggle päivittää suoraan kantaan)
-- Käyttäjän käsin lisäämät paikat (stadium_venue_id IS NULL) omassa "Lisätyt paikat" -lohkossa, jossa nykyinen muokkaus
-- "Lisää oma paikka" -painike säilyy
-- Infolaatikko: "K aktiivista rajoitetta" + lista nimistä
-- **Varoitukset** (computed, ei tallenneta):
-  - Jos `included=false` ja jokin event käyttää `plan_events.venue_id = v.id` → punainen banneri "Lajit X, Y käyttävät tätä paikkaa"
-  - Jos rajoiteryhmän venueista osa on `included=false` → harmaa info "Rajoite ei aktiivinen: N/M paikkaa pois käytöstä"
+```ts
+// rivi 167, korvataan:
+override_duration_min: null,
+```
 
-**Jos `plan.stadium_id` null:** nykyinen toteutus muuttumattomana.
+Käyttäjä voi edelleen asettaa overriden manuaalisesti Lajit-välilehdellä (UI rivit 1149–1170) jos haluaa pakottaa tietyn keston.
 
-### Vaihe 4 — Solver + konfliktien tunnistus
+### Muutos 2: Kertaluonteinen siivous nykyiselle Karstula-suunnitelmalle
+Nollataan kaikki automaattisesti asetetut `override_duration_min`-arvot kyseisestä suunnitelmasta, jotta uudelleengenerointi käyttää oikeita sääntöpohjaisia kestoja:
 
-`planner-solver.ts`:
-- Hae `plan_conflict_groups` parametrina (`conflictGroups: ConflictGroup[]`)
-- Suodata käytetyt venuet: vain `included=true`
-- Aikataulutuksessa lisärajoite: jokaiselle aikahetkelle, jokaista konfliktiryhmää kohti, samaan aikaan aktiivisten eventtien lukumäärä joiden venue_id ∈ group.venue_ids ≤ `max_concurrent`. Toteutus: greedy-sijoittelussa tarkistus ennen aikaslotin valintaa.
-- `detectConflicts`: lisää uusi tyyppi `"venue_group"` joka palauttaa loukatut event-id:t kun ryhmäkapasiteetti ylittyy.
+```sql
+UPDATE plan_events
+SET override_duration_min = NULL
+WHERE plan_id = 'c7f9ff68-2512-431e-8079-0e6ff9af69bb';
+```
 
-UI gantissa: konfliktit värjätään kuten nykyiset.
+(Tarjotaan myös laajempi siivous kaikille olemassa oleville suunnitelmille jos käyttäjä haluaa.)
 
-### Tiedostot
+### Muutos 3: Sääntökaavojen tarkistus `planner-rules.ts`
+Olemassa olevat kaavat näyttävät jo oikeilta:
+- `jump_pit`: `(n × 1,2) / stations + 15` — vastaa käyttäjän pyytämää
+- `shot_discus_hammer`: `25 + n × 1,5` (rajat 30–90)
+- `javelin`: `30 + n × 1,7` (rajat 35–100)
+- `high_jump`, `pole_vault`: omat kaavat
 
-**Uudet/migraatiot**
-- 3 supabase-migraatiota
+T9 Pituus 7 osall. → `(7 × 1,2)/1 + 15 = 23 min` ✓ (täsmää käyttäjän odotukseen).
 
-**Muokattavat**
-- `src/integrations/supabase/types.ts` (auto-gen migraation jälkeen)
-- `src/routes/planner.$planId.tsx` — BasicsTab, VenuesTab, prop-välitys
-- `src/lib/planner-types.ts` — `VenueRow` saa `stadium_venue_id`, `included`; uusi `ConflictGroup`
-- `src/lib/planner-solver.ts` — konfliktiryhmien rajoite + detectConflicts
-- Uusi `src/lib/planner-stadium.ts` — `applyStadiumToPlan`, `removeStadiumFromPlan`
+**En muuta kaavoja**, koska ne ovat jo linjassa pyynnön kanssa. Jos halutaan minimi-kesto 15 min (nyt 5 min Math.max-rajoitus `planner-estimate.ts:73`), nostan sen 15:een — kerro jos haluat.
 
-### Avoimet kysymykset
-1. Kun stadion vaihdetaan toiseen, säilytetäänkö käyttäjän käsin lisäämät plan_venues? **Ehdotus: kyllä.**
-2. Pitääkö plan_venues.included näkyä myös aikataulu-välilehdellä (vain included-paikat aikatauluun)? **Ehdotus: kyllä, oletuksena solver käyttää vain included=true.**
-3. Saako saman conflict groupin sisällön muokata vapaasti vai vain `max_concurrent` & nimi? **Ehdotus: kaikki muokattavissa, source-viite jätetään diagnostiikaksi.**
+### Muutos 4: VIRHE 1:n jatkotutkimus
+Generoinnin jälkeen ajetaan diagnostiikkakysely:
 
-Aloitan Vaihe 1 -migraatioilla heti kun hyväksyt suunnitelman.
+```sql
+SELECT age_class, event_name, COUNT(*) FROM plan_events
+WHERE plan_id = 'c7f9ff68-2512-431e-8079-0e6ff9af69bb'
+GROUP BY age_class, event_name HAVING COUNT(*) > 1;
+```
+
+Jos duplikaatteja löytyy, poistetaan ne ja lisätään tarkistus `fillPlanFromCompetition`-funktioon: ryhmitellään `eventRows` `(age_class, event_name)`-parilla ennen insertiä.
+
+Jos duplikaatteja EI löydy mutta käyttäjä näkee silti samat lajit Gantt-näkymässä kahdessa ajassa, syy on `station_count > 1` + Gantt-renderöinti (kaksi riviä = OK, jos ne ovat samalla aikavälillä). Lisätään Gantt-näkymään yhdistetty palkki (yksi rivi joka merkitsee "2 paikkaa käytössä") — mutta tämä on UI-muutos joka kannattaa tehdä vasta kun datapuoli on kunnossa.
+
+### Toteutusjärjestys
+1. Muokkaa `planner-demo.ts` (poista virheellinen override-asetus).
+2. Siivoa `override_duration_min` nykyisestä Karstula-suunnitelmasta.
+3. Käyttäjä painaa "Generoi aikataulu" -nappia Plannerissa.
+4. Tarkistetaan tulos: duplikaattikysely + silmäilemällä Gantt.
+5. Jos VIRHE 1 toistuu, jatketaan diagnoosia konkreettisella datalla.
+
+### Mitä EI muuteta
+- Solver (`planner-solver.ts`) — toimii oikein station_count-logiikan osalta.
+- Lajisääntöjen kaavat (`planner-rules.ts`) — vastaavat YAG 2022 -dataa ja käyttäjän odotuksia.
+- Gantt-näkymä, värit, konfliktit, sivupaneli — eivät liity tähän virheeseen.
