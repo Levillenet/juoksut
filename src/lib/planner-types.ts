@@ -6,6 +6,8 @@ export type VenueKind =
   | "jump_pit"
   | "high_jump"
   | "pole_vault"
+  | "shot_ring"
+  | "throw_cage"
   | "throw_ring"
   | "throw_runway"
   | "other";
@@ -16,7 +18,9 @@ export const VENUE_KIND_LABEL: Record<VenueKind, string> = {
   jump_pit: "Pituus/kolmiloikka",
   high_jump: "Korkeushyppy",
   pole_vault: "Seiväshyppy",
-  throw_ring: "Heittokehä",
+  shot_ring: "Kuulakehä",
+  throw_cage: "Moukari-/kiekkohäkki",
+  throw_ring: "Heittokehä (muu)",
   throw_runway: "Heittovauhdinotto",
   other: "Muu",
 };
