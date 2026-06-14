@@ -213,12 +213,13 @@ export function getHistoricalBest(
   competitionId: number,
   athleteKey: string,
   eventName: string,
+  ageClass?: string | null,
 ): string | null {
   const map = cache.get(competitionId);
   if (!map) return null;
   const norm = normalizeEventName(eventName);
   if (!norm) return null;
-  return map.get(lookupKey(athleteKey, norm))?.pb?.resultText ?? null;
+  return map.get(lookupKeyFor(athleteKey, eventName, ageClass))?.pb?.resultText ?? null;
 }
 
 /** Synchronous lookup for the athlete's season best (current calendar year). */
@@ -226,12 +227,13 @@ export function getHistoricalSeasonBest(
   competitionId: number,
   athleteKey: string,
   eventName: string,
+  ageClass?: string | null,
 ): string | null {
   const map = cache.get(competitionId);
   if (!map) return null;
   const norm = normalizeEventName(eventName);
   if (!norm) return null;
-  return map.get(lookupKey(athleteKey, norm))?.sb?.resultText ?? null;
+  return map.get(lookupKeyFor(athleteKey, eventName, ageClass))?.sb?.resultText ?? null;
 }
 
 /** React hook: loads (or returns cached) historical baseline and re-renders
