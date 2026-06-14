@@ -1197,7 +1197,7 @@ function ScheduleTab({
   };
 
   const exportPdf = () => {
-    const conflictIds = new Set(conflicts.flatMap((c) => c.itemIds));
+    const conflictIds = new Set(conflicts.map((c) => c.id));
     downloadPlannerSchedulePdf({ plan, venues, events, schedule, conflictIds });
   };
 
