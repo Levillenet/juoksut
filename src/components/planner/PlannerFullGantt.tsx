@@ -399,6 +399,18 @@ export function PlannerFullGantt({
           Näytä myös tyhjät paikat
         </label>
       </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-card/50 px-3 py-1.5 text-[10px] text-muted-foreground">
+        {LEGEND.map((l) => (
+          <span key={l.label} className="flex items-center gap-1">
+            <span className={`inline-block h-2.5 w-2.5 rounded border ${l.cls}`} />
+            {l.label}
+          </span>
+        ))}
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded border-2 border-red-500 bg-background" />
+          Konflikti
+        </span>
+      </div>
       <div
         className="relative flex-1 overflow-auto"
         onPointerMove={onPointerMove}
