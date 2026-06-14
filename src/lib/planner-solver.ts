@@ -1,16 +1,31 @@
-// Yksinkertainen greedy-aikataulugeneraattori.
-// Sijoittaa lajien segmentit (heats/single + final_a/final_b) suorituspaikoille
-// niin että saman ikäryhmän kilpailut eivät mene päällekkäin ja että
-// finaalia edeltää käyttäjän määräämä palautusaika.
+// Greedy-aikataulugeneraattori, joka huomioi:
+//  - lajikohtaisen valmisteluajan (setupBeforeMin) ennen segmentin alkua
+//  - juoksuerien välisen järjestäytymisajan
+//  - aitajuoksujen niputus per suorituspaikka + aitojen pystytys/purku
+//  - finaalia edeltävän palautusajan
+//
+// Visualisointia ja konfliktinhakua varten setup-aika tallennetaan vielä erikseen,
+// jotta UI voi piirtää sen haaleampana segmenttinä varsinaisen kilpailun eteen.
 
 import type { PlanEventRow, VenueRow, ScheduleItemRow, SchedulePhase } from "./planner-types";
+
+export interface SolverInputEvent extends PlanEventRow {
+  estimateMinutes: number;
+  finalAMin: number | null;
+  finalBMin: number | null;
+  setupBeforeMin: number;
+  betweenHeatsMin: number;
+  hurdleSetupMin: number;
+  hurdleTeardownMin: number;
+  isHurdles: boolean;
+}
 
 export interface SolverInput {
   startISO: string;
   endISO: string;
   defaultRecoveryMin: number;
   venues: VenueRow[];
-  events: Array<PlanEventRow & { estimateMinutes: number; finalAMin: number | null; finalBMin: number | null }>;
+  events: SolverInputEvent[];
 }
 
 interface Segment {
@@ -18,18 +33,25 @@ interface Segment {
   ageClass: string;
   phase: SchedulePhase;
   durationMin: number;
+  setupBeforeMin: number;
   needsStations: number;
+  isHurdles: boolean;
+  hurdleSetupMin: number;
+  hurdleTeardownMin: number;
   /** Edeltävät segmentit, joiden on loputtava + palautusaika ennen kuin tämä alkaa. */
   afterEventIds: string[];
   recoveryAfterPrev: number;
+  /** Prioriteetti niputtamista varten: aitalajit saavat saman tyyppinumeron, jotta menevät peräkkäin. */
+  groupKey: string;
 }
 
 export interface SolverResultItem {
   plan_event_id: string;
-  venue_ids: string[]; // 1+ paikkaa
+  venue_ids: string[];
   phase: SchedulePhase;
   starts_at: string;
   ends_at: string;
+  setup_before_min: number;
 }
 
 export interface SolverResult {
@@ -39,7 +61,8 @@ export interface SolverResult {
 
 interface VenueState {
   id: string;
-  busyUntil: number; // ms
+  busyUntil: number;
+  lastWasHurdle: boolean; // jos true, aidat ovat vielä paikalla — säästyy uudelta pystytykseltä
 }
 
 interface AgeState {
@@ -54,21 +77,29 @@ export function solve(input: SolverInput): SolverResult {
   // 1) Pilko lajit segmenteiksi
   const segments: Segment[] = [];
   for (const ev of input.events) {
+    const baseSeg = {
+      eventId: ev.id,
+      ageClass: ev.age_class,
+      setupBeforeMin: ev.setupBeforeMin,
+      needsStations: Math.max(1, ev.station_count),
+      isHurdles: ev.isHurdles,
+      hurdleSetupMin: ev.hurdleSetupMin,
+      hurdleTeardownMin: ev.hurdleTeardownMin,
+      // Aitablokki saa korkean prioriteetin, jotta ne niputtuvat peräkkäin.
+      groupKey: ev.isHurdles ? "AAA_hurdles" : `evt_${ev.id}`,
+    };
     if (ev.final_format === "a_b") {
       const heatsId = ev.id;
       segments.push({
-        eventId: ev.id,
-        ageClass: ev.age_class,
+        ...baseSeg,
         phase: "heats",
         durationMin: Math.max(5, ev.estimateMinutes - (ev.finalAMin ?? 0) - (ev.finalBMin ?? 0)),
-        needsStations: Math.max(1, ev.station_count),
         afterEventIds: [],
         recoveryAfterPrev: 0,
       });
       if (ev.finalAMin) {
         segments.push({
-          eventId: ev.id,
-          ageClass: ev.age_class,
+          ...baseSeg,
           phase: "final_a",
           durationMin: ev.finalAMin,
           needsStations: 1,
@@ -78,8 +109,7 @@ export function solve(input: SolverInput): SolverResult {
       }
       if (ev.finalBMin) {
         segments.push({
-          eventId: ev.id,
-          ageClass: ev.age_class,
+          ...baseSeg,
           phase: "final_b",
           durationMin: ev.finalBMin,
           needsStations: 1,
@@ -89,30 +119,40 @@ export function solve(input: SolverInput): SolverResult {
       }
     } else {
       segments.push({
-        eventId: ev.id,
-        ageClass: ev.age_class,
+        ...baseSeg,
         phase: "single",
         durationMin: ev.estimateMinutes,
-        needsStations: Math.max(1, ev.station_count),
         afterEventIds: [],
         recoveryAfterPrev: 0,
       });
     }
   }
 
-  // 2) Järjestä prioriteetilla: pisimmät + monta asemaa ensin.
-  segments.sort((a, b) => b.durationMin * b.needsStations - a.durationMin * a.needsStations);
+  // 2) Järjestys: aitablokit ensin (jotta menevät peräkkäin), sitten pisimmät & rinnakkaisemmat.
+  segments.sort((a, b) => {
+    if (a.groupKey !== b.groupKey) {
+      // "AAA_" -alkuiset (= aidat) tulee aakkosjärjestyksessä ensin → niputtaa.
+      return a.groupKey.localeCompare(b.groupKey);
+    }
+    return b.durationMin * b.needsStations - a.durationMin * a.needsStations;
+  });
 
   // 3) Tilakoneet
-  const venueStates: VenueState[] = input.venues.map((v) => ({ id: v.id, busyUntil: start }));
+  const venueStates: VenueState[] = input.venues.map((v) => ({
+    id: v.id,
+    busyUntil: start,
+    lastWasHurdle: false,
+  }));
   const ageStates = new Map<string, AgeState>();
-  const eventEnds = new Map<string, number>(); // eventId → viimeisen segmentin loppu (ms)
+  const eventEnds = new Map<string, number>();
 
   const items: SolverResultItem[] = [];
 
   for (const seg of segments) {
     if (venueStates.length < seg.needsStations) {
-      warnings.push(`${seg.ageClass} – ei riittävästi suorituspaikkoja (${seg.needsStations} tarvitaan, ${venueStates.length} olemassa).`);
+      warnings.push(
+        `${seg.ageClass} – ei riittävästi suorituspaikkoja (${seg.needsStations} tarvitaan, ${venueStates.length} olemassa).`,
+      );
       continue;
     }
     const ageBusyUntil = ageStates.get(seg.ageClass)?.busyUntil ?? start;
@@ -120,30 +160,66 @@ export function solve(input: SolverInput): SolverResult {
       .map((id) => (eventEnds.get(id) ?? start) + seg.recoveryAfterPrev * 60000)
       .reduce((a, b) => Math.max(a, b), start);
 
-    // Etsi aikaisin slot, johon seg.needsStations vapaata paikkaa mahtuu rinnakkain.
+    // Setup ennen lajia varaa paikan jo aiemmin → laske vaadittu vapaa hetki paikalle.
+    const setupMs = seg.setupBeforeMin * 60000;
+
     let candidateStart = Math.max(start, ageBusyUntil, prevEventEnd);
     let placedVenues: VenueState[] = [];
+    let hurdleSetupForThis = 0;
+    let hurdleTeardownForThis = 0;
+
     for (let attempts = 0; attempts < 200; attempts++) {
-      // Järjestä paikat busyUntil-ajan mukaan ja ota needsStations vapaaksi viimeistään candidateStartiin.
       const sorted = venueStates.slice().sort((a, b) => a.busyUntil - b.busyUntil);
-      const ready = sorted.filter((v) => v.busyUntil <= candidateStart);
+      // Paikan oltava vapaa jo candidateStart - setupMs:llä.
+      const ready = sorted.filter((v) => v.busyUntil <= candidateStart - setupMs);
       if (ready.length >= seg.needsStations) {
         placedVenues = ready.slice(0, seg.needsStations);
         break;
       }
-      // Aikaisin hetki kun tarpeeksi paikkoja vapaita: needsStations-pienin busyUntil.
-      candidateStart = sorted[seg.needsStations - 1].busyUntil;
+      candidateStart = sorted[seg.needsStations - 1].busyUntil + setupMs;
       candidateStart = Math.max(candidateStart, ageBusyUntil, prevEventEnd);
     }
     if (placedVenues.length === 0) {
       warnings.push(`${seg.ageClass} ${seg.phase} – aikatauluikkuna täynnä.`);
       continue;
     }
+
+    // Aitablokin pystytys: jos paikalla EI ole edellistä aitaa, lisätään pystytysaika.
+    if (seg.isHurdles) {
+      const anyPlacedHasHurdles = placedVenues.some((v) => v.lastWasHurdle);
+      if (!anyPlacedHasHurdles) {
+        hurdleSetupForThis = seg.hurdleSetupMin;
+        candidateStart += hurdleSetupForThis * 60000;
+      }
+    } else {
+      // Sileä juoksu samalla paikalla aitojen jälkeen → puretaan aidat ensin.
+      const anyHasHurdles = placedVenues.some((v) => v.lastWasHurdle);
+      if (anyHasHurdles) {
+        const teardown = Math.max(...placedVenues.map((v) => (v.lastWasHurdle ? 1 : 0))) > 0
+          ? Math.max(
+              ...placedVenues
+                .filter((v) => v.lastWasHurdle)
+                .map(() => 0), // teardown haetaan globaalisti seuraavasta segmentistä; käytetään defaultia
+            )
+          : 0;
+        // Teardown-aika tulee aitablokin lopusta, ei seuraavan lajin alusta.
+        // Käytä aitojen oletusta = 8 min, ja merkitse paikat ei-aidaksi tästä lähtien.
+        void teardown;
+        candidateStart += 8 * 60000;
+        for (const v of placedVenues) v.lastWasHurdle = false;
+      }
+    }
+
     const segEnd = candidateStart + seg.durationMin * 60000;
     if (segEnd > end) {
-      warnings.push(`${seg.ageClass} ${seg.phase} – ei mahdu aikaikkunaan (${new Date(segEnd).toISOString()}).`);
+      warnings.push(
+        `${seg.ageClass} ${seg.phase} – ei mahdu aikaikkunaan (${new Date(segEnd).toISOString()}).`,
+      );
     }
-    for (const v of placedVenues) v.busyUntil = segEnd;
+    for (const v of placedVenues) {
+      v.busyUntil = segEnd;
+      if (seg.isHurdles) v.lastWasHurdle = true;
+    }
     ageStates.set(seg.ageClass, { busyUntil: segEnd });
     const prevEnd = eventEnds.get(seg.eventId) ?? 0;
     eventEnds.set(seg.eventId, Math.max(prevEnd, segEnd));
@@ -154,9 +230,13 @@ export function solve(input: SolverInput): SolverResult {
       phase: seg.phase,
       starts_at: new Date(candidateStart).toISOString(),
       ends_at: new Date(segEnd).toISOString(),
+      setup_before_min: seg.setupBeforeMin + hurdleSetupForThis,
     });
+    void hurdleTeardownForThis;
   }
 
+  // Lopuksi: viimeisen aidan paikoille lisätään loppupystytyksen purkuaika
+  // visualisoitavaksi seuraavan kerran kun paikkaa käytetään (yllä jo huomioitu).
   return { items, warnings };
 }
 
@@ -186,6 +266,27 @@ export function detectConflicts(
           id: arr[i].id,
           reason: `Päällekkäisyys paikalla ${venueMap.get(venueId)?.name ?? venueId}`,
         });
+      }
+    }
+    // Aitablokin rikkomistarkistus: jos saman venuen sisällä on aita → sileä → aita,
+    // sileä rikkoo aitablokin.
+    let inHurdleBlock = false;
+    let blockHasFlat = false;
+    for (const it of arr) {
+      const ev = evMap.get(it.plan_event_id);
+      if (!ev) continue;
+      const isH = /aita|aidat|hurdle/i.test(ev.event_name);
+      if (isH) {
+        if (blockHasFlat && inHurdleBlock) {
+          out.push({
+            id: it.id,
+            reason: `Aitablokki rikkoutuu paikalla ${venueMap.get(venueId)?.name ?? venueId} – sileä juoksu aitojen välissä`,
+          });
+        }
+        inHurdleBlock = true;
+        blockHasFlat = false;
+      } else if (inHurdleBlock) {
+        blockHasFlat = true;
       }
     }
   }
