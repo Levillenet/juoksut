@@ -69,6 +69,7 @@ export function PlannerFullGantt({
   schedule,
   conflicts,
   highlightIds,
+  onSelectItem,
   onChange,
 }: Props) {
   const windows = useMemo(() => resolveDayWindows(plan), [plan]);
