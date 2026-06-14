@@ -191,6 +191,7 @@ export function PlannerFullGantt({
     const veryNarrow = width < 30;
     const fontSize = width < 50 ? 10 : 11;
 
+    const color = getEventColorClass(ev.event_name, ev.sub_category);
     return (
       <div
         key={`${keyPrefix}-${s.id}`}
@@ -198,15 +199,14 @@ export function PlannerFullGantt({
         data-base-left={left}
         onPointerDown={(e) => onPointerDown(e, s)}
         title={conflictReason ?? `${primary} (${phase}) · ${subtitle}`}
-        className={`absolute cursor-grab touch-none select-none overflow-hidden rounded border px-1 py-0.5 leading-tight shadow-sm active:cursor-grabbing ${
-          conflictReason ? "border-destructive ring-1 ring-destructive" : "border-border/60"
+        className={`absolute cursor-grab touch-none select-none overflow-hidden rounded px-1 py-0.5 leading-tight shadow-sm active:cursor-grabbing ${color.bg} ${color.text} ${
+          conflictReason ? "border-2 border-red-500 ring-1 ring-red-500" : `border ${color.border}`
         }`}
         style={{
           left,
           top,
           width,
           height: ROW_HEIGHT - 6,
-          background: colorFor(ev.age_class),
           fontSize: `${fontSize}px`,
         }}
       >
