@@ -332,6 +332,8 @@ function BasicsTab({
           notes: form.notes,
           total_officials_available: form.totalOfficials,
           officials_changeover_min: form.officialsChangeover,
+          allow_distance_change_same_venue: form.allowDistanceChange,
+          min_distance_change_gap_min: form.minDistanceChangeGap,
         })
         .eq("id", plan.id);
       if (error) throw error;
