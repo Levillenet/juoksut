@@ -329,7 +329,7 @@ export function downloadPlannerScheduleVisualXlsx({
       ws["!rows"][r] = { hpt: r === 0 || r === 1 ? 18 : 22 };
     }
     // Freeze: vasen sarake + ylätunnisteet
-    ws["!freeze"] = { xSplit: 1, ySplit: 5 };
+    // Note: SheetJS community edition ei tue freeze panesia; sheet näytetään ilman jäädytystä.
 
     const sheetName = startDate
       .toLocaleDateString("fi-FI", { weekday: "long" })
