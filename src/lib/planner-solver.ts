@@ -88,6 +88,7 @@ export function solve(input: SolverInput): SolverResult {
       : null;
     const baseSeg = {
       eventId: ev.id,
+      eventName: ev.event_name,
       ageClass: ev.age_class,
       setupBeforeMin: ev.setupBeforeMin,
       needsStations: Math.max(1, ev.station_count),
