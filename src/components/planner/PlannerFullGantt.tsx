@@ -560,7 +560,7 @@ export function PlannerFullGantt({
   }) => (
     <div className="border-b" style={{ width: totalWidth }}>
       <div
-        className="sticky left-0 z-20 border-b bg-muted/40 px-2 py-1 text-xs font-bold uppercase tracking-wide"
+        className="sticky left-0 z-20 border-b bg-background px-2 py-1 text-xs font-bold uppercase tracking-wide shadow-md"
         style={{ width: LEFT_COL }}
       >
         {title}
@@ -702,6 +702,7 @@ export function PlannerFullGantt({
       <div
         ref={scrollRef}
         className="relative flex-1 overflow-auto"
+        onScroll={updateScrollState}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
       >
@@ -718,6 +719,14 @@ export function PlannerFullGantt({
             dayItems.filter((s) => evMap.get(s.plan_event_id)?.age_class === age)
           }
         />
+      </div>
+      <div className="border-t bg-card px-3 py-1.5">
+        <div className="relative h-2 overflow-hidden rounded-full bg-muted">
+          <div
+            className="absolute top-0 h-2 rounded-full bg-primary/70"
+            style={{ left: `${miniThumbLeft}%`, width: `${miniThumbWidth}%` }}
+          />
+        </div>
       </div>
     </div>
     </TooltipProvider>
