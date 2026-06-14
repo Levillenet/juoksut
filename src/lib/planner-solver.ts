@@ -110,6 +110,12 @@ export function solve(input: SolverInput): SolverResult {
     const allowedDays = ev.allowed_days && ev.allowed_days.length > 0
       ? new Set(ev.allowed_days)
       : null;
+    const runKey = runningGroupKey(ev.event_name);
+    const groupKey = ev.isHurdles
+      ? `AAA_hurdles_${runKey ?? ev.id}`
+      : runKey
+        ? `BBB_run_${runKey}`
+        : `CCC_evt_${ev.id}`;
     const baseSeg = {
       eventId: ev.id,
       eventName: ev.event_name,
@@ -119,7 +125,7 @@ export function solve(input: SolverInput): SolverResult {
       isHurdles: ev.isHurdles,
       hurdleSetupMin: ev.hurdleSetupMin,
       hurdleTeardownMin: ev.hurdleTeardownMin,
-      groupKey: ev.isHurdles ? "AAA_hurdles" : `evt_${ev.id}`,
+      groupKey,
       allowedDays,
     };
     if (ev.final_format === "a_b") {
@@ -162,7 +168,11 @@ export function solve(input: SolverInput): SolverResult {
     }
   }
 
-  // 2) Järjestys: aitablokit ensin, sitten pisimmät & rinnakkaisemmat.
+  // 2) Järjestys:
+  //   1) ryhmittele saman matkan juoksulajit yhteen (BBB_run_<dist>)
+  //   2) aita-lajit omaan blokkiin (AAA_hurdles_<dist>)
+  //   3) kenttälajit (CCC_evt_<id>)
+  // Saman ryhmän sisällä pisin & rinnakkaisin ensin.
   segments.sort((a, b) => {
     if (a.groupKey !== b.groupKey) return a.groupKey.localeCompare(b.groupKey);
     return b.durationMin * b.needsStations - a.durationMin * a.needsStations;
@@ -174,6 +184,7 @@ export function solve(input: SolverInput): SolverResult {
     id: v.id,
     busyUntil: 0,
     lastWasHurdle: false,
+    lastEventName: null,
   }));
   const ageStates = new Map<string, AgeState>();
   const eventEnds = new Map<string, number>();
