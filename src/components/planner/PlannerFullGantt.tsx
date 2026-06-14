@@ -332,7 +332,7 @@ export function PlannerFullGantt({
     const startOff = (new Date(s.starts_at).getTime() - startMs) / 60000;
     const dur = (new Date(s.ends_at).getTime() - new Date(s.starts_at).getTime()) / 60000;
     if (startOff + dur < 0 || startOff > totalMin) return null;
-    const left = LEFT_COL + (startOff / 5) * PX_PER_5MIN;
+    const left = (startOff / 5) * PX_PER_5MIN;
     const width = Math.max(18, (dur / 5) * PX_PER_5MIN - 2);
     const top = rowIdx * ROW_HEIGHT + 3;
     const conflict = conflictMap.get(s.id);
@@ -486,7 +486,7 @@ export function PlannerFullGantt({
 
   const TimeAxis = () => (
     <div
-      className="sticky top-0 z-30 flex border-b bg-background shadow-sm"
+        className="sticky top-0 z-30 flex border-b bg-background shadow-sm"
       style={{ width: totalWidth, height: 44 }}
     >
       <div
@@ -502,7 +502,7 @@ export function PlannerFullGantt({
           return (
             <div
               key={`h-${m}`}
-              className="absolute top-0 border-l-2 border-border px-1 text-sm font-bold"
+              className="absolute top-0 border-l-2 border-border px-1 text-base font-bold"
               style={{ left: (m / 5) * PX_PER_5MIN, height: 24, lineHeight: "24px" }}
             >
               {d.getHours()}
