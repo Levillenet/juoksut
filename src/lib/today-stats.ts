@@ -127,7 +127,7 @@ async function fetchAllTimePriorBests(
       const { data, error } = await supabase
         .from("athlete_results")
         .select(
-          "athlete_key, event_name, event_category, sub_category, result_numeric",
+          "athlete_key, event_name, event_category, sub_category, age_class, result_numeric",
         )
         .in("athlete_key", keysSlice)
         .in("event_name", eventNames)
@@ -140,12 +140,13 @@ async function fetchAllTimePriorBests(
         event_name: string;
         event_category: string;
         sub_category: string;
+        age_class: string | null;
         result_numeric: number | null;
       }>;
       const filtered = rows.filter((r) => !isRoadOrCrossCountry(r));
       for (const r of filtered) {
         if (r.result_numeric == null) continue;
-        const key = `${r.athlete_key}|${normalizeEventName(r.event_name)}`;
+        const key = `${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`;
         const lower = isLowerBetter(r.event_category, r.sub_category);
         const cur = best.get(key);
         if (cur == null || (lower ? r.result_numeric < cur : r.result_numeric > cur)) {
