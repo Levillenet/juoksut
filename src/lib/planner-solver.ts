@@ -61,6 +61,11 @@ interface Segment {
   recoveryAfterPrev: number;
   groupKey: string;
   allowedDays: Set<string> | null;
+  /** KORJAUS 2: jos asetettu, segmentti pitää alkaa heti tämän vaiheen lopusta
+   * (max maxGapAfterPhaseMin viiveellä) ja samoilla suorituspaikoilla. */
+  afterPhaseKey?: string;
+  maxGapAfterPhaseMin?: number;
+  sameVenueAsPhase?: boolean;
 }
 
 export interface SolverResultItem {
@@ -150,13 +155,18 @@ export function solve(input: SolverInput): SolverResult {
         });
       }
       if (ev.finalBMin) {
+        // KORJAUS 2: final_b alkaa heti final_a:n päättymisestä (max 2 min)
+        // ja samoilla suorituspaikoilla. Ei riipu suoraan heatsista.
         segments.push({
           ...baseSeg,
           phase: "final_b",
           durationMin: ev.finalBMin,
           needsStations: 1,
-          afterEventIds: [heatsId],
-          recoveryAfterPrev: input.defaultRecoveryMin,
+          afterEventIds: [],
+          recoveryAfterPrev: 0,
+          afterPhaseKey: `${ev.id}|final_a`,
+          maxGapAfterPhaseMin: 2,
+          sameVenueAsPhase: true,
         });
       }
     } else {
@@ -194,6 +204,9 @@ export function solve(input: SolverInput): SolverResult {
   }));
   const ageStates = new Map<string, AgeState>();
   const eventEnds = new Map<string, number>();
+  // KORJAUS 2: per-vaihe loppuajat ja käytetyt suorituspaikat (avain: "<eventId>|<phase>").
+  const phaseEnds = new Map<string, number>();
+  const phaseVenues = new Map<string, string[]>();
   const items: SolverResultItem[] = [];
 
   // Reset venue busy alkuun ensimmäisen ikkunan alkuun
@@ -232,9 +245,17 @@ export function solve(input: SolverInput): SolverResult {
     };
 
 
+
+    // KORJAUS 2: jos segmentillä on afterPhaseKey + sameVenueAsPhase,
+    // rajoita kelvolliset suorituspaikat samoihin kuin viite-vaiheella.
+    const requiredVenueIds = seg.afterPhaseKey && seg.sameVenueAsPhase
+      ? phaseVenues.get(seg.afterPhaseKey) ?? null
+      : null;
+
     const eligibleStates = venueStates.filter((vs) => {
       const kind = venueKindById.get(vs.id);
       if (!kind || !isVenueForEvent(kind, seg.eventName)) return false;
+      if (requiredVenueIds && !requiredVenueIds.includes(vs.id)) return false;
       // Jos käyttäjä ei salli matkanvaihtoa samalla suorituspaikalla,
       // estä juoksupaikat joilla on aiempi eri matkan/tyypin juoksu.
       if (!allowChange && segIsRun && vs.lastEventName) {
@@ -259,9 +280,12 @@ export function solve(input: SolverInput): SolverResult {
 
       const setupMs = seg.setupBeforeMin * 60000;
       const ageBusyUntil = ageStates.get(seg.ageClass)?.busyUntil ?? 0;
-      const prevEventEnd = seg.afterEventIds
+      let prevEventEnd = seg.afterEventIds
         .map((id) => (eventEnds.get(id) ?? 0) + seg.recoveryAfterPrev * 60000)
         .reduce((a, b) => Math.max(a, b), 0);
+      // KORJAUS 2/3: afterPhaseKey pakottaa alkamaan tietyn vaiheen päättymisestä.
+      const phaseRefEnd = seg.afterPhaseKey ? phaseEnds.get(seg.afterPhaseKey) : undefined;
+      if (phaseRefEnd != null) prevEventEnd = Math.max(prevEventEnd, phaseRefEnd);
 
       // Per-venue "free at" huomioi siirtoajan.
       const freeAt = (vs: VenueState) => vs.busyUntil + venueChangeoverMs(vs);
@@ -320,6 +344,10 @@ export function solve(input: SolverInput): SolverResult {
       ageStates.set(seg.ageClass, { busyUntil: segEnd });
       const prevEnd = eventEnds.get(seg.eventId) ?? 0;
       eventEnds.set(seg.eventId, Math.max(prevEnd, segEnd));
+      // KORJAUS 2: tallenna phase-tila final_b:tä varten.
+      const phaseKey = `${seg.eventId}|${seg.phase}`;
+      phaseEnds.set(phaseKey, segEnd);
+      phaseVenues.set(phaseKey, placedVenues.map((v) => v.id));
 
       // Päivitä konfliktiryhmien aikajanat
       const placedIds = placedVenues.map((v) => v.id);
