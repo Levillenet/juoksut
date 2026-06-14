@@ -200,7 +200,13 @@ function PlanEditor() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
+      <main
+        className={`mx-auto space-y-6 py-6 ${
+          tab === "schedule"
+            ? "max-w-screen-2xl px-2 sm:px-4"
+            : "max-w-6xl px-4"
+        }`}
+      >
         {tab === "basics" && (
           <BasicsTab
             plan={plan}
