@@ -1,16 +1,17 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download, BarChart3 } from "lucide-react";
+import { ArrowLeft, Download, Wrench } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { EventDurationsSection } from "@/components/admin/EventDurationsSection";
 
 const ADMIN_EMAIL = "samiaavikko@gmail.com";
 
 export const Route = createFileRoute("/admin/analytics")({
-  head: () => ({ meta: [{ title: "Analytiikka – Admin" }] }),
+  head: () => ({ meta: [{ title: "Admin-valikko" }] }),
   component: Gate,
 });
 
@@ -209,25 +210,48 @@ function Page() {
     URL.revokeObjectURL(url);
   };
 
+  const [tab, setTab] = useState<"analytics" | "durations">("analytics");
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b bg-card">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2">
             <Link to="/" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            <BarChart3 className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-semibold">Käyttöanalytiikka</h1>
+            <Wrench className="h-5 w-5 text-primary" />
+            <h1 className="text-lg font-semibold">Admin-valikko</h1>
           </div>
-          <Button onClick={downloadCsv} disabled={rows.length === 0}>
-            <Download className="mr-2 h-4 w-4" />
-            Lataa CSV
-          </Button>
+          <div className="flex shrink-0 gap-0.5 rounded-full border border-border bg-card p-0.5 text-[11px] font-medium">
+            {(["analytics", "durations"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`rounded-full px-3 py-1 transition-colors ${
+                  tab === t
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {t === "analytics" ? "Käyttöanalytiikka" : "Lajien kestot"}
+              </button>
+            ))}
+          </div>
+          {tab === "analytics" && (
+            <Button onClick={downloadCsv} disabled={rows.length === 0}>
+              <Download className="mr-2 h-4 w-4" />
+              Lataa CSV
+            </Button>
+          )}
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
+        {tab === "durations" ? (
+          <EventDurationsSection />
+        ) : (
+        <>
         {q.isLoading && <p className="text-sm text-muted-foreground">Ladataan…</p>}
         {q.error && (
           <p className="text-sm text-destructive">
@@ -336,6 +360,8 @@ function Page() {
             </table>
           </div>
         </Section>
+        </>
+        )}
       </main>
     </div>
   );
