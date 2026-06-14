@@ -244,6 +244,7 @@ export type Database = {
       }
       competition_plans: {
         Row: {
+          allow_distance_change_same_venue: boolean
           created_at: string
           day_windows: Json | null
           default_between_heats_min: number
@@ -255,6 +256,7 @@ export type Database = {
           ends_at: string
           id: string
           is_multi_day: boolean
+          min_distance_change_gap_min: number
           name: string
           notes: string | null
           officials_changeover_min: number | null
@@ -265,6 +267,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          allow_distance_change_same_venue?: boolean
           created_at?: string
           day_windows?: Json | null
           default_between_heats_min?: number
@@ -276,6 +279,7 @@ export type Database = {
           ends_at: string
           id?: string
           is_multi_day?: boolean
+          min_distance_change_gap_min?: number
           name: string
           notes?: string | null
           officials_changeover_min?: number | null
@@ -286,6 +290,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          allow_distance_change_same_venue?: boolean
           created_at?: string
           day_windows?: Json | null
           default_between_heats_min?: number
@@ -297,6 +302,7 @@ export type Database = {
           ends_at?: string
           id?: string
           is_multi_day?: boolean
+          min_distance_change_gap_min?: number
           name?: string
           notes?: string | null
           officials_changeover_min?: number | null
