@@ -10,6 +10,7 @@ import {
   isLowerBetter,
   normalizeEventName,
 } from "@/lib/athlete-history";
+import { pbEventKey } from "@/lib/pb-key";
 
 interface HistoricalBest {
   resultText: string;
@@ -21,12 +22,16 @@ interface BaselineEntry {
   sb: HistoricalBest | null;
 }
 
-// competitionId -> (`${athleteKey}|${normalizedEvent}` -> entry)
+// competitionId -> (pbEventKey + athleteKey -> entry)
 const cache = new Map<number, Map<string, BaselineEntry>>();
 const inflight = new Map<number, Promise<Map<string, BaselineEntry>>>();
 
-function lookupKey(athleteKey: string, normalizedEvent: string): string {
-  return `${athleteKey}|${normalizedEvent.toLowerCase()}`;
+function lookupKeyFor(
+  athleteKey: string,
+  eventName: string,
+  ageClass: string | null | undefined,
+): string {
+  return `${athleteKey}|${pbEventKey({ event_name: eventName, age_class: ageClass }).toLowerCase()}`;
 }
 
 const PAGE_SIZE = 1000;
