@@ -456,48 +456,75 @@ export function PlannerFullGantt({
     );
   };
 
+  // Zoom-aware tick density
+  const showHalfHours = pxPerMin >= 6;
+  const show10Min = pxPerMin >= 12;
+  const show5MinNumbers = pxPerMin >= 20;
+
   const TimeAxis = () => (
     <div
-      className="sticky top-0 z-30 flex border-b bg-card"
-      style={{ width: totalWidth, height: 42 }}
+      className="sticky top-0 z-30 flex border-b bg-background shadow-sm"
+      style={{ width: totalWidth, height: 44 }}
     >
       <div
-        className="sticky left-0 z-40 flex items-end border-r bg-card px-2 pb-1 text-xs font-semibold"
+        className="sticky left-0 z-40 flex items-end border-r bg-background px-2 pb-1 text-xs font-semibold shadow-md"
         style={{ width: LEFT_COL }}
       >
         Aika
       </div>
-      <div className="relative" style={{ width: totalWidth - LEFT_COL, height: 42 }}>
-        {/* Hour headers */}
+      <div className="relative" style={{ width: totalWidth - LEFT_COL, height: 44 }}>
+        {/* Hour headers — bold and large */}
         {hourTicks.map((m) => {
           const d = new Date(startMs + m * 60000);
           return (
             <div
               key={`h-${m}`}
-              className="absolute top-0 border-l border-border/60 px-1 text-[11px] font-semibold"
-              style={{ left: (m / 5) * PX_PER_5MIN, height: 22, lineHeight: "22px" }}
+              className="absolute top-0 border-l-2 border-border px-1 text-sm font-bold"
+              style={{ left: (m / 5) * PX_PER_5MIN, height: 24, lineHeight: "24px" }}
             >
               {d.getHours()}
             </div>
           );
         })}
-        {/* 5-min labels */}
+        {/* Minor ticks */}
         {fiveTicks.map((m) => {
-          const mm = (m % 60);
+          const mm = m % 60;
           if (mm === 0) return null;
+          const isHalf = mm === 30;
+          const isTen = mm % 10 === 0;
+          if (isHalf && !showHalfHours) return null;
+          if (!isHalf && isTen && !show10Min) return null;
+          if (!isHalf && !isTen && !show5MinNumbers) return null;
+          const label = isHalf ? ":30" : String(mm);
           return (
             <div
               key={`f-${m}`}
-              className="absolute border-l border-border/20 px-0.5 text-[9px] text-muted-foreground"
-              style={{ left: (m / 5) * PX_PER_5MIN, top: 22, height: 20, lineHeight: "20px" }}
+              className={`absolute border-l text-muted-foreground ${
+                isHalf ? "border-border/60 text-[10px] font-medium" : "border-border/20 text-[9px]"
+              }`}
+              style={{ left: (m / 5) * PX_PER_5MIN, top: 24, height: 20, lineHeight: "20px", paddingLeft: 2 }}
             >
-              {mm}
+              {label}
             </div>
           );
         })}
+        {/* Plain 5-min gridline marks (no number) when zoom too small */}
+        {!show5MinNumbers &&
+          fiveTicks.map((m) => {
+            const mm = m % 60;
+            if (mm === 0 || mm === 30 || mm % 10 === 0) return null;
+            return (
+              <div
+                key={`tick-${m}`}
+                className="absolute border-l border-border/15"
+                style={{ left: (m / 5) * PX_PER_5MIN, top: 36, height: 6 }}
+              />
+            );
+          })}
       </div>
     </div>
   );
+
 
   const Section = ({
     title,
