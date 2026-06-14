@@ -75,7 +75,7 @@ function ruleBased(input: EstimateInput, kind: EventCategoryHint): number {
 
 async function loadHistory(eventName: string, ageClass: string): Promise<HistorySample[]> {
   const norm = normalizeEventName(eventName);
-  const specSuffix = eventSpecKey(ageClass, undefined, eventName);
+  const specSuffix = eventSpecKey(ageClass, eventName);
   // Hakee tulosrivit: ryhmittele (competition_id, event_id) → osanottajat + kesto.
   // Käytä event_pb_key-RPC:tä? Yksinkertainen versio: matchaa name/age_class.
   const { data, error } = await supabase
