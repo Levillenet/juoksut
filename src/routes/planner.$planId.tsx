@@ -1469,6 +1469,13 @@ function ScheduleTab({
 }) {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [highlightIds, setHighlightIds] = useState<string[]>([]);
+  const highlightTimeout = useRef<number | null>(null);
+  const highlightConflict = (ids: string[]) => {
+    if (highlightTimeout.current) window.clearTimeout(highlightTimeout.current);
+    setHighlightIds(ids);
+    highlightTimeout.current = window.setTimeout(() => setHighlightIds([]), 2200);
+  };
 
   const generate = async () => {
     if (venues.length === 0 || events.length === 0) {
