@@ -1548,11 +1548,13 @@ function ScheduleTab({
         minDistanceChangeGapMin: plan.min_distance_change_gap_min,
       });
 
+      // Poista KAIKKI aikataulurivit (myös manuaaliset) ennen uutta generointia.
+      // Muuten manuaalisesti raahatut rivit (auto_generated=false) jäisivät
+      // eloon ja duplikoituisivat uusien auto-rivien kanssa.
       await supabase
         .from("plan_schedule_items")
         .delete()
-        .eq("plan_id", plan.id)
-        .eq("auto_generated", true);
+        .eq("plan_id", plan.id);
       const rows = result.items.flatMap((it) =>
         it.venue_ids.map((venueId) => ({
           plan_id: plan.id,
