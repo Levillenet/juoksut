@@ -1680,7 +1680,7 @@ function ScheduleTab({
 
       <ScheduleItemSheet
         open={selectedItemId != null}
-        onOpenChange={(o) => !o && setSelectedItemId(null)}
+        onOpenChange={(o: boolean) => !o && setSelectedItemId(null)}
         itemId={selectedItemId}
         plan={plan}
         schedule={schedule}
