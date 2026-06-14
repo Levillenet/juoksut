@@ -61,6 +61,11 @@ interface Segment {
   recoveryAfterPrev: number;
   groupKey: string;
   allowedDays: Set<string> | null;
+  /** KORJAUS 2: jos asetettu, segmentti pitää alkaa heti tämän vaiheen lopusta
+   * (max maxGapAfterPhaseMin viiveellä) ja samoilla suorituspaikoilla. */
+  afterPhaseKey?: string;
+  maxGapAfterPhaseMin?: number;
+  sameVenueAsPhase?: boolean;
 }
 
 export interface SolverResultItem {
