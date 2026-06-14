@@ -1169,33 +1169,8 @@ function ScheduleTab({
   );
 
   const exportExcel = () => {
-    const evMap = new Map(events.map((e) => [e.id, e]));
-    const vMap = new Map(venues.map((v) => [v.id, v]));
-    const rows = schedule.map((s) => {
-      const ev = evMap.get(s.plan_event_id);
-      const v = vMap.get(s.venue_id);
-      const t = ev ? resolveTimings(ev, plan) : null;
-      const startMs = new Date(s.starts_at).getTime();
-      const setupStart = t ? new Date(startMs - t.setupBeforeMin * 60000) : null;
-      return {
-        "Valmistelu alkaa": setupStart ? setupStart.toLocaleString("fi-FI") : "",
-        "Kilpailu alkaa": new Date(s.starts_at).toLocaleString("fi-FI"),
-        "Kilpailu päättyy": new Date(s.ends_at).toLocaleString("fi-FI"),
-        Ikäryhmä: ev?.age_class ?? "",
-        Laji: ev?.event_name ?? "",
-        Vaihe: s.phase,
-        Suorituspaikka: v?.name ?? "",
-        Osanottajat: ev?.participants ?? "",
-        "Valm. (min)": t?.setupBeforeMin ?? "",
-        "Aika/erä (min)": t?.isTrack ? t.minutesPerHeatMin : "",
-        "Aitojen setup (min)": t?.isHurdles ? t.hurdleSetupMin : "",
-        "Aitojen purku (min)": t?.isHurdles ? t.hurdleTeardownMin : "",
-      };
-    });
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Aikataulu");
-    XLSX.writeFile(wb, `aikataulu-${plan.name.replace(/\s+/g, "_")}.xlsx`);
+    const conflictIds = new Set(conflicts.map((c) => c.id));
+    downloadPlannerScheduleVisualXlsx({ plan, venues, events, schedule, conflictIds });
   };
 
   const exportPdf = () => {
