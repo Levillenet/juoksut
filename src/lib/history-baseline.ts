@@ -118,7 +118,7 @@ function buildBaselineMap(rows: Row[]): Map<string, BaselineEntry> {
     const norm = normalizeEventName(r.event_name);
     if (!norm) continue;
     const lower = isLowerBetter(r.event_category, r.sub_category);
-    const k = lookupKey(r.athlete_key, norm);
+    const k = lookupKeyFor(r.athlete_key, r.event_name, r.age_class);
     let entry = map.get(k);
     if (!entry) {
       entry = { pb: null, sb: null };
