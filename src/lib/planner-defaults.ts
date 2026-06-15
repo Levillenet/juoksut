@@ -36,13 +36,10 @@ export const DEFAULT_VENUES: DefaultVenueSpec[] = [
     suggested: 2,
     nameFor: (i, total) => (total > 1 ? `Pituuskuoppa ${letters[i]}` : "Pituuskuoppa"),
   },
-  {
-    key: "triple_jump",
-    label: "Kolmiloikkapaikka",
-    kind: "jump_pit",
-    suggested: 1,
-    nameFor: (i, total) => (total > 1 ? `Kolmiloikka ${letters[i]}` : "Kolmiloikka"),
-  },
+  // HUOM: Kolmiloikalle EI luoda omaa suorituspaikkaa — se käyttää
+  // pituuskuoppaa (jump_pit). Lisää tarvittaessa toinen Pituuskuoppa
+  // (long_jump suggested ≥ 2) jos rinnakkaiskäyttö on tarpeen.
+
   {
     key: "high_jump",
     label: "Korkeushyppypaikka",
