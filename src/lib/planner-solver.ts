@@ -316,9 +316,18 @@ export function solve(input: SolverInput): SolverResult {
       return true;
     });
     if (eligibleStates.length < seg.needsStations) {
-      warnings.push(
-        `${seg.ageClass} ${seg.eventName} – ei sopivaa suorituspaikkaa (${seg.needsStations} tarvitaan).`,
-      );
+      const isShortRun =
+        segDist != null && segDist <= 100 && !/viesti|relay/i.test(seg.eventName);
+      const hasStraight = usableVenues.some((v) => v.kind === "track_straight");
+      if (isShortRun && !hasStraight) {
+        warnings.push(
+          `${seg.ageClass} ${seg.eventName} – tarvitsee juoksusuoran (track_straight). Ovaali ei kelpaa lyhyille juoksuille.`,
+        );
+      } else {
+        warnings.push(
+          `${seg.ageClass} ${seg.eventName} – ei sopivaa suorituspaikkaa (${seg.needsStations} tarvitaan).`,
+        );
+      }
       continue;
     }
 
