@@ -13,6 +13,7 @@ import {
   runningGroupKey,
   parseDistanceM,
   isHurdleEvent,
+  isRunningEvent,
 } from "./planner-defaults";
 
 export interface SolverInputEvent extends PlanEventRow {
