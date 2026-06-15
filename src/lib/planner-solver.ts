@@ -304,11 +304,8 @@ export function solve(input: SolverInput): SolverResult {
       if (seg.allowedDays && !seg.allowedDays.has(win.date)) continue;
 
       const setupMs = seg.setupBeforeMin * 60000;
-      const segUsesTrack = segIsRun;
       const ageSt = ageStates.get(seg.ageClass);
-      const ageBusyUntil = segUsesTrack
-        ? (ageSt?.trackBusyUntil ?? 0)
-        : (ageSt?.fieldBusyUntil ?? 0);
+      const ageBusyUntil = ageSt?.busyUntil ?? 0;
       let prevEventEnd = seg.afterEventIds
         .map((id) => (eventEnds.get(id) ?? 0) + seg.recoveryAfterPrev * 60000)
         .reduce((a, b) => Math.max(a, b), 0);
