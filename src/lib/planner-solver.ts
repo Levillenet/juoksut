@@ -90,7 +90,10 @@ interface VenueState {
 }
 
 interface AgeState {
-  busyUntil: number;
+  /** Saman ikäluokan rata- ja kentälajit saavat olla rinnakkain
+   * (eri urheilijat), mutta kaksi rataa tai kaksi kenttää eivät. */
+  trackBusyUntil: number;
+  fieldBusyUntil: number;
 }
 
 export function solve(input: SolverInput): SolverResult {
@@ -279,7 +282,11 @@ export function solve(input: SolverInput): SolverResult {
       if (seg.allowedDays && !seg.allowedDays.has(win.date)) continue;
 
       const setupMs = seg.setupBeforeMin * 60000;
-      const ageBusyUntil = ageStates.get(seg.ageClass)?.busyUntil ?? 0;
+      const segUsesTrack = segIsRun;
+      const ageSt = ageStates.get(seg.ageClass);
+      const ageBusyUntil = segUsesTrack
+        ? (ageSt?.trackBusyUntil ?? 0)
+        : (ageSt?.fieldBusyUntil ?? 0);
       let prevEventEnd = seg.afterEventIds
         .map((id) => (eventEnds.get(id) ?? 0) + seg.recoveryAfterPrev * 60000)
         .reduce((a, b) => Math.max(a, b), 0);
@@ -341,7 +348,11 @@ export function solve(input: SolverInput): SolverResult {
         if (seg.isHurdles) v.lastWasHurdle = true;
         if (segIsRun) v.lastEventName = seg.eventName;
       }
-      ageStates.set(seg.ageClass, { busyUntil: segEnd });
+      const prevAge = ageStates.get(seg.ageClass) ?? { trackBusyUntil: 0, fieldBusyUntil: 0 };
+      ageStates.set(seg.ageClass, {
+        trackBusyUntil: segUsesTrack ? segEnd : prevAge.trackBusyUntil,
+        fieldBusyUntil: segUsesTrack ? prevAge.fieldBusyUntil : segEnd,
+      });
       const prevEnd = eventEnds.get(seg.eventId) ?? 0;
       eventEnds.set(seg.eventId, Math.max(prevEnd, segEnd));
       // KORJAUS 2: tallenna phase-tila final_b:tä varten.
