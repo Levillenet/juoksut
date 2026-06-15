@@ -13,7 +13,9 @@ import {
   runningGroupKey,
   parseDistanceM,
   isHurdleEvent,
+  venuePreferenceRank,
 } from "./planner-defaults";
+
 
 export interface SolverInputEvent extends PlanEventRow {
   estimateMinutes: number;
