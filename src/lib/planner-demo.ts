@@ -9,7 +9,7 @@ const DEFAULT_VENUE_SELECTION: Record<string, number> = {
   sprint: 1,
   oval: 1,
   long_jump: 2,
-  triple_jump: 1,
+
   high_jump: 1,
   pole_vault: 1,
   shot: 1,
