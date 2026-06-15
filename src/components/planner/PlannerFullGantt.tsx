@@ -622,10 +622,12 @@ export function PlannerFullGantt({
 
   const Section = ({
     title,
+    section,
     rows,
     itemsForRow,
   }: {
     title: string;
+    section: "venue" | "age";
     rows: Array<{ id: string; label: string }>;
     itemsForRow: (rowId: string) => ScheduleItemRow[];
   }) => (
@@ -651,6 +653,7 @@ export function PlannerFullGantt({
         </div>
         {/* Grid lines + bars */}
         <div
+          data-section={section}
           className="absolute top-0"
           style={{ left: LEFT_COL, width: totalWidth - LEFT_COL, height: rows.length * ROW_HEIGHT }}
         >
