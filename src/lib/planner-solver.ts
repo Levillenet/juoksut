@@ -374,6 +374,16 @@ export function solve(input: SolverInput): SolverResult {
         if (seg.isHurdles) v.lastWasHurdle = true;
         if (segIsRun) v.lastEventName = seg.eventName;
       }
+      // Rata/suora-lukitus: merkitse oval- ja straight-käyttö samanaikaislukitusta varten.
+      {
+        const kinds = placedVenues.map((v) => venueKindById.get(v.id));
+        if (kinds.some((k) => k === "track_oval")) {
+          ovalBusy.push({ s: candidateStart, e: segEnd });
+        }
+        if (kinds.some((k) => k === "track_straight")) {
+          straightBusy.push({ s: candidateStart, e: segEnd });
+        }
+      }
       const prevAge = ageStates.get(seg.ageClass) ?? { trackBusyUntil: 0, fieldBusyUntil: 0 };
       ageStates.set(seg.ageClass, {
         trackBusyUntil: segUsesTrack ? segEnd : prevAge.trackBusyUntil,
