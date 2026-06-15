@@ -262,7 +262,12 @@ export function PlannerFullGantt({
       ends_at: string;
       venue_id?: string;
     }) => {
-      const payload: Record<string, unknown> = {
+      const payload: {
+        starts_at: string;
+        ends_at: string;
+        auto_generated: boolean;
+        venue_id?: string;
+      } = {
         starts_at: p.starts_at,
         ends_at: p.ends_at,
         auto_generated: false,
