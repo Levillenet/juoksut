@@ -1,56 +1,45 @@
+## Ongelmat nykytilassa
 
-# Rata-/suora-konfliktin korjaus
+### Solver-regressiot (kahdesta edellisestä muutoksesta)
 
-## Diagnoosi
+1. **Saman ikäluokan rinnakkaisuus rata/kenttä-välillä**
+   - `AgeState` jaettiin `trackBusyUntil` + `fieldBusyUntil` -kenttiin → saman ikäluokan juoksu ja kenttälaji menevät päällekkäin.
+   - Samat urheilijat tekevät sekä rata- että kenttälajeja → kaikki "Sama ikäryhmä päällekkäin" -kriittiset konfliktit.
 
-Tällä hetkellä `isVenueForEvent` sallii kaikki <300 m juoksut sekä `track_straight` että `track_oval` -tyypille. Tämä on liian löysä: 200 m vaatii kaarteen + etusuoran eli koko ovaalin, joten se ei voi koskaan olla suoralla. Lisäksi solver ei tunne käsitettä "ovaalin käyttö lukitsee suorat", joten 200 m+ menee samalle ajalle 60 m:n kanssa eri "paikoille", mikä on fyysisesti mahdotonta jos suorat ovat osa ovaalia.
+2. **Rata/suora-lukitus + huono sijoitusjärjestys**
+   - Sort-järjestys vertailee `BBB_run_60` ja `BBB_run_200` merkkijonoina → "200" < "60" → 200 m sijoitetaan ENSIN, ovaali varautuu päiväksi, 60 m -finalit/heatsit eivät mahdu.
+   - final_b vaatii saman suorituspaikan + ≤2 min taukoa; kun ovaali on välissä varattu, final_b työnnetään tuntien päähän tai seuraavalle päivälle.
 
-Käyttäjän pyynnön mukaan tehdään tarkalleen kaksi muutosta — ei muuta solver-logiikkaa.
+### Manuaalinen raahaus rajoittunut
 
-## Muutos 1 — `src/lib/planner-defaults.ts`
+3. **Käyttäjä ei voi raahata lajia toiselle suorituspaikalle**
+   - `PlannerFullGantt.tsx` (`onPointerMove`, `onPointerUp`): drag muuttaa vain x-koordinaattia (aikaa). y-koordinaattia ei lueta eikä `venue_id`:tä päivitetä.
+   - Käyttäjän pitää voida raahata palkki sekä eri kellonaikaan että eri suorituspaikkariville.
 
-Korvataan `isVenueForEvent` käyttäjän antamalla logiikalla, hieman kondensoituna:
+## Korjaussuunnitelma
 
-- Aitajuoksut: matka ≤ 80 m → `track_straight` tai `track_oval`; muuten vain `track_oval`.
-- Kenttälajit kuten nyt (kuula, kiekko, moukari, keihäs, hyppylajit).
-- Viesti/relay: aina `track_oval` (tarkistetaan ENNEN matkanparserointia, koska "4x60m viesti" parsiutuu 60 metriksi).
-- Tavalliset juoksut: matka ≤ 100 m → straight tai oval; matka ≥ 101 m → vain `track_oval`. **Erityisesti 200 m ei enää salli `track_straight`.**
+### 1. Palauta saman ikäluokan kova rajoite — `src/lib/planner-solver.ts`
+- `AgeState` takaisin yhteen kenttään: `busyUntil: number`.
+- Poista `segUsesTrack`-haarautuminen `ageBusyUntil`-luvussa ja kirjoituksessa.
 
-`parseDistanceM` säilytetään ennallaan; viesti-lyhenne ohitetaan jo ennen matkatarkistusta, joten "4x60m" päätyy oikein ovaalille.
+### 2. Korjaa sijoitusjärjestys — `src/lib/planner-solver.ts` sort-vaihe
+- Lisää lyhyille suora-sprinteille (≤100 m, ei viesti) ryhmäavain joka sijoittaa ne ennen ovaalilajeja.
+- Käytä numeerista distance-vertailua merkkijonovertailun sijaan.
+- Säilytä saman eventId:n vaihejärjestys (heats → final_a → final_b) sekundäärisenä.
 
-## Muutos 2 — `src/lib/planner-solver.ts` (oval/straight-keskinäislukitus)
+### 3. Salli raahaus toiselle suorituspaikalle — `src/components/planner/PlannerFullGantt.tsx`
+- `dragRef`: lisää `origVenueId`.
+- `onPointerMove`: laske myös `dy` ja seuraa visuaalisesti minkä venue-rivin päällä kursori on (lue `data-venue-id` lähimmästä rivielementistä `document.elementFromPoint`-kutsulla tai elementtiraadasta).
+- `onPointerUp`: jos venue muuttui, kutsu mutaatiota joka päivittää `venue_id` + `starts_at` + `ends_at` + `auto_generated:false`.
+- Validointi: estä pudotus jos uusi venue.kind ei sovi lajille (`isVenueForEvent`) — näytä toast.
+- Varmista että venue-rivit kantavat `data-venue-id`-attribuuttia (lisää tarvittaessa renderöintiin).
 
-Lisätään uusi tilataulukko `ovalBusy: Array<{ s, e }>` ja `straightBusy: Array<{ s, e }>` solver-funktion sisälle (samaan paikkaan kuin muutkin tilakoneet, ~rivi 213).
+### 4. Älä koske
+- vaihejärjestyslogiikkaan, kestolaskentaan, palautusaikoihin
+- `isVenueForEvent`-säännöstöön
+- `trackLockoutUntil`-toteutukseen (käyttäjän pyyntö pysyy: 200 m+ varaa suorat)
+- `final_b` `sameVenueAsPhase` + `maxGapAfterPhaseMin` -sääntöihin
 
-Apufunktio `kindOfVenueId(id)` käyttää olemassa olevaa `venueKindById`-mappia.
-
-Sijoitusvaiheessa (sisempi for-silmukka, ~rivi 303-325) `groupBlockUntil`-tarkistuksen rinnalle lisätään `trackLockoutUntil(cand, candidateStart, candEnd)`:
-
-- Jos kandidaattipaikoissa on `track_oval` → tarkista ettei `straightBusy` sisällä päällekkäistä jaksoa; jos sisältää, palauta `Math.min(...päällekkäisten.e)`.
-- Jos kandidaattipaikoissa on `track_straight` → tarkista vastaavasti `ovalBusy`.
-- Muuten 0.
-
-Jos `trackLockoutUntil > 0`, `candidateStart` viivytetään samalla mekanismilla kuin `blocked`-haarassa nyt.
-
-Sijoituksen lopuksi (~rivi 346-350) kun segmentti merkitään paikatuksi:
-
-- Jos jokin valittu venue on `track_oval` → `ovalBusy.push({ s: candidateStart, e: segEnd })`.
-- Jos jokin on `track_straight` → `straightBusy.push({ s: candidateStart, e: segEnd })`.
-
-Tämä on minimaalinen lisäys olemassa olevan `groupBlockUntil`-mallin viereen — ei kosketa vaihejärjestyslogiikkaa, kestoja, palautusaikoja eikä ikäluokkien busy-laskentaa.
-
-## Verifiointi
-
-1. Aja YAG (kopio) -generointi.
-2. Vertaa varoituksien määrää edelliseen ajoon.
-3. Tarkasta aikataulusta:
-   - T13 60 m ja T13 200 m eivät enää päällekkäin (200 m ei voi sijaita track_straight-paikalla)
-   - Kun jokin ikäluokka juoksee 200 m+ ovaalilla, mikään toinen juoksu ei ole samaan aikaan suoralla
-   - Kaksi suoraa sprinttiä (60 m + 60 m / 60 m + 100 m) voi olla yhtä aikaa, kun ovaali on vapaa.
-4. Raportoi käyttäjälle: varoituksien määrä ja konkreettiset esimerkit aikataulusta.
-
-## Rajaukset
-
-- EI muuteta phase/heat-logiikkaa, kestolaskentaa, palautusaikoja eikä konfliktiryhmien API:a.
-- EI lisätä automaattista konfliktiryhmää tietokantaan — sääntö elää solverin sisällä, koska ovaali ja suorat ovat fysikaalisesti aina sama rakenne.
-- Yksikkötestit lisätään kommenttina `planner-defaults.ts`-tiedoston loppuun (tai erilliseen testiin jos sellainen on olemassa — tarkistetaan build-modessa).
+### 5. Verifiointi
+- Aja YAG (kopio) -generointi: warnings-määrä, "Sama ikäryhmä päällekkäin" (odotetaan 0), "ei mahdu" 60 m -lajeille (odotetaan 0), T13 60m aidat A/B-gap (≤2 min).
+- Testaa manuaalisesti: raahaa yksi laji toiselle suorituspaikalle Gantt-näkymässä ja varmista että muutos tallentuu.

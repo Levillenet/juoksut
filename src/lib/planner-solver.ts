@@ -90,10 +90,9 @@ interface VenueState {
 }
 
 interface AgeState {
-  /** Saman ikäluokan rata- ja kentälajit saavat olla rinnakkain
-   * (eri urheilijat), mutta kaksi rataa tai kaksi kenttää eivät. */
-  trackBusyUntil: number;
-  fieldBusyUntil: number;
+  /** Saman ikäluokan urheilijat ovat tyypillisesti useammassa lajissa
+   * (rata + kenttä), joten yksi yhteinen aikajana riittää. */
+  busyUntil: number;
 }
 
 export function solve(input: SolverInput): SolverResult {
@@ -188,11 +187,34 @@ export function solve(input: SolverInput): SolverResult {
   const phaseOrder = (p: SchedulePhase): number =>
     p === "heats" ? 0 : p === "final_a" ? 1 : p === "final_b" ? 2 : 0;
 
+  // Lajiluokittelu järjestämistä varten.
+  // Bucket 0 = lyhyet suorajuoksut (≤100m, ei viesti) → sijoitetaan ensin,
+  //            jotta ne ehtivät suorille ennen kuin ovaalilajit lukitsevat radan.
+  // Bucket 1 = muut juoksut (ovaalia käyttävät) — lyhimmästä matkasta alkaen.
+  // Bucket 2 = kenttälajit.
+  const isRelayName = (name: string) => /viesti|relay|^\s*\d+\s*x/i.test(name);
+  const segBucket = (seg: Segment): number => {
+    const d = parseDistanceM(seg.eventName);
+    if (d == null) return 2;
+    if (!isRelayName(seg.eventName) && d <= 100) return 0;
+    return 1;
+  };
+  const segDistance = (seg: Segment): number =>
+    parseDistanceM(seg.eventName) ?? Number.MAX_SAFE_INTEGER;
+
   // 2) Järjestys:
   //   - Saman eventin vaiheet aina heats → final_a → final_b (kova rajoite).
-  //   - Muuten ryhmittele saman matkan juoksulajit; pisin & rinnakkaisin ensin.
+  //   - Bucket: lyhyet sprintit ensin, sitten muut juoksut (matka ↑), sitten kenttä.
+  //   - Saman bucketin sisällä numeerinen matka (60 ennen 200), sitten groupKey,
+  //     ja lopuksi pisimmät & rinnakkaisimmat ensin.
   segments.sort((a, b) => {
     if (a.eventId === b.eventId) return phaseOrder(a.phase) - phaseOrder(b.phase);
+    const ba = segBucket(a);
+    const bb = segBucket(b);
+    if (ba !== bb) return ba - bb;
+    const da = segDistance(a);
+    const db = segDistance(b);
+    if (da !== db) return da - db;
     if (a.groupKey !== b.groupKey) return a.groupKey.localeCompare(b.groupKey);
     return b.durationMin * b.needsStations - a.durationMin * a.needsStations;
   });
@@ -305,11 +327,8 @@ export function solve(input: SolverInput): SolverResult {
       if (seg.allowedDays && !seg.allowedDays.has(win.date)) continue;
 
       const setupMs = seg.setupBeforeMin * 60000;
-      const segUsesTrack = segIsRun;
       const ageSt = ageStates.get(seg.ageClass);
-      const ageBusyUntil = segUsesTrack
-        ? (ageSt?.trackBusyUntil ?? 0)
-        : (ageSt?.fieldBusyUntil ?? 0);
+      const ageBusyUntil = ageSt?.busyUntil ?? 0;
       let prevEventEnd = seg.afterEventIds
         .map((id) => (eventEnds.get(id) ?? 0) + seg.recoveryAfterPrev * 60000)
         .reduce((a, b) => Math.max(a, b), 0);
@@ -384,10 +403,9 @@ export function solve(input: SolverInput): SolverResult {
           straightBusy.push({ s: candidateStart, e: segEnd });
         }
       }
-      const prevAge = ageStates.get(seg.ageClass) ?? { trackBusyUntil: 0, fieldBusyUntil: 0 };
+      const prevAge = ageStates.get(seg.ageClass) ?? { busyUntil: 0 };
       ageStates.set(seg.ageClass, {
-        trackBusyUntil: segUsesTrack ? segEnd : prevAge.trackBusyUntil,
-        fieldBusyUntil: segUsesTrack ? prevAge.fieldBusyUntil : segEnd,
+        busyUntil: Math.max(prevAge.busyUntil, segEnd),
       });
       const prevEnd = eventEnds.get(seg.eventId) ?? 0;
       eventEnds.set(seg.eventId, Math.max(prevEnd, segEnd));
