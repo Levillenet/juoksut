@@ -783,11 +783,13 @@ export function PlannerFullGantt({
         <TimeAxis />
         <Section
           title="Suorituspaikkakohtainen aikataulu"
+          section="venue"
           rows={venueRows}
           itemsForRow={(vid) => dayItems.filter((s) => s.venue_id === vid)}
         />
         <Section
           title="Ikäryhmäkohtainen aikataulu"
+          section="age"
           rows={ageRows}
           itemsForRow={(age) =>
             dayItems.filter((s) => evMap.get(s.plan_event_id)?.age_class === age)
