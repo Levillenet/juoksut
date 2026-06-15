@@ -331,12 +331,15 @@ export function solve(input: SolverInput): SolverResult {
         if (ready.length >= seg.needsStations) {
           const cand = ready.slice(0, seg.needsStations);
           const candEnd = candidateStart + seg.durationMin * 60000;
-          const blocked = groupBlockUntil(cand.map((v) => v.id), candidateStart, candEnd);
-          if (blocked === 0) {
+          const candIds = cand.map((v) => v.id);
+          const blocked = groupBlockUntil(candIds, candidateStart, candEnd);
+          const lockout = trackLockoutUntil(candIds, candidateStart, candEnd);
+          const worst = Math.max(blocked, lockout);
+          if (worst === 0) {
             placedVenues = cand;
             break;
           }
-          candidateStart = blocked;
+          candidateStart = worst;
           if (candidateStart > win.endMs) break;
           continue;
         }
