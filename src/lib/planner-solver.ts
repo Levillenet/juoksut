@@ -349,7 +349,11 @@ export function solve(input: SolverInput): SolverResult {
         if (seg.isHurdles) v.lastWasHurdle = true;
         if (segIsRun) v.lastEventName = seg.eventName;
       }
-      ageStates.set(seg.ageClass, { busyUntil: segEnd });
+      const prevAge = ageStates.get(seg.ageClass) ?? { trackBusyUntil: 0, fieldBusyUntil: 0 };
+      ageStates.set(seg.ageClass, {
+        trackBusyUntil: segUsesTrack ? segEnd : prevAge.trackBusyUntil,
+        fieldBusyUntil: segUsesTrack ? prevAge.fieldBusyUntil : segEnd,
+      });
       const prevEnd = eventEnds.get(seg.eventId) ?? 0;
       eventEnds.set(seg.eventId, Math.max(prevEnd, segEnd));
       // KORJAUS 2: tallenna phase-tila final_b:tä varten.
