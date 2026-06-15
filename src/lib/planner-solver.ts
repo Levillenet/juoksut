@@ -212,6 +212,29 @@ export function solve(input: SolverInput): SolverResult {
   const phaseVenues = new Map<string, string[]>();
   const items: SolverResultItem[] = [];
 
+  // Rata/suora-keskinäislukitus: kun ovaali on käytössä (200m+), suorat ovat
+  // varattuja, ja päinvastoin. Suorat ovat fysikaalisesti osa ovaalia.
+  const ovalBusy: Array<{ s: number; e: number }> = [];
+  const straightBusy: Array<{ s: number; e: number }> = [];
+
+  const trackLockoutUntil = (candIds: string[], startMs: number, endMs: number): number => {
+    let blockUntil = 0;
+    const kinds = candIds.map((id) => venueKindById.get(id));
+    const usesOval = kinds.some((k) => k === "track_oval");
+    const usesStraight = kinds.some((k) => k === "track_straight");
+    if (usesOval) {
+      for (const b of straightBusy) {
+        if (b.s < endMs && b.e > startMs && b.e > blockUntil) blockUntil = b.e;
+      }
+    }
+    if (usesStraight) {
+      for (const b of ovalBusy) {
+        if (b.s < endMs && b.e > startMs && b.e > blockUntil) blockUntil = b.e;
+      }
+    }
+    return blockUntil;
+  };
+
   // Reset venue busy alkuun ensimmäisen ikkunan alkuun
   for (const v of venueStates) v.busyUntil = input.windows[0].startMs;
 
