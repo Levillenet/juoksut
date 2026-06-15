@@ -124,7 +124,7 @@ export function isVenueForEvent(kind: VenueKind, eventName: string): boolean {
   if (/kolmiloikka|triple/.test(n)) return kind === "jump_pit";
   if (/korkeus|high ?jump/.test(n)) return kind === "high_jump";
   if (/seiväs|seivas|pole ?vault/.test(n)) return kind === "pole_vault";
-  if (/kuula|shot/.test(n)) return kind === "shot_ring" || kind === "throw_ring" || kind === "throw_cage";
+  if (/kuula|shot/.test(n)) return kind === "shot_ring" || kind === "throw_ring";
   if (/kiekko|discus/.test(n)) return kind === "throw_cage" || kind === "throw_ring";
   if (/moukari|hammer/.test(n)) return kind === "throw_cage" || kind === "throw_ring";
   if (/keihäs|keihas|javelin/.test(n)) return kind === "throw_runway";
@@ -151,9 +151,9 @@ export function venuePreferenceRank(kind: VenueKind, eventName: string): number 
   if (/kuula|shot/.test(n)) {
     if (kind === "shot_ring") return 1;
     if (kind === "throw_ring") return 2;
-    if (kind === "throw_cage") return 3; // vältä cagea — pidä se moukarille/kiekolle
-    return 9;
+    return 9; // throw_cage ei sallittu kuulalle
   }
+
   if (/moukari|hammer/.test(n) || /kiekko|discus/.test(n)) {
     if (kind === "throw_cage") return 1;
     if (kind === "throw_ring") return 2;
