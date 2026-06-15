@@ -109,12 +109,13 @@ export function isVenueForEvent(kind: VenueKind, eventName: string): boolean {
   // matkaparsintaa, koska "4x60m viesti" parsiutuisi 60 metriksi.
   if (/viesti|relay/.test(n)) return kind === "track_oval";
 
-  // Aitajuoksut: ≤ 80 m suoralla tai ovaalilla, muuten vain ovaalilla.
+  // Kävelyt aina ovaalille.
+  if (/kävely|kavely|walk/.test(n)) return kind === "track_oval";
+
+  // Aitajuoksut: 60 m & 80 m aidat VAIN pikajuoksusuoralle. 100 m+ vain ovaalille.
   if (/aita|aidat|hurdle/.test(n)) {
     const d = parseDistanceM(n);
-    if (d != null && d <= 80) {
-      return kind === "track_straight" || kind === "track_oval";
-    }
+    if (d != null && d <= 80) return kind === "track_straight";
     return kind === "track_oval";
   }
 
@@ -128,10 +129,10 @@ export function isVenueForEvent(kind: VenueKind, eventName: string): boolean {
   if (/moukari|hammer/.test(n)) return kind === "throw_cage" || kind === "throw_ring";
   if (/keihäs|keihas|javelin/.test(n)) return kind === "throw_runway";
 
-  // Tavalliset juoksut: ≤ 100 m suoralla tai ovaalilla, 200 m+ vain ovaalilla.
+  // Tavalliset juoksut: ≤ 100 m VAIN pikajuoksusuoralle, 150 m+ vain ovaalille.
   const dist = parseDistanceM(n);
   if (dist != null) {
-    if (dist <= 100) return kind === "track_straight" || kind === "track_oval";
+    if (dist <= 100) return kind === "track_straight";
     return kind === "track_oval";
   }
 
@@ -139,21 +140,38 @@ export function isVenueForEvent(kind: VenueKind, eventName: string): boolean {
 }
 
 // Yksikkötestit isVenueForEvent-funktiolle (sanity checks):
-// console.assert(isVenueForEvent("track_straight", "T13 60m"));
-// console.assert(isVenueForEvent("track_oval", "T13 60m"));
-// console.assert(isVenueForEvent("track_straight", "T13 100m"));
-// console.assert(!isVenueForEvent("track_straight", "T13 200m"));
-// console.assert(isVenueForEvent("track_oval", "T13 200m"));
-// console.assert(!isVenueForEvent("track_straight", "T13 400m"));
-// console.assert(!isVenueForEvent("track_straight", "T13 800m"));
-// console.assert(isVenueForEvent("track_oval", "T13 800m"));
-// console.assert(isVenueForEvent("track_straight", "T13 60m aidat"));
-// console.assert(isVenueForEvent("track_straight", "T13 80m aidat"));
-// console.assert(!isVenueForEvent("track_straight", "M15 100m aidat"));
+// Lyhyet juoksut VAIN suoralla:
+// console.assert(isVenueForEvent("track_straight", "M 40m"));
+// console.assert(!isVenueForEvent("track_oval", "M 40m"));
+// console.assert(isVenueForEvent("track_straight", "M 60m"));
+// console.assert(!isVenueForEvent("track_oval", "M 60m"));
+// console.assert(isVenueForEvent("track_straight", "M 80m"));
+// console.assert(!isVenueForEvent("track_oval", "M 80m"));
+// console.assert(isVenueForEvent("track_straight", "M 100m"));
+// console.assert(!isVenueForEvent("track_oval", "M 100m"));
+// 60 m / 80 m aidat VAIN suoralla:
+// console.assert(isVenueForEvent("track_straight", "T11 60m aidat"));
+// console.assert(!isVenueForEvent("track_oval", "T11 60m aidat"));
+// console.assert(isVenueForEvent("track_straight", "T14 80m aidat"));
+// console.assert(!isVenueForEvent("track_oval", "T14 80m aidat"));
+// 150 m+ ja 100 m+ aidat VAIN ovaalilla:
+// console.assert(isVenueForEvent("track_oval", "M 150m"));
+// console.assert(!isVenueForEvent("track_straight", "M 150m"));
+// console.assert(isVenueForEvent("track_oval", "M 200m"));
+// console.assert(!isVenueForEvent("track_straight", "M 200m"));
+// console.assert(isVenueForEvent("track_oval", "M 800m"));
+// console.assert(!isVenueForEvent("track_straight", "M 800m"));
 // console.assert(isVenueForEvent("track_oval", "M15 100m aidat"));
+// console.assert(!isVenueForEvent("track_straight", "M15 100m aidat"));
+// console.assert(isVenueForEvent("track_oval", "T14 300m aidat"));
 // console.assert(!isVenueForEvent("track_straight", "T14 300m aidat"));
-// console.assert(!isVenueForEvent("track_straight", "T11 4x60m aitaviesti"));
+// Viestit ja kävelyt aina ovaalille:
+// console.assert(isVenueForEvent("track_oval", "M 4x100m viesti"));
+// console.assert(!isVenueForEvent("track_straight", "M 4x100m viesti"));
 // console.assert(isVenueForEvent("track_oval", "T11 4x60m aitaviesti"));
+// console.assert(!isVenueForEvent("track_straight", "T11 4x60m aitaviesti"));
+// console.assert(isVenueForEvent("track_oval", "P11 1000m kävely"));
+// console.assert(!isVenueForEvent("track_straight", "P11 1000m kävely"));
 
 /**
  * Ohjearvo "aika per erä" (min) eri juoksumatkoille — YAG 2022.
