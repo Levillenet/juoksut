@@ -380,10 +380,9 @@ export function solve(input: SolverInput): SolverResult {
           straightBusy.push({ s: candidateStart, e: segEnd });
         }
       }
-      const prevAge = ageStates.get(seg.ageClass) ?? { trackBusyUntil: 0, fieldBusyUntil: 0 };
+      const prevAge = ageStates.get(seg.ageClass) ?? { busyUntil: 0 };
       ageStates.set(seg.ageClass, {
-        trackBusyUntil: segUsesTrack ? segEnd : prevAge.trackBusyUntil,
-        fieldBusyUntil: segUsesTrack ? prevAge.fieldBusyUntil : segEnd,
+        busyUntil: Math.max(prevAge.busyUntil, segEnd),
       });
       const prevEnd = eventEnds.get(seg.eventId) ?? 0;
       eventEnds.set(seg.eventId, Math.max(prevEnd, segEnd));
