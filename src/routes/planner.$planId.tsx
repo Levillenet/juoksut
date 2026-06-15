@@ -768,6 +768,26 @@ function VenuesTab({
         </div>
       </div>
 
+      <div className="rounded-md border border-muted bg-muted/30 p-3 text-xs leading-relaxed">
+        <div className="mb-1 font-semibold">Suorituspaikkojen tyypit:</div>
+        <ul className="ml-4 list-disc space-y-0.5">
+          <li><strong>Juoksusuora:</strong> 40 m, 60 m, 80 m, 100 m, 60 m aidat, 80 m aidat (VAIN nämä)</li>
+          <li><strong>Ovaali (rata):</strong> 150 m+, viestit, 100 m+ aidat, kävelyt</li>
+          <li><strong>Pituus/kolmiloikka:</strong> pituushyppy, kolmiloikka</li>
+          <li><strong>Korkeushyppy:</strong> korkeushyppy</li>
+          <li><strong>Seiväshyppy:</strong> seiväshyppy</li>
+          <li><strong>Kuulakehä:</strong> kuula (vain tämä)</li>
+          <li><strong>Moukari-/kiekkohäkki:</strong> kiekko, moukari</li>
+          <li><strong>Heittovauhdinotto:</strong> keihäs</li>
+        </ul>
+        <div className="mt-2 text-muted-foreground">
+          <strong>Vinkki:</strong> 100 m ja lyhyemmät juoksulajit menevät AINA suoralle — ne eivät voi
+          sijoittua ovaaliradalle. Jos kisassa on lyhyitä juoksulajeja, varmista että olet luonut
+          vähintään yhden juoksusuora-paikan.
+        </div>
+      </div>
+
+
       {hasStadium && (
         <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs">
           <div className="font-semibold">
