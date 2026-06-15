@@ -212,6 +212,29 @@ export function solve(input: SolverInput): SolverResult {
   const phaseVenues = new Map<string, string[]>();
   const items: SolverResultItem[] = [];
 
+  // Rata/suora-keskinäislukitus: kun ovaali on käytössä (200m+), suorat ovat
+  // varattuja, ja päinvastoin. Suorat ovat fysikaalisesti osa ovaalia.
+  const ovalBusy: Array<{ s: number; e: number }> = [];
+  const straightBusy: Array<{ s: number; e: number }> = [];
+
+  const trackLockoutUntil = (candIds: string[], startMs: number, endMs: number): number => {
+    let blockUntil = 0;
+    const kinds = candIds.map((id) => venueKindById.get(id));
+    const usesOval = kinds.some((k) => k === "track_oval");
+    const usesStraight = kinds.some((k) => k === "track_straight");
+    if (usesOval) {
+      for (const b of straightBusy) {
+        if (b.s < endMs && b.e > startMs && b.e > blockUntil) blockUntil = b.e;
+      }
+    }
+    if (usesStraight) {
+      for (const b of ovalBusy) {
+        if (b.s < endMs && b.e > startMs && b.e > blockUntil) blockUntil = b.e;
+      }
+    }
+    return blockUntil;
+  };
+
   // Reset venue busy alkuun ensimmäisen ikkunan alkuun
   for (const v of venueStates) v.busyUntil = input.windows[0].startMs;
 
@@ -308,12 +331,15 @@ export function solve(input: SolverInput): SolverResult {
         if (ready.length >= seg.needsStations) {
           const cand = ready.slice(0, seg.needsStations);
           const candEnd = candidateStart + seg.durationMin * 60000;
-          const blocked = groupBlockUntil(cand.map((v) => v.id), candidateStart, candEnd);
-          if (blocked === 0) {
+          const candIds = cand.map((v) => v.id);
+          const blocked = groupBlockUntil(candIds, candidateStart, candEnd);
+          const lockout = trackLockoutUntil(candIds, candidateStart, candEnd);
+          const worst = Math.max(blocked, lockout);
+          if (worst === 0) {
             placedVenues = cand;
             break;
           }
-          candidateStart = blocked;
+          candidateStart = worst;
           if (candidateStart > win.endMs) break;
           continue;
         }
@@ -347,6 +373,16 @@ export function solve(input: SolverInput): SolverResult {
         v.busyUntil = segEnd;
         if (seg.isHurdles) v.lastWasHurdle = true;
         if (segIsRun) v.lastEventName = seg.eventName;
+      }
+      // Rata/suora-lukitus: merkitse oval- ja straight-käyttö samanaikaislukitusta varten.
+      {
+        const kinds = placedVenues.map((v) => venueKindById.get(v.id));
+        if (kinds.some((k) => k === "track_oval")) {
+          ovalBusy.push({ s: candidateStart, e: segEnd });
+        }
+        if (kinds.some((k) => k === "track_straight")) {
+          straightBusy.push({ s: candidateStart, e: segEnd });
+        }
       }
       const prevAge = ageStates.get(seg.ageClass) ?? { trackBusyUntil: 0, fieldBusyUntil: 0 };
       ageStates.set(seg.ageClass, {

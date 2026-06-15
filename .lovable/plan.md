@@ -1,54 +1,56 @@
-## Diagnoosi: miksi 80 varoitusta jää venue-lisäysten jälkeenkin
 
-Tarkistin tietokannan, solverin ja datan. Venue-lisäys oli tarpeen, mutta varoitukset eivät vähene, koska **kaksi muuta juurta** estävät sijoittelun. Ne on hoidettava ennen kuin lisäpaikkojen vaikutus näkyy.
+# Rata-/suora-konfliktin korjaus
 
-### Juurisyy 1 — 800 m on virheellisesti `final_format = a_b` (DATA)
+## Diagnoosi
 
-Selittää 19/80 varoituksesta (kaikki `800m final_a` ja `final_b` rivit, lisäksi `T9 800m kävely`).
+Tällä hetkellä `isVenueForEvent` sallii kaikki <300 m juoksut sekä `track_straight` että `track_oval` -tyypille. Tämä on liian löysä: 200 m vaatii kaarteen + etusuoran eli koko ovaalin, joten se ei voi koskaan olla suoralla. Lisäksi solver ei tunne käsitettä "ovaalin käyttö lukitsee suorat", joten 200 m+ menee samalle ajalle 60 m:n kanssa eri "paikoille", mikä on fyysisesti mahdotonta jos suorat ovat osa ovaalia.
 
-Todellisessa YAG 2026:ssa 800 m juostaan suorana (yksi tai useampi tasaerä), ei A/B-finaalimallilla. Nyt jokaiselle 800 m -lajille luodaan `heats + final_a + final_b` -segmentit. Ovaali on yksi rata → 11 ikäluokan heats syövät päivän, ja final_a/final_b -segmenteille ei jää tilaa.
+Käyttäjän pyynnön mukaan tehdään tarkalleen kaksi muutosta — ei muuta solver-logiikkaa.
 
-Korjaus on pelkkä datapäivitys:
-```sql
-UPDATE plan_events
-  SET final_format = 'direct'
-  WHERE plan_id = '<plan>'
-    AND (event_name ILIKE '%800m%' OR event_name ILIKE '%800 m%' OR event_name ILIKE '%2000m kävely%');
-```
-(Tarkista vielä erikseen onko `4x600m viesti` ja muut kestävyysjuoksut myös virheellisesti `a_b` — jos ovat, sama korjaus niihin.)
+## Muutos 1 — `src/lib/planner-defaults.ts`
 
-### Juurisyy 2 — `ageBusyUntil` pakottaa kaikki saman ikäluokan lajit peräkkäin (SOLVER)
+Korvataan `isVenueForEvent` käyttäjän antamalla logiikalla, hieman kondensoituna:
 
-Selittää loput ~61 varoitusta (kaikki kentälajien `single` -rivit).
+- Aitajuoksut: matka ≤ 80 m → `track_straight` tai `track_oval`; muuten vain `track_oval`.
+- Kenttälajit kuten nyt (kuula, kiekko, moukari, keihäs, hyppylajit).
+- Viesti/relay: aina `track_oval` (tarkistetaan ENNEN matkanparserointia, koska "4x60m viesti" parsiutuu 60 metriksi).
+- Tavalliset juoksut: matka ≤ 100 m → straight tai oval; matka ≥ 101 m → vain `track_oval`. **Erityisesti 200 m ei enää salli `track_straight`.**
 
-Solverissä jokainen ikäluokka saa yhden globaalin "varattu kunnes" -aikaleiman (`ageStates.busyUntil`). Lajit järjestetään `groupKey`-mukaan: ensin aidat (AAA), sitten juoksut (BBB), viimeisenä kenttälajit (CCC singlet). Käytännössä T13/T11/T14 yms. saavat ensin pituutta `ageBusyUntil`-arvolle radoista (60m, 60m aidat, 200m, 800m, viestit), ja `ageBusyUntil` voi siirtyä jo päivän 3 iltapäivään. Sen jälkeen ko. ikäluokan kentälajisinglet (Korkeus, Pituus, Kuula, Kiekko, Keihäs, Seiväs, Moukari, Kolmiloikka) eivät enää löydä mistään päivästä tilaa vaikka venue olisi vapaa — eli "ei mahdu mihinkään sallittuun päivään".
+`parseDistanceM` säilytetään ennallaan; viesti-lyhenne ohitetaan jo ennen matkatarkistusta, joten "4x60m" päätyy oikein ovaalille.
 
-Tämä ei vastaa todellisuutta: oikeassa YAG:ssa saman ikäluokan korkeushyppy ja juoksu ovat usein **samaan aikaan**, koska eri urheilijat osallistuvat eri lajeihin. `ageBusyUntil`-rajoitus on liian kova.
+## Muutos 2 — `src/lib/planner-solver.ts` (oval/straight-keskinäislukitus)
 
-Tarkistus: T13 14 lajia, joiden summakesto ~17 h. Mahtuisi hyvin 3 päivän 32 h ikkunaan, jos rinnakkaisuus radan ja kentän välillä sallitaan. Nyt summa peräkkäin täyttää päivän 3 lopun, ja viimeiset singlet hylätään.
+Lisätään uusi tilataulukko `ovalBusy: Array<{ s, e }>` ja `straightBusy: Array<{ s, e }>` solver-funktion sisälle (samaan paikkaan kuin muutkin tilakoneet, ~rivi 213).
 
-### Korjausehdotus (yksi pieni koodimuutos)
+Apufunktio `kindOfVenueId(id)` käyttää olemassa olevaa `venueKindById`-mappia.
 
-`src/lib/planner-solver.ts`:n `ageStates`-logiikka muutetaan niin, että saman ikäluokan **rata- ja kenttälaji saavat olla rinnakkain**, mutta kaksi rataa tai kaksi kenttää eivät:
+Sijoitusvaiheessa (sisempi for-silmukka, ~rivi 303-325) `groupBlockUntil`-tarkistuksen rinnalle lisätään `trackLockoutUntil(cand, candidateStart, candEnd)`:
 
-- Pidetään kaksi erillistä `busyUntil`-tilaa per ikäluokka: `track` ja `field` (luokitus `isRunningEvent(eventName)`:lla, joka on jo tiedostossa).
-- Segmentin sijoittelussa `ageBusyUntil` luetaan oikeasta "raidasta": juoksulla rata-busyUntil, kentällä field-busyUntil.
-- Päivittäminen `ageStates.set(...)` -kohdassa kohdistuu samaan raitaan.
+- Jos kandidaattipaikoissa on `track_oval` → tarkista ettei `straightBusy` sisällä päällekkäistä jaksoa; jos sisältää, palauta `Math.min(...päällekkäisten.e)`.
+- Jos kandidaattipaikoissa on `track_straight` → tarkista vastaavasti `ovalBusy`.
+- Muuten 0.
 
-Tämä säilyttää reaaliset rajoitukset (kaksi 60m-erää eivät kohtaa T13:lla yhtä aikaa) mutta vapauttaa kentälajit jonosta. Toinen vaihtoehto olisi sallia `N` rinnakkaista lajia per ikäluokka konfiguroitavasti — vähemmän tarkka, mutta yksinkertaisempi.
+Jos `trackLockoutUntil > 0`, `candidateStart` viivytetään samalla mekanismilla kuin `blocked`-haarassa nyt.
 
-Sortin järjestys voidaan jättää ennalleen — ratoja kannattaa silti sijoittaa ensin.
+Sijoituksen lopuksi (~rivi 346-350) kun segmentti merkitään paikatuksi:
 
-### Vaiheittainen toteutus
+- Jos jokin valittu venue on `track_oval` → `ovalBusy.push({ s: candidateStart, e: segEnd })`.
+- Jos jokin on `track_straight` → `straightBusy.push({ s: candidateStart, e: segEnd })`.
 
-1. **DATA**: päivitä 800 m -tapahtumat `final_format = 'direct'`. Aja generaattori. Odotettu vaikutus: 19 → 0 800m-varoitusta, mutta ~61 single-varoitusta jää.
-2. **KOODI**: jaa `ageStates` `track`/`field`-raitoihin solverissa. Aja generaattori uudestaan. Odotettu vaikutus: ~61 → 0–5 single-varoitusta.
-3. **RAPORTOI**: jäljellä olevien varoitusten määrä ja luettelo, sekä otos sijoittelusta (T13 60m + Korkeus + Pituus + Kuula).
+Tämä on minimaalinen lisäys olemassa olevan `groupBlockUntil`-mallin viereen — ei kosketa vaihejärjestyslogiikkaa, kestoja, palautusaikoja eikä ikäluokkien busy-laskentaa.
 
-### Mitä ei tehdä
+## Verifiointi
 
-- Ei lisätä uusia venueja (nykyiset riittävät kun ageStates-rajoitus löystyy).
-- Ei muuteta `planner-rules.ts`:n kestolaskentaa eikä konfliktiryhmiä.
-- Ei kosketa muiden ikäluokkien `allowed_days`-arvoja.
+1. Aja YAG (kopio) -generointi.
+2. Vertaa varoituksien määrää edelliseen ajoon.
+3. Tarkasta aikataulusta:
+   - T13 60 m ja T13 200 m eivät enää päällekkäin (200 m ei voi sijaita track_straight-paikalla)
+   - Kun jokin ikäluokka juoksee 200 m+ ovaalilla, mikään toinen juoksu ei ole samaan aikaan suoralla
+   - Kaksi suoraa sprinttiä (60 m + 60 m / 60 m + 100 m) voi olla yhtä aikaa, kun ovaali on vapaa.
+4. Raportoi käyttäjälle: varoituksien määrä ja konkreettiset esimerkit aikataulusta.
 
-Kun hyväksyt, aloitan kohdasta 1.
+## Rajaukset
+
+- EI muuteta phase/heat-logiikkaa, kestolaskentaa, palautusaikoja eikä konfliktiryhmien API:a.
+- EI lisätä automaattista konfliktiryhmää tietokantaan — sääntö elää solverin sisällä, koska ovaali ja suorat ovat fysikaalisesti aina sama rakenne.
+- Yksikkötestit lisätään kommenttina `planner-defaults.ts`-tiedoston loppuun (tai erilliseen testiin jos sellainen on olemassa — tarkistetaan build-modessa).

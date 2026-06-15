@@ -104,13 +104,21 @@ export function buildDefaultVenueRows(
 /** Onko laji sellainen, joka tyypillisesti tehdään tällä venue-tyypillä. */
 export function isVenueForEvent(kind: VenueKind, eventName: string): boolean {
   const n = (eventName ?? "").toLowerCase();
-  // Aidat: lyhyet (≤110 m) molemmilla, pitkät (300/400 m) vain ovaalilla.
+
+  // Viestit aina ovaalille (käyvät kaarteen kautta). Tarkistetaan ENNEN
+  // matkaparsintaa, koska "4x60m viesti" parsiutuisi 60 metriksi.
+  if (/viesti|relay/.test(n)) return kind === "track_oval";
+
+  // Aitajuoksut: ≤ 80 m suoralla tai ovaalilla, muuten vain ovaalilla.
   if (/aita|aidat|hurdle/.test(n)) {
-    const m = n.match(/(\d{2,4})\s*m\b/);
-    const d = m ? parseInt(m[1], 10) : null;
-    if (d != null && d >= 200) return kind === "track_oval";
-    return kind === "track_straight" || kind === "track_oval";
+    const d = parseDistanceM(n);
+    if (d != null && d <= 80) {
+      return kind === "track_straight" || kind === "track_oval";
+    }
+    return kind === "track_oval";
   }
+
+  // Kenttälajit
   if (/pituus|long ?jump/.test(n)) return kind === "jump_pit";
   if (/kolmiloikka|triple/.test(n)) return kind === "jump_pit";
   if (/korkeus|high ?jump/.test(n)) return kind === "high_jump";
@@ -119,16 +127,33 @@ export function isVenueForEvent(kind: VenueKind, eventName: string): boolean {
   if (/kiekko|discus/.test(n)) return kind === "throw_cage" || kind === "throw_ring";
   if (/moukari|hammer/.test(n)) return kind === "throw_cage" || kind === "throw_ring";
   if (/keihäs|keihas|javelin/.test(n)) return kind === "throw_runway";
-  // Juoksulajit: lyhyet (< 300 m) molemmilla; pitkät vain ovaalilla.
-  const distMatch = n.match(/(\d+(?:[.,]\d+)?)\s*(km|m)\b/);
-  if (distMatch) {
-    const num = parseFloat(distMatch[1].replace(",", "."));
-    const meters = distMatch[2] === "km" ? num * 1000 : num;
-    if (meters >= 300) return kind === "track_oval";
-    return kind === "track_straight" || kind === "track_oval";
+
+  // Tavalliset juoksut: ≤ 100 m suoralla tai ovaalilla, 200 m+ vain ovaalilla.
+  const dist = parseDistanceM(n);
+  if (dist != null) {
+    if (dist <= 100) return kind === "track_straight" || kind === "track_oval";
+    return kind === "track_oval";
   }
+
   return kind === "other";
 }
+
+// Yksikkötestit isVenueForEvent-funktiolle (sanity checks):
+// console.assert(isVenueForEvent("track_straight", "T13 60m"));
+// console.assert(isVenueForEvent("track_oval", "T13 60m"));
+// console.assert(isVenueForEvent("track_straight", "T13 100m"));
+// console.assert(!isVenueForEvent("track_straight", "T13 200m"));
+// console.assert(isVenueForEvent("track_oval", "T13 200m"));
+// console.assert(!isVenueForEvent("track_straight", "T13 400m"));
+// console.assert(!isVenueForEvent("track_straight", "T13 800m"));
+// console.assert(isVenueForEvent("track_oval", "T13 800m"));
+// console.assert(isVenueForEvent("track_straight", "T13 60m aidat"));
+// console.assert(isVenueForEvent("track_straight", "T13 80m aidat"));
+// console.assert(!isVenueForEvent("track_straight", "M15 100m aidat"));
+// console.assert(isVenueForEvent("track_oval", "M15 100m aidat"));
+// console.assert(!isVenueForEvent("track_straight", "T14 300m aidat"));
+// console.assert(!isVenueForEvent("track_straight", "T11 4x60m aitaviesti"));
+// console.assert(isVenueForEvent("track_oval", "T11 4x60m aitaviesti"));
 
 /**
  * Ohjearvo "aika per erä" (min) eri juoksumatkoille — YAG 2022.
