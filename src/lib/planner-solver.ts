@@ -354,10 +354,19 @@ export function solve(input: SolverInput): SolverResult {
       let placedVenues: VenueState[] = [];
 
       for (let attempts = 0; attempts < 400; attempts++) {
-        const sorted = eligibleStates.slice().sort((a, b) => freeAt(a) - freeAt(b));
+        // Järjestys: ensin spesifisin suorituspaikka (preference rank ASC),
+        // sitten aikaisimmin vapautuva. Näin kuula menee shot_ring:ille ja
+        // jättää throw_cage:n moukarille/kiekolle.
+        const sorted = eligibleStates.slice().sort((a, b) => {
+          const ra = venuePreferenceRank(venueKindById.get(a.id)!, seg.eventName);
+          const rb = venuePreferenceRank(venueKindById.get(b.id)!, seg.eventName);
+          if (ra !== rb) return ra - rb;
+          return freeAt(a) - freeAt(b);
+        });
         const ready = sorted.filter(
           (v) => freeAt(v) <= candidateStart - setupMs && candidateStart >= win.startMs,
         );
+
         if (ready.length >= seg.needsStations) {
           const cand = ready.slice(0, seg.needsStations);
           const candEnd = candidateStart + seg.durationMin * 60000;
