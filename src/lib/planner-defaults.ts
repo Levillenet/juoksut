@@ -151,9 +151,9 @@ export function venuePreferenceRank(kind: VenueKind, eventName: string): number 
   if (/kuula|shot/.test(n)) {
     if (kind === "shot_ring") return 1;
     if (kind === "throw_ring") return 2;
-    if (kind === "throw_cage") return 3; // vältä cagea — pidä se moukarille/kiekolle
-    return 9;
+    return 9; // throw_cage ei sallittu kuulalle
   }
+
   if (/moukari|hammer/.test(n) || /kiekko|discus/.test(n)) {
     if (kind === "throw_cage") return 1;
     if (kind === "throw_ring") return 2;
