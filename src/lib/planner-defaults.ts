@@ -139,6 +139,31 @@ export function isVenueForEvent(kind: VenueKind, eventName: string): boolean {
   return kind === "other";
 }
 
+/**
+ * Mitä spesifisempi suorituspaikka, sitä pienempi arvo (parempi).
+ * Käytetään solverissa kun lajilla on useita kelvollisia suorituspaikkoja
+ * — esim. kuula voi käyttää sekä shot_ring että throw_cage, mutta cage on
+ * varattava ensisijaisesti moukarille/kiekolle (joilla ei muuta vaihtoehtoa).
+ * Pienempi rank = käytetään ensin.
+ */
+export function venuePreferenceRank(kind: VenueKind, eventName: string): number {
+  const n = (eventName ?? "").toLowerCase();
+  if (/kuula|shot/.test(n)) {
+    if (kind === "shot_ring") return 1;
+    if (kind === "throw_ring") return 2;
+    if (kind === "throw_cage") return 3; // vältä cagea — pidä se moukarille/kiekolle
+    return 9;
+  }
+  if (/moukari|hammer/.test(n) || /kiekko|discus/.test(n)) {
+    if (kind === "throw_cage") return 1;
+    if (kind === "throw_ring") return 2;
+    return 9;
+  }
+  // Muut lajit: yksiselitteinen suorituspaikkatyyppi → kaikki samanarvoisia.
+  return 1;
+}
+
+
 // Yksikkötestit isVenueForEvent-funktiolle (sanity checks):
 // Lyhyet juoksut VAIN suoralla:
 // console.assert(isVenueForEvent("track_straight", "M 40m"));
