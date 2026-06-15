@@ -785,6 +785,14 @@ function VenuesTab({
           sijoittua ovaaliradalle. Jos kisassa on lyhyitä juoksulajeja, varmista että olet luonut
           vähintään yhden juoksusuora-paikan.
         </div>
+        <div className="mt-2 border-t pt-2">
+          <div className="mb-1 font-semibold">Track-säännöt (rinnakkaisuus):</div>
+          <ul className="ml-4 list-disc space-y-0.5">
+            <li>Useat pikajuoksusuorat → useat lyhyet juoksut rinnakkain (eri suorilla).</li>
+            <li>Ovaalirata (150 m+, viesti, kävely) lukitsee KAIKKI suorat ajaksi — vain yksi juoksu radalla kerrallaan koko kentällä.</li>
+            <li>Kenttälajit (hypyt, heitot) toimivat juoksujen rinnalla itsenäisesti.</li>
+          </ul>
+        </div>
       </div>
 
 
