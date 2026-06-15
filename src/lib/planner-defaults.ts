@@ -124,7 +124,7 @@ export function isVenueForEvent(kind: VenueKind, eventName: string): boolean {
   if (/kolmiloikka|triple/.test(n)) return kind === "jump_pit";
   if (/korkeus|high ?jump/.test(n)) return kind === "high_jump";
   if (/seiväs|seivas|pole ?vault/.test(n)) return kind === "pole_vault";
-  if (/kuula|shot/.test(n)) return kind === "shot_ring" || kind === "throw_ring" || kind === "throw_cage";
+  if (/kuula|shot/.test(n)) return kind === "shot_ring" || kind === "throw_ring";
   if (/kiekko|discus/.test(n)) return kind === "throw_cage" || kind === "throw_ring";
   if (/moukari|hammer/.test(n)) return kind === "throw_cage" || kind === "throw_ring";
   if (/keihäs|keihas|javelin/.test(n)) return kind === "throw_runway";
