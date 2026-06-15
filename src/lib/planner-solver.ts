@@ -90,10 +90,9 @@ interface VenueState {
 }
 
 interface AgeState {
-  /** Saman ikäluokan rata- ja kentälajit saavat olla rinnakkain
-   * (eri urheilijat), mutta kaksi rataa tai kaksi kenttää eivät. */
-  trackBusyUntil: number;
-  fieldBusyUntil: number;
+  /** Saman ikäluokan urheilijat ovat tyypillisesti useammassa lajissa
+   * (rata + kenttä), joten yksi yhteinen aikajana riittää. */
+  busyUntil: number;
 }
 
 export function solve(input: SolverInput): SolverResult {
