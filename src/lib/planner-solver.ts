@@ -673,5 +673,30 @@ export function detectConflicts(
     }
   }
 
+  // Track-lukitus: track_oval ja track_straight eivät saa olla yhtä aikaa.
+  // Kaksi suoraa saa olla rinnakkain — eri kind-pari aiheuttaa konfliktin.
+  const trackItems = items.filter((it) => {
+    const v = venueMap.get(it.venue_id);
+    return v && (v.kind === "track_oval" || v.kind === "track_straight");
+  });
+  for (let i = 0; i < trackItems.length; i++) {
+    for (let j = i + 1; j < trackItems.length; j++) {
+      const a = trackItems[i];
+      const b = trackItems[j];
+      const va = venueMap.get(a.venue_id);
+      const vb = venueMap.get(b.venue_id);
+      if (!va || !vb) continue;
+      if (va.kind === vb.kind) continue;
+      if (a.starts_at < b.ends_at && a.ends_at > b.starts_at) {
+        out.push({
+          id: a.id,
+          severity: "critical",
+          relatedIds: [b.id],
+          reason: `Track-lukitus rikki: ovaali ja suora samaan aikaan (${va.name} ja ${vb.name})`,
+        });
+      }
+    }
+  }
+
   return out;
 }
