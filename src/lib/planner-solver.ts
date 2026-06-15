@@ -187,11 +187,34 @@ export function solve(input: SolverInput): SolverResult {
   const phaseOrder = (p: SchedulePhase): number =>
     p === "heats" ? 0 : p === "final_a" ? 1 : p === "final_b" ? 2 : 0;
 
+  // Lajiluokittelu järjestämistä varten.
+  // Bucket 0 = lyhyet suorajuoksut (≤100m, ei viesti) → sijoitetaan ensin,
+  //            jotta ne ehtivät suorille ennen kuin ovaalilajit lukitsevat radan.
+  // Bucket 1 = muut juoksut (ovaalia käyttävät) — lyhimmästä matkasta alkaen.
+  // Bucket 2 = kenttälajit.
+  const isRelayName = (name: string) => /viesti|relay|^\s*\d+\s*x/i.test(name);
+  const segBucket = (seg: Segment): number => {
+    const d = parseDistanceM(seg.eventName);
+    if (d == null) return 2;
+    if (!isRelayName(seg.eventName) && d <= 100) return 0;
+    return 1;
+  };
+  const segDistance = (seg: Segment): number =>
+    parseDistanceM(seg.eventName) ?? Number.MAX_SAFE_INTEGER;
+
   // 2) Järjestys:
   //   - Saman eventin vaiheet aina heats → final_a → final_b (kova rajoite).
-  //   - Muuten ryhmittele saman matkan juoksulajit; pisin & rinnakkaisin ensin.
+  //   - Bucket: lyhyet sprintit ensin, sitten muut juoksut (matka ↑), sitten kenttä.
+  //   - Saman bucketin sisällä numeerinen matka (60 ennen 200), sitten groupKey,
+  //     ja lopuksi pisimmät & rinnakkaisimmat ensin.
   segments.sort((a, b) => {
     if (a.eventId === b.eventId) return phaseOrder(a.phase) - phaseOrder(b.phase);
+    const ba = segBucket(a);
+    const bb = segBucket(b);
+    if (ba !== bb) return ba - bb;
+    const da = segDistance(a);
+    const db = segDistance(b);
+    if (da !== db) return da - db;
     if (a.groupKey !== b.groupKey) return a.groupKey.localeCompare(b.groupKey);
     return b.durationMin * b.needsStations - a.durationMin * a.needsStations;
   });
