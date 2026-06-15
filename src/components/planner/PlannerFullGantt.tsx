@@ -245,15 +245,32 @@ export function PlannerFullGantt({
   const dragRef = useRef<{
     id: string;
     startX: number;
+    startY: number;
     origStart: number;
     origEnd: number;
+    origVenueId: string;
+    origRowIdx: number;
+    origTop: number;
+    barEl: HTMLElement;
+    sectionEl: HTMLElement | null;
   } | null>(null);
 
   const updateTime = useMutation({
-    mutationFn: async (p: { id: string; starts_at: string; ends_at: string }) => {
+    mutationFn: async (p: {
+      id: string;
+      starts_at: string;
+      ends_at: string;
+      venue_id?: string;
+    }) => {
+      const payload: Record<string, unknown> = {
+        starts_at: p.starts_at,
+        ends_at: p.ends_at,
+        auto_generated: false,
+      };
+      if (p.venue_id) payload.venue_id = p.venue_id;
       const { error } = await supabase
         .from("plan_schedule_items")
-        .update({ starts_at: p.starts_at, ends_at: p.ends_at, auto_generated: false })
+        .update(payload)
         .eq("id", p.id);
       if (error) throw error;
     },
@@ -285,8 +302,23 @@ export function PlannerFullGantt({
     e.preventDefault();
     const orig = new Date(item.starts_at).getTime();
     const origEnd = new Date(item.ends_at).getTime();
-    dragRef.current = { id: item.id, startX: e.clientX, origStart: orig, origEnd };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const barEl = e.currentTarget as HTMLElement;
+    const sectionEl = barEl.closest<HTMLElement>('[data-section="venue"]');
+    const origTop = parseFloat(barEl.style.top || "0");
+    const origRowIdx = Math.max(0, Math.round((origTop - 3) / ROW_HEIGHT));
+    dragRef.current = {
+      id: item.id,
+      startX: e.clientX,
+      startY: e.clientY,
+      origStart: orig,
+      origEnd,
+      origVenueId: item.venue_id,
+      origRowIdx,
+      origTop,
+      barEl,
+      sectionEl,
+    };
+    barEl.setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent) => {
     const d = dragRef.current;
@@ -298,18 +330,50 @@ export function PlannerFullGantt({
       const baseLeft = parseFloat(el.dataset.baseLeft || "0");
       el.style.left = `${baseLeft + minutes * (PX_PER_5MIN / 5)}px`;
     });
+    if (d.sectionEl) {
+      const dy = e.clientY - d.startY;
+      const rowDelta = Math.round(dy / ROW_HEIGHT);
+      const maxIdx = Math.max(0, venueRows.length - 1);
+      const newIdx = Math.min(maxIdx, Math.max(0, d.origRowIdx + rowDelta));
+      d.barEl.style.top = `${newIdx * ROW_HEIGHT + 3}px`;
+    }
   };
   const onPointerUp = () => {
     const d = dragRef.current;
     dragRef.current = null;
     if (!d) return;
-    // Read final position from one of the bars
     const el = document.querySelector<HTMLElement>(`[data-bar-id="${d.id}"]`);
     if (!el) return;
     const baseLeft = parseFloat(el.dataset.baseLeft || "0");
     const finalLeft = parseFloat(el.style.left || `${baseLeft}`);
     const minutes = Math.round((finalLeft - baseLeft) / PX_PER_5MIN) * 5;
-    if (minutes === 0) {
+
+    let newVenueId: string | undefined;
+    if (d.sectionEl) {
+      const finalTop = parseFloat(d.barEl.style.top || `${d.origTop}`);
+      const newRowIdx = Math.max(0, Math.round((finalTop - 3) / ROW_HEIGHT));
+      if (newRowIdx !== d.origRowIdx) {
+        const target = venueRows[newRowIdx];
+        if (target && target.id !== d.origVenueId) {
+          const ev = evMap.get(
+            schedule.find((s) => s.id === d.id)?.plan_event_id ?? "",
+          );
+          const targetVenue = venueMap.get(target.id);
+          if (ev && targetVenue && !isVenueForEvent(targetVenue.kind, ev.event_name)) {
+            toast.error(
+              `Lajia "${ev.event_name}" ei voi sijoittaa suorituspaikalle ${targetVenue.name}.`,
+            );
+            // Palauta visuaalinen sijainti
+            d.barEl.style.top = `${d.origTop}px`;
+            if (minutes === 0) return;
+          } else {
+            newVenueId = target.id;
+          }
+        }
+      }
+    }
+
+    if (minutes === 0 && !newVenueId) {
       onSelectItem?.(d.id);
       return;
     }
@@ -319,6 +383,7 @@ export function PlannerFullGantt({
       id: d.id,
       starts_at: newStart.toISOString(),
       ends_at: newEnd.toISOString(),
+      venue_id: newVenueId,
     });
   };
 
