@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { AlertTriangle, Minus, Plus, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -10,7 +11,7 @@ import {
   type ScheduleItemRow,
 } from "@/lib/planner-types";
 import { resolveTimings } from "@/lib/planner-timings";
-import { getEventColorClass } from "@/lib/planner-defaults";
+import { getEventColorClass, isVenueForEvent } from "@/lib/planner-defaults";
 import type { Conflict, ConflictSeverity } from "@/lib/planner-solver";
 import {
   Tooltip,
