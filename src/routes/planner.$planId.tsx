@@ -1660,7 +1660,7 @@ function ScheduleTab({
 
   const eventLabel = (id: string) => {
     const ev = events.find((e) => e.id === id);
-    return ev ? `${ev.age_class} ${ev.event_name}` : id;
+    return ev ? formatEventLabel(ev.age_class, ev.event_name) : id;
   };
 
   const exportExcel = () => {
