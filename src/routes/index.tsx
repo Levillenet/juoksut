@@ -367,7 +367,7 @@ function Index({ role, isAdmin = false, isPlanner = false }: { role: Role; isAdm
           </button>
           {!navCollapsed && (
             <div className="mt-3">
-              <NavCards role={role} isAdmin={isAdmin} />
+              <NavCards role={role} isAdmin={isAdmin} isPlanner={isPlanner} />
             </div>
           )}
         </section>
