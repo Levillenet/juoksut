@@ -1,29 +1,23 @@
-## Bugi: ageStates lukitsee koko sarjan vaikka eri lajeissa on eri urheilijat
+## Korjaus: "Sama ikäryhmä päällekkäin" → varoitus, ei kriittinen
 
-Solver käsittelee `ageClass`-arvoa yhtenä jaettuna aikajanana → P11 60m klo 10:00–10:25 estää kaiken muun P11-toiminnan (Kiekko, Korkeus, Kuula) kunnes klo 10:25. Todellisuudessa heittäjät ja hyppääjät ovat eri henkilöitä.
+Yksi muutos `src/lib/planner-solver.ts` riveille 638–643:
 
-## Korjaus: poista ageStates kokonaan (vaihtoehto C)
-
-Saman lajin vaiheet (alkuerät → finaali) lukitaan jo `eventEnds` + `afterEventIds` + `afterPhaseKey` -mekanismilla, eli ageStates ei tuo lisäarvoa.
-
-Muokattava tiedosto: `src/lib/planner-solver.ts`.
-
-Poistettavat kohdat:
-1. `ageStates`-mapin alustus ja `AgeState`-tyyppi (jos käytössä vain täällä).
-2. Päivän alussa lisätty `ageStates`-reset (sama korjausblokki jonka lisäsimme äsken).
-3. `ageBusyUntil`-muuttujan luku ja sen sisällytys `candidateStart`-laskuun (Math.max).
-4. Sama `ageBusyUntil` aitarata-haarassa (rivi ~441).
-5. `ageStates.set(...)` sijoituksen lopussa (rivit ~491–495).
-
-Vastaavat varoitukset päällekkäisistä sarjoista jätetään `detectConflicts`-funktioon (informatiivinen, ei rajoite) — tarkistan ettei sitä poisteta.
+```ts
+out.push({
+  id: arr[i].id,
+  severity: "warning",
+  relatedIds: [arr[i - 1].id],
+  reason: `Saman ikäryhmän ${age} eri lajit päällekkäin – tarkista että urheilijat eivät osallistu molempiin`,
+});
+```
 
 ## Mitä EI muuteta
 
-- `eventEnds`, `phaseEnds`, `phaseVenues`, `ovalBusy`, `straightBusy`, `groupBusy`.
-- Venue-rakenne, segmenttien generointi, `detectConflicts`-logiikka.
+- Track-lukitus-konfliktit (Rata + Suora) säilyvät kriittisinä.
+- Solverin sijoituslogiikka muuten ennallaan.
+- Ovaalin kapasiteettiongelmat (21 puuttuvaa pitkää lajia) jäävät tähän kierrokseen — käyttäjä päättää seuraavasta vaiheesta (A: manuaalinen allowed_days, B: round-robin solverissa, C: parempi diagnoosi).
 
 ## Validointi
 
-1. Aja YAG (kopio) -generointi.
-2. Raportoi puuttuvien lajien määrä, lista ja yleisin syy.
-3. Jos kenttälajit ovat sijoittuneet ja vain ovaali/viestit jäävät, syy on kapasiteetti — ei enää koodi.
+1. Aja YAG (kopio) -generointi uudestaan.
+2. Raportoi: paljonko critical vs warning -konflikteja jää.
