@@ -360,8 +360,12 @@ export function solve(input: SolverInput): SolverResult {
     }
 
     let placed = false;
+    const failReasons: string[] = [];
     for (const win of input.windows) {
-      if (seg.allowedDays && !seg.allowedDays.has(win.date)) continue;
+      if (seg.allowedDays && !seg.allowedDays.has(win.date)) {
+        failReasons.push(`${win.date}: päivärajoitus sulkee pois`);
+        continue;
+      }
 
       const setupMs = seg.setupBeforeMin * 60000;
       const ageSt = ageStates.get(seg.ageClass);
@@ -378,6 +382,7 @@ export function solve(input: SolverInput): SolverResult {
 
       let candidateStart = Math.max(win.startMs, ageBusyUntil, prevEventEnd);
       let placedVenues: VenueState[] = [];
+      let lastBlockReason = "";
 
       for (let attempts = 0; attempts < 400; attempts++) {
         // Järjestys: ensin spesifisin suorituspaikka (preference rank ASC),
@@ -404,17 +409,26 @@ export function solve(input: SolverInput): SolverResult {
             placedVenues = cand;
             break;
           }
+          if (lockout > 0 && lockout >= blocked) {
+            lastBlockReason = "rata/suora-lukitus (ovaali ja suora eivät voi olla yhtäaikaa käytössä)";
+          } else if (blocked > 0) {
+            lastBlockReason = "rajoiteryhmä varattu (esim. heittohäkin pääalue)";
+          }
           candidateStart = worst;
           if (candidateStart > win.endMs) break;
           continue;
         }
+        lastBlockReason = "ei riittävästi vapaita rinnakkaisia paikkoja";
         const next = freeAt(sorted[seg.needsStations - 1]) + setupMs;
         const newCandidate = Math.max(next, ageBusyUntil, prevEventEnd, win.startMs);
         if (newCandidate <= candidateStart) break; // ei etene
         candidateStart = newCandidate;
         if (candidateStart > win.endMs) break;
       }
-      if (placedVenues.length === 0) continue;
+      if (placedVenues.length === 0) {
+        failReasons.push(`${win.date}: ${lastBlockReason || "ei sopivaa aikaikkunaa"}`);
+        continue;
+      }
 
       let hurdleSetupForThis = 0;
       if (seg.isHurdles) {
@@ -432,7 +446,15 @@ export function solve(input: SolverInput): SolverResult {
       }
 
       const segEnd = candidateStart + seg.durationMin * 60000;
-      if (segEnd > win.endMs) continue; // kokeile seuraavaa päivää
+      if (segEnd > win.endMs) {
+        const availMin = Math.max(0, Math.round((win.endMs - candidateStart) / 60000));
+        failReasons.push(
+          `${win.date}: ei mahdu päivän aikaikkunaan (tarvitsee ${seg.durationMin} min, vapaata ${availMin} min)`,
+        );
+        continue; // kokeile seuraavaa päivää
+      }
+
+
 
       for (const v of placedVenues) {
         v.busyUntil = segEnd;
