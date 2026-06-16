@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Plus, Wand2, Save, Download, LayoutGrid, Sparkles, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Trash2, Plus, Wand2, Save, Download, LayoutGrid, Sparkles, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { downloadPlannerSchedulePdf } from "@/lib/planner-schedule-pdf";
 import { downloadPlannerScheduleVisualXlsx } from "@/lib/planner-schedule-xlsx";
 import { PlannerFullGantt } from "@/components/planner/PlannerFullGantt";
@@ -1522,6 +1522,7 @@ function ScheduleTab({
   const [generating, setGenerating] = useState(false);
   const [highlightIds, setHighlightIds] = useState<string[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [hideErrors, setHideErrors] = useState(false);
   const highlightTimeout = useRef<number | null>(null);
   const highlightConflict = (ids: string[]) => {
     if (highlightTimeout.current) window.clearTimeout(highlightTimeout.current);
@@ -1717,6 +1718,8 @@ function ScheduleTab({
           events={events}
           schedule={schedule}
           onHighlight={highlightConflict}
+          collapsed={hideErrors}
+          onToggleCollapse={() => setHideErrors((v) => !v)}
         />
       )}
 
@@ -1770,11 +1773,15 @@ function ConflictsList({
   events,
   schedule,
   onHighlight,
+  collapsed,
+  onToggleCollapse,
 }: {
   conflicts: Conflict[];
   events: PlanEventRow[];
   schedule: ScheduleItemRow[];
   onHighlight: (ids: string[]) => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }) {
   const evMap = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
   const itemMap = useMemo(() => new Map(schedule.map((s) => [s.id, s])), [schedule]);
@@ -1792,48 +1799,63 @@ function ConflictsList({
 
   return (
     <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
-      <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-        <AlertTriangle className="h-4 w-4 text-destructive" />
-        {conflicts.length} konflikti{conflicts.length === 1 ? "" : "a"} havaittu
+      <div className="mb-0 flex items-center justify-between text-sm font-semibold">
+        <span className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+          {conflicts.length} konflikti{conflicts.length === 1 ? "" : "a"} havaittu
+        </span>
+        {onToggleCollapse && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-foreground"
+            title={collapsed ? "Näytä virheet" : "Piilota virheet"}
+          >
+            {collapsed ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            {collapsed ? "Näytä" : "Piilota"}
+          </button>
+        )}
       </div>
-      <ul className="space-y-2">
-        {sorted.map((c, i) => {
-          const meta = SEV_META[c.severity];
-          const ids = [c.id, ...(c.relatedIds ?? [])];
-          return (
-            <li
-              key={`${c.id}-${i}`}
-              className={`rounded-md border-l-4 ${meta.chip} px-3 py-2 text-xs`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`inline-block h-2 w-2 rounded-full ${meta.dot}`} />
-                    <span className="font-semibold">{c.reason}</span>
-                    <span className="text-[10px] text-muted-foreground">{meta.label}</span>
+      {!collapsed && (
+        <ul className="mt-2 space-y-2">
+          {sorted.map((c, i) => {
+            const meta = SEV_META[c.severity];
+            const ids = [c.id, ...(c.relatedIds ?? [])];
+            return (
+              <li
+                key={`${c.id}-${i}`}
+                className={`rounded-md border-l-4 ${meta.chip} px-3 py-2 text-xs`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`inline-block h-2 w-2 rounded-full ${meta.dot}`} />
+                      <span className="font-semibold">{c.reason}</span>
+                      <span className="text-[10px] text-muted-foreground">{meta.label}</span>
+                    </div>
+                    <div className="text-muted-foreground">
+                      {ids.map((id, j) => (
+                        <span key={id}>
+                          {j > 0 && " · "}
+                          {itemLabel(id)}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="text-muted-foreground">
-                    {ids.map((id, j) => (
-                      <span key={id}>
-                        {j > 0 && " · "}
-                        {itemLabel(id)}
-                      </span>
-                    ))}
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 shrink-0 text-[11px]"
+                    onClick={() => onHighlight(ids)}
+                  >
+                    Korosta Gantt-näkymässä
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 shrink-0 text-[11px]"
-                  onClick={() => onHighlight(ids)}
-                >
-                  Korosta Gantt-näkymässä
-                </Button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
