@@ -200,7 +200,7 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
   );
 }
 
-function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
+function Index({ role, isAdmin = false, isPlanner = false }: { role: Role; isAdmin?: boolean; isPlanner?: boolean }) {
   const { signOut, user } = useAuth();
   const [competitionId] = useCompetitionId();
   const queryClient = useQueryClient();
