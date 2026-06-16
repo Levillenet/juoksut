@@ -1,23 +1,56 @@
-## Mistä on kyse
+## Tavoite
+Koota kaikki kilpailutapahtuman generointiin ja aikataulutukseen liittyvä koodi yhteen tekstitiedostoon, jonka voit ladata ja analysoida erikseen.
 
-Sivu `Joukkuekisa (kentät)` toimii esikatselussa (preview), mutta julkaistussa osoitteessa `juoksut.lovable.app` se palauttaa **404**. Tarkistus:
+## Mukaan otettavat tiedostot (~6 700 riviä)
 
-- `GET https://juoksut.lovable.app/print/club-team-report` → 404
-- Tuotannon HTML:ssä ei ole yhtään `club-team`-viittausta — eli viimeisin julkaisu on tehty **ennen kuin** uusi reitti lisättiin.
-- Selaimen konsolin virhe `Failed to fetch dynamically imported module: /assets/print-BvWOlAoJ.js` vahvistaa tämän: avoinna oleva välilehti yrittää ladata uuden reitin koodipalan, jota ei ole vanhassa julkaisussa → Tanstack Routerin `errorComponent` näyttää "Something went wrong on our end".
+**Säännöstö / generointilogiikka (`src/lib/`)**
+- `planner-types.ts` (171)
+- `planner-defaults.ts` (360) — lajien oletusasetukset
+- `planner-rules.ts` (168) — sääntöjen määrittely
+- `planner-timings.ts` (105) — ajoitukset
+- `planner-estimate.ts` (80) — kestoarviot
+- `planner-officials.ts` (142) — toimitsijat
+- `planner-stadium.ts` (138) — stadionin resurssit
+- `planner-solver.ts` (766) — ydinratkaisija
+- `planner-demo.ts` (226) — demo-data
+- `planner-schedule-pdf.ts` (159)
+- `planner-schedule-xlsx.ts` (343)
+- `event-durations.ts`, `event-specs.ts`, `event-name.ts`, `event-filters.ts` — lajimetatieto, jota solver käyttää
 
-Koodi itse on kunnossa — preview-puolella sivu latautuu ja näyttää "Ladataan kenttälajien tuloksia…" odotetusti.
+**Reitit (`src/routes/`)**
+- `planner.tsx` (20)
+- `planner.index.tsx` (245)
+- `planner.$planId.tsx` (1999)
+- `planner.$planId.gantt.tsx` (127)
 
-## Mitä pitää tehdä
+**Komponentit (`src/components/planner/`)**
+- `PlannerFullGantt.tsx` (1087)
+- `ScheduleItemSheet.tsx` (539)
 
-1. **Julkaise projekti uudelleen** Lovablen Publish-toiminnolla. Tämä tuottaa uuden tuotantobuildin, jossa `/print/club-team-report`-reitti ja sen koodipala ovat mukana.
-2. Julkaisun jälkeen tee selaimessa **kova päivitys** (Ctrl/Cmd + Shift + R), jotta avoinna oleva välilehti hakee uuden `index.html`:n uusilla asset-hasheilla. Vanha avoinna oleva istunto viittaa edelleen poistuneeseen `print-BvWOlAoJ.js`-tiedostoon.
-3. Vahvista, että `https://juoksut.lovable.app/print/club-team-report` palauttaa 200 ja sivu avautuu.
+## Tuotos
 
-## Koodimuutokset
+Yksi tiedosto: `/mnt/documents/planner-bundle.txt`
 
-Ei muutoksia. Sivu, server function ja proxy ovat jo paikallaan ja toimivat preview-ympäristössä — pelkkä julkaisu puuttuu.
+Rakenne:
+```
+================================================================
+FILE: src/lib/planner-types.ts
+================================================================
+<sisältö>
 
-<presentation-actions>
-<presentation-open-publish>Julkaise sovellus</presentation-open-publish>
-</presentation-actions>
+================================================================
+FILE: src/lib/planner-defaults.ts
+================================================================
+...
+```
+
+Alkuun lisätään sisällysluettelo ja kunkin tiedoston rivimäärä, jotta navigointi on helppoa.
+
+## Toteutus
+
+Build-tilassa:
+1. Tarkistetaan että jokainen lueteltu tiedosto on olemassa (skipataan puuttuvat).
+2. Bash-skripti yhdistää tiedostot otsikoineen `/mnt/documents/planner-bundle.txt`-tiedostoon.
+3. Toimitetaan `<presentation-artifact>` -linkki latausta varten.
+
+Mitään olemassa olevaa koodia ei muuteta — tämä on pelkkä koonti luettavaksi.
