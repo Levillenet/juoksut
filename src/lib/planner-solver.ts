@@ -373,12 +373,6 @@ export function solve(input: SolverInput): SolverResult {
           v.lastWasHurdle = false;
         }
       }
-      // Saman ikäluokan urheilijoiden palautusaika ei ylitä yötä.
-      for (const [ac, state] of ageStates) {
-        if (state.busyUntil < win.startMs) {
-          ageStates.set(ac, { busyUntil: win.startMs });
-        }
-      }
 
       if (seg.allowedDays && !seg.allowedDays.has(win.date)) {
         failReasons.push(`${win.date}: päivärajoitus sulkee pois`);
@@ -386,8 +380,6 @@ export function solve(input: SolverInput): SolverResult {
       }
 
       const setupMs = seg.setupBeforeMin * 60000;
-      const ageSt = ageStates.get(seg.ageClass);
-      const ageBusyUntil = ageSt?.busyUntil ?? 0;
       let prevEventEnd = seg.afterEventIds
         .map((id) => (eventEnds.get(id) ?? 0) + seg.recoveryAfterPrev * 60000)
         .reduce((a, b) => Math.max(a, b), 0);
@@ -398,7 +390,7 @@ export function solve(input: SolverInput): SolverResult {
       // Per-venue "free at" huomioi siirtoajan.
       const freeAt = (vs: VenueState) => vs.busyUntil + venueChangeoverMs(vs);
 
-      let candidateStart = Math.max(win.startMs, ageBusyUntil, prevEventEnd);
+      let candidateStart = Math.max(win.startMs, prevEventEnd);
       let placedVenues: VenueState[] = [];
       let lastBlockReason = "";
 
