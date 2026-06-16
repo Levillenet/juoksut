@@ -965,7 +965,13 @@ export function PlannerFullGantt({
 
   return (
     <TooltipProvider delayDuration={200}>
-    <div className="flex h-full flex-col">
+    <div
+      className={
+        isFullscreen
+          ? "fixed inset-0 z-50 flex flex-col bg-background"
+          : "flex h-full flex-col"
+      }
+    >
       <div className="flex flex-wrap items-center gap-2 border-b bg-card px-3 py-2">
         {windows.length > 1 &&
           windows.map((w, i) => (
@@ -985,16 +991,64 @@ export function PlannerFullGantt({
               })}
             </button>
           ))}
-        <div className="ml-auto flex items-center gap-2">
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
             <input
               type="checkbox"
               checked={showEmpty}
               onChange={(e) => setShowEmpty(e.target.checked)}
               className="h-3.5 w-3.5 accent-primary"
             />
-            Näytä myös tyhjät paikat
+            Tyhjät paikat
           </label>
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={hideLegend}
+              onChange={(e) => setHideLegend(e.target.checked)}
+              className="h-3.5 w-3.5 accent-primary"
+            />
+            Piilota selite
+          </label>
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={compactNames}
+              onChange={(e) => setCompactNames(e.target.checked)}
+              className="h-3.5 w-3.5 accent-primary"
+            />
+            Kompaktit nimet
+          </label>
+          {/* Rivien korkeus */}
+          <div className="flex items-center gap-0.5 rounded-md border bg-background p-0.5" title="Rivien korkeus (+ / − / 0)">
+            <Rows3 className="ml-1 mr-0.5 h-3.5 w-3.5 text-muted-foreground" />
+            <button
+              type="button"
+              onClick={() => bumpRowHeight(-8)}
+              title="Pienennä rivejä (−)"
+              className="grid h-7 w-7 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={resetRowHeight}
+              title="Palauta oletus (0)"
+              className="flex h-7 min-w-[3rem] items-center justify-center gap-1 rounded px-1.5 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <RotateCcw className="h-3 w-3" />
+              {ROW_HEIGHT}px
+            </button>
+            <button
+              type="button"
+              onClick={() => bumpRowHeight(8)}
+              title="Kasvata rivejä (+)"
+              className="grid h-7 w-7 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {/* Zoom */}
           <div className="flex items-center gap-0.5 rounded-md border bg-background p-0.5">
             <button
               type="button"
@@ -1022,20 +1076,31 @@ export function PlannerFullGantt({
               <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
+          {/* Fullscreen */}
+          <button
+            type="button"
+            onClick={() => setIsFullscreen((v) => !v)}
+            title={isFullscreen ? "Poistu koko näytöstä (Esc)" : "Koko näyttö"}
+            className="grid h-7 w-7 place-items-center rounded-md border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+          </button>
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-card/50 px-3 py-1.5 text-[10px] text-muted-foreground">
-        {LEGEND.map((l) => (
-          <span key={l.label} className="flex items-center gap-1">
-            <span className={`inline-block h-2.5 w-2.5 rounded border ${l.cls}`} />
-            {l.label}
+      {!hideLegend && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-card/50 px-3 py-1.5 text-[10px] text-muted-foreground">
+          {LEGEND.map((l) => (
+            <span key={l.label} className="flex items-center gap-1">
+              <span className={`inline-block h-2.5 w-2.5 rounded border ${l.cls}`} />
+              {l.label}
+            </span>
+          ))}
+          <span className="flex items-center gap-1">
+            <span className="inline-block h-2.5 w-2.5 rounded border-2 border-red-500 bg-background" />
+            Konflikti
           </span>
-        ))}
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded border-2 border-red-500 bg-background" />
-          Konflikti
-        </span>
-      </div>
+        </div>
+      )}
       <div
         ref={scrollRef}
         className="relative flex-1 overflow-auto"
