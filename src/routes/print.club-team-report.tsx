@@ -420,13 +420,3 @@ function statusPriority(s: Round["Status"]): number {
       return 0;
   }
 }
-
-function firstCompName(byDate: Record<string, Round[]>): string {
-  for (const arr of Object.values(byDate)) {
-    for (const r of arr) {
-      // Round doesn't carry competition name; leave blank
-      void r;
-    }
-  }
-  return "";
-}
