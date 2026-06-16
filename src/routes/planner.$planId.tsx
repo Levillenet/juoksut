@@ -1730,7 +1730,7 @@ function ScheduleTab({
       />
 
 
-      <div className="overflow-hidden rounded-lg border" style={{ height: "calc(100vh - 260px)", minHeight: 480 }}>
+      <div className="overflow-hidden rounded-lg border" style={{ height: "calc(100vh - 160px)", minHeight: 520 }}>
         <PlannerFullGantt
           plan={plan}
           venues={venues}
