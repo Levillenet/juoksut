@@ -255,7 +255,7 @@ export function solve(input: SolverInput): SolverResult {
     lastWasHurdle: false,
     lastEventName: null,
   }));
-  const ageStates = new Map<string, AgeState>();
+  // ageStates poistettu — saman sarjan eri lajeissa on tyypillisesti eri urheilijat.
   const eventEnds = new Map<string, number>();
   // KORJAUS 2: per-vaihe loppuajat ja käytetyt suorituspaikat (avain: "<eventId>|<phase>").
   const phaseEnds = new Map<string, number>();
