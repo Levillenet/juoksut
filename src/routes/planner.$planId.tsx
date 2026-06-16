@@ -440,14 +440,12 @@ function BasicsTab({
               Ei stadionia — suorituspaikat määritellään käsin Suorituspaikat-välilehdellä.
             </p>
           )}
-          <a
-            href="/stadiums"
-            target="_blank"
-            rel="noreferrer"
+          <Link
+            to="/stadiums"
             className="shrink-0 text-xs text-primary underline-offset-2 hover:underline"
           >
-            Hallinnoi stadioneja ↗
-          </a>
+            Hallinnoi stadioneja →
+          </Link>
         </div>
       </div>
 
@@ -712,40 +710,57 @@ function VenuesTab({
   }
 
   const renderRow = (v: VenueRow) => (
-    <div key={v.id} className="grid grid-cols-12 items-center gap-2">
-      <label className="col-span-1 flex justify-center">
-        <input
-          type="checkbox"
-          checked={v.included}
-          onChange={(e) => update.mutate({ id: v.id, included: e.target.checked })}
-          className="h-4 w-4"
-          title="Käytetäänkö tässä kisassa?"
+    <div key={v.id} className="space-y-1">
+      <div className="grid grid-cols-12 items-center gap-2">
+        <label className="col-span-1 flex justify-center">
+          <input
+            type="checkbox"
+            checked={v.included}
+            onChange={(e) => update.mutate({ id: v.id, included: e.target.checked })}
+            className="h-4 w-4"
+            title="Käytetäänkö tässä kisassa?"
+          />
+        </label>
+        <Input
+          className="col-span-5"
+          value={v.name}
+          disabled={v.stadium_venue_id != null}
+          onChange={(e) => update.mutate({ id: v.id, name: e.target.value })}
         />
-      </label>
-      <Input
-        className="col-span-5"
-        value={v.name}
-        disabled={v.stadium_venue_id != null}
-        onChange={(e) => update.mutate({ id: v.id, name: e.target.value })}
-      />
-      <select
-        className="col-span-4 rounded-md border border-input bg-background px-2 py-2 text-sm"
-        value={v.kind}
-        disabled={v.stadium_venue_id != null}
-        onChange={(e) => update.mutate({ id: v.id, kind: e.target.value as VenueKind })}
-      >
-        {(Object.keys(VENUE_KIND_LABEL) as VenueKind[]).map((k) => (
-          <option key={k} value={k}>
-            {VENUE_KIND_LABEL[k]}
-          </option>
-        ))}
-      </select>
-      {v.stadium_venue_id == null ? (
-        <Button size="icon" variant="ghost" className="col-span-2" onClick={() => del.mutate(v.id)}>
-          <Trash2 className="h-4 w-4 text-destructive" />
-        </Button>
-      ) : (
-        <span className="col-span-2 text-[10px] text-muted-foreground">stadionilta</span>
+        <select
+          className="col-span-4 rounded-md border border-input bg-background px-2 py-2 text-sm"
+          value={v.kind}
+          disabled={v.stadium_venue_id != null}
+          onChange={(e) => update.mutate({ id: v.id, kind: e.target.value as VenueKind })}
+        >
+          {(Object.keys(VENUE_KIND_LABEL) as VenueKind[]).map((k) => (
+            <option key={k} value={k}>
+              {VENUE_KIND_LABEL[k]}
+            </option>
+          ))}
+        </select>
+        {v.stadium_venue_id == null ? (
+          <Button size="icon" variant="ghost" className="col-span-2" onClick={() => del.mutate(v.id)}>
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        ) : (
+          <span className="col-span-2 text-[10px] text-muted-foreground">stadionilta</span>
+        )}
+      </div>
+      {v.kind === "throw_runway" && (
+        <label
+          className="ml-[8.333%] flex items-center gap-1.5 text-xs text-muted-foreground"
+          title="Jos keihäsvauhdinotto on moukari-/kiekkohäkin vieressä, välineet laskeutuvat samalle alueelle eikä toimitsijat voi operoida rinnakkain. Solver lukitsee tällöin kiekko/moukari/keihäs keskenään."
+        >
+          <input
+            type="checkbox"
+            checked={v.next_to_throw_cage !== false}
+            onChange={(e) =>
+              update.mutate({ id: v.id, next_to_throw_cage: e.target.checked })
+            }
+          />
+          <span>Moukari-/kiekkohäkin vieressä</span>
+        </label>
       )}
     </div>
   );

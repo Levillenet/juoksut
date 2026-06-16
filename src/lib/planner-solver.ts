@@ -110,6 +110,31 @@ export function solve(input: SolverInput): SolverResult {
     ...g,
     venue_ids: g.venue_ids.filter((vid) => usableVenues.some((v) => v.id === vid)),
   }));
+
+  // Implisiittinen rajoiteryhmä: jos keihäsvauhdinotto on moukari-/kiekkohäkin
+  // vieressä (next_to_throw_cage = true), välineet laskeutuvat samalle alueelle
+  // eikä toimitsijat voi operoida rinnakkain häkin kanssa.
+  // Lukitsee kiekko/moukari/keihäs keskenään, mutta sallii rinnakkaisuuden jos
+  // keihäspaikka on merkitty stadionin toiseen päähän.
+  {
+    const cageIds = usableVenues
+      .filter((v) => v.kind === "throw_cage")
+      .map((v) => v.id);
+    const blockedRunwayIds = usableVenues
+      .filter((v) => v.kind === "throw_runway" && v.next_to_throw_cage !== false)
+      .map((v) => v.id);
+    if (cageIds.length > 0 && blockedRunwayIds.length > 0) {
+      conflictGroups.push({
+        id: "__implicit_cage_runway__",
+        plan_id: "",
+        name: "Heittohäkki + viereinen keihäs",
+        description: null,
+        venue_ids: [...cageIds, ...blockedRunwayIds],
+        max_concurrent: 1,
+        source_stadium_group_id: null,
+      });
+    }
+  }
   // Aikajanat per rajoiteryhmä: lista (startMs,endMs) sijoitetuista segmenteistä
   const groupBusy: Array<Array<{ s: number; e: number }>> = conflictGroups.map(() => []);
 
