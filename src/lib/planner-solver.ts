@@ -489,10 +489,8 @@ export function solve(input: SolverInput): SolverResult {
           straightBusy.push({ s: candidateStart, e: segEnd });
         }
       }
-      const prevAge = ageStates.get(seg.ageClass) ?? { busyUntil: 0 };
-      ageStates.set(seg.ageClass, {
-        busyUntil: Math.max(prevAge.busyUntil, segEnd),
-      });
+      // ageStates poistettu: saman sarjan eri lajeissa on eri urheilijat.
+      // Saman lajin vaiheet (alkuerät → finaali) lukitaan eventEnds-mekanismilla.
       const prevEnd = eventEnds.get(seg.eventId) ?? 0;
       eventEnds.set(seg.eventId, Math.max(prevEnd, segEnd));
       // KORJAUS 2: tallenna phase-tila final_b:tä varten.
