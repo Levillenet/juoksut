@@ -234,7 +234,7 @@ function PrintClubTeamReportPage() {
     staleTime: 30_000,
   });
 
-  });
+
 
   const propsQuery = useQuery({
     queryKey: ["team-report-props", competitionId],
