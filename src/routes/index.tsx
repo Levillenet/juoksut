@@ -197,6 +197,15 @@ function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; is
           Kisan lajit, seuran urheilijat tai omien lasten aikataulu PDF:ksi
         </div>
       </Link>
+      <Link
+        to="/print/club-report"
+        className="rounded-xl border-2 border-primary/30 bg-card px-4 py-3 text-center hover:bg-secondary"
+      >
+        <div className="text-sm font-semibold leading-snug">Seuran kisaraportti</div>
+        <div className="mt-0.5 text-[11px] text-muted-foreground">
+          Koko seuran tulokset valitusta kisasta lajeittain — sija, tulos ja PB
+        </div>
+      </Link>
       {role && (
         <Link
           to="/settings/note-links"
