@@ -499,6 +499,7 @@ export function PlannerFullGantt({
   const onPointerUp = (e: React.PointerEvent) => {
     const d = dragRef.current;
     dragRef.current = null;
+    stopAutoScroll();
     if (!d) return;
 
     if (d.isUnplaced) {
