@@ -602,9 +602,15 @@ function ScoreboardLive() {
                 row={row}
                 displayRank={
                   order === "start"
-                    ? (row.Position ?? idx + 1)
-                    : (row.ResultRank ?? idx + 1)
+                    ? (row.Number?.trim() ||
+                        (row.Position && row.Position > 0
+                          ? String(row.Position)
+                          : "—"))
+                    : (row.ResultRank && row.ResultRank > 0
+                        ? String(row.ResultRank)
+                        : "—")
                 }
+                displayMode={order === "start" ? "bib" : "rank"}
                 isLeader={order === "result" && idx === 0 && !!row.best}
                 count={visible.length}
                 eventId={ev?.Id ?? 0}
@@ -613,6 +619,7 @@ function ScoreboardLive() {
                 eventName={ev?.Name ?? ""}
                 scrollMode={scrollMode}
               />
+
             ))}
           </ul>
         )}
