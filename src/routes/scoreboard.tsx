@@ -796,7 +796,7 @@ function ScoreRow({
         paddingBottom: narrow ? "0.25rem" : undefined,
       }}
     >
-      {rankNum}.
+      {displayMode === "bib" ? `#${rankNum}` : rankNum === "—" ? rankNum : `${rankNum}.`}
     </div>
   );
 
