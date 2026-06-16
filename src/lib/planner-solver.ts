@@ -362,6 +362,24 @@ export function solve(input: SolverInput): SolverResult {
     let placed = false;
     const failReasons: string[] = [];
     for (const win of input.windows) {
+      // KORJAUS: päivärajan ylittävä busyUntil ei saa estää uutta päivää.
+      // Jos paikalla on busyUntil edellisen päivän puolelta, siirretään se
+      // tämän päivän alkuun ja tyhjennetään päivän yli kantamaton tila
+      // (aidat puretaan päivän päätteeksi, matkanvaihtoaika nollautuu).
+      for (const v of venueStates) {
+        if (v.busyUntil < win.startMs) {
+          v.busyUntil = win.startMs;
+          v.lastEventName = null;
+          v.lastWasHurdle = false;
+        }
+      }
+      // Saman ikäluokan urheilijoiden palautusaika ei ylitä yötä.
+      for (const [ac, state] of ageStates) {
+        if (state.busyUntil < win.startMs) {
+          ageStates.set(ac, { busyUntil: win.startMs });
+        }
+      }
+
       if (seg.allowedDays && !seg.allowedDays.has(win.date)) {
         failReasons.push(`${win.date}: päivärajoitus sulkee pois`);
         continue;

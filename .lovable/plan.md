@@ -1,45 +1,50 @@
-## Ongelma
+## Bugi: VenueState.busyUntil ei resetoidu päivien välillä
 
-Kun YAG-kopiossa generoidaan aikataulu, n. 75 lajia jää sijoittamatta ("ei mahdu mihinkään sallittuun päivään"). Syynä on, että **kaikki heittokehät ja kaikki keihäsvauhdinotot on niputettu yhteen implisiittiseen rajoiteryhmään**, jossa `max_concurrent = 1`. Tämä pakottaa neljä eri fyysistä heittoaluetta jakamaan yhden slotin.
+Vahvistettu lukemalla `src/lib/planner-solver.ts` rivit 280–450:
 
-## Korjaus 1 — Heittoalueiden eriyttäminen (pääongelma)
+- Rivi 289: `for (const v of venueStates) v.busyUntil = input.windows[0].startMs;` — alustus vain ensimmäisen päivän alkuun.
+- Rivi 364: `for (const win of input.windows) { ... }` — päiväiteraatio ei resetoi paikkojen tilaa.
+- Rivi 381: `freeAt(vs) = vs.busyUntil + venueChangeoverMs(vs)` — kun edellinen sijoitus jätti `busyUntil`-arvon edellisen päivän puolelle (esim. klo 20:00), ei mikään paikka näytä vapautuvan ennen nykyisen päivän loppua → `ready` jää tyhjäksi → "vapaata 0 min".
 
-Laajennetaan `next_to_throw_cage`-merkintä koskemaan myös `throw_cage`-paikkoja, jotta erilliset heittoalueet voidaan erottaa.
+Sama koskee `ageStates`-rakennetta.
 
-**Solver (`src/lib/planner-solver.ts`, rivit 119–137):**
-- Suodatetaan `cageIds` myös `next_to_throw_cage !== false` -ehdolla.
-- Lisätään uusi "fyysinen alueistus": yksi implisiittinen ryhmä per "pääalue" (kaikki `next_to_throw_cage !== false` -paikat yhteen, kaikki muut eivät kuulu mihinkään implisiittiseen ryhmään).
-- Vaihtoehtoinen, robustimpi malli (suositus): ryhmittele heittopaikat kentän `next_to_throw_cage`:n perusteella kahteen mahdolliseen "alueeseen":
-  - `true` → "Pääalue (häkki)" — kaikki kuuluvat samaan ryhmään (max 1)
-  - `false` → ei implisiittiseen ryhmään (oma alue)
+## Korjaus
 
-**Stadion- ja plan-UI:**
-- `src/routes/stadiums.$stadiumId.tsx`: näytä "Häkin vieressä / pääalueella" -checkbox myös `throw_cage`-paikoille (nykyisin vain `throw_runway`).
-- `src/routes/planner.$planId.tsx`: vastaava checkbox plan_venues-listalla myös `throw_cage`-paikoille.
+Yksi muutos `src/lib/planner-solver.ts`:n riveille 364–368: lisätään `for (const win of input.windows)`:n alkuun resetointi, joka työntää menneen päivän puolelle jääneet `busyUntil`-aikaleimat tämän päivän alkuun.
 
-**Käyttäjälle:** jätä Kiekkokehä ja Keihäsvauhdinotto rastittuina (pääalue), poista rasti "Ulkoheittopaikka kiekko/moukari" ja "Keihäs ulkoheittopaikka" -paikoilta → ne operoivat itsenäisesti.
+```ts
+for (const win of input.windows) {
+  // KORJAUS: päivärajan ylittävä busyUntil ei saa estää uutta päivää.
+  for (const v of venueStates) {
+    if (v.busyUntil < win.startMs) {
+      v.busyUntil = win.startMs;
+      v.lastEventName = null;   // aidat ja matkanvaihtoaika eivät kanna yötä yli
+      v.lastWasHurdle = false;
+    }
+  }
+  for (const [ac, state] of ageStates) {
+    if (state.busyUntil < win.startMs) {
+      ageStates.set(ac, { busyUntil: win.startMs });
+    }
+  }
 
-## Korjaus 2 — Diagnostiikan parannus (nopeuttaa jatkossa)
-
-Vaihda `"ei mahdu mihinkään sallittuun päivään."` -viesti tarkemmaksi solverissa: kerro syy per yritetty päivä:
-- "ei sopivia rinnakkaisia paikkoja (lukittu rajoiteryhmällä X)"
-- "ei mahdu päivän aikaikkunaan (tarvitsee X min, vapaata Y min)"
-- "päivärajoitus sulkee pois"
-
-Tämä auttaa käyttäjää näkemään heti, johtuuko ongelma rajoiteryhmästä, paikoista vai ajasta — ilman koodimuutoksia datan korjaamiseksi.
-
-## Korjaus 3 — Track-konflikti (Rata + Takasuora samaan aikaan)
-
-Raporttisi näytti "Track-lukitus rikki" -kriittisiä konflikteja. Solver itse käyttää `ovalBusy`/`straightBusy`-lukitusta sijoittaessaan, joten konflikteja ei pitäisi syntyä uudessa generoinnissa. Tarkistetaan kuitenkin että `detectConflicts` käyttää samaa logiikkaa kuin solver, eikä eri raja-arvoja, jotka voivat valehdella konflikteista. Jos havaitaan ero, yhtenäistetään.
-
-## Aikataulu
-
-1. Solverin cage-suodatus ja UI-checkbox throw_cage:lle (Korjaus 1) — yksi commit, ratkaisee pääongelman.
-2. Solverin syykohtainen "ei mahdu" -viesti (Korjaus 2) — vähäinen.
-3. `detectConflicts`-tarkistus (Korjaus 3) — tutkimusvaihe, korjaus vain jos eroa löytyy.
+  if (seg.allowedDays && !seg.allowedDays.has(win.date)) {
+    failReasons.push(`${win.date}: päivärajoitus sulkee pois`);
+    continue;
+  }
+  // ... olemassaoleva logiikka jatkuu muuttumattomana
+}
+```
 
 ## Mitä EI muuteta
 
-- `allowed_days`-logiikkaa ei muuteta (ei ole ongelman lähde tässä kopiossa).
-- `day_windows`-rakenne on tämän kopion datassa kunnossa (3 päivää).
-- Olemassa olevia migraatioita ei tarvita — `next_to_throw_cage`-sarake on jo molemmissa tauluissa.
+- `eventEnds`, `phaseEnds`, `phaseVenues` — vaihejärjestys (alkuerät → finaali) kantaa päivien yli.
+- `ovalBusy`, `straightBusy`, `groupBusy` — kaikkien päivien yli, päiväraja jo huomioitu `win.startMs/endMs`-tarkistuksissa.
+- Solverin muu logiikka, venuejen rakenne, segmenttien generointi.
+
+## Validointi
+
+1. Aja YAG (kopio) -generointi uudestaan.
+2. Raportoi: kuinka monta lajia jää `ei mahdu` -varoituksella?
+3. Tarkista että pitkät juoksut ja kenttälajeja jakautuvat eri päiville.
+4. Jos vielä jää ~5–15 todellista kapasiteettiongelmaa, päätetään tarvitaanko VAIHE 2 (`allowed_days`-jako oikean YAG:n mallin mukaan).
