@@ -91,11 +91,7 @@ interface VenueState {
   lastEventName: string | null;
 }
 
-interface AgeState {
-  /** Saman ikäluokan urheilijat ovat tyypillisesti useammassa lajissa
-   * (rata + kenttä), joten yksi yhteinen aikajana riittää. */
-  busyUntil: number;
-}
+// AgeState-rakenne poistettu — ks. selitys ageStates-poistosta solverin alussa.
 
 export function solve(input: SolverInput): SolverResult {
   const warnings: string[] = [];
@@ -255,7 +251,7 @@ export function solve(input: SolverInput): SolverResult {
     lastWasHurdle: false,
     lastEventName: null,
   }));
-  const ageStates = new Map<string, AgeState>();
+  // ageStates poistettu — saman sarjan eri lajeissa on tyypillisesti eri urheilijat.
   const eventEnds = new Map<string, number>();
   // KORJAUS 2: per-vaihe loppuajat ja käytetyt suorituspaikat (avain: "<eventId>|<phase>").
   const phaseEnds = new Map<string, number>();
@@ -373,12 +369,6 @@ export function solve(input: SolverInput): SolverResult {
           v.lastWasHurdle = false;
         }
       }
-      // Saman ikäluokan urheilijoiden palautusaika ei ylitä yötä.
-      for (const [ac, state] of ageStates) {
-        if (state.busyUntil < win.startMs) {
-          ageStates.set(ac, { busyUntil: win.startMs });
-        }
-      }
 
       if (seg.allowedDays && !seg.allowedDays.has(win.date)) {
         failReasons.push(`${win.date}: päivärajoitus sulkee pois`);
@@ -386,8 +376,6 @@ export function solve(input: SolverInput): SolverResult {
       }
 
       const setupMs = seg.setupBeforeMin * 60000;
-      const ageSt = ageStates.get(seg.ageClass);
-      const ageBusyUntil = ageSt?.busyUntil ?? 0;
       let prevEventEnd = seg.afterEventIds
         .map((id) => (eventEnds.get(id) ?? 0) + seg.recoveryAfterPrev * 60000)
         .reduce((a, b) => Math.max(a, b), 0);
@@ -398,7 +386,7 @@ export function solve(input: SolverInput): SolverResult {
       // Per-venue "free at" huomioi siirtoajan.
       const freeAt = (vs: VenueState) => vs.busyUntil + venueChangeoverMs(vs);
 
-      let candidateStart = Math.max(win.startMs, ageBusyUntil, prevEventEnd);
+      let candidateStart = Math.max(win.startMs, prevEventEnd);
       let placedVenues: VenueState[] = [];
       let lastBlockReason = "";
 
@@ -438,7 +426,7 @@ export function solve(input: SolverInput): SolverResult {
         }
         lastBlockReason = "ei riittävästi vapaita rinnakkaisia paikkoja";
         const next = freeAt(sorted[seg.needsStations - 1]) + setupMs;
-        const newCandidate = Math.max(next, ageBusyUntil, prevEventEnd, win.startMs);
+        const newCandidate = Math.max(next, prevEventEnd, win.startMs);
         if (newCandidate <= candidateStart) break; // ei etene
         candidateStart = newCandidate;
         if (candidateStart > win.endMs) break;
@@ -489,10 +477,8 @@ export function solve(input: SolverInput): SolverResult {
           straightBusy.push({ s: candidateStart, e: segEnd });
         }
       }
-      const prevAge = ageStates.get(seg.ageClass) ?? { busyUntil: 0 };
-      ageStates.set(seg.ageClass, {
-        busyUntil: Math.max(prevAge.busyUntil, segEnd),
-      });
+      // ageStates poistettu: saman sarjan eri lajeissa on eri urheilijat.
+      // Saman lajin vaiheet (alkuerät → finaali) lukitaan eventEnds-mekanismilla.
       const prevEnd = eventEnds.get(seg.eventId) ?? 0;
       eventEnds.set(seg.eventId, Math.max(prevEnd, segEnd));
       // KORJAUS 2: tallenna phase-tila final_b:tä varten.
