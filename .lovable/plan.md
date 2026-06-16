@@ -1,44 +1,51 @@
-## A) Keihäs–häkki-rinnakkaisuus
+## Tavoite
 
-### Migraatio (jo ajettu)
-- `stadium_venues.next_to_throw_cage boolean NOT NULL DEFAULT true`
-- `plan_venues.next_to_throw_cage boolean NOT NULL DEFAULT true`
+- Lisätä käyttäjäkohtainen `planner`-rooli, jonka adminisi voi myöntää.
+- Näyttää pääsivulla "Aikataulusuunnittelu" -kortti vain planner-roolin (ja adminin) saaneille.
+- Tehdä stadion-kirjastosta yhteinen kaikille planner-rooli­laisille (kaikki näkevät ja muokkaavat).
+- Pitää kilpailusuunnitelmat (`competition_plans` + niiden lapsitaulut) edelleen omistajakohtaisina — jokainen suunnittelija näkee vain omat kisansa.
 
-### Tyypit
-- `src/lib/planner-types.ts`: lisää `next_to_throw_cage: boolean` `VenueRow`- ja `StadiumVenueRow`-tyyppeihin.
+## Tietokantamuutokset (migraatio)
 
-### Solver (`src/lib/planner-solver.ts`)
-Solven alussa rakenna implisiittinen konfliktiryhmä:
-- `cageIds = usableVenues.filter(v => v.kind === 'throw_cage').map(v => v.id)`
-- `blockedRunwayIds = usableVenues.filter(v => v.kind === 'throw_runway' && v.next_to_throw_cage).map(v => v.id)`
-- Jos molempia on ≥1, lisää `conflictGroups`-listaan `{ venue_ids: [...cageIds, ...blockedRunwayIds], max_concurrent: 1 }`.
+1. **Roolit**
+   - `CREATE TYPE public.app_role AS ENUM ('admin','planner');`
+   - `CREATE TABLE public.user_roles(id, user_id → auth.users, role app_role, UNIQUE(user_id,role))` + GRANTit (`authenticated SELECT`, `service_role ALL`) + RLS päälle.
+   - `has_role(_user_id uuid, _role app_role)` SECURITY DEFINER -funktio.
+   - RLS-politiikat:
+     - planner/admin näkee oman rivinsä.
+     - admin voi insert/update/delete kaikkia rooleja.
+   - Seedaa: insertoi `admin`-rivi sinun käyttäjällesi (haetaan auth.users:sta `samiaavikko@gmail.com`).
 
-Tämä lukitsee kiekko/moukari/keihäs keskenään. Jos käyttäjä lisää toisen keihäspaikan ja merkitsee sen `next_to_throw_cage = false`, kyseinen paikka jää konfliktiryhmän ulkopuolelle ja voi toimia rinnakkain.
+2. **Stadionit jaettu planner-roolille**
+   - `stadiums`: poistetaan vanha omistajapolitiikka, lisätään:
+     - SELECT/INSERT/UPDATE/DELETE: `has_role(auth.uid(),'planner') OR has_role(auth.uid(),'admin')`.
+   - `stadium_venues` ja `stadium_conflict_groups`: vastaava — planner/admin saa kaikki rivit.
+   - Säilytetään `user_id` stadionissa (audit-mielessä).
 
-### Stadium → plan -kopiointi (`src/lib/planner-stadium.ts`)
-Kopioi `next_to_throw_cage` mukaan kun stadion-paikkoja kopioidaan plan-paikoiksi.
+3. **Kilpailusuunnitelmat pysyvät yksityisinä**
+   - Ei muutoksia `competition_plans`-, `plan_*`-tauluille — omistajapolitiikka säilyy.
 
-### Stadium-editori (`src/routes/stadiums.$stadiumId.tsx`)
-Jokaisen `throw_runway`-rivin kohdalle pieni checkbox/toggle:
-"Moukarihäkin vieressä" (oletus). Selitys tooltipissä/info-tekstissä.
+## Frontend-muutokset
 
-### Plan-editori (`src/routes/planner.$planId.tsx`, Suorituspaikat-välilehti)
-Sama checkbox `throw_runway`-paikoille (jotta voi yliajaa stadion-mallin arvon yksittäisessä kisassa).
+1. **`src/lib/auth.tsx`**
+   - Hae kirjautumisen jälkeen käyttäjän roolit `user_roles`-taulusta.
+   - Lisää contextiin: `isPlanner: boolean`, `isAdmin: boolean` (DB-pohjainen, korvaa nykyisen sähköpostipohjaisen admin-tarkistuksen).
+   - Säilytetään olemassa oleva `role` ("user"/"official") siirtymäaikana, koska sitä käytetään muualla.
 
-## B) "Hallinnoi stadioneja" -linkin kaatuminen
+2. **`src/routes/index.tsx` (pääsivu)**
+   - Lisää uusi kortti "Aikataulusuunnittelu" → linkki `/planner` (jos `isPlanner || isAdmin`).
+   - Käytetään uutta `isAdmin`-arvoa contextista sähköpostivertailun sijaan.
 
-Nykyinen `<a href="/stadiums" target="_blank" rel="noreferrer">` -anchor aukaisee uuden välilehden, joka SSR-renderöityy kylmänä Lovable-previewssä ja kaatuu (`Cannot read properties of null (reading 'useContext')`).
+3. **Admin-näkymä rooleille** — uusi sivu `src/routes/admin.roles.tsx`
+   - Lista nykyisistä planner/admin-käyttäjistä (näytetään email).
+   - Lomake sähköpostilla planner-roolin myöntämiseen.
+   - Linkki pääsivun admin-osiosta.
 
-Korvataan TanStack-Linkillä (rivi 443 tienoilla):
-```tsx
-<Link to="/stadiums" className="...">Hallinnoi stadioneja →</Link>
-```
-Reititys tapahtuu client-side; AuthProvider on jo paikalla, ei kaatumista.
+4. **`/planner`- ja `/stadiums`-reittien suoja**
+   - Lisätään komponenttiin tarkistus: jos ei plannería/adminia → näytetään "Ei oikeuksia" -viesti tai redirect `/`.
 
-## Toteutusjärjestys
-1. Tyypit (`planner-types.ts`)
-2. Stadium-kopiointi (`planner-stadium.ts`)
-3. Solver-konfliktiryhmä (`planner-solver.ts`)
-4. Stadium-editori UI
-5. Plan-editori UI
-6. Linkin korjaus
+## Tekninen huomio
+
+- Roolitarkistus tehdään aina `has_role()`-funktiolla RLS-politiikoissa (välttää rekursion `user_roles`-taulun omilla politiikoilla).
+- Adminin myöntämä rooli vaatii palvelinpuolen kutsun? Ei — RLS sallii adminin INSERTin `user_roles`:iin suoraan clientistä (politiikka `has_role(auth.uid(),'admin')`).
+- Sähköposti haetaan `auth.users`:sta `has_role`-tyylisellä `get_user_id_by_email(email)` SECURITY DEFINER -funktiolla, koska `auth.users` ei ole suoraan luettavissa clientille.
