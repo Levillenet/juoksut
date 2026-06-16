@@ -1522,6 +1522,7 @@ function ScheduleTab({
   const [generating, setGenerating] = useState(false);
   const [highlightIds, setHighlightIds] = useState<string[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [hideErrors, setHideErrors] = useState(false);
   const highlightTimeout = useRef<number | null>(null);
   const highlightConflict = (ids: string[]) => {
     if (highlightTimeout.current) window.clearTimeout(highlightTimeout.current);
