@@ -1730,7 +1730,7 @@ function ScheduleTab({
       />
 
 
-      <div className="overflow-hidden rounded-lg border" style={{ height: "calc(100vh - 260px)", minHeight: 480 }}>
+      <div className="overflow-hidden rounded-lg border" style={{ height: "calc(100vh - 160px)", minHeight: 520 }}>
         <PlannerFullGantt
           plan={plan}
           venues={venues}
@@ -1968,30 +1968,72 @@ function OfficialsPanel({
       )}
 
       {overloads.length > 0 ? (
-        <div className="mt-2 rounded border border-destructive/40 bg-destructive/10 p-2">
-          <div className="font-semibold text-destructive">
-            Toimitsijapula {overloads.length} ajanjaksolla
-          </div>
-          <ul className="mt-1 list-disc space-y-0.5 pl-5">
-            {overloads.slice(0, 8).map((o, i) => (
-              <li key={i}>
-                Klo {formatHHMM(o.startMs)}–{formatHHMM(o.endMs)} tarvitaan{" "}
-                <strong>{o.demand}</strong> toimitsijaa, saatavilla {available}{" "}
-                ({o.demand - available} puuttuu).{" "}
-                <span className="text-muted-foreground">
-                  Lajit: {o.eventIds.map(eventLabel).join(", ")}
-                </span>
-              </li>
-            ))}
-            {overloads.length > 8 && (
-              <li className="text-muted-foreground">…ja {overloads.length - 8} muuta.</li>
-            )}
-          </ul>
-        </div>
+        <OverloadsBox
+          overloads={overloads}
+          available={available}
+          eventLabel={eventLabel}
+        />
       ) : (
         <div className="mt-1 text-muted-foreground">
           Toimitsijoita riittää koko aikataulussa.
         </div>
+      )}
+    </div>
+  );
+}
+
+function OverloadsBox({
+  overloads,
+  available,
+  eventLabel,
+}: {
+  overloads: Array<{ startMs: number; endMs: number; demand: number; eventIds: string[] }>;
+  available: number;
+  eventLabel: (id: string) => string;
+}) {
+  const KEY = "planner_overloads_collapsed";
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const raw = window.localStorage.getItem(KEY);
+    return raw == null ? true : raw === "1";
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(KEY, collapsed ? "1" : "0");
+    } catch {
+      /* noop */
+    }
+  }, [collapsed]);
+  return (
+    <div className="mt-2 rounded border border-destructive/40 bg-destructive/10 p-2">
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 text-left font-semibold text-destructive"
+      >
+        <span>
+          ⚠️ Toimitsijapula {overloads.length} ajanjaksolla
+        </span>
+        <span className="text-xs font-normal text-muted-foreground">
+          {collapsed ? "Näytä yksityiskohdat" : "Piilota"}
+        </span>
+      </button>
+      {!collapsed && (
+        <ul className="mt-1 list-disc space-y-0.5 pl-5">
+          {overloads.slice(0, 8).map((o, i) => (
+            <li key={i}>
+              Klo {formatHHMM(o.startMs)}–{formatHHMM(o.endMs)} tarvitaan{" "}
+              <strong>{o.demand}</strong> toimitsijaa, saatavilla {available}{" "}
+              ({o.demand - available} puuttuu).{" "}
+              <span className="text-muted-foreground">
+                Lajit: {o.eventIds.map(eventLabel).join(", ")}
+              </span>
+            </li>
+          ))}
+          {overloads.length > 8 && (
+            <li className="text-muted-foreground">…ja {overloads.length - 8} muuta.</li>
+          )}
+        </ul>
       )}
     </div>
   );

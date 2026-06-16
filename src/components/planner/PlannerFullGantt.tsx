@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, Minus, Plus, RotateCcw } from "lucide-react";
+import { AlertTriangle, Maximize2, Minimize2, Minus, Plus, RotateCcw, Rows3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   resolveDayWindows,
@@ -40,7 +40,9 @@ const SEVERITY_ORDER: Record<ConflictSeverity, number> = {
   warning: 1,
 };
 
-const ROW_HEIGHT = 64;
+const ROW_HEIGHT_DEFAULT = 48;
+const ROW_HEIGHT_MIN = 28;
+const ROW_HEIGHT_MAX = 96;
 // Sticky left column with venue/age labels. Smaller on mobile.
 const LEFT_COL_DESKTOP = 180;
 const LEFT_COL_MOBILE = 120;
@@ -84,6 +86,31 @@ export function PlannerFullGantt({
   const windows = useMemo(() => resolveDayWindows(plan), [plan]);
   const [dayIdx, setDayIdx] = useState(0);
   const [showEmpty, setShowEmpty] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [hideLegend, setHideLegend] = useState(false);
+  const [compactNames, setCompactNames] = useState(false);
+
+  const rowHeightKey = `planner_gantt_row_height_${plan.id}`;
+  const [ROW_HEIGHT, setRowHeight] = useState<number>(() => {
+    if (typeof window === "undefined") return ROW_HEIGHT_DEFAULT;
+    const raw = window.localStorage.getItem(rowHeightKey) ?? window.localStorage.getItem("ganttRowHeight");
+    const n = raw ? parseInt(raw, 10) : NaN;
+    return Number.isFinite(n) && n >= ROW_HEIGHT_MIN && n <= ROW_HEIGHT_MAX ? n : ROW_HEIGHT_DEFAULT;
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(rowHeightKey, String(ROW_HEIGHT));
+      window.localStorage.setItem("ganttRowHeight", String(ROW_HEIGHT));
+    } catch {
+      /* noop */
+    }
+  }, [ROW_HEIGHT, rowHeightKey]);
+  const bumpRowHeight = useCallback(
+    (delta: number) =>
+      setRowHeight((h) => Math.max(ROW_HEIGHT_MIN, Math.min(ROW_HEIGHT_MAX, h + delta))),
+    [],
+  );
+  const resetRowHeight = useCallback(() => setRowHeight(ROW_HEIGHT_DEFAULT), []);
   const evMap = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
   const venueMap = useMemo(() => new Map(venues.map((v) => [v.id, v])), [venues]);
 
@@ -238,6 +265,33 @@ export function PlannerFullGantt({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [zoomIn, zoomOut, zoomReset]);
+
+  // Pikanäppäimet rivien korkeudelle (+ / − / 0) ja fullscreenistä ulos (Esc)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullscreen) {
+        setIsFullscreen(false);
+        return;
+      }
+      // Ohita kun käyttäjä kirjoittaa kenttään
+      const tgt = e.target as HTMLElement | null;
+      if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA" || tgt.isContentEditable))
+        return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        bumpRowHeight(8);
+      } else if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        bumpRowHeight(-8);
+      } else if (e.key === "0") {
+        e.preventDefault();
+        resetRowHeight();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [bumpRowHeight, resetRowHeight, isFullscreen]);
 
   useEffect(() => {
     updateScrollState();
@@ -618,7 +672,7 @@ export function PlannerFullGantt({
     const conflict = conflictMap.get(s.id);
     const heats = t.isTrack ? Math.max(1, Math.ceil((ev.participants || 0) / 8)) : 1;
     const phase = s.phase;
-    const primary = `${ev.age_class} ${ev.event_name}`;
+    const primary = compactNames ? ev.event_name : `${ev.age_class} ${ev.event_name}`;
     const subParts: string[] = [];
     if (ev.participants) subParts.push(`${ev.participants} osall.`);
     if (t.isTrack && heats > 1) subParts.push(`${heats} erää`);
@@ -911,7 +965,13 @@ export function PlannerFullGantt({
 
   return (
     <TooltipProvider delayDuration={200}>
-    <div className="flex h-full flex-col">
+    <div
+      className={
+        isFullscreen
+          ? "fixed inset-0 z-50 flex flex-col bg-background"
+          : "flex h-full flex-col"
+      }
+    >
       <div className="flex flex-wrap items-center gap-2 border-b bg-card px-3 py-2">
         {windows.length > 1 &&
           windows.map((w, i) => (
@@ -931,16 +991,64 @@ export function PlannerFullGantt({
               })}
             </button>
           ))}
-        <div className="ml-auto flex items-center gap-2">
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
             <input
               type="checkbox"
               checked={showEmpty}
               onChange={(e) => setShowEmpty(e.target.checked)}
               className="h-3.5 w-3.5 accent-primary"
             />
-            Näytä myös tyhjät paikat
+            Tyhjät paikat
           </label>
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={hideLegend}
+              onChange={(e) => setHideLegend(e.target.checked)}
+              className="h-3.5 w-3.5 accent-primary"
+            />
+            Piilota selite
+          </label>
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={compactNames}
+              onChange={(e) => setCompactNames(e.target.checked)}
+              className="h-3.5 w-3.5 accent-primary"
+            />
+            Kompaktit nimet
+          </label>
+          {/* Rivien korkeus */}
+          <div className="flex items-center gap-0.5 rounded-md border bg-background p-0.5" title="Rivien korkeus (+ / − / 0)">
+            <Rows3 className="ml-1 mr-0.5 h-3.5 w-3.5 text-muted-foreground" />
+            <button
+              type="button"
+              onClick={() => bumpRowHeight(-8)}
+              title="Pienennä rivejä (−)"
+              className="grid h-7 w-7 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={resetRowHeight}
+              title="Palauta oletus (0)"
+              className="flex h-7 min-w-[3rem] items-center justify-center gap-1 rounded px-1.5 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <RotateCcw className="h-3 w-3" />
+              {ROW_HEIGHT}px
+            </button>
+            <button
+              type="button"
+              onClick={() => bumpRowHeight(8)}
+              title="Kasvata rivejä (+)"
+              className="grid h-7 w-7 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {/* Zoom */}
           <div className="flex items-center gap-0.5 rounded-md border bg-background p-0.5">
             <button
               type="button"
@@ -968,20 +1076,31 @@ export function PlannerFullGantt({
               <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
+          {/* Fullscreen */}
+          <button
+            type="button"
+            onClick={() => setIsFullscreen((v) => !v)}
+            title={isFullscreen ? "Poistu koko näytöstä (Esc)" : "Koko näyttö"}
+            className="grid h-7 w-7 place-items-center rounded-md border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+          </button>
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-card/50 px-3 py-1.5 text-[10px] text-muted-foreground">
-        {LEGEND.map((l) => (
-          <span key={l.label} className="flex items-center gap-1">
-            <span className={`inline-block h-2.5 w-2.5 rounded border ${l.cls}`} />
-            {l.label}
+      {!hideLegend && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-card/50 px-3 py-1.5 text-[10px] text-muted-foreground">
+          {LEGEND.map((l) => (
+            <span key={l.label} className="flex items-center gap-1">
+              <span className={`inline-block h-2.5 w-2.5 rounded border ${l.cls}`} />
+              {l.label}
+            </span>
+          ))}
+          <span className="flex items-center gap-1">
+            <span className="inline-block h-2.5 w-2.5 rounded border-2 border-red-500 bg-background" />
+            Konflikti
           </span>
-        ))}
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded border-2 border-red-500 bg-background" />
-          Konflikti
-        </span>
-      </div>
+        </div>
+      )}
       <div
         ref={scrollRef}
         className="relative flex-1 overflow-auto"
@@ -1044,7 +1163,7 @@ export function PlannerFullGantt({
                               wordBreak: "break-word",
                             }}
                           >
-                            {ev.age_class} {ev.event_name}
+                            {compactNames ? ev.event_name : `${ev.age_class} ${ev.event_name}`}
                           </div>
                           <div
                             className="truncate text-foreground/70"
