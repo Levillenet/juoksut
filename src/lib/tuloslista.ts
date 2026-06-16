@@ -124,7 +124,9 @@ export function formatRelayLegs(
       : (alloc.Athletes ?? [])
           .map((ath) => ({ idx: ath.Index ?? null, ath }))
           .filter((x): x is { idx: number; ath: RelayAthlete } => x.idx != null);
-  if (source.length === 0) return null;
+  // Vain todelliset viestit (vähintään 2 osuutta). Yksilölajeissa API saattaa
+  // palauttaa yhden "osuuden" indeksillä 0, joka näkyisi rivinä "0. Etu Suku".
+  if (source.length < 2) return null;
   return source
     .slice()
     .sort((a, b) => a.idx - b.idx)
