@@ -86,6 +86,31 @@ export function PlannerFullGantt({
   const windows = useMemo(() => resolveDayWindows(plan), [plan]);
   const [dayIdx, setDayIdx] = useState(0);
   const [showEmpty, setShowEmpty] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [hideLegend, setHideLegend] = useState(false);
+  const [compactNames, setCompactNames] = useState(false);
+
+  const rowHeightKey = `planner_gantt_row_height_${plan.id}`;
+  const [ROW_HEIGHT, setRowHeight] = useState<number>(() => {
+    if (typeof window === "undefined") return ROW_HEIGHT_DEFAULT;
+    const raw = window.localStorage.getItem(rowHeightKey) ?? window.localStorage.getItem("ganttRowHeight");
+    const n = raw ? parseInt(raw, 10) : NaN;
+    return Number.isFinite(n) && n >= ROW_HEIGHT_MIN && n <= ROW_HEIGHT_MAX ? n : ROW_HEIGHT_DEFAULT;
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(rowHeightKey, String(ROW_HEIGHT));
+      window.localStorage.setItem("ganttRowHeight", String(ROW_HEIGHT));
+    } catch {
+      /* noop */
+    }
+  }, [ROW_HEIGHT, rowHeightKey]);
+  const bumpRowHeight = useCallback(
+    (delta: number) =>
+      setRowHeight((h) => Math.max(ROW_HEIGHT_MIN, Math.min(ROW_HEIGHT_MAX, h + delta))),
+    [],
+  );
+  const resetRowHeight = useCallback(() => setRowHeight(ROW_HEIGHT_DEFAULT), []);
   const evMap = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
   const venueMap = useMemo(() => new Map(venues.map((v) => [v.id, v])), [venues]);
 
