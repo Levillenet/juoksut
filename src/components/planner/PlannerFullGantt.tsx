@@ -12,6 +12,7 @@ import {
 } from "@/lib/planner-types";
 import { resolveTimings } from "@/lib/planner-timings";
 import { getEventColorClass, isVenueForEvent } from "@/lib/planner-defaults";
+import { computeRuleEstimate } from "@/lib/planner-rules";
 import type { Conflict, ConflictSeverity } from "@/lib/planner-solver";
 import {
   Tooltip,
