@@ -62,9 +62,10 @@ const STATUS_STYLE: Record<Round["Status"], string> = {
   Official: "bg-foreground text-background",
 };
 
-function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
+function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; isAdmin?: boolean; isPlanner?: boolean }) {
   const isOfficial = role === "official" && !isAdmin;
   const showOfficialLinks = role === "official" || isAdmin;
+  const showPlannerLink = isPlanner || isAdmin;
   return (
     <div className="mx-auto grid max-w-2xl gap-3 px-4 pb-3 sm:grid-cols-2">
       {isAdmin && (
