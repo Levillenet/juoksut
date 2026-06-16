@@ -257,6 +257,8 @@ export function PlannerFullGantt({
     barEl: HTMLElement;
     sectionEl: HTMLElement | null;
   } | null>(null);
+  const autoScrollRafRef = useRef<number | null>(null);
+  const autoScrollVRef = useRef<{ vx: number; vy: number }>({ vx: 0, vy: 0 });
 
   const updateTime = useMutation({
     mutationFn: async (p: {
@@ -332,6 +334,27 @@ export function PlannerFullGantt({
     }
   }, []);
 
+  // Tiivis pakkaus: sijoittamattomat lajit asetellaan useammalle riville
+  // first-fit -menetelmällä, säästäen pystytilaa.
+  const unplacedAreaWidth = Math.max(200, totalWidth - LEFT_COL);
+  const unplacedLayout = useMemo(() => {
+    const GAP = 4;
+    const rowFill: number[] = [];
+    const items = unplacedEvents.map((ev) => {
+      const dur = eventDurationMin(ev);
+      const width = Math.max(40, (dur / 5) * PX_PER_5MIN - 2);
+      let rowIdx = rowFill.findIndex((cursor) => cursor + width <= unplacedAreaWidth);
+      if (rowIdx === -1) {
+        rowIdx = rowFill.length;
+        rowFill.push(0);
+      }
+      const left = rowFill[rowIdx];
+      rowFill[rowIdx] = left + width + GAP;
+      return { ev, left, top: rowIdx * ROW_HEIGHT + 3, width, dur };
+    });
+    return { items, rowCount: Math.max(1, rowFill.length) };
+  }, [unplacedEvents, eventDurationMin, PX_PER_5MIN, unplacedAreaWidth]);
+
   const dayItems = useMemo(
     () =>
       schedule.filter((s) => {
@@ -400,6 +423,56 @@ export function PlannerFullGantt({
     barEl.setPointerCapture(e.pointerId);
   };
 
+  const stopAutoScroll = () => {
+    if (autoScrollRafRef.current != null) {
+      cancelAnimationFrame(autoScrollRafRef.current);
+      autoScrollRafRef.current = null;
+    }
+    autoScrollVRef.current = { vx: 0, vy: 0 };
+  };
+
+  const maybeAutoScroll = (clientX: number, clientY: number) => {
+    const sc = scrollRef.current;
+    if (!sc) return;
+    const r = sc.getBoundingClientRect();
+    const EDGE = 70;
+    const MAX = 22;
+    let vy = 0;
+    let vx = 0;
+    if (clientY < r.top + EDGE)
+      vy = -MAX * Math.min(1, (r.top + EDGE - clientY) / EDGE);
+    else if (clientY > r.bottom - EDGE)
+      vy = MAX * Math.min(1, (clientY - (r.bottom - EDGE)) / EDGE);
+    if (clientX < r.left + EDGE)
+      vx = -MAX * Math.min(1, (r.left + EDGE - clientX) / EDGE);
+    else if (clientX > r.right - EDGE)
+      vx = MAX * Math.min(1, (clientX - (r.right - EDGE)) / EDGE);
+    autoScrollVRef.current = { vx, vy };
+    if (vx === 0 && vy === 0) {
+      stopAutoScroll();
+      return;
+    }
+    if (autoScrollRafRef.current != null) return;
+    const tick = () => {
+      if (!dragRef.current) {
+        stopAutoScroll();
+        return;
+      }
+      const v = autoScrollVRef.current;
+      if (v.vx === 0 && v.vy === 0) {
+        stopAutoScroll();
+        return;
+      }
+      const el = scrollRef.current;
+      if (el) {
+        el.scrollTop += v.vy;
+        el.scrollLeft += v.vx;
+      }
+      autoScrollRafRef.current = requestAnimationFrame(tick);
+    };
+    autoScrollRafRef.current = requestAnimationFrame(tick);
+  };
+
   const onPointerMove = (e: React.PointerEvent) => {
     const d = dragRef.current;
     if (!d) return;
@@ -420,11 +493,13 @@ export function PlannerFullGantt({
       const newIdx = Math.min(maxIdx, Math.max(0, d.origRowIdx + rowDelta));
       d.barEl.style.top = `${newIdx * ROW_HEIGHT + 3}px`;
     }
+    maybeAutoScroll(e.clientX, e.clientY);
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
     const d = dragRef.current;
     dragRef.current = null;
+    stopAutoScroll();
     if (!d) return;
 
     if (d.isUnplaced) {
@@ -916,47 +991,34 @@ export function PlannerFullGantt({
             </div>
             <div
               className="relative bg-red-50/40"
-              style={{ height: unplacedEvents.length * ROW_HEIGHT }}
+              style={{ height: unplacedLayout.rowCount * ROW_HEIGHT }}
             >
               <div
-                className="sticky left-0 z-20 bg-red-50/60 shadow-md"
-                style={{ width: LEFT_COL }}
+                className="sticky left-0 z-20 flex items-center border-r border-red-200 bg-red-50/80 px-2 text-[10px] font-medium uppercase tracking-wide text-red-900 shadow-md"
+                style={{ width: LEFT_COL, height: unplacedLayout.rowCount * ROW_HEIGHT }}
               >
-                {unplacedEvents.map((ev) => (
-                  <div
-                    key={`ulbl-${ev.id}`}
-                    className="flex items-center border-b border-r border-red-200 px-2 text-xs"
-                    style={{ height: ROW_HEIGHT }}
-                  >
-                    <span className="truncate font-medium text-red-900">
-                      {ev.age_class} {ev.event_name}
-                    </span>
-                  </div>
-                ))}
+                {unplacedEvents.length} lajia
               </div>
               <div
                 className="absolute top-0"
                 style={{
                   left: LEFT_COL,
                   width: totalWidth - LEFT_COL,
-                  height: unplacedEvents.length * ROW_HEIGHT,
+                  height: unplacedLayout.rowCount * ROW_HEIGHT,
                 }}
               >
-                {unplacedEvents.map((ev, i) => {
-                  const dur = eventDurationMin(ev);
-                  const width = Math.max(40, (dur / 5) * PX_PER_5MIN - 2);
-                  const top = i * ROW_HEIGHT + 3;
+                {unplacedLayout.items.map(({ ev, left, top, width, dur }) => {
                   const color = getEventColorClass(ev.event_name, ev.sub_category);
                   return (
                     <Tooltip key={`u-${ev.id}`}>
                       <TooltipTrigger asChild>
                         <div
                           data-bar-id={`unplaced-${ev.id}`}
-                          data-base-left={0}
+                          data-base-left={left}
                           onPointerDown={(e) => onUnplacedPointerDown(e, ev)}
                           className={`absolute cursor-grab touch-none select-none overflow-hidden rounded border-2 border-dashed border-red-600 px-1 py-0.5 leading-tight shadow-sm active:cursor-grabbing ${color.bg} ${color.text}`}
                           style={{
-                            left: 0,
+                            left,
                             top,
                             width,
                             height: ROW_HEIGHT - 6,
