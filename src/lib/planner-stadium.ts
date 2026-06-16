@@ -67,6 +67,7 @@ export async function applyStadiumToPlan(planId: string, stadiumId: string): Pro
       notes: sv.notes,
       stadium_venue_id: sv.id,
       included: false,
+      next_to_throw_cage: sv.next_to_throw_cage ?? true,
     }));
 
   if (toInsert.length > 0) {
