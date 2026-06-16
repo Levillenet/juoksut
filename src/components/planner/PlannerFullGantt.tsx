@@ -13,6 +13,7 @@ import {
 import { resolveTimings } from "@/lib/planner-timings";
 import { getEventColorClass, isVenueForEvent } from "@/lib/planner-defaults";
 import { computeRuleEstimate } from "@/lib/planner-rules";
+import { formatEventLabel, normalizeEventName } from "@/lib/event-name";
 import type { Conflict, ConflictSeverity } from "@/lib/planner-solver";
 import {
   Tooltip,
