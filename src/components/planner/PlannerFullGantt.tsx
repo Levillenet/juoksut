@@ -332,6 +332,27 @@ export function PlannerFullGantt({
     }
   }, []);
 
+  // Tiivis pakkaus: sijoittamattomat lajit asetellaan useammalle riville
+  // first-fit -menetelmällä, säästäen pystytilaa.
+  const unplacedAreaWidth = Math.max(200, totalWidth - LEFT_COL);
+  const unplacedLayout = useMemo(() => {
+    const GAP = 4;
+    const rowFill: number[] = [];
+    const items = unplacedEvents.map((ev) => {
+      const dur = eventDurationMin(ev);
+      const width = Math.max(40, (dur / 5) * PX_PER_5MIN - 2);
+      let rowIdx = rowFill.findIndex((cursor) => cursor + width <= unplacedAreaWidth);
+      if (rowIdx === -1) {
+        rowIdx = rowFill.length;
+        rowFill.push(0);
+      }
+      const left = rowFill[rowIdx];
+      rowFill[rowIdx] = left + width + GAP;
+      return { ev, left, top: rowIdx * ROW_HEIGHT + 3, width, dur };
+    });
+    return { items, rowCount: Math.max(1, rowFill.length) };
+  }, [unplacedEvents, eventDurationMin, PX_PER_5MIN, unplacedAreaWidth]);
+
   const dayItems = useMemo(
     () =>
       schedule.filter((s) => {
