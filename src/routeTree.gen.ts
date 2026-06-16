@@ -35,6 +35,7 @@ import { Route as SettingsTeamsRouteImport } from './routes/settings.teams'
 import { Route as SettingsNoteLinksRouteImport } from './routes/settings.note-links'
 import { Route as PrintYagCallingRouteImport } from './routes/print.yag-calling'
 import { Route as PrintWatchedRouteImport } from './routes/print.watched'
+import { Route as PrintClubTeamReportRouteImport } from './routes/print.club-team-report'
 import { Route as PrintClubReportRouteImport } from './routes/print.club-report'
 import { Route as PrintClubRouteImport } from './routes/print.club'
 import { Route as PlannerPlanIdRouteImport } from './routes/planner.$planId'
@@ -183,6 +184,11 @@ const PrintWatchedRoute = PrintWatchedRouteImport.update({
   path: '/watched',
   getParentRoute: () => PrintRoute,
 } as any)
+const PrintClubTeamReportRoute = PrintClubTeamReportRouteImport.update({
+  id: '/club-team-report',
+  path: '/club-team-report',
+  getParentRoute: () => PrintRoute,
+} as any)
 const PrintClubReportRoute = PrintClubReportRouteImport.update({
   id: '/club-report',
   path: '/club-report',
@@ -300,6 +306,7 @@ export interface FileRoutesByFullPath {
   '/planner/$planId': typeof PlannerPlanIdRouteWithChildren
   '/print/club': typeof PrintClubRoute
   '/print/club-report': typeof PrintClubReportRoute
+  '/print/club-team-report': typeof PrintClubTeamReportRoute
   '/print/watched': typeof PrintWatchedRoute
   '/print/yag-calling': typeof PrintYagCallingRoute
   '/settings/note-links': typeof SettingsNoteLinksRoute
@@ -342,6 +349,7 @@ export interface FileRoutesByTo {
   '/planner/$planId': typeof PlannerPlanIdRouteWithChildren
   '/print/club': typeof PrintClubRoute
   '/print/club-report': typeof PrintClubReportRoute
+  '/print/club-team-report': typeof PrintClubTeamReportRoute
   '/print/watched': typeof PrintWatchedRoute
   '/print/yag-calling': typeof PrintYagCallingRoute
   '/settings/note-links': typeof SettingsNoteLinksRoute
@@ -388,6 +396,7 @@ export interface FileRoutesById {
   '/planner/$planId': typeof PlannerPlanIdRouteWithChildren
   '/print/club': typeof PrintClubRoute
   '/print/club-report': typeof PrintClubReportRoute
+  '/print/club-team-report': typeof PrintClubTeamReportRoute
   '/print/watched': typeof PrintWatchedRoute
   '/print/yag-calling': typeof PrintYagCallingRoute
   '/settings/note-links': typeof SettingsNoteLinksRoute
@@ -435,6 +444,7 @@ export interface FileRouteTypes {
     | '/planner/$planId'
     | '/print/club'
     | '/print/club-report'
+    | '/print/club-team-report'
     | '/print/watched'
     | '/print/yag-calling'
     | '/settings/note-links'
@@ -477,6 +487,7 @@ export interface FileRouteTypes {
     | '/planner/$planId'
     | '/print/club'
     | '/print/club-report'
+    | '/print/club-team-report'
     | '/print/watched'
     | '/print/yag-calling'
     | '/settings/note-links'
@@ -522,6 +533,7 @@ export interface FileRouteTypes {
     | '/planner/$planId'
     | '/print/club'
     | '/print/club-report'
+    | '/print/club-team-report'
     | '/print/watched'
     | '/print/yag-calling'
     | '/settings/note-links'
@@ -757,6 +769,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrintWatchedRouteImport
       parentRoute: typeof PrintRoute
     }
+    '/print/club-team-report': {
+      id: '/print/club-team-report'
+      path: '/club-team-report'
+      fullPath: '/print/club-team-report'
+      preLoaderRoute: typeof PrintClubTeamReportRouteImport
+      parentRoute: typeof PrintRoute
+    }
     '/print/club-report': {
       id: '/print/club-report'
       path: '/club-report'
@@ -925,6 +944,7 @@ const PlannerRouteWithChildren =
 interface PrintRouteChildren {
   PrintClubRoute: typeof PrintClubRoute
   PrintClubReportRoute: typeof PrintClubReportRoute
+  PrintClubTeamReportRoute: typeof PrintClubTeamReportRoute
   PrintWatchedRoute: typeof PrintWatchedRoute
   PrintYagCallingRoute: typeof PrintYagCallingRoute
   PrintIndexRoute: typeof PrintIndexRoute
@@ -933,6 +953,7 @@ interface PrintRouteChildren {
 const PrintRouteChildren: PrintRouteChildren = {
   PrintClubRoute: PrintClubRoute,
   PrintClubReportRoute: PrintClubReportRoute,
+  PrintClubTeamReportRoute: PrintClubTeamReportRoute,
   PrintWatchedRoute: PrintWatchedRoute,
   PrintYagCallingRoute: PrintYagCallingRoute,
   PrintIndexRoute: PrintIndexRoute,

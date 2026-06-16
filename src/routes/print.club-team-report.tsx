@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Printer } from "lucide-react";
 import { useCompetitionId } from "@/lib/competition-store";
@@ -10,6 +10,7 @@ import { usePrintOrientation, type Orientation } from "@/hooks/usePrintOrientati
 import {
   fetchRounds,
   fetchEvent,
+  fetchProperties,
   isVerticalJump,
   type Round,
   type Allocation,
