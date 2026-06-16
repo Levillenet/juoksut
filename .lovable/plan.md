@@ -1,50 +1,29 @@
-## Bugi: VenueState.busyUntil ei resetoidu päivien välillä
+## Bugi: ageStates lukitsee koko sarjan vaikka eri lajeissa on eri urheilijat
 
-Vahvistettu lukemalla `src/lib/planner-solver.ts` rivit 280–450:
+Solver käsittelee `ageClass`-arvoa yhtenä jaettuna aikajanana → P11 60m klo 10:00–10:25 estää kaiken muun P11-toiminnan (Kiekko, Korkeus, Kuula) kunnes klo 10:25. Todellisuudessa heittäjät ja hyppääjät ovat eri henkilöitä.
 
-- Rivi 289: `for (const v of venueStates) v.busyUntil = input.windows[0].startMs;` — alustus vain ensimmäisen päivän alkuun.
-- Rivi 364: `for (const win of input.windows) { ... }` — päiväiteraatio ei resetoi paikkojen tilaa.
-- Rivi 381: `freeAt(vs) = vs.busyUntil + venueChangeoverMs(vs)` — kun edellinen sijoitus jätti `busyUntil`-arvon edellisen päivän puolelle (esim. klo 20:00), ei mikään paikka näytä vapautuvan ennen nykyisen päivän loppua → `ready` jää tyhjäksi → "vapaata 0 min".
+## Korjaus: poista ageStates kokonaan (vaihtoehto C)
 
-Sama koskee `ageStates`-rakennetta.
+Saman lajin vaiheet (alkuerät → finaali) lukitaan jo `eventEnds` + `afterEventIds` + `afterPhaseKey` -mekanismilla, eli ageStates ei tuo lisäarvoa.
 
-## Korjaus
+Muokattava tiedosto: `src/lib/planner-solver.ts`.
 
-Yksi muutos `src/lib/planner-solver.ts`:n riveille 364–368: lisätään `for (const win of input.windows)`:n alkuun resetointi, joka työntää menneen päivän puolelle jääneet `busyUntil`-aikaleimat tämän päivän alkuun.
+Poistettavat kohdat:
+1. `ageStates`-mapin alustus ja `AgeState`-tyyppi (jos käytössä vain täällä).
+2. Päivän alussa lisätty `ageStates`-reset (sama korjausblokki jonka lisäsimme äsken).
+3. `ageBusyUntil`-muuttujan luku ja sen sisällytys `candidateStart`-laskuun (Math.max).
+4. Sama `ageBusyUntil` aitarata-haarassa (rivi ~441).
+5. `ageStates.set(...)` sijoituksen lopussa (rivit ~491–495).
 
-```ts
-for (const win of input.windows) {
-  // KORJAUS: päivärajan ylittävä busyUntil ei saa estää uutta päivää.
-  for (const v of venueStates) {
-    if (v.busyUntil < win.startMs) {
-      v.busyUntil = win.startMs;
-      v.lastEventName = null;   // aidat ja matkanvaihtoaika eivät kanna yötä yli
-      v.lastWasHurdle = false;
-    }
-  }
-  for (const [ac, state] of ageStates) {
-    if (state.busyUntil < win.startMs) {
-      ageStates.set(ac, { busyUntil: win.startMs });
-    }
-  }
-
-  if (seg.allowedDays && !seg.allowedDays.has(win.date)) {
-    failReasons.push(`${win.date}: päivärajoitus sulkee pois`);
-    continue;
-  }
-  // ... olemassaoleva logiikka jatkuu muuttumattomana
-}
-```
+Vastaavat varoitukset päällekkäisistä sarjoista jätetään `detectConflicts`-funktioon (informatiivinen, ei rajoite) — tarkistan ettei sitä poisteta.
 
 ## Mitä EI muuteta
 
-- `eventEnds`, `phaseEnds`, `phaseVenues` — vaihejärjestys (alkuerät → finaali) kantaa päivien yli.
-- `ovalBusy`, `straightBusy`, `groupBusy` — kaikkien päivien yli, päiväraja jo huomioitu `win.startMs/endMs`-tarkistuksissa.
-- Solverin muu logiikka, venuejen rakenne, segmenttien generointi.
+- `eventEnds`, `phaseEnds`, `phaseVenues`, `ovalBusy`, `straightBusy`, `groupBusy`.
+- Venue-rakenne, segmenttien generointi, `detectConflicts`-logiikka.
 
 ## Validointi
 
-1. Aja YAG (kopio) -generointi uudestaan.
-2. Raportoi: kuinka monta lajia jää `ei mahdu` -varoituksella?
-3. Tarkista että pitkät juoksut ja kenttälajeja jakautuvat eri päiville.
-4. Jos vielä jää ~5–15 todellista kapasiteettiongelmaa, päätetään tarvitaanko VAIHE 2 (`allowed_days`-jako oikean YAG:n mallin mukaan).
+1. Aja YAG (kopio) -generointi.
+2. Raportoi puuttuvien lajien määrä, lista ja yleisin syy.
+3. Jos kenttälajit ovat sijoittuneet ja vain ovaali/viestit jäävät, syy on kapasiteetti — ei enää koodi.
