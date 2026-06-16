@@ -751,6 +751,11 @@ function ScoreRow({
         className="mt-0.5 truncate text-muted-foreground"
         style={{ fontSize: clubFontSize(sizeBucket) }}
       >
+        {row.Number?.trim() ? (
+          <span className="mr-2 rounded bg-secondary px-1.5 font-bold tabular-nums text-secondary-foreground">
+            #{row.Number.trim()}
+          </span>
+        ) : null}
         {row.Organization?.Name ?? row.Organization?.NameShort ?? ""}
         {row.SB ? (
           <span className="ml-2">
