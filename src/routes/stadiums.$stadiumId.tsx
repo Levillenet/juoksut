@@ -35,6 +35,7 @@ interface StadiumVenue {
   kind: VenueKind;
   notes: string | null;
   sort_order: number;
+  next_to_throw_cage: boolean;
 }
 interface ConflictGroup {
   id: string;
