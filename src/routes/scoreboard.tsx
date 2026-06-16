@@ -602,9 +602,15 @@ function ScoreboardLive() {
                 row={row}
                 displayRank={
                   order === "start"
-                    ? (row.Position ?? idx + 1)
-                    : (row.ResultRank ?? idx + 1)
+                    ? (row.Number?.trim() ||
+                        (row.Position && row.Position > 0
+                          ? String(row.Position)
+                          : "—"))
+                    : (row.ResultRank && row.ResultRank > 0
+                        ? String(row.ResultRank)
+                        : "—")
                 }
+                displayMode={order === "start" ? "bib" : "rank"}
                 isLeader={order === "result" && idx === 0 && !!row.best}
                 count={visible.length}
                 eventId={ev?.Id ?? 0}
@@ -613,6 +619,7 @@ function ScoreboardLive() {
                 eventName={ev?.Name ?? ""}
                 scrollMode={scrollMode}
               />
+
             ))}
           </ul>
         )}
@@ -622,11 +629,6 @@ function ScoreboardLive() {
   );
 }
 
-function splitName(full: string): { first: string; last: string } {
-  const parts = full.trim().split(/\s+/);
-  if (parts.length <= 1) return { first: "", last: full };
-  return { first: parts[0], last: parts.slice(1).join(" ") };
-}
 
 function useClock(): string {
   const [t, setT] = useState<string>(() => formatHelsinkiClock(new Date()));
@@ -673,6 +675,7 @@ function useViewportWidth(): number {
 function ScoreRow({
   row,
   displayRank,
+  displayMode = "rank",
   isLeader: isLeaderProp,
   count,
   eventId,
@@ -682,7 +685,8 @@ function ScoreRow({
   scrollMode,
 }: {
   row: RankedRow;
-  displayRank: number;
+  displayRank: number | string;
+  displayMode?: "rank" | "bib";
   isLeader?: boolean;
   count: number;
   eventId: number;
@@ -700,7 +704,13 @@ function ScoreRow({
   const isLeader = isLeaderProp ?? (displayRank === 1 && !!row.best);
   const rankNum = displayRank;
   const stackName = !narrow && sizeBucket <= 5;
-  const { first, last } = splitName(row.Name ?? "");
+  // Käytä Tuloslista-API:n Firstname/Surname-kenttiä kanonisena lähteenä, jotta
+  // mahdollisesti duplikoitu Name-kenttä ei aiheuta nimen näkymistä kahdesti.
+  const first = (row.Firstname ?? "").trim();
+  const last = (row.Surname ?? "").trim();
+  const fullName =
+    [first, last].filter(Boolean).join(" ") || row.Name || row.TeamName || "";
+
 
   // Detect new PB / SB against captured baseline (falls back to API PB/SB,
   // then to the athlete's historical best across age classes).
@@ -733,9 +743,10 @@ function ScoreRow({
           className="truncate font-black leading-tight"
           style={{ fontSize: narrow ? narrowNameFontSize(sizeBucket) : nameFontSize(sizeBucket) }}
         >
-          {row.Name}
+          {fullName}
         </p>
       )}
+
       <p
         className="mt-0.5 truncate text-muted-foreground"
         style={{ fontSize: clubFontSize(sizeBucket) }}
@@ -787,7 +798,7 @@ function ScoreRow({
         paddingBottom: narrow ? "0.25rem" : undefined,
       }}
     >
-      {rankNum}.
+      {displayMode === "bib" ? `#${rankNum}` : rankNum === "—" ? rankNum : `${rankNum}.`}
     </div>
   );
 
