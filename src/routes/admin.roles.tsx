@@ -6,7 +6,7 @@ import { ArrowLeft, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 
 export const Route = createFileRoute("/admin/roles")({
   head: () => ({ meta: [{ title: "Admin · Käyttöoikeudet" }] }),
@@ -34,6 +34,12 @@ function Gate() {
   return <Page />;
 }
 
+interface AuthUserRow {
+  user_id: string;
+  email: string;
+  last_sign_in_at: string | null;
+}
+
 function Page() {
   const qc = useQueryClient();
   const [email, setEmail] = useState("");
@@ -49,10 +55,19 @@ function Page() {
     },
   });
 
+  const usersQ = useQuery({
+    queryKey: ["admin", "auth_users"],
+    queryFn: async (): Promise<AuthUserRow[]> => {
+      const { data, error } = await supabase.rpc("list_auth_users");
+      if (error) throw error;
+      return (data ?? []) as AuthUserRow[];
+    },
+  });
+
   const grant = useMutation({
     mutationFn: async () => {
       const trimmed = email.trim();
-      if (!trimmed) throw new Error("Anna sähköpostiosoite");
+      if (!trimmed) throw new Error("Valitse käyttäjä");
       const { error } = await supabase.rpc("grant_role_by_email", {
         _email: trimmed,
         _role: role,
@@ -78,6 +93,9 @@ function Page() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "roles"] }),
   });
 
+  const fmtLast = (s: string | null) =>
+    s ? new Date(s).toLocaleDateString("fi-FI") : "ei kirjautumista";
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
@@ -96,13 +114,21 @@ function Page() {
             Myönnä rooli
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              type="email"
-              placeholder="kayttaja@example.com"
+            <select
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="flex-1"
-            />
+              className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
+              disabled={usersQ.isLoading}
+            >
+              <option value="">
+                {usersQ.isLoading ? "Ladataan käyttäjiä…" : "— valitse käyttäjä —"}
+              </option>
+              {(usersQ.data ?? []).map((u) => (
+                <option key={u.user_id} value={u.email}>
+                  {u.email} · {fmtLast(u.last_sign_in_at)}
+                </option>
+              ))}
+            </select>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as "planner" | "admin")}
@@ -113,7 +139,7 @@ function Page() {
             </select>
             <Button
               onClick={() => grant.mutate()}
-              disabled={grant.isPending}
+              disabled={grant.isPending || !email}
             >
               Myönnä
             </Button>
@@ -121,10 +147,16 @@ function Page() {
           {error && (
             <p className="mt-2 text-xs text-destructive">{error}</p>
           )}
+          {usersQ.error && (
+            <p className="mt-2 text-xs text-destructive">
+              Käyttäjälistan lataus epäonnistui: {(usersQ.error as Error).message}
+            </p>
+          )}
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Käyttäjän pitää olla kirjautunut sisään vähintään kerran (Google tai sähköposti) ennen roolin myöntämistä.
+            Lista sisältää kaikki kirjautuneet käyttäjät. Jos uusi käyttäjä ei näy, pyydä häntä kirjautumaan kerran (Google tai sähköposti) ja päivitä sivu.
           </p>
         </section>
+
 
         <section className="rounded-xl border bg-card p-4 shadow-sm">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

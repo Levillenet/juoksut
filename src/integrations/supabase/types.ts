@@ -1366,6 +1366,14 @@ export type Database = {
         Args: { _team: string; _user: string }
         Returns: boolean
       }
+      list_auth_users: {
+        Args: never
+        Returns: {
+          email: string
+          last_sign_in_at: string
+          user_id: string
+        }[]
+      }
       list_planner_template_competitions: {
         Args: { p_year: number }
         Returns: {
