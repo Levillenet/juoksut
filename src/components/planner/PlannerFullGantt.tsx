@@ -673,7 +673,7 @@ export function PlannerFullGantt({
     const conflict = conflictMap.get(s.id);
     const heats = t.isTrack ? Math.max(1, Math.ceil((ev.participants || 0) / 8)) : 1;
     const phase = s.phase;
-    const primary = compactNames ? ev.event_name : `${ev.age_class} ${ev.event_name}`;
+    const primary = compactNames ? normalizeEventName(ev.event_name) : formatEventLabel(ev.age_class, ev.event_name);
     const subParts: string[] = [];
     if (ev.participants) subParts.push(`${ev.participants} osall.`);
     if (t.isTrack && heats > 1) subParts.push(`${heats} erää`);
