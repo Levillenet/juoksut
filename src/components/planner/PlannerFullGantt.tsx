@@ -285,6 +285,53 @@ export function PlannerFullGantt({
     onSuccess: onChange,
   });
 
+  const createItem = useMutation({
+    mutationFn: async (p: {
+      plan_event_id: string;
+      venue_id: string;
+      starts_at: string;
+      ends_at: string;
+    }) => {
+      const { error } = await supabase.from("plan_schedule_items").insert({
+        plan_id: plan.id,
+        plan_event_id: p.plan_event_id,
+        venue_id: p.venue_id,
+        phase: "single",
+        starts_at: p.starts_at,
+        ends_at: p.ends_at,
+        auto_generated: false,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Laji sijoitettu aikatauluun");
+      onChange();
+    },
+    onError: (e: Error) => toast.error(e.message ?? "Sijoitus epäonnistui"),
+  });
+
+  // Lajit joita solver ei sijoittanut: ei yhtään schedule-riviä.
+  const unplacedEvents = useMemo(() => {
+    const placed = new Set(schedule.map((s) => s.plan_event_id));
+    return events.filter((e) => !placed.has(e.id));
+  }, [events, schedule]);
+
+  const eventDurationMin = useCallback((ev: PlanEventRow): number => {
+    if (ev.override_duration_min && ev.override_duration_min > 0) return ev.override_duration_min;
+    try {
+      const r = computeRuleEstimate({
+        event_name: ev.event_name,
+        sub_category: ev.sub_category,
+        participants: ev.participants,
+        station_count: ev.station_count,
+        heat_size: ev.heat_size,
+      });
+      return Math.max(5, r.minutes);
+    } catch {
+      return 30;
+    }
+  }, []);
+
   const dayItems = useMemo(
     () =>
       schedule.filter((s) => {
