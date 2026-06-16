@@ -812,6 +812,7 @@ export type Database = {
           included: boolean
           kind: string
           name: string
+          next_to_throw_cage: boolean
           notes: string | null
           plan_id: string
           sort_order: number
@@ -823,6 +824,7 @@ export type Database = {
           included?: boolean
           kind?: string
           name: string
+          next_to_throw_cage?: boolean
           notes?: string | null
           plan_id: string
           sort_order?: number
@@ -834,6 +836,7 @@ export type Database = {
           included?: boolean
           kind?: string
           name?: string
+          next_to_throw_cage?: boolean
           notes?: string | null
           plan_id?: string
           sort_order?: number
@@ -981,6 +984,7 @@ export type Database = {
           id: string
           kind: string
           name: string
+          next_to_throw_cage: boolean
           notes: string | null
           sort_order: number
           stadium_id: string
@@ -991,6 +995,7 @@ export type Database = {
           id?: string
           kind: string
           name: string
+          next_to_throw_cage?: boolean
           notes?: string | null
           sort_order?: number
           stadium_id: string
@@ -1001,6 +1006,7 @@ export type Database = {
           id?: string
           kind?: string
           name?: string
+          next_to_throw_cage?: boolean
           notes?: string | null
           sort_order?: number
           stadium_id?: string

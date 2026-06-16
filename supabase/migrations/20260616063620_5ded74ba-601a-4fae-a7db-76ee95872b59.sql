@@ -1,0 +1,2 @@
+ALTER TABLE public.stadium_venues ADD COLUMN IF NOT EXISTS next_to_throw_cage boolean NOT NULL DEFAULT true;
+ALTER TABLE public.plan_venues ADD COLUMN IF NOT EXISTS next_to_throw_cage boolean NOT NULL DEFAULT true;
