@@ -1,5 +1,12 @@
 // Toimitsijatarpeen aikajana ja huiput.
 import type { PlanEventRow, ScheduleItemRow } from "./planner-types";
+import { isRunningEvent } from "./planner-defaults";
+
+/** Kuinka monta erillistä lähettäjää on aina varattuna juoksulajeihin.
+ *  Sääntö: 2 lähettäjää + 1 lähdön järjestelijä / juoksu. Lähettäjät ovat
+ *  samat henkilöt kaikissa juoksuissa eivätkä toimi muissa rooleissa,
+ *  joten heidät lasketaan vain kerran (kun yksikin juoksu on käynnissä). */
+const SHARED_STARTERS = 2;
 
 export interface OfficialsDemandPoint {
   /** ms unix-aika */
