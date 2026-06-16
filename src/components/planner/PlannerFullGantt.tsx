@@ -1164,7 +1164,7 @@ export function PlannerFullGantt({
                               wordBreak: "break-word",
                             }}
                           >
-                            {compactNames ? ev.event_name : `${ev.age_class} ${ev.event_name}`}
+                            {compactNames ? normalizeEventName(ev.event_name) : formatEventLabel(ev.age_class, ev.event_name)}
                           </div>
                           <div
                             className="truncate text-foreground/70"
