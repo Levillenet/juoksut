@@ -245,6 +245,8 @@ export function PlannerFullGantt({
 
   const dragRef = useRef<{
     id: string;
+    isUnplaced: boolean;
+    eventId?: string;
     startX: number;
     startY: number;
     origStart: number;
