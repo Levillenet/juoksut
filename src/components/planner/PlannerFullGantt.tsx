@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, Minus, Plus, RotateCcw } from "lucide-react";
+import { AlertTriangle, Maximize2, Minimize2, Minus, Plus, RotateCcw, Rows3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   resolveDayWindows,
@@ -40,7 +40,9 @@ const SEVERITY_ORDER: Record<ConflictSeverity, number> = {
   warning: 1,
 };
 
-const ROW_HEIGHT = 64;
+const ROW_HEIGHT_DEFAULT = 48;
+const ROW_HEIGHT_MIN = 28;
+const ROW_HEIGHT_MAX = 96;
 // Sticky left column with venue/age labels. Smaller on mobile.
 const LEFT_COL_DESKTOP = 180;
 const LEFT_COL_MOBILE = 120;
