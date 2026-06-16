@@ -249,6 +249,8 @@ export function PlannerFullGantt({
     eventId?: string;
     startX: number;
     startY: number;
+    startScrollLeft: number;
+    startScrollTop: number;
     origStart: number;
     origEnd: number;
     origVenueId: string;
@@ -389,6 +391,8 @@ export function PlannerFullGantt({
       isUnplaced: false,
       startX: e.clientX,
       startY: e.clientY,
+      startScrollLeft: scrollRef.current?.scrollLeft ?? 0,
+      startScrollTop: scrollRef.current?.scrollTop ?? 0,
       origStart: orig,
       origEnd,
       origVenueId: item.venue_id,
@@ -411,6 +415,8 @@ export function PlannerFullGantt({
       eventId: ev.id,
       startX: e.clientX,
       startY: e.clientY,
+      startScrollLeft: scrollRef.current?.scrollLeft ?? 0,
+      startScrollTop: scrollRef.current?.scrollTop ?? 0,
       origStart: 0,
       origEnd: 0,
       origVenueId: "",
@@ -476,7 +482,10 @@ export function PlannerFullGantt({
   const onPointerMove = (e: React.PointerEvent) => {
     const d = dragRef.current;
     if (!d) return;
-    const dx = e.clientX - d.startX;
+    const sc = scrollRef.current;
+    const scrollDx = (sc?.scrollLeft ?? 0) - d.startScrollLeft;
+    const scrollDy = (sc?.scrollTop ?? 0) - d.startScrollTop;
+    const dx = e.clientX - d.startX + scrollDx;
     const minutes = Math.round(dx / PX_PER_5MIN) * 5;
     const els = document.querySelectorAll<HTMLElement>(`[data-bar-id="${d.id}"]`);
     els.forEach((el) => {
@@ -484,10 +493,10 @@ export function PlannerFullGantt({
       el.style.left = `${baseLeft + minutes * (PX_PER_5MIN / 5)}px`;
     });
     if (d.isUnplaced) {
-      const dy = e.clientY - d.startY;
+      const dy = e.clientY - d.startY + scrollDy;
       d.barEl.style.top = `${d.origTop + dy}px`;
     } else if (d.sectionEl) {
-      const dy = e.clientY - d.startY;
+      const dy = e.clientY - d.startY + scrollDy;
       const rowDelta = Math.round(dy / ROW_HEIGHT);
       const maxIdx = Math.max(0, venueRows.length - 1);
       const newIdx = Math.min(maxIdx, Math.max(0, d.origRowIdx + rowDelta));
