@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isOfficial, setIsOfficial] = useState(false);
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<string[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
 
   useEffect(() => {
     try {
@@ -59,9 +60,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) {
       setRoles([]);
+      setRolesLoading(false);
       return;
     }
     let cancelled = false;
+    setRolesLoading(true);
     supabase
       .from("user_roles")
       .select("role")
@@ -71,9 +74,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) {
           console.error("roles load failed", error);
           setRoles([]);
-          return;
+        } else {
+          setRoles((data ?? []).map((r) => r.role as string));
         }
-        setRoles((data ?? []).map((r) => r.role as string));
+        setRolesLoading(false);
       });
     return () => {
       cancelled = true;
@@ -115,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role,
         isAdmin,
         isPlanner,
-        loading,
+        loading: loading || rolesLoading,
         signInOfficial,
         signOut,
       }}
