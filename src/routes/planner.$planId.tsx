@@ -1773,11 +1773,15 @@ function ConflictsList({
   events,
   schedule,
   onHighlight,
+  collapsed,
+  onToggleCollapse,
 }: {
   conflicts: Conflict[];
   events: PlanEventRow[];
   schedule: ScheduleItemRow[];
   onHighlight: (ids: string[]) => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }) {
   const evMap = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
   const itemMap = useMemo(() => new Map(schedule.map((s) => [s.id, s])), [schedule]);
