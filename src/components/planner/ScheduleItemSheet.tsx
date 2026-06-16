@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { formatEventLabel } from "@/lib/event-name";
 import { useMutation } from "@tanstack/react-query";
 import {
   Clock,
