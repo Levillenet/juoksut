@@ -71,6 +71,7 @@ export interface VenueRow {
   notes: string | null;
   stadium_venue_id: string | null;
   included: boolean;
+  next_to_throw_cage: boolean;
 }
 
 export interface ConflictGroupRow {
@@ -98,6 +99,7 @@ export interface StadiumVenueRow {
   kind: VenueKind;
   sort_order: number;
   notes: string | null;
+  next_to_throw_cage: boolean;
 }
 
 export interface StadiumConflictGroupRow {
