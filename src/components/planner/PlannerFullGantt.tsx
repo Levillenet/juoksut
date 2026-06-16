@@ -12,6 +12,7 @@ import {
 } from "@/lib/planner-types";
 import { resolveTimings } from "@/lib/planner-timings";
 import { getEventColorClass, isVenueForEvent } from "@/lib/planner-defaults";
+import { computeRuleEstimate } from "@/lib/planner-rules";
 import type { Conflict, ConflictSeverity } from "@/lib/planner-solver";
 import {
   Tooltip,
@@ -244,6 +245,8 @@ export function PlannerFullGantt({
 
   const dragRef = useRef<{
     id: string;
+    isUnplaced: boolean;
+    eventId?: string;
     startX: number;
     startY: number;
     origStart: number;
@@ -282,6 +285,53 @@ export function PlannerFullGantt({
     onSuccess: onChange,
   });
 
+  const createItem = useMutation({
+    mutationFn: async (p: {
+      plan_event_id: string;
+      venue_id: string;
+      starts_at: string;
+      ends_at: string;
+    }) => {
+      const { error } = await supabase.from("plan_schedule_items").insert({
+        plan_id: plan.id,
+        plan_event_id: p.plan_event_id,
+        venue_id: p.venue_id,
+        phase: "single",
+        starts_at: p.starts_at,
+        ends_at: p.ends_at,
+        auto_generated: false,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Laji sijoitettu aikatauluun");
+      onChange();
+    },
+    onError: (e: Error) => toast.error(e.message ?? "Sijoitus epäonnistui"),
+  });
+
+  // Lajit joita solver ei sijoittanut: ei yhtään schedule-riviä.
+  const unplacedEvents = useMemo(() => {
+    const placed = new Set(schedule.map((s) => s.plan_event_id));
+    return events.filter((e) => !placed.has(e.id));
+  }, [events, schedule]);
+
+  const eventDurationMin = useCallback((ev: PlanEventRow): number => {
+    if (ev.override_duration_min && ev.override_duration_min > 0) return ev.override_duration_min;
+    try {
+      const r = computeRuleEstimate({
+        event_name: ev.event_name,
+        sub_category: ev.sub_category,
+        participants: ev.participants,
+        station_count: ev.station_count,
+        heat_size: ev.heat_size,
+      });
+      return Math.max(5, r.minutes);
+    } catch {
+      return 30;
+    }
+  }, []);
+
   const dayItems = useMemo(
     () =>
       schedule.filter((s) => {
@@ -313,6 +363,7 @@ export function PlannerFullGantt({
     const origRowIdx = Math.max(0, Math.round((origTop - 3) / ROW_HEIGHT));
     dragRef.current = {
       id: item.id,
+      isUnplaced: false,
       startX: e.clientX,
       startY: e.clientY,
       origStart: orig,
@@ -325,6 +376,30 @@ export function PlannerFullGantt({
     };
     barEl.setPointerCapture(e.pointerId);
   };
+
+  const onUnplacedPointerDown = (e: React.PointerEvent, ev: PlanEventRow) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    e.preventDefault();
+    const barEl = e.currentTarget as HTMLElement;
+    const origTop = parseFloat(barEl.style.top || "0");
+    dragRef.current = {
+      id: `unplaced-${ev.id}`,
+      isUnplaced: true,
+      eventId: ev.id,
+      startX: e.clientX,
+      startY: e.clientY,
+      origStart: 0,
+      origEnd: 0,
+      origVenueId: "",
+      origRowIdx: 0,
+      origTop,
+      barEl,
+      sectionEl: null,
+    };
+    barEl.style.zIndex = "60";
+    barEl.setPointerCapture(e.pointerId);
+  };
+
   const onPointerMove = (e: React.PointerEvent) => {
     const d = dragRef.current;
     if (!d) return;
@@ -335,7 +410,10 @@ export function PlannerFullGantt({
       const baseLeft = parseFloat(el.dataset.baseLeft || "0");
       el.style.left = `${baseLeft + minutes * (PX_PER_5MIN / 5)}px`;
     });
-    if (d.sectionEl) {
+    if (d.isUnplaced) {
+      const dy = e.clientY - d.startY;
+      d.barEl.style.top = `${d.origTop + dy}px`;
+    } else if (d.sectionEl) {
       const dy = e.clientY - d.startY;
       const rowDelta = Math.round(dy / ROW_HEIGHT);
       const maxIdx = Math.max(0, venueRows.length - 1);
@@ -343,10 +421,57 @@ export function PlannerFullGantt({
       d.barEl.style.top = `${newIdx * ROW_HEIGHT + 3}px`;
     }
   };
-  const onPointerUp = () => {
+
+  const onPointerUp = (e: React.PointerEvent) => {
     const d = dragRef.current;
     dragRef.current = null;
     if (!d) return;
+
+    if (d.isUnplaced) {
+      const ev = events.find((x) => x.id === d.eventId);
+      // Palauta visuaalinen sijainti aina
+      const baseLeft = parseFloat(d.barEl.dataset.baseLeft || "0");
+      d.barEl.style.left = `${baseLeft}px`;
+      d.barEl.style.top = `${d.origTop}px`;
+      d.barEl.style.zIndex = "";
+      if (!ev) return;
+      const venueGrid = document.querySelector<HTMLElement>('[data-section="venue"]');
+      if (!venueGrid) {
+        toast.error("Raahaa blokki suorituspaikkariville.");
+        return;
+      }
+      const rect = venueGrid.getBoundingClientRect();
+      const yIn = e.clientY - rect.top;
+      const xIn = e.clientX - rect.left;
+      if (yIn < 0 || yIn > venueRows.length * ROW_HEIGHT || xIn < 0) {
+        toast.error("Raahaa blokki suorituspaikkariville.");
+        return;
+      }
+      const rowIdx = Math.min(
+        venueRows.length - 1,
+        Math.max(0, Math.floor(yIn / ROW_HEIGHT)),
+      );
+      const target = venueRows[rowIdx];
+      const venue = venueMap.get(target.id);
+      if (!venue || !isVenueForEvent(venue.kind, ev.event_name)) {
+        toast.error(
+          `Lajia "${ev.event_name}" ei voi sijoittaa suorituspaikalle ${venue?.name ?? "?"}.`,
+        );
+        return;
+      }
+      const minutes = Math.max(0, Math.round(xIn / PX_PER_5MIN) * 5);
+      const dur = eventDurationMin(ev);
+      const starts = new Date(startMs + minutes * 60000);
+      const ends = new Date(starts.getTime() + dur * 60000);
+      createItem.mutate({
+        plan_event_id: ev.id,
+        venue_id: target.id,
+        starts_at: starts.toISOString(),
+        ends_at: ends.toISOString(),
+      });
+      return;
+    }
+
     const el = document.querySelector<HTMLElement>(`[data-bar-id="${d.id}"]`);
     if (!el) return;
     const baseLeft = parseFloat(el.dataset.baseLeft || "0");
@@ -781,12 +906,102 @@ export function PlannerFullGantt({
         onPointerUp={onPointerUp}
       >
         <TimeAxis />
+        {unplacedEvents.length > 0 && (
+          <div className="border-b border-red-400" style={{ width: totalWidth }}>
+            <div
+              className="sticky left-0 z-20 border-b bg-red-50 px-2 py-1 text-xs font-bold uppercase tracking-wide text-red-900 shadow-md"
+              style={{ width: LEFT_COL }}
+            >
+              Sijoittamattomat lajit ({unplacedEvents.length}) — raahaa paikalleen
+            </div>
+            <div
+              className="relative bg-red-50/40"
+              style={{ height: unplacedEvents.length * ROW_HEIGHT }}
+            >
+              <div
+                className="sticky left-0 z-20 bg-red-50/60 shadow-md"
+                style={{ width: LEFT_COL }}
+              >
+                {unplacedEvents.map((ev) => (
+                  <div
+                    key={`ulbl-${ev.id}`}
+                    className="flex items-center border-b border-r border-red-200 px-2 text-xs"
+                    style={{ height: ROW_HEIGHT }}
+                  >
+                    <span className="truncate font-medium text-red-900">
+                      {ev.age_class} {ev.event_name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div
+                className="absolute top-0"
+                style={{
+                  left: LEFT_COL,
+                  width: totalWidth - LEFT_COL,
+                  height: unplacedEvents.length * ROW_HEIGHT,
+                }}
+              >
+                {unplacedEvents.map((ev, i) => {
+                  const dur = eventDurationMin(ev);
+                  const width = Math.max(40, (dur / 5) * PX_PER_5MIN - 2);
+                  const top = i * ROW_HEIGHT + 3;
+                  const color = getEventColorClass(ev.event_name, ev.sub_category);
+                  return (
+                    <Tooltip key={`u-${ev.id}`}>
+                      <TooltipTrigger asChild>
+                        <div
+                          data-bar-id={`unplaced-${ev.id}`}
+                          data-base-left={0}
+                          onPointerDown={(e) => onUnplacedPointerDown(e, ev)}
+                          className={`absolute cursor-grab touch-none select-none overflow-hidden rounded border-2 border-dashed border-red-600 px-1 py-0.5 leading-tight shadow-sm active:cursor-grabbing ${color.bg} ${color.text}`}
+                          style={{
+                            left: 0,
+                            top,
+                            width,
+                            height: ROW_HEIGHT - 6,
+                            fontSize: "11px",
+                          }}
+                        >
+                          <div
+                            className="font-semibold"
+                            style={{
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {ev.age_class} {ev.event_name}
+                          </div>
+                          <div
+                            className="truncate text-foreground/70"
+                            style={{ fontSize: "10px" }}
+                          >
+                            {ev.participants} osall. · {dur} min
+                          </div>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={6}>
+                        <div className="text-xs">
+                          Sijoittamaton — raahaa suorituspaikkariville sijoittaaksesi.
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
         <Section
           title="Suorituspaikkakohtainen aikataulu"
           section="venue"
           rows={venueRows}
           itemsForRow={(vid) => dayItems.filter((s) => s.venue_id === vid)}
         />
+
         <Section
           title="Ikäryhmäkohtainen aikataulu"
           section="age"
