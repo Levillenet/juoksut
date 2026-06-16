@@ -1,5 +1,12 @@
 // Toimitsijatarpeen aikajana ja huiput.
 import type { PlanEventRow, ScheduleItemRow } from "./planner-types";
+import { isRunningEvent } from "./planner-defaults";
+
+/** Kuinka monta erillistä lähettäjää on aina varattuna juoksulajeihin.
+ *  Sääntö: 2 lähettäjää + 1 lähdön järjestelijä / juoksu. Lähettäjät ovat
+ *  samat henkilöt kaikissa juoksuissa eivätkä toimi muissa rooleissa,
+ *  joten heidät lasketaan vain kerran (kun yksikin juoksu on käynnissä). */
+const SHARED_STARTERS = 2;
 
 export interface OfficialsDemandPoint {
   /** ms unix-aika */
@@ -45,19 +52,24 @@ export function computeOfficialsTimeline(
   // Yhdistä useassa venue-rivissä esiintyvä sama (plan_event_id, starts_at)
   // yhdeksi event-instanssiksi.
   const seen = new Set<string>();
-  const instances: Array<{ startMs: number; endMs: number; eventId: string; cost: number }> = [];
+  const instances: Array<{ startMs: number; endMs: number; eventId: string; cost: number; isRun: boolean }> = [];
   for (const it of schedule) {
     const key = `${it.plan_event_id}|${it.starts_at}|${it.ends_at}|${it.phase}`;
     if (seen.has(key)) continue;
     seen.add(key);
     const ev = eventById.get(it.plan_event_id);
     if (!ev) continue;
-    const cost = Math.max(0, ev.officials_count ?? 3);
+    const rawCost = Math.max(0, ev.officials_count ?? 3);
+    const isRun = isRunningEvent(ev.event_name);
+    // Juoksulajissa lähettäjäpari (2) on jaettu kaikille; lasketaan vain kerran
+    // intervallikohtaisesti. Tässä jätetään segmenttiin vain ei-lähettäjäosuus.
+    const cost = isRun ? Math.max(0, rawCost - SHARED_STARTERS) : rawCost;
     instances.push({
       startMs: new Date(it.starts_at).getTime(),
       endMs: new Date(it.ends_at).getTime(),
       eventId: it.plan_event_id,
       cost,
+      isRun,
     });
   }
 
@@ -86,13 +98,17 @@ export function computeOfficialsTimeline(
     const endMs = ts[k + 1];
     if (endMs <= startMs) continue;
     let demand = 0;
+    let hasRunning = false;
     const activeEvents: string[] = [];
     for (const inst of instances) {
       if (inst.startMs <= startMs && inst.endMs > startMs) {
         demand += inst.cost;
+        if (inst.isRun) hasRunning = true;
         activeEvents.push(inst.eventId);
       }
     }
+    // Lisää jaetut lähettäjät vain kerran, jos yksikin juoksu on käynnissä.
+    if (hasRunning) demand += SHARED_STARTERS;
     intervals.push({ startMs, endMs, demand, eventIds: Array.from(new Set(activeEvents)) });
   }
 

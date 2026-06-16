@@ -214,15 +214,10 @@ export function getDefaultOfficialsCount(eventName: string, category: string | n
   const isTrack = cat === "track" || isTrackByName;
 
   if (isTrack) {
-    if (/aita|aidat|hurdle/.test(n)) return 6;          // 2 lähettäjää + 1 + 3 aidan asetteluun
-    if (/kävely|kavely|walk/.test(n)) return 4;         // + tarkkailijat
-    const distMatch = n.match(/(\d+(?:[.,]\d+)?)\s*(km|m)\b/);
-    if (distMatch) {
-      const num = parseFloat(distMatch[1].replace(",", "."));
-      const meters = distMatch[2] === "km" ? num * 1000 : num;
-      if (meters >= 800) return 3;
-      return 3;
-    }
+    // Sääntö: kaikissa juoksulajeissa toimitsijatarve on 3
+    // = 2 lähettäjää + 1 lähdön järjestelijä.
+    // Lähettäjät ovat samat henkilöt kaikissa juoksuissa, eivätkä toimi
+    // muissa toimitsijatehtävissä (ks. computeOfficialsTimeline).
     return 3;
   }
 
