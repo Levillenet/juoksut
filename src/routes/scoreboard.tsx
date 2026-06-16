@@ -673,6 +673,7 @@ function useViewportWidth(): number {
 function ScoreRow({
   row,
   displayRank,
+  displayMode = "rank",
   isLeader: isLeaderProp,
   count,
   eventId,
@@ -682,7 +683,8 @@ function ScoreRow({
   scrollMode,
 }: {
   row: RankedRow;
-  displayRank: number;
+  displayRank: number | string;
+  displayMode?: "rank" | "bib";
   isLeader?: boolean;
   count: number;
   eventId: number;
@@ -700,7 +702,13 @@ function ScoreRow({
   const isLeader = isLeaderProp ?? (displayRank === 1 && !!row.best);
   const rankNum = displayRank;
   const stackName = !narrow && sizeBucket <= 5;
-  const { first, last } = splitName(row.Name ?? "");
+  // Käytä Tuloslista-API:n Firstname/Surname-kenttiä kanonisena lähteenä, jotta
+  // mahdollisesti duplikoitu Name-kenttä ei aiheuta nimen näkymistä kahdesti.
+  const first = (row.Firstname ?? "").trim();
+  const last = (row.Surname ?? "").trim();
+  const fullName =
+    [first, last].filter(Boolean).join(" ") || row.Name || row.TeamName || "";
+
 
   // Detect new PB / SB against captured baseline (falls back to API PB/SB,
   // then to the athlete's historical best across age classes).
