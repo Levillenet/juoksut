@@ -82,7 +82,7 @@ function StadiumEditor() {
     queryFn: async (): Promise<StadiumVenue[]> => {
       const { data, error } = await supabase
         .from("stadium_venues")
-        .select("id, stadium_id, name, kind, notes, sort_order")
+        .select("id, stadium_id, name, kind, notes, sort_order, next_to_throw_cage")
         .eq("stadium_id", stadiumId)
         .order("sort_order");
       if (error) throw error;
