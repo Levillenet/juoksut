@@ -438,7 +438,7 @@ export function solve(input: SolverInput): SolverResult {
         }
         lastBlockReason = "ei riittävästi vapaita rinnakkaisia paikkoja";
         const next = freeAt(sorted[seg.needsStations - 1]) + setupMs;
-        const newCandidate = Math.max(next, ageBusyUntil, prevEventEnd, win.startMs);
+        const newCandidate = Math.max(next, prevEventEnd, win.startMs);
         if (newCandidate <= candidateStart) break; // ei etene
         candidateStart = newCandidate;
         if (candidateStart > win.endMs) break;
