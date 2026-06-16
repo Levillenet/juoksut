@@ -91,11 +91,7 @@ interface VenueState {
   lastEventName: string | null;
 }
 
-interface AgeState {
-  /** Saman ikäluokan urheilijat ovat tyypillisesti useammassa lajissa
-   * (rata + kenttä), joten yksi yhteinen aikajana riittää. */
-  busyUntil: number;
-}
+// AgeState-rakenne poistettu — ks. selitys ageStates-poistosta solverin alussa.
 
 export function solve(input: SolverInput): SolverResult {
   const warnings: string[] = [];
