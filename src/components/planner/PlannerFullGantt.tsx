@@ -257,6 +257,8 @@ export function PlannerFullGantt({
     barEl: HTMLElement;
     sectionEl: HTMLElement | null;
   } | null>(null);
+  const autoScrollRafRef = useRef<number | null>(null);
+  const autoScrollVRef = useRef<{ vx: number; vy: number }>({ vx: 0, vy: 0 });
 
   const updateTime = useMutation({
     mutationFn: async (p: {
