@@ -111,23 +111,24 @@ export function solve(input: SolverInput): SolverResult {
     venue_ids: g.venue_ids.filter((vid) => usableVenues.some((v) => v.id === vid)),
   }));
 
-  // Implisiittinen rajoiteryhmä: jos keihäsvauhdinotto on moukari-/kiekkohäkin
-  // vieressä (next_to_throw_cage = true), välineet laskeutuvat samalle alueelle
-  // eikä toimitsijat voi operoida rinnakkain häkin kanssa.
-  // Lukitsee kiekko/moukari/keihäs keskenään, mutta sallii rinnakkaisuuden jos
-  // keihäspaikka on merkitty stadionin toiseen päähän.
+  // Implisiittinen rajoiteryhmä: heittohäkit (kiekko/moukari) ja viereiset
+  // keihäsvauhdinotot jotka sijaitsevat samalla "pääheittoalueella"
+  // (next_to_throw_cage = true) — välineet laskeutuvat samalle alueelle eikä
+  // toimitsijat voi operoida rinnakkain. Paikat joissa next_to_throw_cage = false
+  // ovat erillinen alue (esim. ulkoheittopaikka stadionin toisessa päässä) ja
+  // voivat operoida rinnakkain pääalueen kanssa.
   {
     const cageIds = usableVenues
-      .filter((v) => v.kind === "throw_cage")
+      .filter((v) => v.kind === "throw_cage" && v.next_to_throw_cage !== false)
       .map((v) => v.id);
     const blockedRunwayIds = usableVenues
       .filter((v) => v.kind === "throw_runway" && v.next_to_throw_cage !== false)
       .map((v) => v.id);
-    if (cageIds.length > 0 && blockedRunwayIds.length > 0) {
+    if (cageIds.length + blockedRunwayIds.length >= 2) {
       conflictGroups.push({
         id: "__implicit_cage_runway__",
         plan_id: "",
-        name: "Heittohäkki + viereinen keihäs",
+        name: "Heittohäkki + viereinen keihäs (pääalue)",
         description: null,
         venue_ids: [...cageIds, ...blockedRunwayIds],
         max_concurrent: 1,
