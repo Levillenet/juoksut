@@ -440,14 +440,12 @@ function BasicsTab({
               Ei stadionia — suorituspaikat määritellään käsin Suorituspaikat-välilehdellä.
             </p>
           )}
-          <a
-            href="/stadiums"
-            target="_blank"
-            rel="noreferrer"
+          <Link
+            to="/stadiums"
             className="shrink-0 text-xs text-primary underline-offset-2 hover:underline"
           >
-            Hallinnoi stadioneja ↗
-          </a>
+            Hallinnoi stadioneja →
+          </Link>
         </div>
       </div>
 
