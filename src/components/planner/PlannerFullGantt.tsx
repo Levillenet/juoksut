@@ -991,47 +991,34 @@ export function PlannerFullGantt({
             </div>
             <div
               className="relative bg-red-50/40"
-              style={{ height: unplacedEvents.length * ROW_HEIGHT }}
+              style={{ height: unplacedLayout.rowCount * ROW_HEIGHT }}
             >
               <div
-                className="sticky left-0 z-20 bg-red-50/60 shadow-md"
-                style={{ width: LEFT_COL }}
+                className="sticky left-0 z-20 flex items-center border-r border-red-200 bg-red-50/80 px-2 text-[10px] font-medium uppercase tracking-wide text-red-900 shadow-md"
+                style={{ width: LEFT_COL, height: unplacedLayout.rowCount * ROW_HEIGHT }}
               >
-                {unplacedEvents.map((ev) => (
-                  <div
-                    key={`ulbl-${ev.id}`}
-                    className="flex items-center border-b border-r border-red-200 px-2 text-xs"
-                    style={{ height: ROW_HEIGHT }}
-                  >
-                    <span className="truncate font-medium text-red-900">
-                      {ev.age_class} {ev.event_name}
-                    </span>
-                  </div>
-                ))}
+                {unplacedEvents.length} lajia
               </div>
               <div
                 className="absolute top-0"
                 style={{
                   left: LEFT_COL,
                   width: totalWidth - LEFT_COL,
-                  height: unplacedEvents.length * ROW_HEIGHT,
+                  height: unplacedLayout.rowCount * ROW_HEIGHT,
                 }}
               >
-                {unplacedEvents.map((ev, i) => {
-                  const dur = eventDurationMin(ev);
-                  const width = Math.max(40, (dur / 5) * PX_PER_5MIN - 2);
-                  const top = i * ROW_HEIGHT + 3;
+                {unplacedLayout.items.map(({ ev, left, top, width, dur }) => {
                   const color = getEventColorClass(ev.event_name, ev.sub_category);
                   return (
                     <Tooltip key={`u-${ev.id}`}>
                       <TooltipTrigger asChild>
                         <div
                           data-bar-id={`unplaced-${ev.id}`}
-                          data-base-left={0}
+                          data-base-left={left}
                           onPointerDown={(e) => onUnplacedPointerDown(e, ev)}
                           className={`absolute cursor-grab touch-none select-none overflow-hidden rounded border-2 border-dashed border-red-600 px-1 py-0.5 leading-tight shadow-sm active:cursor-grabbing ${color.bg} ${color.text}`}
                           style={{
-                            left: 0,
+                            left,
                             top,
                             width,
                             height: ROW_HEIGHT - 6,
