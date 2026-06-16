@@ -11,6 +11,7 @@ import {
   type ScheduleItemRow,
 } from "@/lib/planner-types";
 import { resolveTimings } from "@/lib/planner-timings";
+import { formatEventLabel } from "@/lib/event-name";
 
 interface Args {
   plan: PlanRow;
