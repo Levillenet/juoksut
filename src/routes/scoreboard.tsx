@@ -629,11 +629,6 @@ function ScoreboardLive() {
   );
 }
 
-function splitName(full: string): { first: string; last: string } {
-  const parts = full.trim().split(/\s+/);
-  if (parts.length <= 1) return { first: "", last: full };
-  return { first: parts[0], last: parts.slice(1).join(" ") };
-}
 
 function useClock(): string {
   const [t, setT] = useState<string>(() => formatHelsinkiClock(new Date()));
