@@ -12,3 +12,19 @@ export function normalizeEventName(name: string): string {
   s = s.replace(/\s+ryhmä\s*\d+\s*$/i, "");
   return s.replace(/\s+/g, " ").trim();
 }
+
+/**
+ * Muodosta näytettävä lajinimi muodossa "{ikäluokka} {laji}" siten että
+ * ikäluokka näytetään tasan kerran, vaikka se olisi tallennettu mukaan
+ * event_name-kenttään.
+ */
+export function formatEventLabel(
+  ageClass: string | null | undefined,
+  eventName: string | null | undefined,
+): string {
+  const clean = normalizeEventName(eventName ?? "");
+  const age = (ageClass ?? "").trim();
+  if (!age) return clean;
+  if (!clean) return age;
+  return `${age} ${clean}`;
+}
