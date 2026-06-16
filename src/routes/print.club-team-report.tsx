@@ -234,7 +234,16 @@ function PrintClubTeamReportPage() {
     staleTime: 30_000,
   });
 
-  const compName = roundsQuery.data ? firstCompName(roundsQuery.data) : "";
+  });
+
+  const propsQuery = useQuery({
+    queryKey: ["team-report-props", competitionId],
+    queryFn: () => (competitionId ? fetchProperties(competitionId) : Promise.resolve(null)),
+    enabled: !!competitionId,
+    staleTime: 5 * 60_000,
+  });
+
+  const compName = propsQuery.data?.Competition.Name ?? "";
   const blocks = eventQueries.data ?? [];
   const loading = roundsQuery.isLoading || eventQueries.isLoading;
 
