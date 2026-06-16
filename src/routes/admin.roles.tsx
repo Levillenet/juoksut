@@ -6,7 +6,7 @@ import { ArrowLeft, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 
 export const Route = createFileRoute("/admin/roles")({
   head: () => ({ meta: [{ title: "Admin · Käyttöoikeudet" }] }),
