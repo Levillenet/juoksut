@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ArrowLeft, Building2, MapPin, Plus, Loader2 } from "lucide-react";
@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/stadiums/")({
-  component: StadiumsIndex,
+  component: Gate,
 });
 
 interface StadiumRow {
@@ -17,6 +17,19 @@ interface StadiumRow {
   location: string | null;
   notes: string | null;
   updated_at: string;
+}
+
+function Gate() {
+  const { user, loading, isPlanner } = useAuth();
+  if (loading)
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Ladataan…
+      </div>
+    );
+  if (!user) return <Navigate to="/login" />;
+  if (!isPlanner) return <Navigate to="/" />;
+  return <StadiumsIndex />;
 }
 
 function StadiumsIndex() {
