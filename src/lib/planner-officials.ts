@@ -52,19 +52,24 @@ export function computeOfficialsTimeline(
   // Yhdistä useassa venue-rivissä esiintyvä sama (plan_event_id, starts_at)
   // yhdeksi event-instanssiksi.
   const seen = new Set<string>();
-  const instances: Array<{ startMs: number; endMs: number; eventId: string; cost: number }> = [];
+  const instances: Array<{ startMs: number; endMs: number; eventId: string; cost: number; isRun: boolean }> = [];
   for (const it of schedule) {
     const key = `${it.plan_event_id}|${it.starts_at}|${it.ends_at}|${it.phase}`;
     if (seen.has(key)) continue;
     seen.add(key);
     const ev = eventById.get(it.plan_event_id);
     if (!ev) continue;
-    const cost = Math.max(0, ev.officials_count ?? 3);
+    const rawCost = Math.max(0, ev.officials_count ?? 3);
+    const isRun = isRunningEvent(ev.event_name);
+    // Juoksulajissa lähettäjäpari (2) on jaettu kaikille; lasketaan vain kerran
+    // intervallikohtaisesti. Tässä jätetään segmenttiin vain ei-lähettäjäosuus.
+    const cost = isRun ? Math.max(0, rawCost - SHARED_STARTERS) : rawCost;
     instances.push({
       startMs: new Date(it.starts_at).getTime(),
       endMs: new Date(it.ends_at).getTime(),
       eventId: it.plan_event_id,
       cost,
+      isRun,
     });
   }
 
