@@ -266,6 +266,33 @@ export function PlannerFullGantt({
     return () => window.removeEventListener("keydown", onKey);
   }, [zoomIn, zoomOut, zoomReset]);
 
+  // Pikanäppäimet rivien korkeudelle (+ / − / 0) ja fullscreenistä ulos (Esc)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullscreen) {
+        setIsFullscreen(false);
+        return;
+      }
+      // Ohita kun käyttäjä kirjoittaa kenttään
+      const tgt = e.target as HTMLElement | null;
+      if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA" || tgt.isContentEditable))
+        return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        bumpRowHeight(8);
+      } else if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        bumpRowHeight(-8);
+      } else if (e.key === "0") {
+        e.preventDefault();
+        resetRowHeight();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [bumpRowHeight, resetRowHeight, isFullscreen]);
+
   useEffect(() => {
     updateScrollState();
   }, [totalWidth, containerWidth, updateScrollState]);
