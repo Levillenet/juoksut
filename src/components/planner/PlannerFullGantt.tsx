@@ -363,6 +363,7 @@ export function PlannerFullGantt({
     const origRowIdx = Math.max(0, Math.round((origTop - 3) / ROW_HEIGHT));
     dragRef.current = {
       id: item.id,
+      isUnplaced: false,
       startX: e.clientX,
       startY: e.clientY,
       origStart: orig,
@@ -375,6 +376,30 @@ export function PlannerFullGantt({
     };
     barEl.setPointerCapture(e.pointerId);
   };
+
+  const onUnplacedPointerDown = (e: React.PointerEvent, ev: PlanEventRow) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    e.preventDefault();
+    const barEl = e.currentTarget as HTMLElement;
+    const origTop = parseFloat(barEl.style.top || "0");
+    dragRef.current = {
+      id: `unplaced-${ev.id}`,
+      isUnplaced: true,
+      eventId: ev.id,
+      startX: e.clientX,
+      startY: e.clientY,
+      origStart: 0,
+      origEnd: 0,
+      origVenueId: "",
+      origRowIdx: 0,
+      origTop,
+      barEl,
+      sectionEl: null,
+    };
+    barEl.style.zIndex = "60";
+    barEl.setPointerCapture(e.pointerId);
+  };
+
   const onPointerMove = (e: React.PointerEvent) => {
     const d = dragRef.current;
     if (!d) return;
@@ -385,7 +410,10 @@ export function PlannerFullGantt({
       const baseLeft = parseFloat(el.dataset.baseLeft || "0");
       el.style.left = `${baseLeft + minutes * (PX_PER_5MIN / 5)}px`;
     });
-    if (d.sectionEl) {
+    if (d.isUnplaced) {
+      const dy = e.clientY - d.startY;
+      d.barEl.style.top = `${d.origTop + dy}px`;
+    } else if (d.sectionEl) {
       const dy = e.clientY - d.startY;
       const rowDelta = Math.round(dy / ROW_HEIGHT);
       const maxIdx = Math.max(0, venueRows.length - 1);
@@ -393,10 +421,57 @@ export function PlannerFullGantt({
       d.barEl.style.top = `${newIdx * ROW_HEIGHT + 3}px`;
     }
   };
-  const onPointerUp = () => {
+
+  const onPointerUp = (e: React.PointerEvent) => {
     const d = dragRef.current;
     dragRef.current = null;
     if (!d) return;
+
+    if (d.isUnplaced) {
+      const ev = events.find((x) => x.id === d.eventId);
+      // Palauta visuaalinen sijainti aina
+      const baseLeft = parseFloat(d.barEl.dataset.baseLeft || "0");
+      d.barEl.style.left = `${baseLeft}px`;
+      d.barEl.style.top = `${d.origTop}px`;
+      d.barEl.style.zIndex = "";
+      if (!ev) return;
+      const venueGrid = document.querySelector<HTMLElement>('[data-section="venue"]');
+      if (!venueGrid) {
+        toast.error("Raahaa blokki suorituspaikkariville.");
+        return;
+      }
+      const rect = venueGrid.getBoundingClientRect();
+      const yIn = e.clientY - rect.top;
+      const xIn = e.clientX - rect.left;
+      if (yIn < 0 || yIn > venueRows.length * ROW_HEIGHT || xIn < 0) {
+        toast.error("Raahaa blokki suorituspaikkariville.");
+        return;
+      }
+      const rowIdx = Math.min(
+        venueRows.length - 1,
+        Math.max(0, Math.floor(yIn / ROW_HEIGHT)),
+      );
+      const target = venueRows[rowIdx];
+      const venue = venueMap.get(target.id);
+      if (!venue || !isVenueForEvent(venue.kind, ev.event_name)) {
+        toast.error(
+          `Lajia "${ev.event_name}" ei voi sijoittaa suorituspaikalle ${venue?.name ?? "?"}.`,
+        );
+        return;
+      }
+      const minutes = Math.max(0, Math.round(xIn / PX_PER_5MIN) * 5);
+      const dur = eventDurationMin(ev);
+      const starts = new Date(startMs + minutes * 60000);
+      const ends = new Date(starts.getTime() + dur * 60000);
+      createItem.mutate({
+        plan_event_id: ev.id,
+        venue_id: target.id,
+        starts_at: starts.toISOString(),
+        ends_at: ends.toISOString(),
+      });
+      return;
+    }
+
     const el = document.querySelector<HTMLElement>(`[data-bar-id="${d.id}"]`);
     if (!el) return;
     const baseLeft = parseFloat(el.dataset.baseLeft || "0");
