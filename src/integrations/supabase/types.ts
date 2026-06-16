@@ -1030,7 +1030,7 @@ export type Database = {
           name: string
           notes: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1039,7 +1039,7 @@ export type Database = {
           name: string
           notes?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1048,7 +1048,7 @@ export type Database = {
           name?: string
           notes?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1146,6 +1146,27 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -1322,8 +1343,20 @@ export type Database = {
           sub_category: string
         }[]
       }
+      get_user_id_by_email: { Args: { _email: string }; Returns: string }
+      grant_role_by_email: {
+        Args: { _email: string; _role: Database["public"]["Enums"]["app_role"] }
+        Returns: string
+      }
       harvest_try_lock: { Args: never; Returns: boolean }
       harvest_unlock: { Args: never; Returns: undefined }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_admin_user: { Args: never; Returns: boolean }
       is_team_member: {
         Args: { _team: string; _user: string }
@@ -1346,15 +1379,32 @@ export type Database = {
           result_count: number
         }[]
       }
+      list_role_members: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }[]
+      }
       mark_pbs_for_competitions: {
         Args: { comp_ids: number[] }
         Returns: number
       }
       normalize_event_name: { Args: { name: string }; Returns: string }
+      revoke_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
       shared_note_owner_ids: { Args: { _user: string }; Returns: string[] }
       shared_team_user_ids: { Args: { _user: string }; Returns: string[] }
     }
     Enums: {
+      app_role: "admin" | "planner"
       note_link_invite_status: "pending" | "accepted" | "declined" | "revoked"
       team_invite_status: "pending" | "accepted" | "declined" | "revoked"
       team_role: "owner" | "coach" | "member"
@@ -1485,6 +1535,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "planner"],
       note_link_invite_status: ["pending", "accepted", "declined", "revoked"],
       team_invite_status: ["pending", "accepted", "declined", "revoked"],
       team_role: ["owner", "coach", "member"],
