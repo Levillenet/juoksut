@@ -515,8 +515,9 @@ export function solve(input: SolverInput): SolverResult {
       break;
     }
     if (!placed) {
+      const detail = failReasons.length > 0 ? ` (${failReasons.join("; ")})` : "";
       warnings.push(
-        `${seg.ageClass} ${seg.eventName} ${seg.phase} – ei mahdu mihinkään sallittuun päivään.`,
+        `${seg.ageClass} ${seg.eventName} ${seg.phase} – ei mahdu mihinkään sallittuun päivään.${detail}`,
       );
     }
   }
