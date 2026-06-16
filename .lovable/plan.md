@@ -1,45 +1,44 @@
-## Ongelmat nykytilassa
+## A) Keihäs–häkki-rinnakkaisuus
 
-### Solver-regressiot (kahdesta edellisestä muutoksesta)
+### Migraatio (jo ajettu)
+- `stadium_venues.next_to_throw_cage boolean NOT NULL DEFAULT true`
+- `plan_venues.next_to_throw_cage boolean NOT NULL DEFAULT true`
 
-1. **Saman ikäluokan rinnakkaisuus rata/kenttä-välillä**
-   - `AgeState` jaettiin `trackBusyUntil` + `fieldBusyUntil` -kenttiin → saman ikäluokan juoksu ja kenttälaji menevät päällekkäin.
-   - Samat urheilijat tekevät sekä rata- että kenttälajeja → kaikki "Sama ikäryhmä päällekkäin" -kriittiset konfliktit.
+### Tyypit
+- `src/lib/planner-types.ts`: lisää `next_to_throw_cage: boolean` `VenueRow`- ja `StadiumVenueRow`-tyyppeihin.
 
-2. **Rata/suora-lukitus + huono sijoitusjärjestys**
-   - Sort-järjestys vertailee `BBB_run_60` ja `BBB_run_200` merkkijonoina → "200" < "60" → 200 m sijoitetaan ENSIN, ovaali varautuu päiväksi, 60 m -finalit/heatsit eivät mahdu.
-   - final_b vaatii saman suorituspaikan + ≤2 min taukoa; kun ovaali on välissä varattu, final_b työnnetään tuntien päähän tai seuraavalle päivälle.
+### Solver (`src/lib/planner-solver.ts`)
+Solven alussa rakenna implisiittinen konfliktiryhmä:
+- `cageIds = usableVenues.filter(v => v.kind === 'throw_cage').map(v => v.id)`
+- `blockedRunwayIds = usableVenues.filter(v => v.kind === 'throw_runway' && v.next_to_throw_cage).map(v => v.id)`
+- Jos molempia on ≥1, lisää `conflictGroups`-listaan `{ venue_ids: [...cageIds, ...blockedRunwayIds], max_concurrent: 1 }`.
 
-### Manuaalinen raahaus rajoittunut
+Tämä lukitsee kiekko/moukari/keihäs keskenään. Jos käyttäjä lisää toisen keihäspaikan ja merkitsee sen `next_to_throw_cage = false`, kyseinen paikka jää konfliktiryhmän ulkopuolelle ja voi toimia rinnakkain.
 
-3. **Käyttäjä ei voi raahata lajia toiselle suorituspaikalle**
-   - `PlannerFullGantt.tsx` (`onPointerMove`, `onPointerUp`): drag muuttaa vain x-koordinaattia (aikaa). y-koordinaattia ei lueta eikä `venue_id`:tä päivitetä.
-   - Käyttäjän pitää voida raahata palkki sekä eri kellonaikaan että eri suorituspaikkariville.
+### Stadium → plan -kopiointi (`src/lib/planner-stadium.ts`)
+Kopioi `next_to_throw_cage` mukaan kun stadion-paikkoja kopioidaan plan-paikoiksi.
 
-## Korjaussuunnitelma
+### Stadium-editori (`src/routes/stadiums.$stadiumId.tsx`)
+Jokaisen `throw_runway`-rivin kohdalle pieni checkbox/toggle:
+"Moukarihäkin vieressä" (oletus). Selitys tooltipissä/info-tekstissä.
 
-### 1. Palauta saman ikäluokan kova rajoite — `src/lib/planner-solver.ts`
-- `AgeState` takaisin yhteen kenttään: `busyUntil: number`.
-- Poista `segUsesTrack`-haarautuminen `ageBusyUntil`-luvussa ja kirjoituksessa.
+### Plan-editori (`src/routes/planner.$planId.tsx`, Suorituspaikat-välilehti)
+Sama checkbox `throw_runway`-paikoille (jotta voi yliajaa stadion-mallin arvon yksittäisessä kisassa).
 
-### 2. Korjaa sijoitusjärjestys — `src/lib/planner-solver.ts` sort-vaihe
-- Lisää lyhyille suora-sprinteille (≤100 m, ei viesti) ryhmäavain joka sijoittaa ne ennen ovaalilajeja.
-- Käytä numeerista distance-vertailua merkkijonovertailun sijaan.
-- Säilytä saman eventId:n vaihejärjestys (heats → final_a → final_b) sekundäärisenä.
+## B) "Hallinnoi stadioneja" -linkin kaatuminen
 
-### 3. Salli raahaus toiselle suorituspaikalle — `src/components/planner/PlannerFullGantt.tsx`
-- `dragRef`: lisää `origVenueId`.
-- `onPointerMove`: laske myös `dy` ja seuraa visuaalisesti minkä venue-rivin päällä kursori on (lue `data-venue-id` lähimmästä rivielementistä `document.elementFromPoint`-kutsulla tai elementtiraadasta).
-- `onPointerUp`: jos venue muuttui, kutsu mutaatiota joka päivittää `venue_id` + `starts_at` + `ends_at` + `auto_generated:false`.
-- Validointi: estä pudotus jos uusi venue.kind ei sovi lajille (`isVenueForEvent`) — näytä toast.
-- Varmista että venue-rivit kantavat `data-venue-id`-attribuuttia (lisää tarvittaessa renderöintiin).
+Nykyinen `<a href="/stadiums" target="_blank" rel="noreferrer">` -anchor aukaisee uuden välilehden, joka SSR-renderöityy kylmänä Lovable-previewssä ja kaatuu (`Cannot read properties of null (reading 'useContext')`).
 
-### 4. Älä koske
-- vaihejärjestyslogiikkaan, kestolaskentaan, palautusaikoihin
-- `isVenueForEvent`-säännöstöön
-- `trackLockoutUntil`-toteutukseen (käyttäjän pyyntö pysyy: 200 m+ varaa suorat)
-- `final_b` `sameVenueAsPhase` + `maxGapAfterPhaseMin` -sääntöihin
+Korvataan TanStack-Linkillä (rivi 443 tienoilla):
+```tsx
+<Link to="/stadiums" className="...">Hallinnoi stadioneja →</Link>
+```
+Reititys tapahtuu client-side; AuthProvider on jo paikalla, ei kaatumista.
 
-### 5. Verifiointi
-- Aja YAG (kopio) -generointi: warnings-määrä, "Sama ikäryhmä päällekkäin" (odotetaan 0), "ei mahdu" 60 m -lajeille (odotetaan 0), T13 60m aidat A/B-gap (≤2 min).
-- Testaa manuaalisesti: raahaa yksi laji toiselle suorituspaikalle Gantt-näkymässä ja varmista että muutos tallentuu.
+## Toteutusjärjestys
+1. Tyypit (`planner-types.ts`)
+2. Stadium-kopiointi (`planner-stadium.ts`)
+3. Solver-konfliktiryhmä (`planner-solver.ts`)
+4. Stadium-editori UI
+5. Plan-editori UI
+6. Linkin korjaus
