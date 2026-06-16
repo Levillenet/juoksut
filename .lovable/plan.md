@@ -1,40 +1,38 @@
-## Tavoite
+## Joukkuekisaraportti (kenttälajit)
 
-Kaksi parannusta `PlannerFullGantt`-näkymään:
+Uusi tulostettava raportti, joka näyttää valitun kisan **kaikkien kenttälajien joukkuekilpailun tulokset**: jokaisen seuran kahden parhaan urheilijan paras tulos kolmesta ensimmäisestä kierroksesta summattuna.
 
-1. Sijoittamattomat lajit eivät enää vie omaa riviä per laji vaan asetellaan tiiviisti useammalle riville ("wrap-layout"), jolloin näytön pinta-alaa säästyy huomattavasti.
-2. Kun sijoittamatonta (tai sijoitettua) blokkia raahataan lähelle scrollausalueen ylä- tai alareunaa, näkymä rullaa automaattisesti, jotta laji voidaan pudottaa myös ruudun ulkopuolella oleville riveille.
+### Toiminta
 
-## Muutokset (vain `src/components/planner/PlannerFullGantt.tsx`)
+1. Käyttäjä avaa "Seuran kisaraportti" → uusi välilehti "Joukkuekisa (kentät)" → valitsee kisan.
+2. Raportti listaa **kaikki kenttälajit ikäluokittain** (kuula, kiekko, keihäs, moukari, pituus, korkeus, kolmiloikka, seiväs).
+3. Jokaisen lajin alla seurat järjestyksessä parhaan yhteistuloksen mukaan:
+   - Sij. | Seura | Yhteistulos (kahden parhaan summa)
+   - Sisennettynä molemmat urheilijat: nimi | sijoitus lajissa | paras tulos (3 ensimmäisestä kierroksesta)
+4. Print-painike (A4, pysty/vaaka, PDF-export).
 
-### 1. Tiivis "bin-packed" layout sijoittamattomille
+### Datalähde
 
-- Lasketaan `unplacedLayout` memo: jokaiselle lajille `{left, top, width}` käyttäen yksinkertaista first-fit-pakkausta riveille, joiden leveys = `totalWidth - LEFT_COL`. Jokainen rivi on `ROW_HEIGHT` korkea; uudet rivit lisätään tarpeen mukaan.
-- Lopullinen `unplacedRowCount` korvaa nykyisen `unplacedEvents.length`-pohjaisen korkeuden (rivit 919, 942).
-- Vasemman sarakkeen lajilistaus (rivit 921–936) poistetaan — koska blokit eivät enää ole 1 laji/rivi, lajinimi näkyy itse blokissa (kuten nytkin). Vasempaan sarakkeeseen jää vain otsikkokaista (rivi 911–916).
-- Blokin `top`/`left` luetaan layoutista, ei indeksistä (rivi 948, 959–960).
-- `data-base-left` päivitetään layoutin antamaan left-arvoon, jotta horisontaalinen raahaus toimii.
+Kierrostulokset eivät ole tietokannassa, joten ne haetaan **lennossa** `live.tuloslista.com`:n julkisesta JSON-rajapinnasta — sama lähde mitä haravoija jo käyttää (`supabase/functions/harvest-tuloslista`). Endpointit varmistetaan haravoijan koodista ennen toteutusta.
 
-### 2. Drop-paikan laskenta säilyy
+Jokaisen lajin tuloksista poimitaan kullekin kilpailijalle attempts[0..2], suodatetaan hylätyt (`x`, `-`), ja otetaan max. Korkeudessa/seipäässä: korkein ylitetty korkeus kolmen ensimmäisen attemptin aikana.
 
-`onPointerUp` käyttää jo `venueGrid.getBoundingClientRect()`-pohjaista hit-testiä, joten tiiviimpi layout ei vaikuta pudotuslogiikkaan. Tarkistetaan vain, että `dragRef.origTop` palautetaan oikein uudesta layoutista.
+### Toteutus
 
-### 3. Auto-scroll raahauksen aikana
+**Uusi server function** `src/lib/club-team-report.functions.ts`:
+- `getClubTeamReport({ competitionId })` → palauttaa `{ events: [{ ageClass, eventName, clubs: [{ rank, club, total, athletes: [{ name, eventRank, best3 }] }] }] }`.
+- Hakee competition info + race-tulokset rinnakkain, suodattaa kenttälajit (`sub_category` jump/throw), parsii attempts, ryhmittelee seuroittain, valitsee kaksi parasta per seura, järjestää.
 
-Lisätään `onPointerMove`-funktioon edge-scroll:
+**Uusi reitti** `src/routes/print.club-team-report.tsx`:
+- Lukee `?competitionId=`, kutsuu server fn:ää (TanStack Query), renderöi taulukot lajeittain. Sama visuaalinen tyyli kuin `print.club-report.tsx`:ssä.
 
-- Ottaa `scrollRef.current.getBoundingClientRect()`.
-- Jos kursorin etäisyys ylä- tai alareunasta < ~60 px, käynnistetään `requestAnimationFrame`-pohjainen scroll-silmukka, joka kasvattaa/vähentää `scrollTop` arvoa (esim. 8–16 px/frame, etäisyyden mukaan skaalaten).
-- Säilytetään ajastimen id `scrollRafRef`issa; pysäytetään kun kursori siirtyy pois reuna-alueelta tai `onPointerUp` laukeaa.
-- Saman vaakasuuntaisen edge-scrollin voi lisätä symmetrisesti (vasen/oikea reuna) — pieni lisä, hyödyllinen pitkillä päivillä.
+**Päivitykset**:
+- `src/components/PrintTabs.tsx`: lisää välilehti "Joukkuekisa (kentät)".
+- `src/routes/index.tsx`: "Seuran kisaraportti" -kortti johtaa uuteen näkymään (tabit erottavat raporttityypit).
 
-### Toteutusjärjestys
+### Reunaehdot
 
-1. Lisää `unplacedLayout` memo + päivitä render-osio (rivit 909–997).
-2. Lisää `scrollRafRef` + `maybeAutoScroll(e)`-apufunktio; kutsu se `onPointerMove`ssa ja peruuta `onPointerUp`ssa.
-3. Verifioi selaimessa: sijoittamattomien osio on huomattavasti matalampi, ja blokin raahaus alas rullaa näkymää.
-
-## Mitä EI muuteta
-
-- Solver-logiikkaa, planner-sääntöjä tai tietokantaa ei kosketa.
-- Sijoitettujen blokkien layout/looginen käyttäytyminen säilyy ennallaan.
+- Jos kisaa ei enää ole `live.tuloslista.com`:ssa, näytetään selkeä virheilmoitus.
+- Vain kenttälajit; rata ja moniottelut jätetään pois.
+- Tasatuloksissa toissijainen ratkaisija = lajisijoitusten summa.
+- Seuran tulos lasketaan vain jos seurassa on vähintään 2 kilpailijaa lajissa; muut näytetään listan lopussa "ei joukkuetta".
