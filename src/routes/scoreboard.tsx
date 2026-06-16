@@ -741,9 +741,10 @@ function ScoreRow({
           className="truncate font-black leading-tight"
           style={{ fontSize: narrow ? narrowNameFontSize(sizeBucket) : nameFontSize(sizeBucket) }}
         >
-          {row.Name}
+          {fullName}
         </p>
       )}
+
       <p
         className="mt-0.5 truncate text-muted-foreground"
         style={{ fontSize: clubFontSize(sizeBucket) }}
