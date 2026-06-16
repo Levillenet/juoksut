@@ -350,6 +350,7 @@ function VenuesTab({
               <th className="py-1 pr-2">#</th>
               <th className="py-1 pr-2">Nimi</th>
               <th className="py-1 pr-2">Tyyppi</th>
+              <th className="py-1 pr-2">Sijainti</th>
               <th></th>
             </tr>
           </thead>
@@ -381,6 +382,28 @@ function VenuesTab({
                       ),
                     )}
                   </select>
+                </td>
+                <td className="py-1 pr-2">
+                  {v.kind === "throw_runway" ? (
+                    <label
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                      title="Jos keihäsvauhdinotto on moukari-/kiekkohäkin vieressä, välineet laskeutuvat samalle alueelle eikä toimitsijat voi operoida rinnakkain. Solver lukitsee tällöin kiekko/moukari/keihäs keskenään."
+                    >
+                      <input
+                        type="checkbox"
+                        checked={v.next_to_throw_cage !== false}
+                        onChange={(e) =>
+                          upsert.mutate({
+                            id: v.id,
+                            next_to_throw_cage: e.target.checked,
+                          })
+                        }
+                      />
+                      <span>Häkin vieressä</span>
+                    </label>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
                 </td>
                 <td className="py-1 pr-2 text-right">
                   <Button size="icon" variant="ghost" onClick={() => move(i, -1)} disabled={i === 0}>
