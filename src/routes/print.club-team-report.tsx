@@ -360,8 +360,8 @@ function PrintClubTeamReportPage() {
               <table className="w-full text-sm print:text-xs">
                 <tbody>
                   {b.clubs.map((c) => (
-                    <>
-                      <tr key={`${b.eventId}-${c.orgId}-club`} className="border-t border-border/60 align-baseline">
+                    <Fragment key={`${b.eventId}-${c.orgId}`}>
+                      <tr className="border-t border-border/60 align-baseline">
                         <td className="w-8 py-1.5 pr-2 text-right font-bold tabular-nums">
                           {c.rank}.
                         </td>
@@ -389,7 +389,7 @@ function PrintClubTeamReportPage() {
                           </td>
                         </tr>
                       ))}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
