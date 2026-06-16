@@ -206,6 +206,15 @@ function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; is
           Koko seuran tulokset valitusta kisasta lajeittain — sija, tulos ja PB
         </div>
       </Link>
+      <Link
+        to="/print/club-team-report"
+        className="rounded-xl border-2 border-primary/30 bg-card px-4 py-3 text-center hover:bg-secondary"
+      >
+        <div className="text-sm font-semibold leading-snug">Joukkuekisa (kentät)</div>
+        <div className="mt-0.5 text-[11px] text-muted-foreground">
+          Kunkin seuran kahden parhaan paras tulos 3 ensimmäisestä kierroksesta
+        </div>
+      </Link>
       {role && (
         <Link
           to="/settings/note-links"
