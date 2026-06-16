@@ -906,12 +906,102 @@ export function PlannerFullGantt({
         onPointerUp={onPointerUp}
       >
         <TimeAxis />
+        {unplacedEvents.length > 0 && (
+          <div className="border-b border-red-400" style={{ width: totalWidth }}>
+            <div
+              className="sticky left-0 z-20 border-b bg-red-50 px-2 py-1 text-xs font-bold uppercase tracking-wide text-red-900 shadow-md"
+              style={{ width: LEFT_COL }}
+            >
+              Sijoittamattomat lajit ({unplacedEvents.length}) — raahaa paikalleen
+            </div>
+            <div
+              className="relative bg-red-50/40"
+              style={{ height: unplacedEvents.length * ROW_HEIGHT }}
+            >
+              <div
+                className="sticky left-0 z-20 bg-red-50/60 shadow-md"
+                style={{ width: LEFT_COL }}
+              >
+                {unplacedEvents.map((ev) => (
+                  <div
+                    key={`ulbl-${ev.id}`}
+                    className="flex items-center border-b border-r border-red-200 px-2 text-xs"
+                    style={{ height: ROW_HEIGHT }}
+                  >
+                    <span className="truncate font-medium text-red-900">
+                      {ev.age_class} {ev.event_name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div
+                className="absolute top-0"
+                style={{
+                  left: LEFT_COL,
+                  width: totalWidth - LEFT_COL,
+                  height: unplacedEvents.length * ROW_HEIGHT,
+                }}
+              >
+                {unplacedEvents.map((ev, i) => {
+                  const dur = eventDurationMin(ev);
+                  const width = Math.max(40, (dur / 5) * PX_PER_5MIN - 2);
+                  const top = i * ROW_HEIGHT + 3;
+                  const color = getEventColorClass(ev.event_name, ev.sub_category);
+                  return (
+                    <Tooltip key={`u-${ev.id}`}>
+                      <TooltipTrigger asChild>
+                        <div
+                          data-bar-id={`unplaced-${ev.id}`}
+                          data-base-left={0}
+                          onPointerDown={(e) => onUnplacedPointerDown(e, ev)}
+                          className={`absolute cursor-grab touch-none select-none overflow-hidden rounded border-2 border-dashed border-red-600 px-1 py-0.5 leading-tight shadow-sm active:cursor-grabbing ${color.bg} ${color.text}`}
+                          style={{
+                            left: 0,
+                            top,
+                            width,
+                            height: ROW_HEIGHT - 6,
+                            fontSize: "11px",
+                          }}
+                        >
+                          <div
+                            className="font-semibold"
+                            style={{
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {ev.age_class} {ev.event_name}
+                          </div>
+                          <div
+                            className="truncate text-foreground/70"
+                            style={{ fontSize: "10px" }}
+                          >
+                            {ev.participants} osall. · {dur} min
+                          </div>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={6}>
+                        <div className="text-xs">
+                          Sijoittamaton — raahaa suorituspaikkariville sijoittaaksesi.
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
         <Section
           title="Suorituspaikkakohtainen aikataulu"
           section="venue"
           rows={venueRows}
           itemsForRow={(vid) => dayItems.filter((s) => s.venue_id === vid)}
         />
+
         <Section
           title="Ikäryhmäkohtainen aikataulu"
           section="age"
