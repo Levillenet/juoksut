@@ -423,6 +423,56 @@ export function PlannerFullGantt({
     barEl.setPointerCapture(e.pointerId);
   };
 
+  const stopAutoScroll = () => {
+    if (autoScrollRafRef.current != null) {
+      cancelAnimationFrame(autoScrollRafRef.current);
+      autoScrollRafRef.current = null;
+    }
+    autoScrollVRef.current = { vx: 0, vy: 0 };
+  };
+
+  const maybeAutoScroll = (clientX: number, clientY: number) => {
+    const sc = scrollRef.current;
+    if (!sc) return;
+    const r = sc.getBoundingClientRect();
+    const EDGE = 70;
+    const MAX = 22;
+    let vy = 0;
+    let vx = 0;
+    if (clientY < r.top + EDGE)
+      vy = -MAX * Math.min(1, (r.top + EDGE - clientY) / EDGE);
+    else if (clientY > r.bottom - EDGE)
+      vy = MAX * Math.min(1, (clientY - (r.bottom - EDGE)) / EDGE);
+    if (clientX < r.left + EDGE)
+      vx = -MAX * Math.min(1, (r.left + EDGE - clientX) / EDGE);
+    else if (clientX > r.right - EDGE)
+      vx = MAX * Math.min(1, (clientX - (r.right - EDGE)) / EDGE);
+    autoScrollVRef.current = { vx, vy };
+    if (vx === 0 && vy === 0) {
+      stopAutoScroll();
+      return;
+    }
+    if (autoScrollRafRef.current != null) return;
+    const tick = () => {
+      if (!dragRef.current) {
+        stopAutoScroll();
+        return;
+      }
+      const v = autoScrollVRef.current;
+      if (v.vx === 0 && v.vy === 0) {
+        stopAutoScroll();
+        return;
+      }
+      const el = scrollRef.current;
+      if (el) {
+        el.scrollTop += v.vy;
+        el.scrollLeft += v.vx;
+      }
+      autoScrollRafRef.current = requestAnimationFrame(tick);
+    };
+    autoScrollRafRef.current = requestAnimationFrame(tick);
+  };
+
   const onPointerMove = (e: React.PointerEvent) => {
     const d = dragRef.current;
     if (!d) return;
@@ -443,6 +493,7 @@ export function PlannerFullGantt({
       const newIdx = Math.min(maxIdx, Math.max(0, d.origRowIdx + rowDelta));
       d.barEl.style.top = `${newIdx * ROW_HEIGHT + 3}px`;
     }
+    maybeAutoScroll(e.clientX, e.clientY);
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
