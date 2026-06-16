@@ -637,9 +637,9 @@ export function detectConflicts(
       if (arr[i].starts_at < arr[i - 1].ends_at) {
         out.push({
           id: arr[i].id,
-          severity: "critical",
+          severity: "warning",
           relatedIds: [arr[i - 1].id],
-          reason: `Sama ikäryhmä ${age} päällekkäin`,
+          reason: `Saman ikäryhmän ${age} eri lajit päällekkäin – tarkista että urheilijat eivät osallistu molempiin`,
         });
       }
     }
