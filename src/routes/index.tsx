@@ -79,6 +79,28 @@ function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; is
           </div>
         </Link>
       )}
+      {isAdmin && (
+        <Link
+          to="/admin/roles"
+          className="rounded-xl border-2 border-accent-warm-border bg-accent-warm px-4 py-2.5 text-center text-accent-warm-foreground hover:opacity-90"
+        >
+          <div className="text-sm font-semibold leading-tight">Admin · Käyttöoikeudet</div>
+          <div className="mt-0.5 text-[11px] opacity-80">
+            Myönnä planner-rooli sähköpostilla
+          </div>
+        </Link>
+      )}
+      {showPlannerLink && (
+        <Link
+          to="/planner"
+          className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
+        >
+          <div className="text-sm font-semibold leading-tight">Aikataulusuunnittelu</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            Suunnittele kisan aikataulu ja hallinnoi stadioneita
+          </div>
+        </Link>
+      )}
       {!isOfficial && (
         <Link
           to="/search"
