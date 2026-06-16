@@ -98,13 +98,17 @@ export function computeOfficialsTimeline(
     const endMs = ts[k + 1];
     if (endMs <= startMs) continue;
     let demand = 0;
+    let hasRunning = false;
     const activeEvents: string[] = [];
     for (const inst of instances) {
       if (inst.startMs <= startMs && inst.endMs > startMs) {
         demand += inst.cost;
+        if (inst.isRun) hasRunning = true;
         activeEvents.push(inst.eventId);
       }
     }
+    // Lisää jaetut lähettäjät vain kerran, jos yksikin juoksu on käynnissä.
+    if (hasRunning) demand += SHARED_STARTERS;
     intervals.push({ startMs, endMs, demand, eventIds: Array.from(new Set(activeEvents)) });
   }
 
