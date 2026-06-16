@@ -18,6 +18,7 @@ export function PrintTabs() {
     { to: "/print", label: "Kilpailun aikataulu", shortLabel: "Aikataulu", show: true },
     { to: "/print/club", label: "Seuran urheilijat", shortLabel: "Seura", show: true },
     { to: "/print/club-report", label: "Seuran kisaraportti", shortLabel: "Raportti", show: true },
+    { to: "/print/club-team-report", label: "Joukkuekisa (kentät)", shortLabel: "Joukkue", show: true },
     { to: "/print/watched", label: "Omat urheilijat", shortLabel: "Omat", show: role === "user" },
     { to: "/print/yag-calling", label: "YAG Calling", shortLabel: "YAG", show: role === "user" || isYag },
   ];
