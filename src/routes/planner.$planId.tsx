@@ -1718,6 +1718,8 @@ function ScheduleTab({
           events={events}
           schedule={schedule}
           onHighlight={highlightConflict}
+          collapsed={hideErrors}
+          onToggleCollapse={() => setHideErrors((v) => !v)}
         />
       )}
 
