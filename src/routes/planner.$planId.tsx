@@ -1792,7 +1792,7 @@ function ConflictsList({
     const it = itemMap.get(id);
     if (!it) return id;
     const ev = evMap.get(it.plan_event_id);
-    const name = ev ? `${ev.age_class} ${ev.event_name}` : "—";
+    const name = ev ? formatEventLabel(ev.age_class, ev.event_name) : "—";
     return `${name} (${fmt(it.starts_at)}–${fmt(it.ends_at)})`;
   };
   const sevRank: Record<ConflictSeverity, number> = { critical: 0, high: 1, warning: 2 };
