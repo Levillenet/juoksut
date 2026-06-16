@@ -384,10 +384,10 @@ function VenuesTab({
                   </select>
                 </td>
                 <td className="py-1 pr-2">
-                  {v.kind === "throw_runway" ? (
+                  {v.kind === "throw_runway" || v.kind === "throw_cage" ? (
                     <label
                       className="flex items-center gap-1.5 text-xs text-muted-foreground"
-                      title="Jos keihäsvauhdinotto on moukari-/kiekkohäkin vieressä, välineet laskeutuvat samalle alueelle eikä toimitsijat voi operoida rinnakkain. Solver lukitsee tällöin kiekko/moukari/keihäs keskenään."
+                      title="Merkitse rastituksi jos paikka kuuluu stadionin pääheittoalueeseen (yhteinen häkki/keihäsvauhdinotto). Solver lukitsee samalla alueella olevat paikat keskenään. Poista rasti jos paikka on stadionin toisessa päässä (esim. ulkoheittopaikka) ja voi operoida itsenäisesti."
                     >
                       <input
                         type="checkbox"
@@ -399,7 +399,7 @@ function VenuesTab({
                           })
                         }
                       />
-                      <span>Häkin vieressä</span>
+                      <span>Pääheittoalueella</span>
                     </label>
                   ) : (
                     <span className="text-xs text-muted-foreground">—</span>

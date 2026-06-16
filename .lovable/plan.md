@@ -1,51 +1,45 @@
-## Tavoite
+## Ongelma
 
-- Lisätä käyttäjäkohtainen `planner`-rooli, jonka adminisi voi myöntää.
-- Näyttää pääsivulla "Aikataulusuunnittelu" -kortti vain planner-roolin (ja adminin) saaneille.
-- Tehdä stadion-kirjastosta yhteinen kaikille planner-rooli­laisille (kaikki näkevät ja muokkaavat).
-- Pitää kilpailusuunnitelmat (`competition_plans` + niiden lapsitaulut) edelleen omistajakohtaisina — jokainen suunnittelija näkee vain omat kisansa.
+Kun YAG-kopiossa generoidaan aikataulu, n. 75 lajia jää sijoittamatta ("ei mahdu mihinkään sallittuun päivään"). Syynä on, että **kaikki heittokehät ja kaikki keihäsvauhdinotot on niputettu yhteen implisiittiseen rajoiteryhmään**, jossa `max_concurrent = 1`. Tämä pakottaa neljä eri fyysistä heittoaluetta jakamaan yhden slotin.
 
-## Tietokantamuutokset (migraatio)
+## Korjaus 1 — Heittoalueiden eriyttäminen (pääongelma)
 
-1. **Roolit**
-   - `CREATE TYPE public.app_role AS ENUM ('admin','planner');`
-   - `CREATE TABLE public.user_roles(id, user_id → auth.users, role app_role, UNIQUE(user_id,role))` + GRANTit (`authenticated SELECT`, `service_role ALL`) + RLS päälle.
-   - `has_role(_user_id uuid, _role app_role)` SECURITY DEFINER -funktio.
-   - RLS-politiikat:
-     - planner/admin näkee oman rivinsä.
-     - admin voi insert/update/delete kaikkia rooleja.
-   - Seedaa: insertoi `admin`-rivi sinun käyttäjällesi (haetaan auth.users:sta `samiaavikko@gmail.com`).
+Laajennetaan `next_to_throw_cage`-merkintä koskemaan myös `throw_cage`-paikkoja, jotta erilliset heittoalueet voidaan erottaa.
 
-2. **Stadionit jaettu planner-roolille**
-   - `stadiums`: poistetaan vanha omistajapolitiikka, lisätään:
-     - SELECT/INSERT/UPDATE/DELETE: `has_role(auth.uid(),'planner') OR has_role(auth.uid(),'admin')`.
-   - `stadium_venues` ja `stadium_conflict_groups`: vastaava — planner/admin saa kaikki rivit.
-   - Säilytetään `user_id` stadionissa (audit-mielessä).
+**Solver (`src/lib/planner-solver.ts`, rivit 119–137):**
+- Suodatetaan `cageIds` myös `next_to_throw_cage !== false` -ehdolla.
+- Lisätään uusi "fyysinen alueistus": yksi implisiittinen ryhmä per "pääalue" (kaikki `next_to_throw_cage !== false` -paikat yhteen, kaikki muut eivät kuulu mihinkään implisiittiseen ryhmään).
+- Vaihtoehtoinen, robustimpi malli (suositus): ryhmittele heittopaikat kentän `next_to_throw_cage`:n perusteella kahteen mahdolliseen "alueeseen":
+  - `true` → "Pääalue (häkki)" — kaikki kuuluvat samaan ryhmään (max 1)
+  - `false` → ei implisiittiseen ryhmään (oma alue)
 
-3. **Kilpailusuunnitelmat pysyvät yksityisinä**
-   - Ei muutoksia `competition_plans`-, `plan_*`-tauluille — omistajapolitiikka säilyy.
+**Stadion- ja plan-UI:**
+- `src/routes/stadiums.$stadiumId.tsx`: näytä "Häkin vieressä / pääalueella" -checkbox myös `throw_cage`-paikoille (nykyisin vain `throw_runway`).
+- `src/routes/planner.$planId.tsx`: vastaava checkbox plan_venues-listalla myös `throw_cage`-paikoille.
 
-## Frontend-muutokset
+**Käyttäjälle:** jätä Kiekkokehä ja Keihäsvauhdinotto rastittuina (pääalue), poista rasti "Ulkoheittopaikka kiekko/moukari" ja "Keihäs ulkoheittopaikka" -paikoilta → ne operoivat itsenäisesti.
 
-1. **`src/lib/auth.tsx`**
-   - Hae kirjautumisen jälkeen käyttäjän roolit `user_roles`-taulusta.
-   - Lisää contextiin: `isPlanner: boolean`, `isAdmin: boolean` (DB-pohjainen, korvaa nykyisen sähköpostipohjaisen admin-tarkistuksen).
-   - Säilytetään olemassa oleva `role` ("user"/"official") siirtymäaikana, koska sitä käytetään muualla.
+## Korjaus 2 — Diagnostiikan parannus (nopeuttaa jatkossa)
 
-2. **`src/routes/index.tsx` (pääsivu)**
-   - Lisää uusi kortti "Aikataulusuunnittelu" → linkki `/planner` (jos `isPlanner || isAdmin`).
-   - Käytetään uutta `isAdmin`-arvoa contextista sähköpostivertailun sijaan.
+Vaihda `"ei mahdu mihinkään sallittuun päivään."` -viesti tarkemmaksi solverissa: kerro syy per yritetty päivä:
+- "ei sopivia rinnakkaisia paikkoja (lukittu rajoiteryhmällä X)"
+- "ei mahdu päivän aikaikkunaan (tarvitsee X min, vapaata Y min)"
+- "päivärajoitus sulkee pois"
 
-3. **Admin-näkymä rooleille** — uusi sivu `src/routes/admin.roles.tsx`
-   - Lista nykyisistä planner/admin-käyttäjistä (näytetään email).
-   - Lomake sähköpostilla planner-roolin myöntämiseen.
-   - Linkki pääsivun admin-osiosta.
+Tämä auttaa käyttäjää näkemään heti, johtuuko ongelma rajoiteryhmästä, paikoista vai ajasta — ilman koodimuutoksia datan korjaamiseksi.
 
-4. **`/planner`- ja `/stadiums`-reittien suoja**
-   - Lisätään komponenttiin tarkistus: jos ei plannería/adminia → näytetään "Ei oikeuksia" -viesti tai redirect `/`.
+## Korjaus 3 — Track-konflikti (Rata + Takasuora samaan aikaan)
 
-## Tekninen huomio
+Raporttisi näytti "Track-lukitus rikki" -kriittisiä konflikteja. Solver itse käyttää `ovalBusy`/`straightBusy`-lukitusta sijoittaessaan, joten konflikteja ei pitäisi syntyä uudessa generoinnissa. Tarkistetaan kuitenkin että `detectConflicts` käyttää samaa logiikkaa kuin solver, eikä eri raja-arvoja, jotka voivat valehdella konflikteista. Jos havaitaan ero, yhtenäistetään.
 
-- Roolitarkistus tehdään aina `has_role()`-funktiolla RLS-politiikoissa (välttää rekursion `user_roles`-taulun omilla politiikoilla).
-- Adminin myöntämä rooli vaatii palvelinpuolen kutsun? Ei — RLS sallii adminin INSERTin `user_roles`:iin suoraan clientistä (politiikka `has_role(auth.uid(),'admin')`).
-- Sähköposti haetaan `auth.users`:sta `has_role`-tyylisellä `get_user_id_by_email(email)` SECURITY DEFINER -funktiolla, koska `auth.users` ei ole suoraan luettavissa clientille.
+## Aikataulu
+
+1. Solverin cage-suodatus ja UI-checkbox throw_cage:lle (Korjaus 1) — yksi commit, ratkaisee pääongelman.
+2. Solverin syykohtainen "ei mahdu" -viesti (Korjaus 2) — vähäinen.
+3. `detectConflicts`-tarkistus (Korjaus 3) — tutkimusvaihe, korjaus vain jos eroa löytyy.
+
+## Mitä EI muuteta
+
+- `allowed_days`-logiikkaa ei muuteta (ei ole ongelman lähde tässä kopiossa).
+- `day_windows`-rakenne on tämän kopion datassa kunnossa (3 päivää).
+- Olemassa olevia migraatioita ei tarvita — `next_to_throw_cage`-sarake on jo molemmissa tauluissa.

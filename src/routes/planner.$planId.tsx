@@ -747,10 +747,10 @@ function VenuesTab({
           <span className="col-span-2 text-[10px] text-muted-foreground">stadionilta</span>
         )}
       </div>
-      {v.kind === "throw_runway" && (
+      {(v.kind === "throw_runway" || v.kind === "throw_cage") && (
         <label
           className="ml-[8.333%] flex items-center gap-1.5 text-xs text-muted-foreground"
-          title="Jos keihäsvauhdinotto on moukari-/kiekkohäkin vieressä, välineet laskeutuvat samalle alueelle eikä toimitsijat voi operoida rinnakkain. Solver lukitsee tällöin kiekko/moukari/keihäs keskenään."
+          title="Merkitse rastituksi jos paikka kuuluu stadionin pääheittoalueeseen. Solver lukitsee samalla alueella olevat paikat keskenään. Poista rasti jos paikka on stadionin toisessa päässä (esim. ulkoheittopaikka) ja voi operoida itsenäisesti."
         >
           <input
             type="checkbox"
@@ -759,7 +759,7 @@ function VenuesTab({
               update.mutate({ id: v.id, next_to_throw_cage: e.target.checked })
             }
           />
-          <span>Moukari-/kiekkohäkin vieressä</span>
+          <span>Pääheittoalueella</span>
         </label>
       )}
     </div>
