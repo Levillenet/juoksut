@@ -12,6 +12,8 @@ interface AuthState {
   session: Session | null;
   isOfficial: boolean;
   role: Role;
+  isAdmin: boolean;
+  isPlanner: boolean;
   loading: boolean;
   signInOfficial: (password: string) => boolean;
   signOut: () => Promise<void>;
@@ -24,9 +26,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isOfficial, setIsOfficial] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [roles, setRoles] = useState<string[]>([]);
 
   useEffect(() => {
-    // Read official flag once
     try {
       setIsOfficial(localStorage.getItem(OFFICIAL_KEY) === "1");
     } catch {
@@ -53,6 +55,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // Lataa käyttäjän roolit kun session muuttuu
+  useEffect(() => {
+    if (!user) {
+      setRoles([]);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.error("roles load failed", error);
+          setRoles([]);
+          return;
+        }
+        setRoles((data ?? []).map((r) => r.role as string));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const signInOfficial = (password: string) => {
     if (password !== OFFICIAL_PASSWORD) return false;
     try {
@@ -71,16 +98,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
     setIsOfficial(false);
+    setRoles([]);
     await supabase.auth.signOut();
   };
 
-  // Personal user takes precedence (Google/email logged in → "user" view)
-  // Official-only when no personal session
   const role: Role = user ? "user" : isOfficial ? "official" : null;
+  const isAdmin = roles.includes("admin");
+  const isPlanner = roles.includes("planner") || isAdmin;
 
   return (
     <Ctx.Provider
-      value={{ user, session, isOfficial, role, loading, signInOfficial, signOut }}
+      value={{
+        user,
+        session,
+        isOfficial,
+        role,
+        isAdmin,
+        isPlanner,
+        loading,
+        signInOfficial,
+        signOut,
+      }}
     >
       {children}
     </Ctx.Provider>

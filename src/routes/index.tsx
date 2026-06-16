@@ -43,7 +43,7 @@ export const Route = createFileRoute("/")({
 });
 
 function IndexGate() {
-  const { role, user, loading } = useAuth();
+  const { role, loading, isAdmin, isPlanner } = useAuth();
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
@@ -52,8 +52,7 @@ function IndexGate() {
     );
   }
   if (!role) return <Navigate to="/login" />;
-  const isAdmin = (user?.email ?? "").toLowerCase() === "samiaavikko@gmail.com";
-  return <Index role={role} isAdmin={isAdmin} />;
+  return <Index role={role} isAdmin={isAdmin} isPlanner={isPlanner} />;
 }
 
 const STATUS_STYLE: Record<Round["Status"], string> = {
@@ -63,9 +62,10 @@ const STATUS_STYLE: Record<Round["Status"], string> = {
   Official: "bg-foreground text-background",
 };
 
-function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
+function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; isAdmin?: boolean; isPlanner?: boolean }) {
   const isOfficial = role === "official" && !isAdmin;
   const showOfficialLinks = role === "official" || isAdmin;
+  const showPlannerLink = isPlanner || isAdmin;
   return (
     <div className="mx-auto grid max-w-2xl gap-3 px-4 pb-3 sm:grid-cols-2">
       {isAdmin && (
@@ -76,6 +76,28 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
           <div className="text-sm font-semibold leading-snug">Admin · Käyttöanalytiikka</div>
           <div className="mt-0.5 text-[11px] opacity-80">
             Sivuston käyttötilastot ja CSV-vienti (vain sinulle)
+          </div>
+        </Link>
+      )}
+      {isAdmin && (
+        <Link
+          to="/admin/roles"
+          className="rounded-xl border-2 border-accent-warm-border bg-accent-warm px-4 py-2.5 text-center text-accent-warm-foreground hover:opacity-90"
+        >
+          <div className="text-sm font-semibold leading-tight">Admin · Käyttöoikeudet</div>
+          <div className="mt-0.5 text-[11px] opacity-80">
+            Myönnä planner-rooli sähköpostilla
+          </div>
+        </Link>
+      )}
+      {showPlannerLink && (
+        <Link
+          to="/planner"
+          className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
+        >
+          <div className="text-sm font-semibold leading-tight">Aikataulusuunnittelu</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            Suunnittele kisan aikataulu ja hallinnoi stadioneita
           </div>
         </Link>
       )}
@@ -201,7 +223,7 @@ function NavCards({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) 
   );
 }
 
-function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
+function Index({ role, isAdmin = false, isPlanner = false }: { role: Role; isAdmin?: boolean; isPlanner?: boolean }) {
   const { signOut, user } = useAuth();
   const [competitionId] = useCompetitionId();
   const queryClient = useQueryClient();
@@ -345,7 +367,7 @@ function Index({ role, isAdmin = false }: { role: Role; isAdmin?: boolean }) {
           </button>
           {!navCollapsed && (
             <div className="mt-3">
-              <NavCards role={role} isAdmin={isAdmin} />
+              <NavCards role={role} isAdmin={isAdmin} isPlanner={isPlanner} />
             </div>
           )}
         </section>
