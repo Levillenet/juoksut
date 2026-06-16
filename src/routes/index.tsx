@@ -43,7 +43,7 @@ export const Route = createFileRoute("/")({
 });
 
 function IndexGate() {
-  const { role, user, loading } = useAuth();
+  const { role, loading, isAdmin, isPlanner } = useAuth();
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
@@ -52,8 +52,7 @@ function IndexGate() {
     );
   }
   if (!role) return <Navigate to="/login" />;
-  const isAdmin = (user?.email ?? "").toLowerCase() === "samiaavikko@gmail.com";
-  return <Index role={role} isAdmin={isAdmin} />;
+  return <Index role={role} isAdmin={isAdmin} isPlanner={isPlanner} />;
 }
 
 const STATUS_STYLE: Record<Round["Status"], string> = {
