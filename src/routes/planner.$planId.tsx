@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, Trash2, Plus, Wand2, Save, Download, LayoutGrid, Sparkles, AlertTriangle, Eye, EyeOff } from "lucide-react";
+import { formatEventLabel } from "@/lib/event-name";
 import { downloadPlannerSchedulePdf } from "@/lib/planner-schedule-pdf";
 import { downloadPlannerScheduleVisualXlsx } from "@/lib/planner-schedule-xlsx";
 import { PlannerFullGantt } from "@/components/planner/PlannerFullGantt";
@@ -1659,7 +1660,7 @@ function ScheduleTab({
 
   const eventLabel = (id: string) => {
     const ev = events.find((e) => e.id === id);
-    return ev ? `${ev.age_class} ${ev.event_name}` : id;
+    return ev ? formatEventLabel(ev.age_class, ev.event_name) : id;
   };
 
   const exportExcel = () => {
@@ -1791,7 +1792,7 @@ function ConflictsList({
     const it = itemMap.get(id);
     if (!it) return id;
     const ev = evMap.get(it.plan_event_id);
-    const name = ev ? `${ev.age_class} ${ev.event_name}` : "—";
+    const name = ev ? formatEventLabel(ev.age_class, ev.event_name) : "—";
     return `${name} (${fmt(it.starts_at)}–${fmt(it.ends_at)})`;
   };
   const sevRank: Record<ConflictSeverity, number> = { critical: 0, high: 1, warning: 2 };

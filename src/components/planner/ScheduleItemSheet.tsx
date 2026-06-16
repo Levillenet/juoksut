@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { formatEventLabel } from "@/lib/event-name";
 import { useMutation } from "@tanstack/react-query";
 import {
   Clock,
@@ -535,5 +536,5 @@ export function ScheduleItemSheet({
 
 function eventLabel(it: ScheduleItemRow, events: PlanEventRow[]): string {
   const ev = events.find((e) => e.id === it.plan_event_id);
-  return ev ? `${ev.age_class} ${ev.event_name}` : "—";
+  return ev ? formatEventLabel(ev.age_class, ev.event_name) : "—";
 }

@@ -11,6 +11,7 @@ import {
   type ScheduleItemRow,
 } from "@/lib/planner-types";
 import { resolveTimings } from "@/lib/planner-timings";
+import { formatEventLabel } from "@/lib/event-name";
 
 interface Args {
   plan: PlanRow;
@@ -96,12 +97,13 @@ function buildBarText(
   plan: PlanRow,
 ): string {
   const t = resolveTimings(ev, plan);
+  const label = formatEventLabel(ev.age_class, ev.event_name);
   if (t.isTrack) {
     const lanes = Math.max(1, ev.station_count);
     const heats = Math.max(1, Math.ceil(ev.participants / lanes));
-    return `${ev.age_class} ${ev.event_name} (${heats}) ${t.minutesPerHeatMin} min/erä`;
+    return `${label} (${heats}) ${t.minutesPerHeatMin} min/erä`;
   }
-  return `${ev.age_class} ${ev.event_name}${ev.participants ? ` (${ev.participants})` : ""}`;
+  return `${label}${ev.participants ? ` (${ev.participants})` : ""}`;
 }
 
 function buildSection(
