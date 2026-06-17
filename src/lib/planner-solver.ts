@@ -448,6 +448,24 @@ export function solve(input: SolverInput): SolverResult {
       const freeAt = (vs: VenueState) => vs.busyUntil + venueChangeoverMs(vs);
 
       let candidateStart = Math.max(win.startMs, prevEventEnd);
+      // Lähtöpaikan siirtymäaika: jos sama päivä ja edellinen ovaali-juoksu eri
+      // lähtöpaikalla, varaa lähettäjälle siirtymä.
+      if (optimizeStartLoc) {
+        const segLoc = getStartLocation(seg.eventName);
+        if (
+          segLoc &&
+          ovalLocSet.has(segLoc) &&
+          lastOvalStartLocation &&
+          lastOvalEnd > 0 &&
+          lastOvalDay === win.date
+        ) {
+          const co = getStartLocationChangeoverMin(lastOvalStartLocation, segLoc);
+          if (co > 0) {
+            const minStart = lastOvalEnd + co * 60000;
+            if (candidateStart < minStart) candidateStart = minStart;
+          }
+        }
+      }
       let placedVenues: VenueState[] = [];
       let lastBlockReason = "";
 
