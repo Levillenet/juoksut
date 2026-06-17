@@ -610,6 +610,22 @@ function BasicsTab({
           </span>
         </span>
       </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={form.optimizeByStartLocation}
+          onChange={(e) => setForm({ ...form, optimizeByStartLocation: e.target.checked })}
+        />
+        <span>
+          <span className="font-medium">Optimoi juoksut lähtöpaikan mukaan</span>
+          <span className="block text-xs text-muted-foreground">
+            Ryhmittelee saman lähtöpaikan lajit peräkkäin (esim. kaikki 200 m takakaarteesta,
+            sitten kaikki 400 m etukaarteesta) ja varaa siirtymäaikaa lähettäjille kun
+            lähtöpaikka vaihtuu. Vähentää lähettäjien liikkumista ovaaliradalla.
+          </span>
+        </span>
+      </label>
 
 
 
