@@ -353,3 +353,78 @@ export function getEventColorClass(eventName: string, category: string | null | 
 
   return { bg: "bg-gray-100", border: "border-gray-300", text: "text-gray-900", group: "other" };
 }
+
+// ===========================================================================
+// Lähtöpaikat 400m radalla (lähettäjän siirtymien optimointia varten).
+// ===========================================================================
+
+export type StartLocation =
+  | "sprint_track"   // Pikajuoksusuora (40–110m, 110m aidat)
+  | "home_straight"  // Etusuora (1500m+, viestit, kävelyt)
+  | "back_straight"  // Takasuora (150m, 1000m, 2000m)
+  | "home_curve"     // Etukaarre (300–800m, 400m aidat)
+  | "back_curve"     // Takakaarre (200m)
+  | "field";         // Kenttälaji (ei lähettäjän siirtymää)
+
+export const START_LOCATION_LABEL: Record<StartLocation, string> = {
+  sprint_track: "Pikajuoksusuora",
+  home_straight: "Etusuora",
+  back_straight: "Takasuora",
+  home_curve: "Etukaarre",
+  back_curve: "Takakaarre",
+  field: "Kenttälaji",
+};
+
+export function getStartLocation(eventName: string): StartLocation | null {
+  const n = (eventName ?? "").toLowerCase();
+  const dist = parseDistanceM(eventName);
+  const isHurdle = /aita|aidat|hurdle/.test(n);
+  const isRelay = /viesti|relay|^\s*\d+\s*x/i.test(eventName ?? "");
+  const isWalk = /kävely|kavely|walk/.test(n);
+
+  if (dist == null && !isRelay && !isWalk) return "field";
+  if (isWalk) return "home_straight";
+
+  if (isRelay && isHurdle) return "home_straight";
+  if (isRelay && dist != null) {
+    if (dist === 100) return "home_straight";
+    if (dist >= 200) return "home_curve";
+    return "home_straight";
+  }
+
+  if (isHurdle && dist != null) {
+    if (dist <= 110) return "sprint_track";
+    return "home_curve";
+  }
+
+  if (dist == null) return null;
+  if (dist <= 100) return "sprint_track";
+  if (dist === 150) return "back_straight";
+  if (dist === 200) return "back_curve";
+  if (dist >= 300 && dist <= 800) return "home_curve";
+  if (dist === 1000) return "back_straight";
+  if (dist === 2000) return "back_straight";
+  return "home_straight";
+}
+
+export function getStartLocationChangeoverMin(
+  prev: StartLocation | null,
+  next: StartLocation | null,
+): number {
+  if (!prev || !next) return 0;
+  if (prev === next) return 0;
+  if (prev === "field" || next === "field") return 0;
+  if (prev === "sprint_track" || next === "sprint_track") return 0;
+  const pairs: Record<string, number> = {
+    "home_straight-home_curve": 3,
+    "home_straight-back_straight": 4,
+    "home_straight-back_curve": 4,
+    "home_curve-back_straight": 3,
+    "home_curve-back_curve": 6,
+    "back_straight-back_curve": 2,
+  };
+  const k1 = `${prev}-${next}`;
+  const k2 = `${next}-${prev}`;
+  return pairs[k1] ?? pairs[k2] ?? 3;
+}
+
