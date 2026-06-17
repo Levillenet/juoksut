@@ -14,6 +14,10 @@ import {
   parseDistanceM,
   isHurdleEvent,
   venuePreferenceRank,
+  getStartLocation,
+  getStartLocationChangeoverMin,
+  START_LOCATION_LABEL,
+  type StartLocation,
 } from "./planner-defaults";
 
 
@@ -48,6 +52,9 @@ export interface SolverInput {
   minDistanceChangeGapMin?: number;
   /** Pakota saman lajin (groupKey) sarjat peräkkäin. (oletus false) */
   groupSameEventConsecutively?: boolean;
+  /** Ryhmittele ovaaliradan juoksut lähtöpaikan mukaan ja varaa lähettäjän
+   *  siirtymäaika. (oletus false) */
+  optimizeByStartLocation?: boolean;
 }
 
 interface Segment {
@@ -100,6 +107,7 @@ export function solve(input: SolverInput): SolverResult {
   const allowChange = input.allowDistanceChangeSameVenue !== false;
   const minChangeGap = Math.max(0, input.minDistanceChangeGapMin ?? 5);
   const groupSameEventConsecutively = input.groupSameEventConsecutively === true;
+  const optimizeStartLoc = input.optimizeByStartLocation === true;
   if (input.windows.length === 0) {
     return { items: [], warnings: ["Ei aikaikkunoita määritelty."] };
   }
@@ -244,11 +252,27 @@ export function solve(input: SolverInput): SolverResult {
   //   - Bucket: lyhyet sprintit ensin, sitten muut juoksut (matka ↑), sitten kenttä.
   //   - Saman bucketin sisällä numeerinen matka (60 ennen 200), sitten groupKey,
   //     ja lopuksi pisimmät & rinnakkaisimmat ensin.
+  const startLocOrder: Record<string, number> = {
+    home_straight: 0,
+    home_curve: 1,
+    back_straight: 2,
+    back_curve: 3,
+  };
   segments.sort((a, b) => {
     if (a.eventId === b.eventId) return phaseOrder(a.phase) - phaseOrder(b.phase);
     const ba = segBucket(a);
     const bb = segBucket(b);
     if (ba !== bb) return ba - bb;
+    // Lähtöpaikkaoptimointi: ryhmittele ovaali-buckin (1) lajit lähtöpaikan mukaan.
+    if (optimizeStartLoc && ba === 1) {
+      const locA = getStartLocation(a.eventName);
+      const locB = getStartLocation(b.eventName);
+      if (locA !== locB) {
+        const oa = startLocOrder[locA ?? "home_straight"] ?? 99;
+        const ob = startLocOrder[locB ?? "home_straight"] ?? 99;
+        if (oa !== ob) return oa - ob;
+      }
+    }
     if (groupSameEventConsecutively) {
       // Pakotettu blokkijärjestys: matka ↑, aidat ennen sileitä, sitten ikäluokka (T→P, nuori→vanha).
       const da = segDistance(a);
@@ -283,6 +307,17 @@ export function solve(input: SolverInput): SolverResult {
   const phaseEnds = new Map<string, number>();
   const phaseVenues = new Map<string, string[]>();
   const items: SolverResultItem[] = [];
+  // Lähtöpaikkaoptimointi: muista edellinen ovaali-juoksun lähtöpaikka ja loppuaika
+  // jotta voidaan varata lähettäjän siirtymäaika seuraavan lähtöpaikan väliin.
+  let lastOvalStartLocation: StartLocation | null = null;
+  let lastOvalEnd = 0;
+  let lastOvalDay = "";
+  const ovalLocSet = new Set<StartLocation>([
+    "home_straight",
+    "home_curve",
+    "back_straight",
+    "back_curve",
+  ]);
 
   // Rata/suora-keskinäislukitus: kun ovaali on käytössä (200m+), suorat ovat
   // varattuja, ja päinvastoin. Suorat ovat fysikaalisesti osa ovaalia.
@@ -413,6 +448,24 @@ export function solve(input: SolverInput): SolverResult {
       const freeAt = (vs: VenueState) => vs.busyUntil + venueChangeoverMs(vs);
 
       let candidateStart = Math.max(win.startMs, prevEventEnd);
+      // Lähtöpaikan siirtymäaika: jos sama päivä ja edellinen ovaali-juoksu eri
+      // lähtöpaikalla, varaa lähettäjälle siirtymä.
+      if (optimizeStartLoc) {
+        const segLoc = getStartLocation(seg.eventName);
+        if (
+          segLoc &&
+          ovalLocSet.has(segLoc) &&
+          lastOvalStartLocation &&
+          lastOvalEnd > 0 &&
+          lastOvalDay === win.date
+        ) {
+          const co = getStartLocationChangeoverMin(lastOvalStartLocation, segLoc);
+          if (co > 0) {
+            const minStart = lastOvalEnd + co * 60000;
+            if (candidateStart < minStart) candidateStart = minStart;
+          }
+        }
+      }
       let placedVenues: VenueState[] = [];
       let lastBlockReason = "";
 
@@ -541,6 +594,15 @@ export function solve(input: SolverInput): SolverResult {
         ends_at: new Date(segEnd).toISOString(),
         setup_before_min: seg.setupBeforeMin + hurdleSetupForThis,
       });
+      // Päivitä lähtöpaikkamuisti seuraavaa ovaali-juoksua varten.
+      if (optimizeStartLoc) {
+        const segLoc = getStartLocation(seg.eventName);
+        if (segLoc && ovalLocSet.has(segLoc)) {
+          lastOvalStartLocation = segLoc;
+          lastOvalEnd = segEnd;
+          lastOvalDay = win.date;
+        }
+      }
       placed = true;
       break;
     }
@@ -785,6 +847,38 @@ export function detectConflicts(
           reason: `Track-lukitus rikki: ovaali ja suora samaan aikaan (${va.name} ja ${vb.name})`,
         });
       }
+    }
+  }
+
+  // Lähettäjän siirtymä-tarkistus: ovaali-juoksujen välillä on oltava aikaa.
+  // Tämä varoitus näkyy AINA, riippumatta optimointiasetuksesta.
+  const ovalItems = items
+    .filter((it) => {
+      const v = venueMap.get(it.venue_id);
+      return v && v.kind === "track_oval";
+    })
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  for (let i = 1; i < ovalItems.length; i++) {
+    const prev = ovalItems[i - 1];
+    const cur = ovalItems[i];
+    const prevEv = evMap.get(prev.plan_event_id);
+    const curEv = evMap.get(cur.plan_event_id);
+    if (!prevEv || !curEv) continue;
+    const prevLoc = getStartLocation(prevEv.event_name);
+    const curLoc = getStartLocation(curEv.event_name);
+    if (!prevLoc || !curLoc || prevLoc === curLoc) continue;
+    if (prevLoc === "field" || curLoc === "field") continue;
+    const needMin = getStartLocationChangeoverMin(prevLoc, curLoc);
+    if (needMin === 0) continue;
+    const gapMin =
+      (new Date(cur.starts_at).getTime() - new Date(prev.ends_at).getTime()) / 60000;
+    if (gapMin < needMin) {
+      out.push({
+        id: cur.id,
+        severity: "warning",
+        relatedIds: [prev.id],
+        reason: `Lähettäjän siirtymä ${START_LOCATION_LABEL[prevLoc]} → ${START_LOCATION_LABEL[curLoc]}: ${prevEv.event_name} → ${curEv.event_name} tarvitsee ${needMin} min (nyt ${Math.round(gapMin)} min).`,
+      });
     }
   }
 

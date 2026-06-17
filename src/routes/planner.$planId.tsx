@@ -320,6 +320,7 @@ function BasicsTab({
     allowDistanceChange: plan.allow_distance_change_same_venue ?? true,
     minDistanceChangeGap: plan.min_distance_change_gap_min ?? 5,
     groupSameEvent: plan.group_same_event_consecutively ?? false,
+    optimizeByStartLocation: plan.optimize_by_start_location ?? false,
   });
   const [demoBusy, setDemoBusy] = useState(false);
 
@@ -345,6 +346,7 @@ function BasicsTab({
           allow_distance_change_same_venue: form.allowDistanceChange,
           min_distance_change_gap_min: form.minDistanceChangeGap,
           group_same_event_consecutively: form.groupSameEvent,
+          optimize_by_start_location: form.optimizeByStartLocation,
         })
         .eq("id", plan.id);
       if (error) throw error;
@@ -605,6 +607,22 @@ function BasicsTab({
           <span className="block text-xs text-muted-foreground">
             Esim. kaikki 60 m -juoksut ajetaan blokkina ennen kuin siirrytään seuraavaan matkaan.
             Vähentää aitojen ja lähtötelineiden siirtelyä ja parantaa toimitsijoiden tehokkuutta.
+          </span>
+        </span>
+      </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={form.optimizeByStartLocation}
+          onChange={(e) => setForm({ ...form, optimizeByStartLocation: e.target.checked })}
+        />
+        <span>
+          <span className="font-medium">Optimoi juoksut lähtöpaikan mukaan</span>
+          <span className="block text-xs text-muted-foreground">
+            Ryhmittelee saman lähtöpaikan lajit peräkkäin (esim. kaikki 200 m takakaarteesta,
+            sitten kaikki 400 m etukaarteesta) ja varaa siirtymäaikaa lähettäjille kun
+            lähtöpaikka vaihtuu. Vähentää lähettäjien liikkumista ovaaliradalla.
           </span>
         </span>
       </label>
@@ -1616,6 +1634,7 @@ function ScheduleTab({
         allowDistanceChangeSameVenue: plan.allow_distance_change_same_venue,
         minDistanceChangeGapMin: plan.min_distance_change_gap_min,
         groupSameEventConsecutively: plan.group_same_event_consecutively,
+        optimizeByStartLocation: plan.optimize_by_start_location,
       });
 
       // Poista KAIKKI aikataulurivit (myös manuaaliset) ennen uutta generointia.
