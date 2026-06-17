@@ -319,6 +319,7 @@ function BasicsTab({
     officialsChangeover: plan.officials_changeover_min ?? 10,
     allowDistanceChange: plan.allow_distance_change_same_venue ?? true,
     minDistanceChangeGap: plan.min_distance_change_gap_min ?? 5,
+    groupSameEvent: plan.group_same_event_consecutively ?? false,
   });
   const [demoBusy, setDemoBusy] = useState(false);
 
@@ -343,6 +344,7 @@ function BasicsTab({
           officials_changeover_min: form.officialsChangeover,
           allow_distance_change_same_venue: form.allowDistanceChange,
           min_distance_change_gap_min: form.minDistanceChangeGap,
+          group_same_event_consecutively: form.groupSameEvent,
         })
         .eq("id", plan.id);
       if (error) throw error;
@@ -591,6 +593,21 @@ function BasicsTab({
           "Käytetään sääntöpohjaisen siirtoajan lattiana (40↔60 m 5 min, 60↔100 m 10 min, aitavaihto 15 min jne.)",
         )}
       </div>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={form.groupSameEvent}
+          onChange={(e) => setForm({ ...form, groupSameEvent: e.target.checked })}
+        />
+        <span>
+          <span className="font-medium">Pakota saman lajin sarjat peräkkäin</span>
+          <span className="block text-xs text-muted-foreground">
+            Esim. kaikki 60 m -juoksut ajetaan blokkina ennen kuin siirrytään seuraavaan matkaan.
+            Vähentää aitojen ja lähtötelineiden siirtelyä ja parantaa toimitsijoiden tehokkuutta.
+          </span>
+        </span>
+      </label>
 
 
 
@@ -1598,6 +1615,7 @@ function ScheduleTab({
         conflictGroups,
         allowDistanceChangeSameVenue: plan.allow_distance_change_same_venue,
         minDistanceChangeGapMin: plan.min_distance_change_gap_min,
+        groupSameEventConsecutively: plan.group_same_event_consecutively,
       });
 
       // Poista KAIKKI aikataulurivit (myös manuaaliset) ennen uutta generointia.

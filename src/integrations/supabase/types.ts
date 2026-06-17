@@ -254,6 +254,7 @@ export type Database = {
           default_setup_field_min: number
           default_setup_vertical_min: number
           ends_at: string
+          group_same_event_consecutively: boolean
           id: string
           is_multi_day: boolean
           min_distance_change_gap_min: number
@@ -277,6 +278,7 @@ export type Database = {
           default_setup_field_min?: number
           default_setup_vertical_min?: number
           ends_at: string
+          group_same_event_consecutively?: boolean
           id?: string
           is_multi_day?: boolean
           min_distance_change_gap_min?: number
@@ -300,6 +302,7 @@ export type Database = {
           default_setup_field_min?: number
           default_setup_vertical_min?: number
           ends_at?: string
+          group_same_event_consecutively?: boolean
           id?: string
           is_multi_day?: boolean
           min_distance_change_gap_min?: number

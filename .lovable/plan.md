@@ -1,82 +1,61 @@
-## Tausta
+## Tavoite
 
-Tiedosto: `src/routes/scoreboard.tsx` (komponentti `ScoreRow`, rivit ~683–960).
-
-Käyttäjän havainnot live-näytössä (`/scoreboard?...&order=start` JA `&order=result`):
-
-1. Urheilijan nimi näkyy kahteen kertaan rivillä.
-2. Rank-laatikossa näkyy "0" joillakin urheilijoilla — ei merkitse mitään.
-
-## Diagnoosi
-
-### "0" rank-laatikossa
-Rivillä 603–606 displayRank lasketaan:
-
-```ts
-order === "start"
-  ? (row.Position ?? idx + 1)
-  : (row.ResultRank ?? idx + 1)
-```
-
-Tuloslista-API palauttaa joillekin allokaatioille `Position = 0` (ei null), jolloin "0." renderöityy. Sama ongelma `ResultRank = 0` -tapauksessa kun tulosta ei vielä ole. `??` ei laukea koska arvo ei ole null/undefined.
-
-Lisäksi suoritusjärjestyksessä mielekkäin numero ei ole järjestysluku (1., 2., 3.) vaan urheilijan **kilpailunumero** (`row.Number`, Tuloslista-kenttä `Allocation.Number: string | null`). Se on bib-numero joka näkyy urheilijan paidassa.
-
-### Nimi 2x
-`nameBlock` (rivit 714–769) renderöi nimen kerran tilassa stackName=false ja kahdelle riville (first / last) tilassa stackName=true. Koodissa ei ole näkyvää duplikaatiota, joten todennäköisin syy on että Tuloslista-API joissain tapauksissa palauttaa `Allocation.Name = "Etunimi Sukunimi Etunimi Sukunimi"` tai vastaava (esim. viestijoukkueen `Name` + `TeamName` yhdistettynä). Lisäksi koodissa on `Firstname` ja `Surname` erikseen — käytetään niitä kanonisena lähteenä ja jätetään `Name` käyttämättä.
+Lisätään suunnittelijaan uusi asetus **"Pakota saman lajin sarjat peräkkäin"**, jolla esim. kaikki 60 m -juoksut sijoittuvat yhteen blokkiin ennen kuin solveri etenee seuraavaan matkaan. Aloitetaan kevyimmästä toteutuksesta (sort-järjestyksen muutos), ja jätetään vahva lukko-mekanismi seuraavaan vaiheeseen jos sort yksinään ei riitä.
 
 ## Muutokset
 
-Kaikki muutokset tiedostoon `src/routes/scoreboard.tsx`.
-
-### 1) Rank-laatikko → kilpailunumero suoritusjärjestyksessä, fallback siisti
-
-`ScoreRow`-propseihin: vaihdetaan `displayRank: number` → tyyppi sallii myös merkkijonon (esim. "12") JA lisätään `displayMode: "rank" | "bib"`.
-
-`ScoreboardLive` (rivit 600–615) -kutsupiste:
-
-```tsx
-<ScoreRow
-  ...
-  displayRank={
-    order === "start"
-      ? (row.Number?.trim() || (row.Position && row.Position > 0 ? String(row.Position) : "—"))
-      : (row.ResultRank && row.ResultRank > 0 ? String(row.ResultRank) : "—")
-  }
-  displayMode={order === "start" ? "bib" : "rank"}
-  ...
-/>
+### 1. Tietokanta (migraatio)
+`competition_plans`-tauluun uusi kenttä:
+```sql
+ALTER TABLE public.competition_plans
+ADD COLUMN group_same_event_consecutively boolean NOT NULL DEFAULT false;
 ```
 
-`ScoreRow` rank-renderissä (rivi 790): kun `displayMode === "bib"` näytetään `#{displayRank}` ilman pistettä; muuten `{displayRank}.` (mutta jätetään piste pois jos arvo on "—").
+### 2. Tyypit
+- `src/integrations/supabase/types.ts` päivittyy automaattisesti migraation myötä.
+- `src/lib/planner-types.ts`:
+  - `PlanRow`: `group_same_event_consecutively: boolean`
+  - `SolverInput`: `groupSameEventConsecutively?: boolean`
 
-### 2) Nimi vain kerran
+### 3. UI — `src/routes/planner.$planId.tsx`
+- Lisätään `form.groupSameEvent` lukuun/tallennukseen (rivit 320, 344).
+- Lisätään checkbox heti "Salli matkanvaihto"-asetuksen viereen (rivi ~576):
+  - Otsikko: **"Pakota saman lajin sarjat peräkkäin"**
+  - Aputeksti: "Esim. kaikki 60 m -juoksut ajetaan blokkina ennen kuin siirrytään seuraavaan matkaan. Vähentää aitojen ja telineiden siirtelyä."
+- Välitetään arvo solverille (rivi ~1599): `groupSameEventConsecutively: plan.group_same_event_consecutively`.
 
-`splitName(row.Name)` korvataan käyttämällä `Firstname` ja `Surname` -kenttiä suoraan:
+### 4. Solver — `src/lib/planner-solver.ts`
+Yksinkertainen muutos: kun `groupSameEventConsecutively` on `true`, käytetään `groupKey`-vertailua **ennen** matkavertailua (`segDistance`) sort-järjestyksessä (rivit 233–247):
 
 ```ts
-const first = (row.Firstname ?? "").trim();
-const last  = (row.Surname  ?? "").trim();
-const fullName = [first, last].filter(Boolean).join(" ") || row.Name || row.TeamName || "";
+segments.sort((a, b) => {
+  if (a.eventId === b.eventId) return phaseOrder(a.phase) - phaseOrder(b.phase);
+  const ba = segBucket(a);
+  const bb = segBucket(b);
+  if (ba !== bb) return ba - bb;
+
+  if (groupSameEventConsecutively && a.groupKey !== b.groupKey) {
+    return a.groupKey.localeCompare(b.groupKey);
+  }
+
+  const da = segDistance(a);
+  const db = segDistance(b);
+  if (da !== db) return da - db;
+  if (a.groupKey !== b.groupKey) return a.groupKey.localeCompare(b.groupKey);
+  return b.durationMin * b.needsStations - a.durationMin * a.needsStations;
+});
 ```
 
-`nameBlock`:
-- stackName tapauksessa: rivi 1 = `first`, rivi 2 = `last` (kuten ennen, mutta luotettavasti API-kentistä).
-- muutoin: `{fullName}` — yksi rivi, ei kaksinkerroin.
+Olemassa olevaa `candidateStart`-mekanismia ei muuteta — se hakee jo varhaisimman vapautumisajan. Solverin muihin sääntöihin ei kosketa.
 
-Tämä eliminoi sen riskin että API:n `Name`-kentässä on duplikoituna teksti.
+### 5. Jatkovaiheet (ei tehdä nyt)
+Jos pelkkä sort-muutos ei tuota tarpeeksi tiukkaa blokkaamista (eri matkoja lipsahtaa väliin eri suorituspaikoilta), lisätään seuraavassa kierroksessa:
+- groupKey-blokkien aikajaksojen varaaminen ennakkoon
+- saman venue-tyypin (track_oval / track_straight) lukitus blokin ajaksi
 
-### 3) Viestijoukkueet
+Tämä todennetaan ajamalla planner-generointi kopiolla ja katsomalla aikajana.
 
-Jos `Firstname`/`Surname` puuttuvat (viesti), näytetään `row.TeamName || row.Name` yhden rivin nimenä. Existing `formatRelayLegs(row)` jää näkymään alapuolelle.
-
-## Tekninen tarkistus muutoksen jälkeen
-
-- Visuaalinen verifiointi `browser--view_preview` -kutsulla `/scoreboard?...&order=start` ja `&order=result` URLeilla.
-- Vahvistetaan että: (a) rank-laatikossa näkyy bib-numero suoritusjärjestyksessä eikä koskaan "0.", (b) nimi näkyy vain kerran molemmissa tiloissa.
-
-## Mihin EI kosketa
-
-- Solver-/kilpailutapahtuman generointilogiikkaan ei kosketa.
-- Tuloksen, yritysten ja tuulilukeman renderöintiin ei muutoksia.
-- Overlay (`NewResultOverlay`) jää ennalleen — siellä nimi tulee jo kerran (`a.Name`).
+## Mitä EI tehdä
+- Ei per-laji-asetusta (`plan_events.consecutive_with_group`) — vain kisatason kytkin.
+- Ei muutoksia muihin solverin sääntöihin (toimitsijat, konfliktit jne.).
+- Ei luoda `suunnittelijan_ohje.md`-tiedostoa (sitä ei ole projektissa); voidaan lisätä erikseen jos pyydetään.

@@ -46,6 +46,8 @@ export interface SolverInput {
   allowDistanceChangeSameVenue?: boolean;
   /** Minimitauko (min) matkanvaihdon yhteydessä samalla suorituspaikalla. (oletus 5) */
   minDistanceChangeGapMin?: number;
+  /** Pakota saman lajin (groupKey) sarjat peräkkäin. (oletus false) */
+  groupSameEventConsecutively?: boolean;
 }
 
 interface Segment {
@@ -97,6 +99,7 @@ export function solve(input: SolverInput): SolverResult {
   const warnings: string[] = [];
   const allowChange = input.allowDistanceChangeSameVenue !== false;
   const minChangeGap = Math.max(0, input.minDistanceChangeGapMin ?? 5);
+  const groupSameEventConsecutively = input.groupSameEventConsecutively === true;
   if (input.windows.length === 0) {
     return { items: [], warnings: ["Ei aikaikkunoita määritelty."] };
   }
@@ -236,6 +239,10 @@ export function solve(input: SolverInput): SolverResult {
     const ba = segBucket(a);
     const bb = segBucket(b);
     if (ba !== bb) return ba - bb;
+    // Jos pakotetaan saman lajin sarjat peräkkäin, groupKey vaikuttaa ennen matkaa.
+    if (groupSameEventConsecutively && a.groupKey !== b.groupKey) {
+      return a.groupKey.localeCompare(b.groupKey);
+    }
     const da = segDistance(a);
     const db = segDistance(b);
     if (da !== db) return da - db;

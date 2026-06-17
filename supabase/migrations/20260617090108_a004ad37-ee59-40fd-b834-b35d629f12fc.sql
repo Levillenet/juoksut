@@ -1,0 +1,1 @@
+ALTER TABLE public.competition_plans ADD COLUMN group_same_event_consecutively boolean NOT NULL DEFAULT false;
