@@ -107,6 +107,7 @@ export function solve(input: SolverInput): SolverResult {
   const allowChange = input.allowDistanceChangeSameVenue !== false;
   const minChangeGap = Math.max(0, input.minDistanceChangeGapMin ?? 5);
   const groupSameEventConsecutively = input.groupSameEventConsecutively === true;
+  const optimizeStartLoc = input.optimizeByStartLocation === true;
   if (input.windows.length === 0) {
     return { items: [], warnings: ["Ei aikaikkunoita määritelty."] };
   }
