@@ -320,6 +320,7 @@ function BasicsTab({
     allowDistanceChange: plan.allow_distance_change_same_venue ?? true,
     minDistanceChangeGap: plan.min_distance_change_gap_min ?? 5,
     groupSameEvent: plan.group_same_event_consecutively ?? false,
+    optimizeByStartLocation: plan.optimize_by_start_location ?? false,
   });
   const [demoBusy, setDemoBusy] = useState(false);
 
