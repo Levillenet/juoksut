@@ -1,0 +1,1 @@
+ALTER TABLE public.competition_plans ADD COLUMN optimize_by_start_location boolean NOT NULL DEFAULT false;

@@ -261,6 +261,7 @@ export type Database = {
           name: string
           notes: string | null
           officials_changeover_min: number | null
+          optimize_by_start_location: boolean
           stadium_id: string | null
           starts_at: string
           total_officials_available: number | null
@@ -285,6 +286,7 @@ export type Database = {
           name: string
           notes?: string | null
           officials_changeover_min?: number | null
+          optimize_by_start_location?: boolean
           stadium_id?: string | null
           starts_at: string
           total_officials_available?: number | null
@@ -309,6 +311,7 @@ export type Database = {
           name?: string
           notes?: string | null
           officials_changeover_min?: number | null
+          optimize_by_start_location?: boolean
           stadium_id?: string | null
           starts_at?: string
           total_officials_available?: number | null
