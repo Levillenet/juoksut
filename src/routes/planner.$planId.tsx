@@ -1634,6 +1634,7 @@ function ScheduleTab({
         allowDistanceChangeSameVenue: plan.allow_distance_change_same_venue,
         minDistanceChangeGapMin: plan.min_distance_change_gap_min,
         groupSameEventConsecutively: plan.group_same_event_consecutively,
+        optimizeByStartLocation: plan.optimize_by_start_location,
       });
 
       // Poista KAIKKI aikataulurivit (myös manuaaliset) ennen uutta generointia.
