@@ -252,11 +252,27 @@ export function solve(input: SolverInput): SolverResult {
   //   - Bucket: lyhyet sprintit ensin, sitten muut juoksut (matka ↑), sitten kenttä.
   //   - Saman bucketin sisällä numeerinen matka (60 ennen 200), sitten groupKey,
   //     ja lopuksi pisimmät & rinnakkaisimmat ensin.
+  const startLocOrder: Record<string, number> = {
+    home_straight: 0,
+    home_curve: 1,
+    back_straight: 2,
+    back_curve: 3,
+  };
   segments.sort((a, b) => {
     if (a.eventId === b.eventId) return phaseOrder(a.phase) - phaseOrder(b.phase);
     const ba = segBucket(a);
     const bb = segBucket(b);
     if (ba !== bb) return ba - bb;
+    // Lähtöpaikkaoptimointi: ryhmittele ovaali-buckin (1) lajit lähtöpaikan mukaan.
+    if (optimizeStartLoc && ba === 1) {
+      const locA = getStartLocation(a.eventName);
+      const locB = getStartLocation(b.eventName);
+      if (locA !== locB) {
+        const oa = startLocOrder[locA ?? "home_straight"] ?? 99;
+        const ob = startLocOrder[locB ?? "home_straight"] ?? 99;
+        if (oa !== ob) return oa - ob;
+      }
+    }
     if (groupSameEventConsecutively) {
       // Pakotettu blokkijärjestys: matka ↑, aidat ennen sileitä, sitten ikäluokka (T→P, nuori→vanha).
       const da = segDistance(a);
