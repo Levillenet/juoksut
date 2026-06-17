@@ -14,6 +14,10 @@ import {
   parseDistanceM,
   isHurdleEvent,
   venuePreferenceRank,
+  getStartLocation,
+  getStartLocationChangeoverMin,
+  START_LOCATION_LABEL,
+  type StartLocation,
 } from "./planner-defaults";
 
 
