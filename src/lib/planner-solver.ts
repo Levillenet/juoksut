@@ -228,6 +228,16 @@ export function solve(input: SolverInput): SolverResult {
   };
   const segDistance = (seg: Segment): number =>
     parseDistanceM(seg.eventName) ?? Number.MAX_SAFE_INTEGER;
+  // Aitaprefix: aidat ennen sileitä samalla matkalla (groupKey = "AAA_hurdles_..." vs "BBB_run_...").
+  const segHurdleRank = (seg: Segment): number => (seg.isHurdles ? 0 : 1);
+  // Ikäluokkajärjestys: T=0, P=1, N=2, M=3, sitten numero (T9 < T11 < ... < P9 < ... < N < M).
+  const ageClassRank = (s: string | null | undefined): number => {
+    if (!s) return 9999;
+    const ch = s.charAt(0).toUpperCase();
+    const ord = ({ T: 0, P: 1, N: 2, M: 3 } as Record<string, number>)[ch] ?? 9;
+    const num = parseInt(s.slice(1), 10);
+    return ord * 1000 + (Number.isFinite(num) ? num : 99);
+  };
 
   // 2) Järjestys:
   //   - Saman eventin vaiheet aina heats → final_a → final_b (kova rajoite).
@@ -239,9 +249,18 @@ export function solve(input: SolverInput): SolverResult {
     const ba = segBucket(a);
     const bb = segBucket(b);
     if (ba !== bb) return ba - bb;
-    // Jos pakotetaan saman lajin sarjat peräkkäin, groupKey vaikuttaa ennen matkaa.
-    if (groupSameEventConsecutively && a.groupKey !== b.groupKey) {
-      return a.groupKey.localeCompare(b.groupKey);
+    if (groupSameEventConsecutively) {
+      // Pakotettu blokkijärjestys: matka ↑, aidat ennen sileitä, sitten ikäluokka (T→P, nuori→vanha).
+      const da = segDistance(a);
+      const db = segDistance(b);
+      if (da !== db) return da - db;
+      const ha = segHurdleRank(a);
+      const hb = segHurdleRank(b);
+      if (ha !== hb) return ha - hb;
+      const ra = ageClassRank(a.ageClass);
+      const rb = ageClassRank(b.ageClass);
+      if (ra !== rb) return ra - rb;
+      return b.durationMin * b.needsStations - a.durationMin * a.needsStations;
     }
     const da = segDistance(a);
     const db = segDistance(b);
