@@ -52,6 +52,9 @@ export interface SolverInput {
   minDistanceChangeGapMin?: number;
   /** Pakota saman lajin (groupKey) sarjat peräkkäin. (oletus false) */
   groupSameEventConsecutively?: boolean;
+  /** Ryhmittele ovaaliradan juoksut lähtöpaikan mukaan ja varaa lähettäjän
+   *  siirtymäaika. (oletus false) */
+  optimizeByStartLocation?: boolean;
 }
 
 interface Segment {
