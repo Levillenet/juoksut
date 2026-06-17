@@ -581,10 +581,12 @@ function BasicsTab({
           onChange={(e) => setForm({ ...form, allowDistanceChange: e.target.checked })}
         />
         <span>
-          <span className="font-medium">Salli matkanvaihto samalla suorituspaikalla</span>
+          <span className="font-medium">Salli eri matkat samalla suoralla</span>
           <span className="block text-xs text-muted-foreground">
-            Jos pois päältä, solveri ei sijoita eri matkoja samalle juoksuradalle/-suoralle.
-            Esim. kaikki 40 m omalle suoralle, 60 m omalleen.
+            Kun päällä, solver voi sijoittaa eri matkat (esim. 40 m ja 60 m) samalle
+            suoralle peräkkäin. Kun pois päältä, jokainen matka saa oman suoransa —
+            esim. kaikki 40 m juostaan suoralla 1 ja kaikki 60 m suoralla 2.
+            Jos pikajuoksusuoria on vain yksi, tämä asetus ei vaikuta järjestykseen.
           </span>
         </span>
       </label>
