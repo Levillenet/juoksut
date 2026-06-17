@@ -1,61 +1,37 @@
 ## Tavoite
 
-Lisätään suunnittelijaan uusi asetus **"Pakota saman lajin sarjat peräkkäin"**, jolla esim. kaikki 60 m -juoksut sijoittuvat yhteen blokkiin ennen kuin solveri etenee seuraavaan matkaan. Aloitetaan kevyimmästä toteutuksesta (sort-järjestyksen muutos), ja jätetään vahva lukko-mekanismi seuraavaan vaiheeseen jos sort yksinään ei riitä.
+Kun asetus **"Pakota saman lajin sarjat peräkkäin"** on päällä, solver järjestää juoksulajit
+1) matkan mukaan nousevasti (40m → 60m → 100m → 200m → …),
+2) saman matkan sisällä ikäluokkajärjestyksessä (tytöt ennen poikia, nuorimmasta vanhimpaan: T9, T11, … P9, P11, … N, M).
 
-## Muutokset
+Aitajuoksut ryhmitellään omaksi blokikseen samalla matkalla (esim. kaikki 60m sileät → kaikki 60m aidat, tai päinvastoin — pidetään nykyinen "aidat ennen sileitä saman matkan sisällä" -logiikka, koska aitojen pystytys/purku halutaan tehdä blokkina).
 
-### 1. Tietokanta (migraatio)
-`competition_plans`-tauluun uusi kenttä:
-```sql
-ALTER TABLE public.competition_plans
-ADD COLUMN group_same_event_consecutively boolean NOT NULL DEFAULT false;
-```
+## Nykyinen ongelma
 
-### 2. Tyypit
-- `src/integrations/supabase/types.ts` päivittyy automaattisesti migraation myötä.
-- `src/lib/planner-types.ts`:
-  - `PlanRow`: `group_same_event_consecutively: boolean`
-  - `SolverInput`: `groupSameEventConsecutively?: boolean`
+Tiedostossa `src/lib/planner-solver.ts` lajittelussa (rivit 237–251) kun `groupSameEventConsecutively` on päällä, vertaillaan `a.groupKey.localeCompare(b.groupKey)`. `groupKey` on muotoa `BBB_run_F-60`, joten merkkijonovertailu tuottaa väärän järjestyksen:
+- `F-100` < `F-60` (merkkivertailussa "1" < "6")
+- ikäluokkajärjestystä ei oteta lainkaan huomioon
 
-### 3. UI — `src/routes/planner.$planId.tsx`
-- Lisätään `form.groupSameEvent` lukuun/tallennukseen (rivit 320, 344).
-- Lisätään checkbox heti "Salli matkanvaihto"-asetuksen viereen (rivi ~576):
-  - Otsikko: **"Pakota saman lajin sarjat peräkkäin"**
-  - Aputeksti: "Esim. kaikki 60 m -juoksut ajetaan blokkina ennen kuin siirrytään seuraavaan matkaan. Vähentää aitojen ja telineiden siirtelyä."
-- Välitetään arvo solverille (rivi ~1599): `groupSameEventConsecutively: plan.group_same_event_consecutively`.
+## Korjaus (vain `src/lib/planner-solver.ts`)
 
-### 4. Solver — `src/lib/planner-solver.ts`
-Yksinkertainen muutos: kun `groupSameEventConsecutively` on `true`, käytetään `groupKey`-vertailua **ennen** matkavertailua (`segDistance`) sort-järjestyksessä (rivit 233–247):
+1. Lisää tiedoston yläosaan apufunktio `ageClassRank(s: string): number` (sama logiikka kuin `planner-schedule-xlsx.ts:26`: T=0, P=1, N=2, M=3, ja sitten numero).
 
-```ts
-segments.sort((a, b) => {
-  if (a.eventId === b.eventId) return phaseOrder(a.phase) - phaseOrder(b.phase);
-  const ba = segBucket(a);
-  const bb = segBucket(b);
-  if (ba !== bb) return ba - bb;
+2. Muutetaan `sort`-vertailu (rivit 237–251) niin, että `groupSameEventConsecutively`-haaran sisällä järjestys on:
+   1. `segBucket` (lyhyet sprintit → muut juoksut → kentät) — säilytetään
+   2. `segDistance` nousevasti (40 < 60 < 100 < 200 …)
+   3. aidat ennen sileitä samalla matkalla (säilytetään nykyinen `groupKey`-prefix `AAA_hurdles` / `BBB_run` — vertaillaan vain prefix-osaa)
+   4. `ageClassRank(a.ageClass)` nousevasti
+   5. `phaseOrder` (heats → final_a → final_b) — säilyy jo ylempänä eventId-vertailussa
 
-  if (groupSameEventConsecutively && a.groupKey !== b.groupKey) {
-    return a.groupKey.localeCompare(b.groupKey);
-  }
+   Kun asetus on **pois**, vanha logiikka säilyy täysin ennallaan.
 
-  const da = segDistance(a);
-  const db = segDistance(b);
-  if (da !== db) return da - db;
-  if (a.groupKey !== b.groupKey) return a.groupKey.localeCompare(b.groupKey);
-  return b.durationMin * b.needsStations - a.durationMin * a.needsStations;
-});
-```
+## Mitä EI muuteta
 
-Olemassa olevaa `candidateStart`-mekanismia ei muuteta — se hakee jo varhaisimman vapautumisajan. Solverin muihin sääntöihin ei kosketa.
+- Solverin sijoitussäännöt (venue-lukot, conflict-groupit, candidateStart) pysyvät ennallaan.
+- UI:n teksti ja muut tiedostot eivät muutu.
+- Kenttälajien järjestys ei muutu (asetus koskee vain juoksuja, jotka kuuluvat groupKey-blokkeihin).
 
-### 5. Jatkovaiheet (ei tehdä nyt)
-Jos pelkkä sort-muutos ei tuota tarpeeksi tiukkaa blokkaamista (eri matkoja lipsahtaa väliin eri suorituspaikoilta), lisätään seuraavassa kierroksessa:
-- groupKey-blokkien aikajaksojen varaaminen ennakkoon
-- saman venue-tyypin (track_oval / track_straight) lukitus blokin ajaksi
+## Vaikutus
 
-Tämä todennetaan ajamalla planner-generointi kopiolla ja katsomalla aikajana.
-
-## Mitä EI tehdä
-- Ei per-laji-asetusta (`plan_events.consecutive_with_group`) — vain kisatason kytkin.
-- Ei muutoksia muihin solverin sääntöihin (toimitsijat, konfliktit jne.).
-- Ei luoda `suunnittelijan_ohje.md`-tiedostoa (sitä ei ole projektissa); voidaan lisätä erikseen jos pyydetään.
+Esim. matkat {40m P9, 40m T9, 60m T11 aidat, 60m P11, 100m T13} → uusi järjestys:
+40m T9 → 40m P9 → 60m T11 aidat → 60m P11 → 100m T13.
