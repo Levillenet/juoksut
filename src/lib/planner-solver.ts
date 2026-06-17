@@ -594,6 +594,15 @@ export function solve(input: SolverInput): SolverResult {
         ends_at: new Date(segEnd).toISOString(),
         setup_before_min: seg.setupBeforeMin + hurdleSetupForThis,
       });
+      // Päivitä lähtöpaikkamuisti seuraavaa ovaali-juoksua varten.
+      if (optimizeStartLoc) {
+        const segLoc = getStartLocation(seg.eventName);
+        if (segLoc && ovalLocSet.has(segLoc)) {
+          lastOvalStartLocation = segLoc;
+          lastOvalEnd = segEnd;
+          lastOvalDay = win.date;
+        }
+      }
       placed = true;
       break;
     }
