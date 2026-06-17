@@ -59,6 +59,7 @@ export interface PlanRow {
   allow_distance_change_same_venue: boolean;
   min_distance_change_gap_min: number;
   group_same_event_consecutively: boolean;
+  optimize_by_start_location: boolean;
   created_at: string;
   updated_at: string;
 }
