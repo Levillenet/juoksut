@@ -58,6 +58,7 @@ export interface PlanRow {
   officials_changeover_min: number;
   allow_distance_change_same_venue: boolean;
   min_distance_change_gap_min: number;
+  group_same_event_consecutively: boolean;
   created_at: string;
   updated_at: string;
 }
