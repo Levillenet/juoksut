@@ -850,5 +850,37 @@ export function detectConflicts(
     }
   }
 
+  // Lähettäjän siirtymä-tarkistus: ovaali-juoksujen välillä on oltava aikaa.
+  // Tämä varoitus näkyy AINA, riippumatta optimointiasetuksesta.
+  const ovalItems = items
+    .filter((it) => {
+      const v = venueMap.get(it.venue_id);
+      return v && v.kind === "track_oval";
+    })
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  for (let i = 1; i < ovalItems.length; i++) {
+    const prev = ovalItems[i - 1];
+    const cur = ovalItems[i];
+    const prevEv = evMap.get(prev.plan_event_id);
+    const curEv = evMap.get(cur.plan_event_id);
+    if (!prevEv || !curEv) continue;
+    const prevLoc = getStartLocation(prevEv.event_name);
+    const curLoc = getStartLocation(curEv.event_name);
+    if (!prevLoc || !curLoc || prevLoc === curLoc) continue;
+    if (prevLoc === "field" || curLoc === "field") continue;
+    const needMin = getStartLocationChangeoverMin(prevLoc, curLoc);
+    if (needMin === 0) continue;
+    const gapMin =
+      (new Date(cur.starts_at).getTime() - new Date(prev.ends_at).getTime()) / 60000;
+    if (gapMin < needMin) {
+      out.push({
+        id: cur.id,
+        severity: "warning",
+        relatedIds: [prev.id],
+        reason: `Lähettäjän siirtymä ${START_LOCATION_LABEL[prevLoc]} → ${START_LOCATION_LABEL[curLoc]}: ${prevEv.event_name} → ${curEv.event_name} tarvitsee ${needMin} min (nyt ${Math.round(gapMin)} min).`,
+      });
+    }
+  }
+
   return out;
 }
