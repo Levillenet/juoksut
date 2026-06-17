@@ -346,6 +346,7 @@ function BasicsTab({
           allow_distance_change_same_venue: form.allowDistanceChange,
           min_distance_change_gap_min: form.minDistanceChangeGap,
           group_same_event_consecutively: form.groupSameEvent,
+          optimize_by_start_location: form.optimizeByStartLocation,
         })
         .eq("id", plan.id);
       if (error) throw error;
