@@ -307,6 +307,17 @@ export function solve(input: SolverInput): SolverResult {
   const phaseEnds = new Map<string, number>();
   const phaseVenues = new Map<string, string[]>();
   const items: SolverResultItem[] = [];
+  // Lähtöpaikkaoptimointi: muista edellinen ovaali-juoksun lähtöpaikka ja loppuaika
+  // jotta voidaan varata lähettäjän siirtymäaika seuraavan lähtöpaikan väliin.
+  let lastOvalStartLocation: StartLocation | null = null;
+  let lastOvalEnd = 0;
+  let lastOvalDay = "";
+  const ovalLocSet = new Set<StartLocation>([
+    "home_straight",
+    "home_curve",
+    "back_straight",
+    "back_curve",
+  ]);
 
   // Rata/suora-keskinäislukitus: kun ovaali on käytössä (200m+), suorat ovat
   // varattuja, ja päinvastoin. Suorat ovat fysikaalisesti osa ovaalia.
