@@ -55,6 +55,15 @@ function RunningOps() {
   const [activeDate, setActiveDate] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
   const [now, setNow] = useState(() => new Date());
+  const [groupAges, setGroupAges] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(GROUP_TOGGLE_KEY) === "1";
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(GROUP_TOGGLE_KEY, groupAges ? "1" : "0");
+  }, [groupAges]);
+
 
   const scheduleQuery = useQuery(competitionScheduleQueryOptions(competitionId));
   const data = scheduleQuery.data?.rounds ?? null;
