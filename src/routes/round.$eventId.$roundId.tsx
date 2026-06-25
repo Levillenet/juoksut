@@ -94,9 +94,8 @@ function RoundView() {
       if (pair.eventId === eid && pair.roundId === parseInt(roundId, 10)) {
         primaryRound = r;
       }
-      const series = isGrouped ? seriesLabel({ Age: "", Name: r.Name }) || ev.Name : undefined;
-      // Heitä mukaan ikäluokka jos saatavilla EventResults-rakenteesta — käytä ev.Name:n loppuosaa varakeinona.
-      const label = isGrouped ? extractAgeLabel(ev.Name) || series : undefined;
+      const label = isGrouped ? extractAgeLabel(ev.Name) || ev.Name : undefined;
+
       for (const h of r.Heats) {
         const cur = heatMap.get(h.Index) ?? [];
         for (const a of h.Allocations) {
