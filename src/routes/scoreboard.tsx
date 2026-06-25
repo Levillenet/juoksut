@@ -30,6 +30,7 @@ import { useHistoryBaseline } from "@/lib/history-baseline";
 import { athleteKey } from "@/lib/athlete-key";
 import { detectRecord, RecordStar } from "@/lib/records";
 import { WakeLockToggle } from "@/components/WakeLockToggle";
+import { ConfirmedDot } from "@/components/ConfirmedDot";
 import { getResultVisualState } from "@/lib/result-visualization";
 
 type TopSize = 10 | "all";
