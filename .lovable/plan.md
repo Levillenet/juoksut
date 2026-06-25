@@ -1,29 +1,19 @@
-## Ongelma
+## Selite vihreälle varmistus-merkille
 
-Etusivun "Urheilua tänään" -mittaristossa "Lajeja" ja "Urheilijoita" näyttävät 0 ennen kuin yksikään tulos on saatu. Syy: `src/lib/today-stats.ts` laskee molemmat `athlete_results`-taulusta (vain harvestoidut tulokset). "Kisoja"-luku toimii koska se ottaa datan elävältä kisalistalta.
+Lisätään pieni selite vihreälle pisteelle erän lähtöjärjestys -näkymään (`src/routes/round.$eventId.$roundId.tsx`), jotta käyttäjä ymmärtää mitä merkki tarkoittaa.
 
-## Korjaus
+### Muutokset
 
-`src/lib/today-stats.ts` (`fetchTodayStats`):
+**Tiedosto:** `src/routes/round.$eventId.$roundId.tsx`
 
-1. Hae tämän päivän kisojen kierrosdata `fetchRounds(competitionId)`-kutsulla rinnakkain (yksi pyyntö per kisa, palvelu cachettaa reunalla). Suodata kierrokset, jotka eivät ole tänään (Helsinki-aika) tai jotka ovat maantie/maasto (`isRoadOrCrossCountry`).
+1. **Ilmoittautuneet-listan otsikkopalkki (rivi ~144–152)** — kun eräjakoja ei ole vielä tehty mutta ilmoittautuneita on:
+   - Korvataan oikean reunan teksti `"Eräjakoja ei ole vielä tehty"` kahden rivin sisällöllä:
+     - rivi 1: `Eräjakoja ei ole vielä tehty`
+     - rivi 2: `Urheilija varmistanut` + vihreä `ConfirmedDot` perässä
+   - Pidetään tyyli `text-xs text-muted-foreground`, pieni `gap`/`mt-0.5` rivien välissä, oikealle tasattu.
 
-2. **Lajit** = `events`-joukko, johon yhdistetään:
-   - nykyiset `competition_id|event_id` tuloksista
-   - kaikkien tänään pidettävien kierrosten `competition_id|EventId`
+2. **Tyhjä tila (rivit 131–140)** — kun ilmoittautuneitakaan ei ole, jätetään ennalleen (selitettä ei tarvita, koska listaa ei näytetä).
 
-3. **Urheilijat** = max kahdesta arvosta:
-   - nykyinen tuloksista laskettu uniikkien `athlete_key`-arvojen määrä
-   - kierrosten `CountEnrolled` summa (= ilmoittautumiskertojen määrä; voi sisältää saman urheilijan useassa lajissa)
+3. **Eräjakojen jälkeen** — kun heatit on jaettu, lisätään sama pieni selite (`Urheilija varmistanut` + vihreä piste) hienovaraisesti heat-listan yläpuolelle (juuri ennen ensimmäistä `Erä`-otsikkoa), oikealle tasattuna pienellä `text-xs text-muted-foreground` -tyylillä, jotta sama selitys löytyy myös eräjaon jälkeisestä näkymästä.
 
-   Tämä antaa ennen kisaa realistisen luvun (ilmoittautuneet) ja päivän edetessä siirtyy varsinaisiin tuloksiin perustuvaan uniikkiin lukuun, kun se kasvaa suuremmaksi.
-
-4. PBs ja Kauden kärki säilyvät ennallaan (lasketaan vain tuloksista).
-
-5. Jos `fetchRounds` epäonnistuu yhden kisan kohdalla, ohitetaan se hiljaisesti (`.catch(() => null)`) jotta pääluvut eivät katoa.
-
-## Ei muutoksia
-
-- UI-komponentti `TodayStatsSection.tsx` säilyy ennallaan; vain datan lähde laajenee.
-- Ei tietokantamuutoksia.
-- Muu tilastologiikka ennallaan.
+Ei muutoksia muihin näkymiin (announcer, scoreboard) tässä vaiheessa — käyttäjä pyysi selitteen nimenomaan aikataulun lajisivulle.
