@@ -209,10 +209,14 @@ function RoundView() {
         )}
 
         {data && heats.length === 0 && (() => {
-          const enrollments = [...(data.Enrollments ?? [])].sort((a, b) =>
+          const sourceEnrollments: EnrollmentWithMeta[] = isGrouped
+            ? merged.enrollments
+            : (data.Enrollments ?? []).map((e) => ({ ...e, _eventId: eid }));
+          const enrollments = [...sourceEnrollments].sort((a, b) =>
             a.Surname.localeCompare(b.Surname, "fi") ||
             a.Firstname.localeCompare(b.Firstname, "fi"),
           );
+
           if (enrollments.length === 0) {
             return (
               <div className="rounded-xl border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
