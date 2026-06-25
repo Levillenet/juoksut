@@ -198,6 +198,14 @@ function RoundView() {
 
         <LayoutGroup>
           <div className="space-y-4">
+            {heats.length > 0 && heats.some((h) => h.Allocations.some((a) => !a.Result)) && (
+              <div className="flex justify-end text-xs text-muted-foreground">
+                <span className="inline-flex items-center">
+                  Urheilija varmistanut
+                  <ConfirmedDot confirmed className="ml-1.5" />
+                </span>
+              </div>
+            )}
             {heats.map((heat) => {
               const allocs = [...heat.Allocations].sort((a, b) => a.Position - b.Position);
               return (
