@@ -148,7 +148,13 @@ function RoundView() {
                     ({enrollments.length})
                   </span>
                 </h2>
-                <span className="text-xs text-muted-foreground">Eräjakoja ei ole vielä tehty</span>
+                <div className="flex flex-col items-end gap-0.5 text-xs text-muted-foreground">
+                  <span>Eräjakoja ei ole vielä tehty</span>
+                  <span className="inline-flex items-center">
+                    Urheilija varmistanut
+                    <ConfirmedDot confirmed className="ml-1.5" />
+                  </span>
+                </div>
               </div>
               <ol className="divide-y">
                 {enrollments.map((e, i) => (
