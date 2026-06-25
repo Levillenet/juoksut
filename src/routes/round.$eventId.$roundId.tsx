@@ -2,10 +2,10 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef } from "react";
 import { LayoutGroup, motion } from "framer-motion";
 import { trackEvent } from "@/lib/analytics";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useQueries } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Wind } from "lucide-react";
 
-import { formatRelayLegs, formatTime, STATUS_LABEL, type Heat } from "@/lib/tuloslista";
+import { formatRelayLegs, formatTime, STATUS_LABEL, type Heat, type Allocation, type Enrollment } from "@/lib/tuloslista";
 import { RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
 import {
@@ -16,13 +16,18 @@ import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 import { athleteKey } from "@/lib/watch-store";
 import { ConfirmedDot } from "@/components/ConfirmedDot";
+import { decodeGroupParam, seriesLabel } from "@/lib/round-grouping";
 
 export const Route = createFileRoute("/round/$eventId/$roundId")({
+  validateSearch: (search: Record<string, unknown>): { group?: string } => ({
+    group: typeof search.group === "string" ? search.group : undefined,
+  }),
   head: () => ({
     meta: [{ title: "Erän lähtöjärjestys" }],
   }),
   component: RoundView,
 });
+
 
 function RoundView() {
   const { eventId, roundId } = Route.useParams();
