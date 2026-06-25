@@ -348,11 +348,17 @@ function RoundView() {
                             {!a.Result && (
                               <ConfirmedDot confirmed={a.Confirmed} className="ml-2 align-middle" />
                             )}
+                            {(a as AllocWithMeta)._series && (
+                              <span className="ml-2 rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent-foreground">
+                                {(a as AllocWithMeta)._series}
+                              </span>
+                            )}
                             {a.NotInCompetition && (
                               <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
                                 ei lisenssiä?
                               </span>
                             )}
+
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
                             {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
