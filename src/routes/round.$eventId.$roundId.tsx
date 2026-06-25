@@ -92,7 +92,7 @@ function RoundView() {
       const r = ev.Rounds.find((x) => x.Id === pair.roundId);
       if (!r) continue;
       if (pair.eventId === eid && pair.roundId === parseInt(roundId, 10)) {
-        primaryRound = { Name: r.Name, BeginDateTimeWithTZ: r.BeginDateTimeWithTZ, Status: r.Status };
+        primaryRound = r;
       }
       const series = isGrouped ? seriesLabel({ Age: "", Name: r.Name }) || ev.Name : undefined;
       // Heitä mukaan ikäluokka jos saatavilla EventResults-rakenteesta — käytä ev.Name:n loppuosaa varakeinona.
