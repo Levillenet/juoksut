@@ -179,7 +179,7 @@ function RoundView() {
                     <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs tabular-nums text-muted-foreground">
                       {e.Number && <div>#{e.Number}</div>}
                       {e.SB && <div>SB {e.SB}</div>}
-                      {!e.SB && e.PB && <div>PB {e.PB}</div>}
+                      {e.PB && <div>PB {e.PB}</div>}
                     </div>
                   </li>
                 ))}
