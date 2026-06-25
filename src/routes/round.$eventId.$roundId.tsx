@@ -121,16 +121,72 @@ function RoundView() {
           <div className="py-12 text-center text-sm text-muted-foreground">Ladataan…</div>
         )}
 
-        {data && heats.length === 0 && (
-          <div className="rounded-xl border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-            Eräjakoja ei ole vielä tehty.
-            <div className="mt-3">
-              <Link to="/" className="text-primary underline">
-                Takaisin listaan
-              </Link>
-            </div>
-          </div>
-        )}
+        {data && heats.length === 0 && (() => {
+          const enrollments = [...(data.Enrollments ?? [])].sort((a, b) =>
+            a.Surname.localeCompare(b.Surname, "fi") ||
+            a.Firstname.localeCompare(b.Firstname, "fi"),
+          );
+          if (enrollments.length === 0) {
+            return (
+              <div className="rounded-xl border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+                Eräjakoja ei ole vielä tehty.
+                <div className="mt-3">
+                  <Link to="/" className="text-primary underline">
+                    Takaisin listaan
+                  </Link>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+              <div className="flex items-center justify-between border-b bg-secondary px-4 py-2">
+                <h2 className="text-sm font-semibold">
+                  Ilmoittautuneet{" "}
+                  <span className="font-normal text-muted-foreground">
+                    ({enrollments.length})
+                  </span>
+                </h2>
+                <span className="text-xs text-muted-foreground">Eräjakoja ei ole vielä tehty</span>
+              </div>
+              <ol className="divide-y">
+                {enrollments.map((e, i) => (
+                  <li key={e.Id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-sm font-semibold tabular-nums text-muted-foreground">
+                      {i + 1}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium leading-tight">
+                        <Link
+                          to="/athlete/$key"
+                          params={{
+                            key: athleteKey(e.Surname, e.Firstname, e.Organization?.Id ?? null),
+                          }}
+                          className="hover:underline"
+                        >
+                          {e.Name}
+                        </Link>
+                        {e.NotInCompetition && (
+                          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
+                            ei lisenssiä?
+                          </span>
+                        )}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {e.Organization?.Name ?? e.Organization?.NameShort ?? ""}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs tabular-nums text-muted-foreground">
+                      {e.Number && <div>#{e.Number}</div>}
+                      {e.SB && <div>SB {e.SB}</div>}
+                      {!e.SB && e.PB && <div>PB {e.PB}</div>}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          );
+        })()}
 
         <LayoutGroup>
           <div className="space-y-4">

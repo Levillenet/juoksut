@@ -1,22 +1,20 @@
-Käyttäjä valittaa, että asetuksen "Salli matkanvaihto samalla suorituspaikalla" ohjeteksti on edelleen epäselvä ja harhaanjohtava.
+## Ongelma
 
-**Tunnistettu ongelma:**
-Nykyinen teksti "Jos pois päältä, solveri ei sijoita eri matkoja samalle juoksuradalle/-suoralle. Esim. kaikki 40 m omalle suoralle, 60 m omalleen." ei ota huomioon suorien määrää:
+Kun lajilla ei ole vielä eräjakoja, lajinäkymä (`/round/:eventId/:roundId`) näyttää vain "Eräjakoja ei ole vielä tehty." vaikka tuloslistan API palauttaa jo `Enrollments`-listan ilmoittautuneista.
 
-- Jos kilpailussa on **2 pikajuoksusuoraa**: asetus kontrolloi, voiko eri matkat (esim. 40 m ja 60 m) olla SAMALLA suoralla vai pakotetaanko ne eri suorille.
-- Jos on **vain 1 suora**: asetus ei käytännössä vaikuta — kaikki juostaan siinä yhdessä.
+## Korjaus
 
-**Ehdotettu uusi teksti:**
+Muokataan `src/routes/round.$eventId.$roundId.tsx`:
 
-```
-Salli eri matkat samalla suoralla
-Kun päällä, solver voi sijoittaa eri matkat (esim. 40 m ja 60 m) samalle 
-suoralle peräkkäin. Kun pois päältä, jokainen matka saa oman suoransa — 
-esim. kaikki 40 m juostaan suoralla 1 ja kaikki 60 m suoralla 2. 
-Jos suorituspaikkoja on vain yksi, tämä asetus ei vaikuta järjestykseen.
-```
+1. Kun `heats.length === 0`, tarkistetaan `data.Enrollments`.
+2. Jos ilmoittautuneita on, näytetään ne yhtenä listana otsikolla "Ilmoittautuneet (N)" samalla kortti­tyylillä kuin erälistaus, mutta ilman ratanumero­ympyrää (käytetään numerona pelkkää järjestys­numeroa tai jätetään pois).
+3. Rivillä: nimi (linkki athlete-sivulle, kuten erälistalla), seura, mahdollinen kilpailunumero, SB/PB.
+4. Säilytetään nykyinen "Eräjakoja ei ole vielä tehty" -teksti vain jos myös enrollments-lista on tyhjä.
+5. Kun eräjaot tulevat (Heats-lista ei-tyhjä), enrollments-näkymä piilotetaan automaattisesti ja palautetaan nykyinen erälistaus — ei muita muutoksia.
 
-**Tiedosto muutettavaksi:**
-- `src/routes/planner.$planId.tsx`, rivit 584-588
+Ei muutoksia API-kerrokseen, dataa, soveltimiin tai muihin reitteihin — `Enrollments` tulee jo `fetchEvent`-vastauksessa.
 
-**Muutos:** Pelkkä UI-tekstin parannus — ei vaikutusta solver-logiikkaan, tietokantaan tai muihin osiin.
+## Tekninen huomio
+
+- Järjestys: aakkostetaan sukunimen mukaan (luonteva ilmoittautumis­listan default), `NotInCompetition`-merkintä näkyy samalla badgella kuin erä­näkymässä.
+- Tiedosto: vain `src/routes/round.$eventId.$roundId.tsx`.
