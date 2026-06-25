@@ -19,6 +19,10 @@ import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 import { AthleteSearch } from "@/components/AthleteSearch";
 import { RequireRole } from "@/components/RequireRole";
+import { groupRunningRounds, encodeGroupParam } from "@/lib/round-grouping";
+
+const GROUP_TOGGLE_KEY = "running-ops:group-age-classes";
+
 
 export const Route = createFileRoute("/running-ops")({
   head: () => ({
