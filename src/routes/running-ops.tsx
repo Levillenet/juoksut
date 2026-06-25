@@ -238,7 +238,9 @@ function RunningOps() {
             beginISO: r.BeginDateTimeWithTZ,
             baseName: r.EventName,
             gender: r.Gender,
+            genderLabel: "",
             ageClasses: r.Age ? [r.Age] : [],
+            distances: [r.EventName],
             rounds: [r],
           }))).map((g) => {
             const first = g.rounds[0];
@@ -249,6 +251,9 @@ function RunningOps() {
             const groupParam = isMulti
               ? encodeGroupParam(g.rounds.map((r) => ({ eventId: r.EventId, roundId: r.Id })))
               : undefined;
+            const title = isMulti
+              ? `${g.genderLabel ? g.genderLabel + " " : ""}${g.baseName}`.trim()
+              : first.EventName;
             return (
               <li key={g.key}>
                 <Link
@@ -263,15 +268,14 @@ function RunningOps() {
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold leading-tight">
-                      {isMulti ? g.baseName : first.EventName}
-                    </p>
+                    <p className="truncate font-semibold leading-tight">{title}</p>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
                       {isMulti
                         ? `${g.ageClasses.join(", ")} · ${g.rounds.length} sarjaa · ${first.Name}`
                         : first.Name}
                     </p>
                   </div>
+
                   {isMulti && (
                     <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">
                       niputettu
