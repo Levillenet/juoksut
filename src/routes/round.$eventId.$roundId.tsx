@@ -384,7 +384,7 @@ function RoundView() {
                                 )}
                               </div>
                               {(() => {
-                                const eff = effectiveRecord(parseInt(eventId, 10), a);
+                                const eff = effectiveRecord((a as AllocWithMeta)._eventId ?? parseInt(eventId, 10), a);
                                 return (
                                   <RecordBadge
                                     category={data?.EventCategory ?? ""}
@@ -395,6 +395,7 @@ function RoundView() {
                                   />
                                 );
                               })()}
+
                             </>
                           ) : (
                             <>
