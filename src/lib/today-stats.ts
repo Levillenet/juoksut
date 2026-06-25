@@ -169,7 +169,18 @@ export async function fetchTodayStats(): Promise<TodayStats> {
   ]);
 
   // Kisat: elävältä kisalistalta (mukana myös ne joista ei vielä tuloksia).
-  const liveTodayCount = filterToday(compList).length;
+  const todayComps = filterToday(compList);
+  const liveTodayCount = todayComps.length;
+
+  // Hae kierrokset jokaiselle tänään pidettävälle kisalle (rinnakkain).
+  const todayKey = helsinkiDateKey(new Date().toISOString());
+  const roundsByComp = await Promise.all(
+    todayComps.map((c) =>
+      fetchRounds(c.Id)
+        .then((rbd) => ({ id: c.Id, rounds: rbd[todayKey] ?? [] }))
+        .catch(() => ({ id: c.Id, rounds: [] as Awaited<ReturnType<typeof fetchRounds>>[string] })),
+    ),
+  );
 
   const events = new Set<string>();
   const athletes = new Set<string>();
@@ -177,6 +188,21 @@ export async function fetchTodayStats(): Promise<TodayStats> {
     events.add(`${r.competition_id}|${r.event_id}`);
     athletes.add(r.athlete_key);
   }
+
+  // Lajit ja ilmoittautumiset eläväs­tä kierros­datasta (ennen tuloksia).
+  let enrolledSum = 0;
+  for (const { id, rounds } of roundsByComp) {
+    const seenEventIds = new Set<number>();
+    for (const r of rounds) {
+      if (isRoadOrCrossCountryRound(r)) continue;
+      if (!seenEventIds.has(r.EventId)) {
+        seenEventIds.add(r.EventId);
+        enrolledSum += r.CountEnrolled ?? 0;
+      }
+      events.add(`${id}|${r.EventId}`);
+    }
+  }
+  const athletesCount = Math.max(athletes.size, enrolledSum);
 
   // Per (athlete, normalized event) tämän päivän paras tulos.
   type Best = {
