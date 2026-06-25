@@ -84,7 +84,7 @@ function RoundView() {
     const enrollments: EnrollmentWithMeta[] = [];
     const heatMap = new Map<number, AllocWithMeta[]>();
     const heatMeta = new Map<number, { Id: number; Wind: number | null }>();
-    let primaryRound: { Name: string; BeginDateTimeWithTZ: string; Status: Heat["Allocations"] extends infer _ ? import("@/lib/tuloslista").Round["Status"] : never } | null = null;
+    let primaryRound: import("@/lib/tuloslista").RoundDetailRound | null = null;
     for (const pair of groupPairs) {
       const qIdx = uniqueEventIds.indexOf(pair.eventId);
       const ev = qIdx >= 0 ? eventQueries[qIdx]?.data ?? null : null;
