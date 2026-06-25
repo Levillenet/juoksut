@@ -12,6 +12,7 @@ import { detectRecord, RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
 import { athleteKey } from "@/lib/athlete-key";
 import { useCompetitionId } from "@/lib/competition-store";
+import { ConfirmedDot } from "@/components/ConfirmedDot";
 import {
   formatRelayLegs,
   formatTime,
