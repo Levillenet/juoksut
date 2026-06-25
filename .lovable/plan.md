@@ -1,40 +1,29 @@
-## Tavoite
+## Ongelma
 
-Pieni vihreä piste/badge varmistuksen tehneen kilpailijan kohdalle kaikissa osallistujaluetteloissa ennen suoritusta. Ei merkkiä varmistamattomille. Varmistustieto piilotetaan kun suoritus on jo tehty.
+Etusivun "Urheilua tänään" -mittaristossa "Lajeja" ja "Urheilijoita" näyttävät 0 ennen kuin yksikään tulos on saatu. Syy: `src/lib/today-stats.ts` laskee molemmat `athlete_results`-taulusta (vain harvestoidut tulokset). "Kisoja"-luku toimii koska se ottaa datan elävältä kisalistalta.
 
-## Datakerros
+## Korjaus
 
-`src/lib/tuloslista.ts`:
-- Lisätään `Allocation`-interfaceen `Confirmed?: boolean` (valinnainen, API saattaa palauttaa sen myös erä­allokaatioille). `Enrollment.Confirmed` on jo olemassa.
+`src/lib/today-stats.ts` (`fetchTodayStats`):
 
-## Pieni jaettu komponentti
+1. Hae tämän päivän kisojen kierrosdata `fetchRounds(competitionId)`-kutsulla rinnakkain (yksi pyyntö per kisa, palvelu cachettaa reunalla). Suodata kierrokset, jotka eivät ole tänään (Helsinki-aika) tai jotka ovat maantie/maasto (`isRoadOrCrossCountry`).
 
-`src/components/ConfirmedDot.tsx` (uusi):
-- Renderöi pienen vihreän pisteen (esim. 8 px) tooltipillä "Osallistuminen varmistettu".
-- Palauttaa `null` kun `confirmed !== true`.
-- Käytetään yhtenäisesti kaikissa listoissa.
+2. **Lajit** = `events`-joukko, johon yhdistetään:
+   - nykyiset `competition_id|event_id` tuloksista
+   - kaikkien tänään pidettävien kierrosten `competition_id|EventId`
 
-## Sijoittelu listoissa (näkyy vain ennen suoritusta = `!a.Result`)
+3. **Urheilijat** = max kahdesta arvosta:
+   - nykyinen tuloksista laskettu uniikkien `athlete_key`-arvojen määrä
+   - kierrosten `CountEnrolled` summa (= ilmoittautumiskertojen määrä; voi sisältää saman urheilijan useassa lajissa)
 
-1. **`src/routes/round.$eventId.$roundId.tsx`**
-   - Ilmoittautumislista: piste nimen oikealle puolelle (samaan riviin nimen ja "ei lisenssiä?" -badgen kanssa).
-   - Erälistaus (kun heats on): piste nimen viereen rivillä, jossa `!a.Result`.
+   Tämä antaa ennen kisaa realistisen luvun (ilmoittautuneet) ja päivän edetessä siirtyy varsinaisiin tuloksiin perustuvaan uniikkiin lukuun, kun se kasvaa suuremmaksi.
 
-2. **`src/components/announcer/shared.tsx`**
-   - `AllocationRow` (rivi ~424): piste nimen `<span>`:n viereen kun `!a.Result`.
-   - Pääosallistujarivit (rivit ~310): piste nimen jälkeen kun `!a.Result`.
+4. PBs ja Kauden kärki säilyvät ennallaan (lasketaan vain tuloksista).
 
-3. **`src/routes/scoreboard.tsx`**
-   - Kun rivillä ei ole vielä tulosta, piste nimen viereen.
-
-Muissa luetteloissa (printit, club-raportit, harvest, hooks) ei näytetä — ne ovat kilpailun jälkeisiä tai analyysejä.
-
-## Tyyli
-
-- Vihreä piste käyttäen design-tokenia (esim. `bg-emerald-500` tai semanttinen success-väri jos olemassa — tarkistetaan `src/styles.css`). Jos ei semanttista tokenia, lisätään `--success`-token tai käytetään suoraan `bg-green-500`/`emerald-500` tämän pisteen kohdalla.
-- Saavutettavuus: `aria-label="Osallistuminen varmistettu"`, `title` sama.
+5. Jos `fetchRounds` epäonnistuu yhden kisan kohdalla, ohitetaan se hiljaisesti (`.catch(() => null)`) jotta pääluvut eivät katoa.
 
 ## Ei muutoksia
 
-- Solveri, suunnitelmat, tietokanta, harvest, käännös­funktiot — ei kosketa.
-- Varmistamattomille ei lisätä mitään.
+- UI-komponentti `TodayStatsSection.tsx` säilyy ennallaan; vain datan lähde laajenee.
+- Ei tietokantamuutoksia.
+- Muu tilastologiikka ennallaan.
