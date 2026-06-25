@@ -177,14 +177,20 @@ function RoundView() {
           </Button>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-semibold leading-tight">
-              {data?.Name ?? "Laji"}
+              {isGrouped ? (data?.Name ? data.Name.replace(/\s*\b[WMNTP]\d{2,3}\b\s*/i, " ").replace(/\s{2,}/g, " ").trim() : "Laji") : (data?.Name ?? "Laji")}
             </h1>
             <p className="truncate text-xs text-muted-foreground">
               {round
                 ? `${round.Name} · ${formatTime(round.BeginDateTimeWithTZ)} · ${STATUS_LABEL[round.Status]}`
                 : "Ladataan…"}
             </p>
+            {isGrouped && (
+              <p className="truncate text-[11px] text-muted-foreground">
+                Niputettu {groupPairs.length} sarjaa
+              </p>
+            )}
           </div>
+
           <Button variant="ghost" size="icon" onClick={reload} disabled={loading} aria-label="Päivitä">
             <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
           </Button>
