@@ -235,6 +235,9 @@ function RoundView() {
                             >
                               {a.Name}
                             </Link>
+                            {!a.Result && (
+                              <ConfirmedDot confirmed={a.Confirmed} className="ml-2 align-middle" />
+                            )}
                             {a.NotInCompetition && (
                               <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
                                 ei lisenssiä?
