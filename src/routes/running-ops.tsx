@@ -198,16 +198,29 @@ function RunningOps() {
               {runs.length} juoksulajia
               {!showPast && hiddenPastCount > 0 && ` · ${hiddenPastCount} mennyttä piilotettu`}
             </p>
-            <button
-              onClick={() => setShowPast((v) => !v)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                showPast
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-foreground hover:bg-secondary"
-              }`}
-            >
-              {showPast ? "Piilota menneet" : "Näytä menneet"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setGroupAges((v) => !v)}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  groupAges
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-foreground hover:bg-secondary"
+                }`}
+                title="Niputtaa samana aikana alkavat saman matkan ikäsarjat yhdeksi lähdöksi"
+              >
+                {groupAges ? "Niputus päällä" : "Niputa ikäsarjat"}
+              </button>
+              <button
+                onClick={() => setShowPast((v) => !v)}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  showPast
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-foreground hover:bg-secondary"
+                }`}
+              >
+                {showPast ? "Piilota menneet" : "Näytä menneet"}
+              </button>
+            </div>
           </div>
         )}
 
@@ -220,34 +233,61 @@ function RunningOps() {
         )}
 
         <ul className="space-y-2">
-          {runs.map((r) => {
-            const past = isPast(r.BeginDateTimeWithTZ);
+          {(groupAges ? groupRunningRounds(runs) : runs.map((r) => ({
+            key: String(r.Id),
+            beginISO: r.BeginDateTimeWithTZ,
+            baseName: r.EventName,
+            gender: r.Gender,
+            ageClasses: r.Age ? [r.Age] : [],
+            rounds: [r],
+          }))).map((g) => {
+            const first = g.rounds[0];
+            const past = isPast(g.beginISO);
+            const isMulti = g.rounds.length > 1;
+            const statuses = Array.from(new Set(g.rounds.map((r) => r.Status)));
+            const status: Round["Status"] = statuses.length === 1 ? statuses[0] : first.Status;
+            const groupParam = isMulti
+              ? encodeGroupParam(g.rounds.map((r) => ({ eventId: r.EventId, roundId: r.Id })))
+              : undefined;
             return (
-              <li key={r.Id}>
+              <li key={g.key}>
                 <Link
                   to="/round/$eventId/$roundId"
-                  params={{ eventId: String(r.EventId), roundId: String(r.Id) }}
+                  params={{ eventId: String(first.EventId), roundId: String(first.Id) }}
+                  search={groupParam ? { group: groupParam } : undefined}
                   className={`flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm transition-colors hover:bg-secondary active:bg-secondary ${past ? "opacity-50" : ""}`}
                 >
                   <div className="flex w-14 shrink-0 flex-col items-center">
                     <span className="text-lg font-bold tabular-nums tracking-tight text-foreground">
-                      {formatTime(r.BeginDateTimeWithTZ)}
+                      {formatTime(g.beginISO)}
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold leading-tight">{r.EventName}</p>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{r.Name}</p>
+                    <p className="truncate font-semibold leading-tight">
+                      {isMulti ? g.baseName : first.EventName}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {isMulti
+                        ? `${g.ageClasses.join(", ")} · ${g.rounds.length} sarjaa · ${first.Name}`
+                        : first.Name}
+                    </p>
                   </div>
+                  {isMulti && (
+                    <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">
+                      niputettu
+                    </span>
+                  )}
                   <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_STYLE[r.Status]}`}
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_STYLE[status]}`}
                   >
-                    {STATUS_LABEL[r.Status]}
+                    {statuses.length === 1 ? STATUS_LABEL[status] : "Useita"}
                   </span>
                   <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </Link>
               </li>
             );
           })}
+
         </ul>
       </main>
     </div>
