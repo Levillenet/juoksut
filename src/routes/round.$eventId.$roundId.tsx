@@ -32,6 +32,12 @@ export const Route = createFileRoute("/round/$eventId/$roundId")({
 type AllocWithMeta = Allocation & { _series?: string; _eventId: number };
 type EnrollmentWithMeta = Enrollment & { _series?: string; _eventId: number };
 
+function extractAgeLabel(name: string): string | undefined {
+  const m = name.match(/\b([WMNTP]\d{2,3})\b/i);
+  return m ? m[1].toUpperCase() : undefined;
+}
+
+
 function RoundView() {
   const { eventId, roundId } = Route.useParams();
   const { group: groupParam } = Route.useSearch();
