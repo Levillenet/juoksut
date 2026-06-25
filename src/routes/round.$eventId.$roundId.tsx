@@ -2,10 +2,10 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef } from "react";
 import { LayoutGroup, motion } from "framer-motion";
 import { trackEvent } from "@/lib/analytics";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useQueries } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Wind } from "lucide-react";
 
-import { formatRelayLegs, formatTime, STATUS_LABEL, type Heat } from "@/lib/tuloslista";
+import { formatRelayLegs, formatTime, STATUS_LABEL, type Heat, type Allocation, type Enrollment } from "@/lib/tuloslista";
 import { RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
 import {
@@ -16,52 +16,131 @@ import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 import { athleteKey } from "@/lib/watch-store";
 import { ConfirmedDot } from "@/components/ConfirmedDot";
+import { decodeGroupParam } from "@/lib/round-grouping";
 
 export const Route = createFileRoute("/round/$eventId/$roundId")({
+  validateSearch: (search: Record<string, unknown>): { group?: string } => ({
+    group: typeof search.group === "string" ? search.group : undefined,
+  }),
   head: () => ({
     meta: [{ title: "Erän lähtöjärjestys" }],
   }),
   component: RoundView,
 });
 
+
+type AllocWithMeta = Allocation & { _series?: string; _eventId: number };
+type EnrollmentWithMeta = Enrollment & { _series?: string; _eventId: number };
+
+function extractAgeLabel(name: string): string | undefined {
+  const m = name.match(/\b([WMNTP]\d{2,3})\b/i);
+  return m ? m[1].toUpperCase() : undefined;
+}
+
+
 function RoundView() {
   const { eventId, roundId } = Route.useParams();
+  const { group: groupParam } = Route.useSearch();
   const router = useRouter();
   const [competitionId] = useCompetitionId();
   const queryClient = useQueryClient();
 
   const eid = parseInt(eventId, 10);
-  const detailQuery = useQuery(eventDetailsQueryOptions(competitionId, eid));
-  const data = detailQuery.data ?? null;
-  const loading = detailQuery.isFetching;
-  const error = detailQuery.error
-    ? detailQuery.error instanceof Error
-      ? detailQuery.error.message
-      : "Tuntematon virhe"
-    : null;
+  const groupPairs = useMemo(() => {
+    const pairs = decodeGroupParam(groupParam);
+    if (pairs.length > 0) return pairs;
+    return [{ eventId: eid, roundId: parseInt(roundId, 10) }];
+  }, [groupParam, eid, roundId]);
 
-  const reload = () => {
-    queryClient.invalidateQueries({ queryKey: eventDetailsKey(competitionId, eid) });
-  };
-
-  const round = useMemo(
-    () => data?.Rounds.find((r) => r.Id === parseInt(roundId, 10)) ?? data?.Rounds[0],
-    [data, roundId],
+  const uniqueEventIds = useMemo(
+    () => Array.from(new Set(groupPairs.map((p) => p.eventId))),
+    [groupPairs],
   );
 
-  const heats: Heat[] = useMemo(() => {
-    const hs = round?.Heats ?? [];
-    return [...hs].sort((a, b) => a.Index - b.Index);
-  }, [round]);
+  const eventQueries = useQueries({
+    queries: uniqueEventIds.map((id) => eventDetailsQueryOptions(competitionId, id)),
+  });
+
+  const primaryIdx = uniqueEventIds.indexOf(eid);
+  const primaryQuery = primaryIdx >= 0 ? eventQueries[primaryIdx] : eventQueries[0];
+  const data = primaryQuery?.data ?? null;
+  const loading = eventQueries.some((q) => q.isFetching);
+  const error = (() => {
+    const e = eventQueries.find((q) => q.error)?.error;
+    if (!e) return null;
+    return e instanceof Error ? e.message : "Tuntematon virhe";
+  })();
+
+  const reload = () => {
+    for (const id of uniqueEventIds) {
+      queryClient.invalidateQueries({ queryKey: eventDetailsKey(competitionId, id) });
+    }
+  };
+
+  const isGrouped = groupPairs.length > 1;
+
+  /** Yhdistetyt roundit + niiden allocations/enrollments. */
+  const merged = useMemo(() => {
+    const enrollments: EnrollmentWithMeta[] = [];
+    const heatMap = new Map<number, AllocWithMeta[]>();
+    const heatMeta = new Map<number, { Id: number; Wind: number | null }>();
+    let primaryRound: import("@/lib/tuloslista").RoundDetailRound | null = null;
+    for (const pair of groupPairs) {
+      const qIdx = uniqueEventIds.indexOf(pair.eventId);
+      const ev = qIdx >= 0 ? eventQueries[qIdx]?.data ?? null : null;
+      if (!ev) continue;
+      const r = ev.Rounds.find((x) => x.Id === pair.roundId);
+      if (!r) continue;
+      if (pair.eventId === eid && pair.roundId === parseInt(roundId, 10)) {
+        primaryRound = r;
+      }
+      const label = isGrouped ? extractAgeLabel(ev.Name) || ev.Name : undefined;
+
+      for (const h of r.Heats) {
+        const cur = heatMap.get(h.Index) ?? [];
+        for (const a of h.Allocations) {
+          cur.push({ ...a, _series: label, _eventId: pair.eventId });
+        }
+        heatMap.set(h.Index, cur);
+        if (!heatMeta.has(h.Index)) {
+          heatMeta.set(h.Index, { Id: h.Id, Wind: h.Wind });
+        }
+      }
+      if (ev.Enrollments && ev.Enrollments.length > 0) {
+        for (const e of ev.Enrollments) {
+          enrollments.push({ ...e, _series: label, _eventId: pair.eventId });
+        }
+      }
+    }
+    const heats = Array.from(heatMap.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([Index, allocs]) => {
+        const meta = heatMeta.get(Index)!;
+        return {
+          Id: meta.Id,
+          Index,
+          Wind: meta.Wind,
+          Allocations: allocs.sort((a, b) => a.Position - b.Position),
+        } as Heat & { Allocations: AllocWithMeta[] };
+      });
+    return { heats, enrollments, primaryRound };
+  }, [groupPairs, uniqueEventIds, eventQueries, eid, roundId, isGrouped]);
+
+  const round = isGrouped
+    ? merged.primaryRound
+    : data?.Rounds.find((r) => r.Id === parseInt(roundId, 10)) ?? data?.Rounds[0];
+
+  const heats = merged.heats;
 
   const overall = useMemo(() => {
     const all = heats.flatMap((h) =>
-      h.Allocations.map((a) => ({ ...a, _heatIndex: h.Index })),
+      h.Allocations.map((a) => ({ ...(a as AllocWithMeta), _heatIndex: h.Index })),
     );
     const ranked = all.filter((a) => a.Result && a.ResultRank != null);
     if (ranked.length === 0) return [];
     return ranked.sort((a, b) => (a.ResultRank ?? 0) - (b.ResultRank ?? 0));
   }, [heats]);
+
 
 
 
@@ -97,14 +176,20 @@ function RoundView() {
           </Button>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-semibold leading-tight">
-              {data?.Name ?? "Laji"}
+              {isGrouped ? (data?.Name ? data.Name.replace(/\s*\b[WMNTP]\d{2,3}\b\s*/i, " ").replace(/\s{2,}/g, " ").trim() : "Laji") : (data?.Name ?? "Laji")}
             </h1>
             <p className="truncate text-xs text-muted-foreground">
               {round
                 ? `${round.Name} · ${formatTime(round.BeginDateTimeWithTZ)} · ${STATUS_LABEL[round.Status]}`
                 : "Ladataan…"}
             </p>
+            {isGrouped && (
+              <p className="truncate text-[11px] text-muted-foreground">
+                Niputettu {groupPairs.length} sarjaa
+              </p>
+            )}
           </div>
+
           <Button variant="ghost" size="icon" onClick={reload} disabled={loading} aria-label="Päivitä">
             <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
           </Button>
@@ -123,10 +208,14 @@ function RoundView() {
         )}
 
         {data && heats.length === 0 && (() => {
-          const enrollments = [...(data.Enrollments ?? [])].sort((a, b) =>
+          const sourceEnrollments: EnrollmentWithMeta[] = isGrouped
+            ? merged.enrollments
+            : (data.Enrollments ?? []).map((e) => ({ ...e, _eventId: eid }));
+          const enrollments = [...sourceEnrollments].sort((a, b) =>
             a.Surname.localeCompare(b.Surname, "fi") ||
             a.Firstname.localeCompare(b.Firstname, "fi"),
           );
+
           if (enrollments.length === 0) {
             return (
               <div className="rounded-xl border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
@@ -174,6 +263,12 @@ function RoundView() {
                           {e.Name}
                         </Link>
                         <ConfirmedDot confirmed={e.Confirmed} className="ml-2 align-middle" />
+                        {e._series && (
+                          <span className="ml-2 rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent-foreground">
+                            {e._series}
+                          </span>
+                        )}
+
                         {e.NotInCompetition && (
                           <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
                             ei lisenssiä?
@@ -252,11 +347,17 @@ function RoundView() {
                             {!a.Result && (
                               <ConfirmedDot confirmed={a.Confirmed} className="ml-2 align-middle" />
                             )}
+                            {(a as AllocWithMeta)._series && (
+                              <span className="ml-2 rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent-foreground">
+                                {(a as AllocWithMeta)._series}
+                              </span>
+                            )}
                             {a.NotInCompetition && (
                               <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
                                 ei lisenssiä?
                               </span>
                             )}
+
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
                             {a.Organization?.Name ?? a.Organization?.NameShort ?? ""}
@@ -282,7 +383,7 @@ function RoundView() {
                                 )}
                               </div>
                               {(() => {
-                                const eff = effectiveRecord(parseInt(eventId, 10), a);
+                                const eff = effectiveRecord((a as AllocWithMeta)._eventId ?? parseInt(eventId, 10), a);
                                 return (
                                   <RecordBadge
                                     category={data?.EventCategory ?? ""}
@@ -293,6 +394,7 @@ function RoundView() {
                                   />
                                 );
                               })()}
+
                             </>
                           ) : (
                             <>
