@@ -310,6 +310,9 @@ export function EventCard({
                       )}
                       <p className="truncate text-sm font-semibold leading-tight">
                         {a.Name}
+                        {!a.Result && (
+                          <ConfirmedDot confirmed={a.Confirmed} className="ml-1.5 align-middle" />
+                        )}
                       </p>
                     </div>
                     <p className="truncate text-xs text-muted-foreground">
