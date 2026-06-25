@@ -373,7 +373,65 @@ function Page() {
         </Section>
 
 
+        <Section title={`Kaikki käyttäjät (${usersQ.data?.length ?? 0})`}>
+          {usersQ.isLoading && (
+            <p className="text-xs text-muted-foreground">Ladataan…</p>
+          )}
+          {usersQ.error && (
+            <p className="text-xs text-destructive">
+              Virhe: {(usersQ.error as Error).message}
+            </p>
+          )}
+          {usersQ.data && (
+            <>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <input
+                  type="search"
+                  placeholder="Hae sähköpostilla…"
+                  value={userFilter}
+                  onChange={(e) => setUserFilter(e.target.value)}
+                  className="h-8 flex-1 min-w-[200px] rounded-md border border-border bg-background px-2 text-xs"
+                />
+                <Button size="sm" variant="outline" onClick={downloadUsersCsv}>
+                  <Download className="mr-2 h-3 w-3" />
+                  CSV
+                </Button>
+              </div>
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/50 text-left">
+                    <tr>
+                      <th className="p-2">Sähköposti</th>
+                      <th className="p-2">Viimeisin kirjautuminen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map((u) => (
+                      <tr key={u.user_id} className="border-t">
+                        <td className="p-2">{u.email}</td>
+                        <td className="p-2 whitespace-nowrap text-muted-foreground">
+                          {u.last_sign_in_at
+                            ? new Date(u.last_sign_in_at).toLocaleString("fi-FI")
+                            : "ei koskaan"}
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredUsers.length === 0 && (
+                      <tr>
+                        <td colSpan={2} className="p-2 text-center text-muted-foreground">
+                          Ei käyttäjiä.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </Section>
+
         <Section title="Viimeisimmät tapahtumat (50)">
+
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full text-xs">
               <thead className="bg-muted/50 text-left">
