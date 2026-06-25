@@ -55,7 +55,41 @@ function Page() {
     },
   });
 
+  const usersQ = useQuery({
+    queryKey: ["admin", "auth-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("list_auth_users");
+      if (error) throw error;
+      return (data ?? []) as { user_id: string; email: string; last_sign_in_at: string | null }[];
+    },
+  });
+
+  const [userFilter, setUserFilter] = useState("");
+  const filteredUsers = useMemo(() => {
+    const list = usersQ.data ?? [];
+    const f = userFilter.trim().toLowerCase();
+    if (!f) return list;
+    return list.filter((u) => (u.email ?? "").toLowerCase().includes(f));
+  }, [usersQ.data, userFilter]);
+
+  const downloadUsersCsv = () => {
+    const list = usersQ.data ?? [];
+    const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+    const lines = ["email,last_sign_in_at"];
+    for (const u of list) {
+      lines.push([escape(u.email ?? ""), escape(u.last_sign_in_at ?? "")].join(","));
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `users-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const rows = q.data ?? [];
+
 
   const stats = useMemo(() => {
     const byEvent = new Map<string, number>();
