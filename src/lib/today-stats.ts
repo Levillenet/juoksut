@@ -309,7 +309,7 @@ export async function fetchTodayStats(): Promise<TodayStats> {
   return {
     competitions,
     events: events.size,
-    athletes: athletes.size,
+    athletes: athletesCount,
     pbs,
     seasonTops,
   };
