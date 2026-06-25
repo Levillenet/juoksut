@@ -64,6 +64,7 @@ export interface Allocation {
   Firstname: string;
   Surname: string;
   NotInCompetition: boolean;
+  Confirmed?: boolean;
   PB: string;
   SB: string;
   Result: string | null;

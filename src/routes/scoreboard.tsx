@@ -30,6 +30,7 @@ import { useHistoryBaseline } from "@/lib/history-baseline";
 import { athleteKey } from "@/lib/athlete-key";
 import { detectRecord, RecordStar } from "@/lib/records";
 import { WakeLockToggle } from "@/components/WakeLockToggle";
+import { ConfirmedDot } from "@/components/ConfirmedDot";
 import { getResultVisualState } from "@/lib/result-visualization";
 
 type TopSize = 10 | "all";
@@ -736,6 +737,9 @@ function ScoreRow({
             style={{ fontSize: nameFontSize(sizeBucket) }}
           >
             {last}
+            {!row.best && (
+              <ConfirmedDot confirmed={row.Confirmed} className="ml-2 align-middle" />
+            )}
           </p>
         </>
       ) : (
@@ -744,6 +748,9 @@ function ScoreRow({
           style={{ fontSize: narrow ? narrowNameFontSize(sizeBucket) : nameFontSize(sizeBucket) }}
         >
           {fullName}
+          {!row.best && (
+            <ConfirmedDot confirmed={row.Confirmed} className="ml-2 align-middle" />
+          )}
         </p>
       )}
 

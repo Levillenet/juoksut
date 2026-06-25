@@ -15,6 +15,7 @@ import {
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";
 import { athleteKey } from "@/lib/watch-store";
+import { ConfirmedDot } from "@/components/ConfirmedDot";
 
 export const Route = createFileRoute("/round/$eventId/$roundId")({
   head: () => ({
@@ -166,6 +167,7 @@ function RoundView() {
                         >
                           {e.Name}
                         </Link>
+                        <ConfirmedDot confirmed={e.Confirmed} className="ml-2 align-middle" />
                         {e.NotInCompetition && (
                           <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
                             ei lisenssiä?
@@ -233,6 +235,9 @@ function RoundView() {
                             >
                               {a.Name}
                             </Link>
+                            {!a.Result && (
+                              <ConfirmedDot confirmed={a.Confirmed} className="ml-2 align-middle" />
+                            )}
                             {a.NotInCompetition && (
                               <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
                                 ei lisenssiä?

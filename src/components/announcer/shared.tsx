@@ -12,6 +12,7 @@ import { detectRecord, RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
 import { athleteKey } from "@/lib/athlete-key";
 import { useCompetitionId } from "@/lib/competition-store";
+import { ConfirmedDot } from "@/components/ConfirmedDot";
 import {
   formatRelayLegs,
   formatTime,
@@ -309,6 +310,9 @@ export function EventCard({
                       )}
                       <p className="truncate text-sm font-semibold leading-tight">
                         {a.Name}
+                        {!a.Result && (
+                          <ConfirmedDot confirmed={a.Confirmed} className="ml-1.5 align-middle" />
+                        )}
                       </p>
                     </div>
                     <p className="truncate text-xs text-muted-foreground">
@@ -422,7 +426,12 @@ function AllocationRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2">
           <span className="min-w-0 flex-1">
-            <span className="block truncate">{a.Name}</span>
+            <span className="block truncate">
+              {a.Name}
+              {!a.Result && (
+                <ConfirmedDot confirmed={a.Confirmed} className="ml-1.5 align-middle" />
+              )}
+            </span>
             <span className="block truncate text-xs text-muted-foreground">
               {a.Organization?.Name ?? ""}
             </span>
