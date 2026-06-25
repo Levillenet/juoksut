@@ -426,7 +426,12 @@ function AllocationRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2">
           <span className="min-w-0 flex-1">
-            <span className="block truncate">{a.Name}</span>
+            <span className="block truncate">
+              {a.Name}
+              {!a.Result && (
+                <ConfirmedDot confirmed={a.Confirmed} className="ml-1.5 align-middle" />
+              )}
+            </span>
             <span className="block truncate text-xs text-muted-foreground">
               {a.Organization?.Name ?? ""}
             </span>
