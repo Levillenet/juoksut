@@ -737,6 +737,9 @@ function ScoreRow({
             style={{ fontSize: nameFontSize(sizeBucket) }}
           >
             {last}
+            {!row.best && (
+              <ConfirmedDot confirmed={row.Confirmed} className="ml-2 align-middle" />
+            )}
           </p>
         </>
       ) : (
