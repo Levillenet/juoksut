@@ -29,44 +29,113 @@ export const Route = createFileRoute("/round/$eventId/$roundId")({
 });
 
 
+type AllocWithMeta = Allocation & { _series?: string; _eventId: number };
+type EnrollmentWithMeta = Enrollment & { _series?: string; _eventId: number };
+
 function RoundView() {
   const { eventId, roundId } = Route.useParams();
+  const { group: groupParam } = Route.useSearch();
   const router = useRouter();
   const [competitionId] = useCompetitionId();
   const queryClient = useQueryClient();
 
   const eid = parseInt(eventId, 10);
-  const detailQuery = useQuery(eventDetailsQueryOptions(competitionId, eid));
-  const data = detailQuery.data ?? null;
-  const loading = detailQuery.isFetching;
-  const error = detailQuery.error
-    ? detailQuery.error instanceof Error
-      ? detailQuery.error.message
-      : "Tuntematon virhe"
-    : null;
+  const groupPairs = useMemo(() => {
+    const pairs = decodeGroupParam(groupParam);
+    if (pairs.length > 0) return pairs;
+    return [{ eventId: eid, roundId: parseInt(roundId, 10) }];
+  }, [groupParam, eid, roundId]);
 
-  const reload = () => {
-    queryClient.invalidateQueries({ queryKey: eventDetailsKey(competitionId, eid) });
-  };
-
-  const round = useMemo(
-    () => data?.Rounds.find((r) => r.Id === parseInt(roundId, 10)) ?? data?.Rounds[0],
-    [data, roundId],
+  const uniqueEventIds = useMemo(
+    () => Array.from(new Set(groupPairs.map((p) => p.eventId))),
+    [groupPairs],
   );
 
-  const heats: Heat[] = useMemo(() => {
-    const hs = round?.Heats ?? [];
-    return [...hs].sort((a, b) => a.Index - b.Index);
-  }, [round]);
+  const eventQueries = useQueries({
+    queries: uniqueEventIds.map((id) => eventDetailsQueryOptions(competitionId, id)),
+  });
+
+  const primaryIdx = uniqueEventIds.indexOf(eid);
+  const primaryQuery = primaryIdx >= 0 ? eventQueries[primaryIdx] : eventQueries[0];
+  const data = primaryQuery?.data ?? null;
+  const loading = eventQueries.some((q) => q.isFetching);
+  const error = (() => {
+    const e = eventQueries.find((q) => q.error)?.error;
+    if (!e) return null;
+    return e instanceof Error ? e.message : "Tuntematon virhe";
+  })();
+
+  const reload = () => {
+    for (const id of uniqueEventIds) {
+      queryClient.invalidateQueries({ queryKey: eventDetailsKey(competitionId, id) });
+    }
+  };
+
+  const isGrouped = groupPairs.length > 1;
+
+  /** Yhdistetyt roundit + niiden allocations/enrollments. */
+  const merged = useMemo(() => {
+    const enrollments: EnrollmentWithMeta[] = [];
+    const heatMap = new Map<number, AllocWithMeta[]>();
+    const heatMeta = new Map<number, { Id: number; Wind: number | null }>();
+    let primaryRound: { Name: string; BeginDateTimeWithTZ: string; Status: Heat["Allocations"] extends infer _ ? import("@/lib/tuloslista").Round["Status"] : never } | null = null;
+    for (const pair of groupPairs) {
+      const qIdx = uniqueEventIds.indexOf(pair.eventId);
+      const ev = qIdx >= 0 ? eventQueries[qIdx]?.data ?? null : null;
+      if (!ev) continue;
+      const r = ev.Rounds.find((x) => x.Id === pair.roundId);
+      if (!r) continue;
+      if (pair.eventId === eid && pair.roundId === parseInt(roundId, 10)) {
+        primaryRound = { Name: r.Name, BeginDateTimeWithTZ: r.BeginDateTimeWithTZ, Status: r.Status };
+      }
+      const series = isGrouped ? seriesLabel({ Age: "", Name: r.Name }) || ev.Name : undefined;
+      // Heitä mukaan ikäluokka jos saatavilla EventResults-rakenteesta — käytä ev.Name:n loppuosaa varakeinona.
+      const label = isGrouped ? extractAgeLabel(ev.Name) || series : undefined;
+      for (const h of r.Heats) {
+        const cur = heatMap.get(h.Index) ?? [];
+        for (const a of h.Allocations) {
+          cur.push({ ...a, _series: label, _eventId: pair.eventId });
+        }
+        heatMap.set(h.Index, cur);
+        if (!heatMeta.has(h.Index)) {
+          heatMeta.set(h.Index, { Id: h.Id, Wind: h.Wind });
+        }
+      }
+      if (ev.Enrollments && ev.Enrollments.length > 0) {
+        for (const e of ev.Enrollments) {
+          enrollments.push({ ...e, _series: label, _eventId: pair.eventId });
+        }
+      }
+    }
+    const heats = Array.from(heatMap.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([Index, allocs]) => {
+        const meta = heatMeta.get(Index)!;
+        return {
+          Id: meta.Id,
+          Index,
+          Wind: meta.Wind,
+          Allocations: allocs.sort((a, b) => a.Position - b.Position),
+        } as Heat & { Allocations: AllocWithMeta[] };
+      });
+    return { heats, enrollments, primaryRound };
+  }, [groupPairs, uniqueEventIds, eventQueries, eid, roundId, isGrouped]);
+
+  const round = isGrouped
+    ? merged.primaryRound
+    : data?.Rounds.find((r) => r.Id === parseInt(roundId, 10)) ?? data?.Rounds[0];
+
+  const heats = merged.heats;
 
   const overall = useMemo(() => {
     const all = heats.flatMap((h) =>
-      h.Allocations.map((a) => ({ ...a, _heatIndex: h.Index })),
+      h.Allocations.map((a) => ({ ...(a as AllocWithMeta), _heatIndex: h.Index })),
     );
     const ranked = all.filter((a) => a.Result && a.ResultRank != null);
     if (ranked.length === 0) return [];
     return ranked.sort((a, b) => (a.ResultRank ?? 0) - (b.ResultRank ?? 0));
   }, [heats]);
+
 
 
 
