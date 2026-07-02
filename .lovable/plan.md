@@ -1,31 +1,59 @@
-## Ongelman juurisyy
+## Havaittu ongelma
 
-Tarkistettu live-datasta (kilpailu 19739, M-SM-2026): nais­ten klo 08:00 kävelyt eivät käytä samaa matkaa:
-- N30/N35/N45/N50/N55 → "5000m kävely"
-- N60/N65/N70/N75/N80 → "3000m kävely"
+Aavikko Siirin T11 Moukari 18.85 (kilpailu 19880, tänään) ei näytä PB:tä "Seuran urheilijat tänään" ‑listassa vaikka se on hänen ensimmäinen T11-ikäluokan (raskaampi väline) moukaritulos.
 
-Eli lähtö on yhteinen mutta matka eri. Nykyinen niputus käyttää avaimena `BeginDateTimeWithTZ + Gender + lajinimi (ilman ikää) + roundName`, joten 5000 m ja 3000 m menevät kahteen eri ryhmään, ja toinen niistä jää piiloon korttina jonka käyttäjä klikkasi. Tämän takia näytti, että "nappi ei tee mitään": ryhmiä syntyi, mutta useampi pieni ryhmä eikä yhtä isoa.
+## Juurisyy
 
-## Muutos
+Tarkastin tietokannan: `was_pb = true` -merkintä puuttuu **jokaisesta** tuloksesta 12.6.2026 jälkeen. Tämä ei koske vain Aavikkoa vaan kaikkia urheilijoita ja kaikkia kilpailuja (19822, 19826, 19880, 19898, …). Yhteensä tuhansia tuloksia ilman PB-merkintää, vaikka joukossa on selkeitä ennätyksiä.
 
-Vaihdetaan niputus tunnistamaan "saman lähdön": **start-time + gender + round-phase (Name)**, matkasta riippumatta. Toimitsijan käyttötapa = "huuda klo 11 viivalle" → kaikki samana hetkenä starttaavat saman sukupuolen kävelijät/juoksijat yhdellä kortilla, riippumatta siitä että toiset menevät 3000 m ja toiset 5000 m.
+Tausta:
+- `harvest-results.ts` kutsuu `mark_pbs_for_competitions(touchedCompIds)` jokaisen sadonkorjuun jälkeen.
+- 14.6. julkaistiin uusi versio funktiosta (migration `20260614082813`), joka JOINaa kaikki urheilijan/lajin historian rivit. Tämä käytös on toiminnallisesti oikein, mutta epäilty aiheuttaa aikakatkaisun tai virheen isoilla `comp_ids`-syötteillä. Virhe menee vain `console.error`iin, joten oireet ovat hiljaisia.
+- UI-logiikka `ClubTodaySection.tsx` päättää PB-badgen näyttämisen `r.was_pb || beatsPrev` -ehdolla. `beatsPrev` vaatii aiemman tuloksen samalla pb-avaimella; T11 Moukari on Aavikon ensimmäinen → ei löydy → PB ei näy.
 
-### `src/lib/round-grouping.ts`
-- `groupKey(r)` = `${BeginDateTimeWithTZ}|${Gender}|${Name}` (poistetaan `baseName` avaimesta).
-- Ryhmän esitysnimi: yhdistetään ryhmän jäsenten `stripAgeFromEventName`-tulokset uniikkina listana ja näytetään ne joko yhtenä ("Naiset 5000 m kävely") tai useana ("Naiset 5000 m / 3000 m kävely"). Sukupuoliprefix ("Naiset"/"Miehet") luetaan `Gender`-kentästä.
-- `ageClasses` säilyy nykyisellään (esim. `["N30","N35","N45","N50","N55","N60","N65","N70","N75","N80"]`), siitä tehdään alaotsikko.
+## Suunnitelma
 
-### `src/routes/running-ops.tsx`
-- Ryhmäkortin pääotsikko = yllä kuvattu yhdistetty nimi (eikä yhden roundin `EventName`).
-- Alaotsikko: `"N30, N35, N45, N50, N55, N60, N65, N70, N75, N80 · 10 sarjaa · Loppukilpailu"`.
-- Klikkaus välittää `group=`-parametrin URL:ssa kaikkien ryhmän roundien `eventId-roundId` -pareina (jo nyt näin).
+### 1. Backfill: merkitse puuttuvat PB:t (migraatio)
 
-### `src/routes/round.$eventId.$roundId.tsx`
-Ei muutoksia logiikkaan — hakee ja yhdistää roundit `group`-paramin mukaisesti, ja näyttää jokaisella urheilijalla ikäluokkalapun (esim. `N65`). Tämä toimii myös sekamatka-tapauksessa: ratamerkinnät tehdään silti per heat-index, ja jos eri matkan jäsenillä on omat heatit, ne näkyvät erillisinä erinä — toimitsija näkee silti yhdellä sivulla kaikki samaan aikaan starttaavat.
+Ajetaan `mark_pbs_for_competitions` kaikille 12.6. jälkeen kosketetuille kilpailuille, pienissä erissä (esim. 20 kilpailua per kutsu), migraatiossa:
 
-### Pieni cosmetic-fix
-`stripAgeFromEventName("N30 5000m kävely", "30")` jättää tällä hetkellä yksinäisen "N"-kirjaimen ("N 5000m kävely"). Lisätään parserin loppuun myös ikäluokkaprefix-poisto (regex `^[NMWTP]\s+`) jotta otsikko on siisti: "5000m kävely".
+```sql
+DO $$
+DECLARE
+  batch integer[];
+  ids integer[];
+BEGIN
+  SELECT array_agg(DISTINCT competition_id)
+    INTO ids
+    FROM public.athlete_results
+   WHERE competition_date >= '2026-06-12'
+     AND competition_id IS NOT NULL;
+  FOR i IN 1 .. array_length(ids,1) BY 20 LOOP
+    batch := ids[i : LEAST(i+19, array_length(ids,1))];
+    PERFORM public.mark_pbs_for_competitions(batch);
+  END LOOP;
+END $$;
+```
 
-## Vahvistettavaa
+### 2. Estä uusintaesiintymä: paloittele kutsut ja lokita virheet
 
-Vahvistatko että haluat juuri tämän logiikan: **sama starttiaika + sama sukupuoli = sama ryhmä, vaikka matka olisi eri**? Tämä on toimitsijan kannalta järkevin, mutta jos haluat että matka pidetään ehdottomana erottimena, kerro — silloin teen vaihtoehtoisesti yhdistetyn otsikon vain saman matkan sisällä.
+Muokataan `src/routes/api/public/hooks/harvest-results.ts` (rivit ~483-489):
+- Paloitellaan `touchedCompIds` erissä (esim. 25 per kutsu) `mark_pbs_for_competitions`iin, jotta yksikin iso ajo ei kaada koko markkausta.
+- Vaihdetaan `console.error` → tarkempi loki (`mark_pbs error batch=N ids=…: msg`), jotta jatkossa nähdään heti kun taas hiljenee.
+
+### 3. Verifiointi
+
+- Ajon jälkeen tarkistetaan yhdellä SELECT-kyselyllä:
+  - `Aavikko|Siiri|378` + `T11 Moukari` → `was_pb = true`.
+  - `count(*) WHERE was_pb=true AND competition_date >= '2026-06-13'` on nollaa suurempi ja järjellinen (satoja/tuhansia).
+- Preview: avataan seura Ahkera, päivä 2026-07-02, tarkistetaan että Siirin moukaririvissä on PB-merkki.
+
+## Mitä EI muuteta
+
+- UI-logiikkaa `ClubTodaySection.tsx` ei muuteta. Se toimii oikein niin kauan kuin `was_pb` on DB:ssä oikein. Ensimmäisen kerran ‑PB:t saadaan näkyviin backfillin kautta ilman että kliente joutuu arvaamaan.
+- `event_pb_key` / `event_spec_suffix` -funktiot pysyvät ennallaan.
+
+## Tekniset yksityiskohdat (dev)
+
+Migraatiotiedosto: `supabase/migrations/<uusi_ts>_backfill_missing_pbs.sql`
+Koodimuutos: `src/routes/api/public/hooks/harvest-results.ts` PB-marker-kohta
