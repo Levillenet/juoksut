@@ -11,6 +11,7 @@ import {
   getRelayLegs,
   type ClubTodayRow,
 } from "@/lib/club-today";
+import { normalizeEventName } from "@/lib/event-name";
 import { pbEventKey } from "@/lib/pb-key";
 import { formatImprovement } from "@/lib/records";
 import { formatRelayLegsFromRows } from "@/lib/tuloslista";
