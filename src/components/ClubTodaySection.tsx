@@ -117,7 +117,8 @@ export function ClubTodaySection({
     enabled: pbInputs.athletes.length > 0 && pbInputs.events.length > 0,
     staleTime: 5 * 60_000,
   });
-  const pbs = pbsQuery.data ?? {};
+  const pbs = pbsQuery.data?.primary ?? {};
+  const pbsFallback = pbsQuery.data?.fallback ?? {};
 
   const relayInputs = useMemo(() => {
     const rows = (resultsQuery.data ?? []).filter((r) => r.event_category === "Relay");
