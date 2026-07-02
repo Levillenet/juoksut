@@ -289,7 +289,7 @@ export function ClubTodaySection({
                       {g.rows.map((r, idx) => {
                         const pbKey = `${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`;
                         const primaryPb = pbs[pbKey];
-                        const fallbackPb = pbsFallback[`${r.athlete_key}|${r.event_name.replace(/^(?:[MNTPmntp][0-9]*|[Pp][0-9]+)\s+/, "").trim()}`];
+                        const fallbackPb = pbsFallback[`${r.athlete_key}|${normalizeEventName(r.event_name)}`];
                         // Prefer primary (same age class). Otherwise use fallback from another age class.
                         const pb = primaryPb ?? fallbackPb;
                         const isFromOtherAgeClass =
