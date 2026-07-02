@@ -286,7 +286,13 @@ export function ClubTodaySection({
                     </h3>
                     <ul className="divide-y divide-border rounded-lg border bg-background/50">
                       {g.rows.map((r, idx) => {
-                        const pb = pbs[`${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`];
+                        const pbKey = `${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`;
+                        const primaryPb = pbs[pbKey];
+                        const fallbackPb = pbsFallback[`${r.athlete_key}|${r.event_name.replace(/^(?:[MNTPmntp][0-9]*|[Pp][0-9]+)\s+/, "").trim()}`];
+                        // Prefer primary (same age class). Otherwise use fallback from another age class.
+                        const pb = primaryPb ?? fallbackPb;
+                        const isFromOtherAgeClass =
+                          !primaryPb && fallbackPb != null && fallbackPb.age_class !== r.age_class;
                         const lowerBetter = r.event_category === "Track";
                         const beatsPrev =
                           pb != null &&
