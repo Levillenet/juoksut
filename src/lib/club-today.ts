@@ -97,23 +97,28 @@ export async function fetchClubTodayResults(
   return ((data ?? []) as ClubTodayRow[]).filter((r) => !isRoadOrCrossCountry(r));
 }
 
-export type ClubPbMap = Record<string, { text: string; numeric: number; category: string }>;
+export type ClubPbMap = Record<string, { text: string; numeric: number; category: string; age_class?: string | null }>;
+
+export interface ClubPbBundle {
+  primary: ClubPbMap;
+  /** Fallback keyed by `${athlete_key}|${normalizeEventName(event_name)}` — ignores age_class/spec. */
+  fallback: ClubPbMap;
+}
 
 // Re-export shared normalizer so that today's rows ("T11 Korkeus (E)") match
 // historical rows ("T11 Korkeus") when looking up previous PBs.
 export { normalizeEventName };
 
-/** Best historical result per (athlete_key, normalized event_name), optionally
- * limited to results strictly before `beforeISO`. */
+/** Best historical result per (athlete_key, pbEventKey), plus a fallback keyed
+ *  by normalized event name only (no age class / spec). */
 export async function fetchClubPbs(
   athleteKeys: string[],
   eventNames: string[],
   beforeISO?: string,
-): Promise<ClubPbMap> {
-  if (athleteKeys.length === 0 || eventNames.length === 0) return {};
-  // Don't filter by event_name in SQL — names contain age-class prefixes that
-  // change year over year. Pull all numeric results for these athletes and
-  // group by normalized name in memory.
+): Promise<ClubPbBundle> {
+  if (athleteKeys.length === 0 || eventNames.length === 0) {
+    return { primary: {}, fallback: {} };
+  }
   let query = supabase
     .from("athlete_results")
     .select("athlete_key, event_name, event_category, sub_category, age_class, result_text, result_numeric, competition_date")
@@ -124,7 +129,8 @@ export async function fetchClubPbs(
   const { data, error } = await query;
   if (error) throw error;
   const { pbEventKey } = await import("./pb-key");
-  const map: ClubPbMap = {};
+  const primary: ClubPbMap = {};
+  const fallback: ClubPbMap = {};
   for (const r of (data ?? []) as Array<{
     athlete_key: string;
     event_name: string;
@@ -136,17 +142,19 @@ export async function fetchClubPbs(
   }>) {
     if (r.result_numeric == null) continue;
     if (isRoadOrCrossCountry(r)) continue;
-    const key = `${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`;
     const lower = r.event_category === "Track";
-    const cur = map[key];
-    if (
-      !cur ||
-      (lower ? r.result_numeric < cur.numeric : r.result_numeric > cur.numeric)
-    ) {
-      map[key] = { text: r.result_text, numeric: r.result_numeric, category: r.event_category };
-    }
+    const better = (a: number, b: number) => (lower ? a < b : a > b);
+    const entry = { text: r.result_text, numeric: r.result_numeric, category: r.event_category, age_class: r.age_class };
+
+    const primaryKey = `${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`;
+    const curP = primary[primaryKey];
+    if (!curP || better(r.result_numeric, curP.numeric)) primary[primaryKey] = entry;
+
+    const fallbackKey = `${r.athlete_key}|${normalizeEventName(r.event_name)}`;
+    const curF = fallback[fallbackKey];
+    if (!curF || better(r.result_numeric, curF.numeric)) fallback[fallbackKey] = entry;
   }
-  return map;
+  return { primary, fallback };
 }
 
 /** Best result strictly before the given date — used to compute today's PB improvement. */
@@ -154,7 +162,7 @@ export async function fetchClubPreviousPbs(
   athleteKeys: string[],
   eventNames: string[],
   beforeDate: Date,
-): Promise<ClubPbMap> {
+): Promise<ClubPbBundle> {
   const { startISO } = helsinkiDayBounds(beforeDate);
   return fetchClubPbs(athleteKeys, eventNames, startISO);
 }

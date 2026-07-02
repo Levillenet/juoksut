@@ -11,6 +11,7 @@ import {
   getRelayLegs,
   type ClubTodayRow,
 } from "@/lib/club-today";
+import { normalizeEventName } from "@/lib/event-name";
 import { pbEventKey } from "@/lib/pb-key";
 import { formatImprovement } from "@/lib/records";
 import { formatRelayLegsFromRows } from "@/lib/tuloslista";
@@ -117,7 +118,8 @@ export function ClubTodaySection({
     enabled: pbInputs.athletes.length > 0 && pbInputs.events.length > 0,
     staleTime: 5 * 60_000,
   });
-  const pbs = pbsQuery.data ?? {};
+  const pbs = pbsQuery.data?.primary ?? {};
+  const pbsFallback = pbsQuery.data?.fallback ?? {};
 
   const relayInputs = useMemo(() => {
     const rows = (resultsQuery.data ?? []).filter((r) => r.event_category === "Relay");
@@ -285,7 +287,13 @@ export function ClubTodaySection({
                     </h3>
                     <ul className="divide-y divide-border rounded-lg border bg-background/50">
                       {g.rows.map((r, idx) => {
-                        const pb = pbs[`${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`];
+                        const pbKey = `${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`;
+                        const primaryPb = pbs[pbKey];
+                        const fallbackPb = pbsFallback[`${r.athlete_key}|${normalizeEventName(r.event_name)}`];
+                        // Prefer primary (same age class). Otherwise use fallback from another age class.
+                        const pb = primaryPb ?? fallbackPb;
+                        const isFromOtherAgeClass =
+                          !primaryPb && fallbackPb != null && fallbackPb.age_class !== r.age_class;
                         const lowerBetter = r.event_category === "Track";
                         const beatsPrev =
                           pb != null &&
@@ -328,7 +336,7 @@ export function ClubTodaySection({
                                   : r.result_rank != null
                                     ? ` · sija ${r.result_rank}`
                                     : null}
-                                {pb && ` · ${isPb ? "ed. PB" : "PB"} ${pb.text}`}
+                                {pb && ` · ${isPb ? "ed. PB" : "PB"} ${pb.text}${isFromOtherAgeClass && pb.age_class ? ` (${pb.age_class})` : ""}`}
                               </p>
                               {relayText && (
                                 <p className="mt-0.5 text-[11px] text-muted-foreground">
