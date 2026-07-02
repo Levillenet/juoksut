@@ -336,7 +336,7 @@ export function ClubTodaySection({
                                   : r.result_rank != null
                                     ? ` · sija ${r.result_rank}`
                                     : null}
-                                {pb && ` · ${isPb ? "ed. PB" : "PB"} ${pb.text}`}
+                                {pb && ` · ${isPb ? "ed. PB" : "PB"} ${pb.text}${isFromOtherAgeClass && pb.age_class ? ` (${pb.age_class})` : ""}`}
                               </p>
                               {relayText && (
                                 <p className="mt-0.5 text-[11px] text-muted-foreground">
