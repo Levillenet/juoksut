@@ -481,11 +481,26 @@ async function harvestRange(ids: number[], latestIdHint: number) {
   }
 
   // After all rows are inserted, mark which ones broke the athlete's PB.
+  // Ajetaan yksi kilpailu kerrallaan — funktio JOINaa koko urheilijan
+  // historian, joten iso batch aikakatkaisee statement_timeoutiin.
   if (touchedCompIds.size > 0) {
-    const { error } = await supabaseAdmin.rpc("mark_pbs_for_competitions", {
-      comp_ids: Array.from(touchedCompIds),
-    });
-    if (error) console.error("mark_pbs error:", error.message);
+    const ids = Array.from(touchedCompIds);
+    let ok = 0;
+    let failed = 0;
+    for (const cid of ids) {
+      const { error } = await supabaseAdmin.rpc("mark_pbs_for_competitions", {
+        comp_ids: [cid],
+      });
+      if (error) {
+        failed++;
+        console.error(`mark_pbs error comp=${cid}: ${error.message}`);
+      } else {
+        ok++;
+      }
+    }
+    if (failed > 0) {
+      console.error(`mark_pbs summary: ok=${ok} failed=${failed} of ${ids.length}`);
+    }
   }
 
   return { scanned, existed, revisited, lastScannedId };
