@@ -126,6 +126,7 @@ export type Database = {
           result_text: string
           sub_category: string
           surname: string
+          was_district_record: boolean
           was_pb: boolean
           wind: number | null
         }
@@ -150,6 +151,7 @@ export type Database = {
           result_text?: string
           sub_category?: string
           surname: string
+          was_district_record?: boolean
           was_pb?: boolean
           wind?: number | null
         }
@@ -174,6 +176,7 @@ export type Database = {
           result_text?: string
           sub_category?: string
           surname?: string
+          was_district_record?: boolean
           was_pb?: boolean
           wind?: number | null
         }
@@ -327,6 +330,134 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      district_record_breaks: {
+        Row: {
+          age_class: string
+          athlete_key: string
+          athlete_result_id: string | null
+          broken_at: string
+          competition_date: string | null
+          competition_id: number | null
+          competition_name: string | null
+          event_pb_key: string
+          id: string
+          new_club: string | null
+          new_holder: string | null
+          new_result_numeric: number | null
+          previous_club: string | null
+          previous_holder: string | null
+          previous_record_id: string | null
+          previous_result_numeric: number | null
+          previous_year: number | null
+        }
+        Insert: {
+          age_class: string
+          athlete_key: string
+          athlete_result_id?: string | null
+          broken_at?: string
+          competition_date?: string | null
+          competition_id?: number | null
+          competition_name?: string | null
+          event_pb_key: string
+          id?: string
+          new_club?: string | null
+          new_holder?: string | null
+          new_result_numeric?: number | null
+          previous_club?: string | null
+          previous_holder?: string | null
+          previous_record_id?: string | null
+          previous_result_numeric?: number | null
+          previous_year?: number | null
+        }
+        Update: {
+          age_class?: string
+          athlete_key?: string
+          athlete_result_id?: string | null
+          broken_at?: string
+          competition_date?: string | null
+          competition_id?: number | null
+          competition_name?: string | null
+          event_pb_key?: string
+          id?: string
+          new_club?: string | null
+          new_holder?: string | null
+          new_result_numeric?: number | null
+          previous_club?: string | null
+          previous_holder?: string | null
+          previous_record_id?: string | null
+          previous_result_numeric?: number | null
+          previous_year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "district_record_breaks_athlete_result_id_fkey"
+            columns: ["athlete_result_id"]
+            isOneToOne: false
+            referencedRelation: "athlete_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      district_records: {
+        Row: {
+          age_class: string
+          birth_year: number | null
+          club: string
+          created_at: string
+          event_name_raw: string
+          event_pb_key: string
+          gender: string
+          id: string
+          indoor: boolean
+          notes: string | null
+          record_holder: string
+          record_year: number | null
+          result_numeric: number | null
+          result_text: string
+          source_page: number | null
+          updated_at: string
+          wind_or_manual: string | null
+        }
+        Insert: {
+          age_class: string
+          birth_year?: number | null
+          club: string
+          created_at?: string
+          event_name_raw: string
+          event_pb_key: string
+          gender: string
+          id?: string
+          indoor?: boolean
+          notes?: string | null
+          record_holder: string
+          record_year?: number | null
+          result_numeric?: number | null
+          result_text: string
+          source_page?: number | null
+          updated_at?: string
+          wind_or_manual?: string | null
+        }
+        Update: {
+          age_class?: string
+          birth_year?: number | null
+          club?: string
+          created_at?: string
+          event_name_raw?: string
+          event_pb_key?: string
+          gender?: string
+          id?: string
+          indoor?: boolean
+          notes?: string | null
+          record_holder?: string
+          record_year?: number | null
+          result_numeric?: number | null
+          result_text?: string
+          source_page?: number | null
+          updated_at?: string
+          wind_or_manual?: string | null
+        }
+        Relationships: []
       }
       event_duration_overrides: {
         Row: {
@@ -538,6 +669,21 @@ export type Database = {
           latest_id?: number
           next_id?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      lahti_district_clubs: {
+        Row: {
+          club_name: string
+          created_at: string
+        }
+        Insert: {
+          club_name: string
+          created_at?: string
+        }
+        Update: {
+          club_name?: string
+          created_at?: string
         }
         Relationships: []
       }
@@ -1316,6 +1462,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_district_record: { Args: { _result_id: string }; Returns: boolean }
+      district_age_class_equivalent: { Args: { _ac: string }; Returns: string }
+      district_event_match_key: {
+        Args: { event_name: string }
+        Returns: string
+      }
       event_pb_key: {
         Args: { age_class: string; event_name: string }
         Returns: string
@@ -1439,6 +1591,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin_user: { Args: never; Returns: boolean }
+      is_better_result: {
+        Args: { event_category: string; new_val: number; old_val: number }
+        Returns: boolean
+      }
       is_team_member: {
         Args: { _team: string; _user: string }
         Returns: boolean
