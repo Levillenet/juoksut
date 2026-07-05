@@ -201,6 +201,139 @@ export function EventCard({
     }
   }, [list, live, round.Category]);
 
+  const heatMode = isHeatRound(round);
+  const matchingRound = useMemo(
+    () => detail?.Rounds.find((r) => r.Id === round.Id) ?? detail?.Rounds[0],
+    [detail, round.Id],
+  );
+  const heats = matchingRound?.Heats ?? [];
+
+  if (heatMode) {
+    const sortedHeats = [...heats].sort((a, b) => a.Index - b.Index);
+    return (
+      <div
+        data-event-id={round.EventId}
+        className={`overflow-hidden rounded-2xl border bg-card ${
+          live ? "border-primary/60 ring-1 ring-primary/30" : "border-border"
+        }`}
+      >
+        <button
+          onClick={onToggle}
+          className="flex w-full items-baseline justify-between gap-3 p-4 text-left hover:bg-secondary/50"
+        >
+          <div className="min-w-0">
+            <p className="truncate text-xl font-bold leading-tight">{round.EventName}</p>
+            <p className="truncate text-xs text-muted-foreground">{round.Name}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {live ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase text-primary-foreground">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary-foreground" />
+                Live
+              </span>
+            ) : (
+              <span className="text-xs font-semibold text-muted-foreground">
+                {formatTime(round.BeginDateTimeWithTZ)}
+              </span>
+            )}
+            <ChevronDown
+              className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+            />
+          </div>
+        </button>
+
+        <div className="px-4 pb-4">
+          {!detail ? (
+            <p className="rounded-lg bg-muted/50 px-3 py-4 text-center text-xs text-muted-foreground">
+              Ladataan tuloksia…
+            </p>
+          ) : sortedHeats.length === 0 ? (
+            <p className="rounded-lg bg-muted/50 px-3 py-4 text-center text-xs text-muted-foreground">
+              Eriä ei vielä julkaistu.
+            </p>
+          ) : !open ? (
+            <ul className="space-y-1">
+              {sortedHeats.map((heat) => {
+                const total = heat.Allocations.filter((a) => !a.NotInCompetition).length;
+                const done = heat.Allocations.filter(
+                  (a) => !a.NotInCompetition && a.Result,
+                ).length;
+                const allDone = total > 0 && done === total;
+                return (
+                  <li
+                    key={heat.Index}
+                    className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 text-xs"
+                  >
+                    <span className="font-semibold uppercase tracking-wide text-muted-foreground">
+                      Erä {heat.Index}
+                    </span>
+                    <span
+                      className={`tabular-nums font-semibold ${
+                        allDone
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {done}/{total} tulosta
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div className="space-y-3">
+              {sortedHeats.map((heat) => {
+                const heatHasResults = heat.Allocations.some((a) => a.Result);
+                const heatAllocs = [...heat.Allocations].sort((a, b) => {
+                  if (heatHasResults) {
+                    return (a.HeatRank ?? 999) - (b.HeatRank ?? 999);
+                  }
+                  return (a.Position ?? 999) - (b.Position ?? 999);
+                });
+                return (
+                  <div key={heat.Index}>
+                    <div className="mb-1 flex items-center justify-between px-1">
+                      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                        Erä {heat.Index}
+                      </p>
+                      {heatHasResults && (
+                        <span className="text-[10px] font-semibold uppercase text-emerald-600 dark:text-emerald-400">
+                          Tulokset
+                        </span>
+                      )}
+                    </div>
+                    <ol className="space-y-1">
+                      {heatAllocs.map((a) => (
+                        <AllocationRow
+                          key={a.AllocId}
+                          a={a}
+                          round={round}
+                          showRank={heatHasResults ? "result" : "position"}
+                        />
+                      ))}
+                    </ol>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {open && (
+            <div className="mt-3 text-right">
+              <Link
+                to="/round/$eventId/$roundId"
+                params={{ eventId: String(round.EventId), roundId: String(round.Id) }}
+                className="text-xs font-semibold text-primary hover:underline"
+              >
+                Avaa täysi näkymä →
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+
 
   return (
     <div
