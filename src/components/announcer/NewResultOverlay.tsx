@@ -12,6 +12,7 @@ export interface NewResultItem {
   eventId: number;
   eventName?: string;
   eventCategory: string;
+  ageClass?: string | null;
   heatIndex: number;
   /** 1-based attempt number for field events, if known. */
   attemptIndex?: number | null;
