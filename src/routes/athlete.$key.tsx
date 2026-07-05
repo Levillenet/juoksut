@@ -668,38 +668,6 @@ function CompetitionResultRow({
   labelMap?: Map<string, string>;
   seasonTop: SeasonTopFlag | null;
 }) {
-  const queryClient = useQueryClient();
-  const [expanded, setExpanded] = useState(false);
-  const [draft, setDraft] = useState(note?.note ?? "");
-  const [saving, setSaving] = useState(false);
-  const hasNote = !!note?.note;
-
-  const open = () => {
-    setDraft(note?.note ?? "");
-    setExpanded(true);
-  };
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      await upsertNote({
-        athleteKey,
-        competitionId: row.competition_id,
-        eventName: row.event_name,
-        subCategory: row.sub_category ?? "",
-        note: draft,
-      });
-      await queryClient.invalidateQueries({ queryKey: ["athlete-notes", athleteKey] });
-      toast.success(draft.trim() ? "Muistiinpano tallennettu" : "Muistiinpano poistettu");
-      setExpanded(false);
-    } catch (err) {
-      console.error(err);
-      toast.error("Tallennus epäonnistui");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
     <li className="py-1">
       <div className="flex items-baseline justify-between gap-2">
@@ -739,7 +707,76 @@ function CompetitionResultRow({
           {seasonTop && <SeasonTopBadge flag={seasonTop} />}
         </span>
       </div>
+      <NoteEditor
+        athleteKey={athleteKey}
+        competitionId={row.competition_id}
+        eventName={row.event_name}
+        subCategory={row.sub_category ?? ""}
+        placeholder={placeholderForEvent(row.event_name, row.event_category)}
+        addLabel="Lisää muistiinpano (esim. askelmerkki)"
+        note={note}
+        otherNotes={otherNotes}
+        labelMap={labelMap}
+      />
+    </li>
+  );
+}
 
+function NoteEditor({
+  athleteKey,
+  competitionId,
+  eventName,
+  subCategory,
+  placeholder,
+  addLabel,
+  note,
+  otherNotes = [],
+  labelMap,
+}: {
+  athleteKey: string;
+  competitionId: number;
+  eventName: string;
+  subCategory: string;
+  placeholder: string;
+  addLabel: string;
+  note: AthleteNote | null;
+  otherNotes?: AthleteNote[];
+  labelMap?: Map<string, string>;
+}) {
+  const queryClient = useQueryClient();
+  const [expanded, setExpanded] = useState(false);
+  const [draft, setDraft] = useState(note?.note ?? "");
+  const [saving, setSaving] = useState(false);
+  const hasNote = !!note?.note;
+
+  const open = () => {
+    setDraft(note?.note ?? "");
+    setExpanded(true);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await upsertNote({
+        athleteKey,
+        competitionId,
+        eventName,
+        subCategory,
+        note: draft,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["athlete-notes", athleteKey] });
+      toast.success(draft.trim() ? "Muistiinpano tallennettu" : "Muistiinpano poistettu");
+      setExpanded(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Tallennus epäonnistui");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
       <div className="mt-1">
         {!expanded ? (
           <button
@@ -750,13 +787,13 @@ function CompetitionResultRow({
                 ? "bg-primary/10 text-primary hover:bg-primary/20"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
-            aria-label={hasNote ? "Avaa muistiinpano" : "Lisää muistiinpano"}
+            aria-label={hasNote ? "Avaa muistiinpano" : addLabel}
           >
             <StickyNote className="h-3 w-3" />
             {hasNote ? (
               <span className="max-w-[220px] truncate">{note!.note}</span>
             ) : (
-              <span>Lisää muistiinpano (esim. askelmerkki)</span>
+              <span>{addLabel}</span>
             )}
           </button>
         ) : (
@@ -764,7 +801,7 @@ function CompetitionResultRow({
             <Textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder={placeholderForEvent(row.event_name, row.event_category)}
+              placeholder={placeholder}
               className="min-h-[80px] text-xs"
               autoFocus
             />
@@ -802,7 +839,7 @@ function CompetitionResultRow({
           ))}
         </ul>
       )}
-    </li>
+    </>
   );
 }
 
