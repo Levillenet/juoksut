@@ -198,6 +198,7 @@ export function EventGroupView({
                       >
                         PE
                       </span>
+                    )}
                     {row.wind != null && (
                       <span className="whitespace-nowrap text-[10px] text-muted-foreground">
                         {row.wind > 0 ? `+${row.wind.toFixed(1)}` : row.wind.toFixed(1)} m/s
