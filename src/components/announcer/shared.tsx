@@ -641,6 +641,8 @@ export function UpcomingItem({
   const allocations = useMemo(() => heats.flatMap((h) => h.Allocations), [heats]);
   const hasResults = allocations.some((a) => a.Result);
   const isTrackHeats = groupHeats && round.Category === "Track" && heats.length > 1;
+  const heatRoundMode = isHeatRound(round);
+
 
   const sortAllocs = (list: Allocation[]) => {
     if (hasResults) {
