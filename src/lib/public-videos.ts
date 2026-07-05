@@ -121,6 +121,62 @@ export async function fetchPublicVideos(opts?: {
   });
 }
 
+export interface HeatResultRow {
+  athlete_key: string;
+  surname: string | null;
+  firstname: string | null;
+  organization: string | null;
+  result_text: string | null;
+  result_rank: number | null;
+  age_class: string | null;
+}
+
+/**
+ * Fetch all athlete results for a specific heat (competition + event + sub_category).
+ * Deduplicated by athlete_key (newest captured_at), sorted by result_rank.
+ */
+export async function fetchHeatResults(
+  competitionId: number,
+  eventName: string,
+  subCategory: string | null,
+): Promise<HeatResultRow[]> {
+  let query = supabase
+    .from("athlete_results")
+    .select(
+      "athlete_key, surname, firstname, organization, result_text, result_rank, age_class, sub_category, captured_at",
+    )
+    .eq("competition_id", competitionId)
+    .eq("event_name", eventName);
+  if (subCategory) query = query.eq("sub_category", subCategory);
+  else query = query.is("sub_category", null);
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const byKey = new Map<string, any>();
+  for (const r of data ?? []) {
+    if (r.athlete_key?.startsWith("heat:")) continue;
+    const prev = byKey.get(r.athlete_key);
+    if (!prev || (r.captured_at ?? "") > (prev.captured_at ?? "")) {
+      byKey.set(r.athlete_key, r);
+    }
+  }
+  return Array.from(byKey.values())
+    .map((r) => ({
+      athlete_key: r.athlete_key,
+      surname: r.surname,
+      firstname: r.firstname,
+      organization: r.organization,
+      result_text: r.result_text,
+      result_rank: r.result_rank,
+      age_class: r.age_class,
+    }))
+    .sort((a, b) => {
+      const ar = a.result_rank ?? 9999;
+      const br = b.result_rank ?? 9999;
+      return ar - br;
+    });
+}
+
 /**
  * Fetch all public videos for a single (competition_id, event_name) pair.
  * Newest first, enriched with athlete + result info.
