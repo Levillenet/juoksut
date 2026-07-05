@@ -1100,6 +1100,7 @@ export type Database = {
           event_category: string | null
           event_name: string
           heat_key: string | null
+          heat_results: Json | null
           id: string
           is_public: boolean
           sub_category: string
@@ -1115,6 +1116,7 @@ export type Database = {
           event_category?: string | null
           event_name: string
           heat_key?: string | null
+          heat_results?: Json | null
           id?: string
           is_public?: boolean
           sub_category?: string
@@ -1130,6 +1132,7 @@ export type Database = {
           event_category?: string | null
           event_name?: string
           heat_key?: string | null
+          heat_results?: Json | null
           id?: string
           is_public?: boolean
           sub_category?: string
@@ -1659,6 +1662,10 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
+      }
+      set_heat_results_if_null: {
+        Args: { _snapshot: Json; _video_id: string }
+        Returns: boolean
       }
       shared_note_owner_ids: { Args: { _user: string }; Returns: string[] }
       shared_team_user_ids: { Args: { _user: string }; Returns: string[] }
