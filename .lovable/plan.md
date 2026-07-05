@@ -1,49 +1,74 @@
-## Tavoite
+## Ongelma
 
-1. **Kilpailijaseurannassa** (`/watch`) jokaisen seurattavan urheilijan lajirivin viereen "Lisää suoritusvideo" ‑painike (YouTube-linkki + julkinen/yksityinen ‑valinta).
-2. **Useita videoita per laji per käyttäjä** (esim. pituushypyn eri kokeet). Nykyinen taulun UNIQUE-rajoite estää tämän.
-3. **Julkiset videot näkyvät kaikille** myös lajin/erän sivulla `/round/:eventId/:roundId` — pieni Video-nappi urheilijan rivillä avaa ne (ja kirjautunut voi lisätä oman videon sieltäkin).
+1. **Videolinkki ei näy** urheilijaseurannassa (`/watch`) lajin kohdalla.
+   - `ResultVideoButton` piilottaa itsensä (`return null`) kun `!anyVisible && !canEdit`. Se toimii, kun käyttäjä on kirjautunut. Tarkennetaan käyttäytymistä ja tehdään nappi selvästi näkyväksi kirjautuneelle myös silloin, kun tulosta ei vielä ole.
+   - Nykyinen nappi näkyy vain rivin oikeassa reunassa ohuena YouTube-ikonina + "Video"-tekstinä `text-muted-foreground`-värillä. Muutetaan tyyliksi selvä punainen "Video"-painike (kuten muuallakin), niin sen huomaa mobiilissa.
+
+2. **Urheilijatilastot-nappi katkaisee nimen** kapealla mobiiliruudulla.
+   - Rivi on nyt `flex items-baseline justify-between` — nimi + nappi samalla rivillä → nimi typistyy (esim. "Väli-Klemel...").
+   - Siirretään nappi nimen alapuolelle mobiilissa (`sm:` ja ylös rinnalle isommilla näytöillä).
 
 ## Muutokset
 
-### A) DB-migraatio (`result_videos`)
-- Pudota UNIQUE-rajoite `(user_id, athlete_key, competition_id, event_name, sub_category)` → yhdellä käyttäjällä voi olla useita videoita samalle (athlete, kilpailu, laji, alalaji) ‑yhdistelmälle.
-- Ei muita skeemamuutoksia. RLS-käytännöt (julkinen SELECT + omat INSERT/UPDATE/DELETE) säilyvät.
+### `src/routes/watch.tsx` (rivit 679–707)
+Muutetaan otsikkolohko responsiiviseksi:
+- Mobiilissa: nimi ja seura omalla rivillään koko leveydeltä, alla omalla rivillä `Urheilijatilastot`-nappi + poistorasti.
+- `sm:` ja ylöspäin: alkuperäinen `flex justify-between` -asettelu palautuu.
+- Pieni `X`-poistonappi jää aina nimirivin oikeaan reunaan (koska se on pieni eikä vie tilaa nimeltä).
 
-### B) `src/lib/result-videos.ts`
-- Muuta `upsertResultVideo` kahdeksi funktioksi:
-  - `insertResultVideo({...})` — luo aina uuden rivin (ei onConflictia).
-  - `updateResultVideo(id, {youtubeUrl, isPublic})` — päivittää olemassa olevan rivin id:llä.
-- `deleteResultVideo(id)` säilyy.
+```tsx
+<div className="mb-3">
+  <div className="flex items-start justify-between gap-2">
+    <div className="min-w-0 flex-1">
+      <p className="text-base font-bold leading-tight break-words">
+        {athlete.surname} {athlete.firstname}
+      </p>
+      {athlete.organization && (
+        <p className="truncate text-xs text-muted-foreground">
+          {athlete.organization}
+        </p>
+      )}
+    </div>
+    <Button variant="ghost" size="sm" onClick={() => remove(athlete.key)}
+      aria-label="Poista seurannasta" className="shrink-0 -mr-2 -mt-1">
+      <X className="h-4 w-4" />
+    </Button>
+  </div>
+  <div className="mt-2">
+    <Link to="/athlete/$key" params={{ key: athlete.key }}
+      className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
+      Urheilijatilastot
+    </Link>
+  </div>
+</div>
+```
 
-### C) `src/components/ResultVideoButton.tsx`
-- Poista "yksi oma video per slot" ‑oletus:
-  - Näytä listassa **kaikki** omat videot (ei vain ensimmäinen) `VideoSection`-korteissa (muokattavat).
-  - Alla kaikki muiden julkiset videot (ei-muokattavat, kuten nyt).
-  - Alaosassa aina "Lisää uusi video" ‑lomake (`VideoForm`) — ei enää piiloteta kun oma video on olemassa.
-- `VideoForm` käyttää `insertResultVideo`, `VideoSection`n editointi käyttää `updateResultVideo(video.id, …)`.
-- Ulkoinen API (props) säilyy — kutsupaikkoihin ei tule breaking changea.
+### `src/components/ResultVideoButton.tsx`
+- Selkeytetään tyyliä niin, että nappi näyttää aina samanlaiselta punaiselta YouTube-painikkeelta, sekä silloin kun videoita on että kun niitä ei ole. Kirjautumaton käyttäjä näkee napin vain silloin, kun julkisia videoita on saatavilla (kuten nyt).
 
-### D) `src/routes/watch.tsx`
-- Lisää `videosQuery` (React Query) joka hakee `fetchVideosForAthlete` kaikille seurattaville urheilijoille (yksi kutsu per urheilija tai batch-in). Käytä avainta `["athlete-videos", key]` yhteensopivuudeksi nykyisen invalidoinnin kanssa.
-- Jokaisen lajirivin lopussa (viimeisen `<div className="shrink-0 text-right">` ‑lohkon alle tai erillisenä action-rivinä) renderöi `<ResultVideoButton ... size="xs" />` — ilman ohjautumista `/round/...`-linkkiin klikattaessa (stopPropagation on jo napissa).
-- `subCategory`-arvo: käytetään tyhjää merkkijonoa `""` (watch-sivulla tuloslista.fi ei anna vielä sub_category-arvoa). Tätä käytetään konsistenttina "watch-slot" ‑avaimena; athlete-tilastojen tarkat sub_categoryt tallentuvat omina riveinään ja näytetään erikseen omassa kontekstissaan.
+```tsx
+className={`${btnClass} transition-colors bg-red-500/10 text-red-600
+  hover:bg-red-500/20 dark:text-red-400`}
+```
 
-### E) `src/routes/round.$eventId.$roundId.tsx`
-- Hae kaikkien erän urheilijoiden julkiset (+ omat) videot yhdellä kyselyllä `result_videos`-taulusta suodattaen `competition_id` + `athlete_key IN (...)` + `event_name = round.EventName`.
-- Kunkin allocation-rivin (urheilija) kohdalle lisää `<ResultVideoButton ... size="xs" />`. Nappi näkyy vain jos on julkisia videoita katsottavaksi TAI käyttäjä on kirjautunut ja voi lisätä oman.
-- `subCategory=""` (sama kuin watch-sivulla), jotta watch-sivulla lisätty video näkyy täällä.
+- Näytetään aina "Video" -teksti (ja lukumäärä sulkeissa jos > 1), jotta nappi on selkeästi tunnistettavissa myös kapealla näytöllä:
 
-### F) Ei muutoksia
-- `src/routes/athlete.$key.tsx` ja `src/components/AthleteAnalytics.tsx` toimivat jatkossakin — ResultVideoButton tukee edelleen useita omia videoita nyt kun sen sisällä on `insert` + `update` per rivi.
-- RLS ja jakolinkit (`athlete_shares`, `watch_shares`) säilyvät ennallaan.
+```tsx
+<Youtube className={iconClass} />
+<span>Video{videos.length > 1 ? ` (${videos.length})` : ""}</span>
+```
 
-## Tekniset huomiot
+### `src/routes/watch.tsx` (rivit 826–844)
+- Pidetään `ResultVideoButton` rivin alla omana rivinään oikealle tasattuna (nykyinen `mt-1 flex justify-end pr-1` on ok).
+- Käytetään `size="sm"`, jotta nappi on kosketusystävällinen mobiilissa.
 
-- Migraatio: `ALTER TABLE public.result_videos DROP CONSTRAINT result_videos_user_id_athlete_key_competition_id_event_name_sub_category_key;` (todellinen nimi tarkistetaan; PostgreSQL nimeää UNIQUEn automaattisesti — käytetään DO-blockia joka löytää oikean nimen).
-- Query invalidointi: `["athlete-videos", athleteKey]` on jo käytössä; watch- ja round-sivujen queryt käyttävät samaa avainta jotta lisäys/muokkaus päivittää kaikki näkymät.
-- Painikkeen sijoitus watch-sivulla: uusi rivi `<Link>`-elementin ULKOPUOLELLA (nykyinen `<li>` sisältää yhden `<Link>`n koko rivin klikattavaksi). Rakenne muutetaan: `<li>`n sisällä `<Link>` + erillinen action-rivi napeille.
+## Ei muuteta
+- Videokyselyn logiikkaa (`videosByAthlete` / `["athlete-videos", key]`) — se toimii jo.
+- Muita näkymiä (round-, athlete-sivut) — sama komponentti hyötyy tyylimuutoksesta automaattisesti, mutta muu asettelu säilyy.
+- Tietokantaa tai RLS:ää.
 
-## Muutetut/uudet tiedostot
-- **Migraatio**: `supabase/migrations/<uusi>.sql` — DROP UNIQUE.
-- **Muokattu**: `src/lib/result-videos.ts`, `src/components/ResultVideoButton.tsx`, `src/routes/watch.tsx`, `src/routes/round.$eventId.$roundId.tsx`.
+## Vahvistus
+- Playwright-ajolla mobiiliviewportissa (375px): otetaan kuvakaappaus `/watch`-sivusta ja todetaan että
+  1. nimi näkyy kokonaan,
+  2. Urheilijatilastot-nappi on nimen alla,
+  3. jokaisen lajin alla näkyy punainen "Video"-painike (kirjautuneena).

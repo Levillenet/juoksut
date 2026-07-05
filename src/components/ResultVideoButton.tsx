@@ -74,15 +74,16 @@ export function ResultVideoButton({
           setOpen(true);
         }}
         aria-label={anyVisible ? "Katso suoritusvideo" : "Lisää suoritusvideo"}
-        className={`${btnClass} transition-colors ${
-          anyVisible
-            ? "bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:text-red-400"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-        }`}
+        className={`${btnClass} transition-colors bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:text-red-400`}
         title={anyVisible ? "Suoritusvideo" : "Lisää videolinkki"}
       >
         <Youtube className={iconClass} />
-        {anyVisible ? (own.length + publicOthers.length > 1 ? <span className="ml-0.5">{own.length + publicOthers.length}</span> : null) : <span>Video</span>}
+        <span>
+          Video
+          {own.length + publicOthers.length > 1
+            ? ` (${own.length + publicOthers.length})`
+            : ""}
+        </span>
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
