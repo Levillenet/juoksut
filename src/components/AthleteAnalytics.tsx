@@ -78,6 +78,7 @@ export function AthleteAnalytics({
   notes,
   videos,
   myUserId,
+  labelMap,
 }: Props) {
   const options = useMemo<EventOption[]>(() => {
     const groups = new Map<string, EventOption>();
