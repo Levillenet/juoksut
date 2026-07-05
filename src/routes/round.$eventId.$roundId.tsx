@@ -8,6 +8,7 @@ import { ArrowLeft, RefreshCw, Wind } from "lucide-react";
 import { formatRelayLegs, formatTime, STATUS_LABEL, type Heat, type Allocation, type Enrollment } from "@/lib/tuloslista";
 import { RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
+import { useHistoryBaseline } from "@/lib/history-baseline";
 import {
   eventDetailsQueryOptions,
   eventDetailsKey,
@@ -44,6 +45,7 @@ function RoundView() {
   const router = useRouter();
   const [competitionId] = useCompetitionId();
   const queryClient = useQueryClient();
+  useHistoryBaseline(competitionId);
 
   const eid = parseInt(eventId, 10);
   const groupPairs = useMemo(() => {
@@ -281,8 +283,21 @@ function RoundView() {
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs tabular-nums text-muted-foreground">
                       {e.Number && <div>#{e.Number}</div>}
-                      {e.SB && <div>SB {e.SB}</div>}
-                      {e.PB && <div>PB {e.PB}</div>}
+                      {(() => {
+                        const eff = effectiveRecord(e._eventId ?? eid, e, {
+                          competitionId,
+                          athleteKey: athleteKey(e.Surname, e.Firstname, e.Organization?.Id ?? null),
+                          eventName: data?.Name ?? "",
+                          ageClass: data?.Group ?? null,
+                          category: data?.EventCategory ?? null,
+                        });
+                        return (
+                          <>
+                            {eff.sb && <div>SB {eff.sb}</div>}
+                            {eff.pb && <div>PB {eff.pb}</div>}
+                          </>
+                        );
+                      })()}
                     </div>
                   </li>
                 ))}
@@ -413,8 +428,29 @@ function RoundView() {
                           ) : (
                             <>
                               {a.Number && <div>#{a.Number}</div>}
-                              {a.SB && <div>SB {a.SB}</div>}
-                              {!a.SB && a.PB && <div>PB {a.PB}</div>}
+                              {(() => {
+                                const eff = effectiveRecord(
+                                  (a as AllocWithMeta)._eventId ?? eid,
+                                  a,
+                                  {
+                                    competitionId,
+                                    athleteKey: athleteKey(
+                                      a.Surname,
+                                      a.Firstname,
+                                      a.Organization?.Id ?? null,
+                                    ),
+                                    eventName: data?.Name ?? "",
+                                    ageClass: data?.Group ?? null,
+                                    category: data?.EventCategory ?? null,
+                                  },
+                                );
+                                return (
+                                  <>
+                                    {eff.sb && <div>SB {eff.sb}</div>}
+                                    {!eff.sb && eff.pb && <div>PB {eff.pb}</div>}
+                                  </>
+                                );
+                              })()}
                             </>
                           )}
                         </div>
