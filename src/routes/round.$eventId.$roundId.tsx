@@ -45,6 +45,7 @@ function RoundView() {
   const router = useRouter();
   const [competitionId] = useCompetitionId();
   const queryClient = useQueryClient();
+  useHistoryBaseline(competitionId);
 
   const eid = parseInt(eventId, 10);
   const groupPairs = useMemo(() => {
