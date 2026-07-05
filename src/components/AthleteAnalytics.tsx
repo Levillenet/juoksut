@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import {
-  LineChart,
+  ComposedChart,
+  Area,
   Line,
   XAxis,
   YAxis,
@@ -159,6 +160,9 @@ export function AthleteAnalytics({
           </SelectContent>
         </Select>
       </div>
+      <p className="text-[11px] text-muted-foreground">
+        Uusimmat kilpailut näkyvät parin tunnin viiveellä.
+      </p>
 
       {active && chartData.length > 0 && (
         <div className="rounded-xl border bg-card p-3">
@@ -176,11 +180,22 @@ export function AthleteAnalytics({
           </div>
           <div className="h-64 w-full">
             <ResponsiveContainer>
-              <LineChart
+              <ComposedChart
                 data={chartData}
-                margin={{ top: 12, right: 12, left: 0, bottom: 4 }}
+                margin={{ top: 12, right: 16, left: 0, bottom: 4 }}
               >
-                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <defs>
+                  <linearGradient id="analyticsArea" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.28} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  opacity={0.2}
+                  horizontal
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="t"
                   type="number"
@@ -188,15 +203,17 @@ export function AthleteAnalytics({
                   scale="time"
                   tickFormatter={(t) => fmtDate(new Date(t).toISOString())}
                   fontSize={10}
+                  tickLine={false}
+                  axisLine={{ opacity: 0.3 }}
                 />
                 <YAxis
                   domain={["auto", "auto"]}
                   reversed={active.lowerBetter}
                   fontSize={10}
                   width={44}
-                  tickFormatter={(v) =>
-                    active.lowerBetter ? v.toFixed(2) : v.toFixed(2)
-                  }
+                  tickLine={false}
+                  axisLine={{ opacity: 0.3 }}
+                  tickFormatter={(v) => v.toFixed(2)}
                 />
                 <Tooltip
                   content={({ active: a, payload }) => {
@@ -222,15 +239,25 @@ export function AthleteAnalytics({
                   <ReferenceLine
                     y={pb.v}
                     stroke="hsl(var(--primary))"
-                    strokeDasharray="4 2"
-                    opacity={0.5}
+                    strokeDasharray="2 4"
+                    opacity={0.4}
                   />
                 )}
+                <Area
+                  type="natural"
+                  dataKey="v"
+                  stroke="none"
+                  fill="url(#analyticsArea)"
+                  isAnimationActive={false}
+                />
                 <Line
-                  type="monotone"
+                  type="natural"
                   dataKey="v"
                   stroke="hsl(var(--primary))"
-                  strokeWidth={2}
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  isAnimationActive={false}
                   dot={(props) => {
                     const { cx, cy, payload } = props as {
                       cx: number;
@@ -243,7 +270,7 @@ export function AthleteAnalytics({
                         key={payload.row.id}
                         cx={cx}
                         cy={cy}
-                        r={isPb ? 6 : 4}
+                        r={isPb ? 6 : 3}
                         fill={
                           isPb ? "hsl(var(--primary))" : "hsl(var(--background))"
                         }
@@ -263,7 +290,7 @@ export function AthleteAnalytics({
                     },
                   }}
                 />
-              </LineChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
           <ul className="mt-3 max-h-56 space-y-1 overflow-y-auto text-xs">

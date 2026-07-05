@@ -401,14 +401,33 @@ async function harvestRange(ids: number[], latestIdHint: number) {
     exists_in_source: boolean;
     done: boolean;
     last_scanned_at: string;
+    first_scanned_at: string;
   }> = [];
 
   const cutoffMs = Date.now() - REVISIT_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+  const NONEXIST_FRESH_MS = 30 * 24 * 60 * 60 * 1000;
   // Päivitä latestId-arvio jo skannauksen aikana, jotta uusin nähty ID
   // huomioidaan permanent-gap-päätöksessä saman ajon sisällä.
   let runningLatestId = latestIdHint;
   for (const id of ids) {
     if (id > runningLatestId) runningLatestId = id;
+  }
+
+  // Lataa aiemmat first_scanned_at -arvot, jotta ne säilyvät upsertissa ja
+  // niitä voidaan käyttää done-päättelyssä.
+  const firstSeenMap = new Map<number, string>();
+  if (ids.length > 0) {
+    const CHUNK = 500;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const slice = ids.slice(i, i + CHUNK);
+      const { data } = await supabaseAdmin
+        .from("harvest_competitions")
+        .select("competition_id, first_scanned_at")
+        .in("competition_id", slice);
+      for (const r of data ?? []) {
+        if (r.first_scanned_at) firstSeenMap.set(r.competition_id, r.first_scanned_at);
+      }
+    }
   }
 
   // Process IDs in chunks of CONCURRENCY in source order, so that if we
@@ -446,9 +465,15 @@ async function harvestRange(ids: number[], latestIdHint: number) {
         // probetaan uudelleen kun kisan tulokset ehkä julkaistaan.
         const dateMs = v.competitionDate ? Date.parse(v.competitionDate) : NaN;
         const tooOldToRevisit = Number.isFinite(dateMs) && dateMs < cutoffMs;
+        const firstSeenAt = firstSeenMap.get(id) ?? nowIso;
+        const firstSeenMs = Date.parse(firstSeenAt);
+        const isFreshUnknown =
+          !v.existed &&
+          Number.isFinite(firstSeenMs) &&
+          firstSeenMs > Date.now() - NONEXIST_FRESH_MS;
         const isPermanentGap =
           !v.existed && id < runningLatestId - NONEXIST_PERMANENT_GAP;
-        const done = isPermanentGap || tooOldToRevisit;
+        const done = (isPermanentGap && !isFreshUnknown) || tooOldToRevisit;
         scanRecords.push({
           competition_id: id,
           competition_date: v.competitionDate,
@@ -456,6 +481,7 @@ async function harvestRange(ids: number[], latestIdHint: number) {
           exists_in_source: v.existed,
           done,
           last_scanned_at: nowIso,
+          first_scanned_at: firstSeenAt,
         });
         if (v.existed && v.rowsAdded === 0) revisited++;
       }
@@ -611,7 +637,8 @@ async function run(request: Request): Promise<Response> {
           .from("harvest_competitions")
           .select("competition_id")
           .eq("exists_in_source", false)
-          .gte("competition_id", nonexistFloor)
+          .eq("done", false)
+          .gte("competition_id", Math.max(FLOOR_ID, latestId - NONEXIST_PERMANENT_GAP * 4))
           .order("last_scanned_at", { ascending: true })
           .limit(NONEXIST_REVISIT_LIMIT),
         hasNearToday

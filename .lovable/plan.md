@@ -1,72 +1,34 @@
-# Analytiikka-välilehti ja tulosvideot
+## Juurisyy — kisa 19719 (Kouvola Junior Games, 4.7.)
 
-## Osa 1 — Lajikohtainen tuloskehitys urheilijasivulla
+`harvest_competitions`-taulussa 19719 on `done=true, exists_in_source=false, last_scanned_at=29.6.` Kisa ei ollut vielä tuloslista.com:ssa kesäkuun lopussa, mutta ID oli varattu. Harvestteri merkitsi sen "permanent gap" -logiikalla lopullisesti valmiiksi (`NONEXIST_PERMANENT_GAP=300`), koska se oli tuolloin >300 ID:tä uusimman havaitun takana. Kisa julkaistiin tuloslistalla myöhemmin, mutta harvestteri ei enää käy sitä läpi → tulokset eivät päädy `athlete_results`-tauluun eivätkä siten analytiikkaan.
 
-Lisätään `athlete.$key.tsx` -sivulle uusi "Analytiikka"-välilehti nykyisten rinnalle.
+## 1) Backend-korjaus (harvest-results.ts + migraatio)
 
-### Toiminnot
-- Lajivalitsin (Select) listaa urheilijan kaikki lajit (event_pb_key mukaan ryhmiteltynä) uusimman esiintymän mukaan järjestettynä. Oletuksena valittuna eniten tuloksia sisältävä laji.
-- Recharts-viivakaavio (`LineChart` + `Line` + `ReferenceLine` PB:lle):
-  - x-akseli = kilpailupäivä (aikajana)
-  - y-akseli = tulos oikein skaalattuna (juoksut sekunteina — pienempi ylös, kentät metreinä — suurempi ylös)
-  - piste per tulos, PB-piste korostettu
-  - hover-tooltip: kilpailun nimi, päivä, sija, tuuli, tulos
-- Klikatessa pistettä avautuu paneeli / drawer, jossa:
-  - Kilpailun nimi + päivä + sija
-  - Linkki kilpailun kierrosnäkymään (`/round/...`) jos event_id on
-  - Kaikki kolme muistiinpanotasoa tälle tulokselle (tulos-, kilpailu-, lajitason nykyisen `athlete-notes.ts`-logiikan mukaisesti)
-  - Mahdollisen tulosvideon upotus (ks. Osa 2)
+**Logiikka** — `src/routes/api/public/hooks/harvest-results.ts`:
+Ei merkitä ei-olemassaolevaa ID:tä koskaan lopullisesti valmiiksi pelkän ID-välin perusteella tuoreessa ikkunassa. Muutetaan `done`-päätös niin, että `exists_in_source=false` merkitään `done=true` vain jos ID on selvästi taakse jäänyt (`NONEXIST_PERMANENT_GAP`) JA sitä on jo probattu ainakin 30 päivää sitten ensimmäisen kerran. Käytännössä: säilytetään aiempi `last_scanned_at` päätöksessä — jos rivi on uusi (ei aiempaa `first_scanned_at`ia tai <30 pv) → `done=false` vaikka gap ylittyisi. Lisätään `harvest_competitions`-tauluun `first_scanned_at`-sarake (migraatio), joka asetetaan skannin ensimmäisellä havainnolla ja säilytetään upserteissa.
 
-### Tekniset yksityiskohdat
-- Uusi komponentti `src/components/AthleteAnalytics.tsx`
-- Data haetaan olemassa olevasta `athlete_results`-datasta, joka on jo sivulla ladattuna → ei uutta serverfn:ää
-- Lajilistan ryhmittely `event_pb_key`-vastineella clientillä (`getEventPbKey` `src/lib/event-name.ts`-apurin kautta)
-- Recharts on jo asennettu (käytössä toisaalla). Jos ei ole, `bun add recharts`
-- Välilehti lisätään olemassa olevaan Tabs-rakenteeseen athlete-sivulla
+**Migraatio**:
+- `ALTER TABLE harvest_competitions ADD COLUMN first_scanned_at timestamptz`.
+- Backfill: `UPDATE ... SET first_scanned_at = last_scanned_at WHERE first_scanned_at IS NULL`.
+- **Palauta jumissa olevat rivit revisit-tilaan** — kaikki ei-olemassaolevat kisat, joiden `first_scanned_at > now() - interval '30 days'` (mm. 19719): `UPDATE ... SET done=false`.
 
-## Osa 2 — YouTube-tulosvideot
+Seuraavassa pg_cron-ajossa harvestteri probaa 19719:n uudelleen, löytää tulokset ja upserttaa `athlete_results`-tauluun.
 
-### Tietokanta (uusi migraatio)
-Uusi taulu `public.result_videos`:
-- `id uuid pk default gen_random_uuid()`
-- `user_id uuid not null` (lisääjä)
-- `athlete_key text not null`
-- `competition_id integer` (nullable)
-- `event_name text`
-- `sub_category text`
-- `result_id uuid` (viittaus `athlete_results.id`, nullable — tulos voi vaihtua uudelleenharvestissa)
-- `youtube_url text not null`
-- `youtube_video_id text not null` (parseerattu clientillä ennen insertointia)
-- `is_public boolean not null default false`
-- `created_at timestamptz default now()`, `updated_at timestamptz default now()`
-- Unique: `(user_id, athlete_key, competition_id, event_name, sub_category)`
+## 2) Analytiikkakäyrän visuaalinen viimeistely
 
-GRANTit: `SELECT/INSERT/UPDATE/DELETE authenticated`, `ALL service_role`, `SELECT anon` (julkisten videoiden jakolinkkejä varten).
+Vain frontend-muutos `src/components/AthleteAnalytics.tsx`:
+- Line: `type="natural"`, `strokeWidth={2.5}`, primary-väri, `strokeLinecap="round"`.
+- Alueen (`<Area>`) täyttö lineaarisella gradientilla primary → transparent, opacity 0.25 → 0 pehmentää viivan taustaa.
+- Piste-tyylit: pieni valkoinen rengas (`r=3`) primary-reunuksella; PB-piste iso täytetty (`r=6`); hover `activeDot r=7`. Kaikki edelleen klikattavia.
+- Ruudukko vain vaakaviivat, `opacity 0.2`. Akselit ilman viivoja/tickejä, `axisLine opacity 0.3`.
+- ReferenceLine PB:lle: `strokeDasharray="2 4"`, opacity 0.4.
+- Marginit: `right: 16` jotta viimeinen piste ei leikkaannu.
+- Aputeksti valintarivin alle: "Uusimmat kilpailut näkyvät parin tunnin viiveellä."
 
-RLS-policies:
-- SELECT: `is_public = true OR user_id = auth.uid()`
-- INSERT/UPDATE/DELETE: `user_id = auth.uid()`
+## Tiedostot
 
-### UI
-- Tulosrivillä (nykyisissä listoissa athlete-sivulla ja watch-näkymässä) uusi pieni palkintopalli-ikonipainike (Trophy/Youtube ikonimix, Lucide `Trophy`).
-- Painike näkyy:
-  - aina kirjautuneelle käyttäjälle (voi lisätä)
-  - kaikille, jos videolle löytyy `is_public = true` (voi katsoa)
-- Klikkaus avaa Dialogin:
-  - Jos video on tallennettu: näytetään upotettu YouTube-iframe + Muokkaa/Poista + julkisuustoggle (jos oma)
-  - Jos ei: lomake YouTube-URLin liittämiseen + Switch "Näytä julkisesti"
-- URL-parseri hyväksyy `youtube.com/watch?v=`, `youtu.be/`, `youtube.com/shorts/`. Invalidi → virheilmoitus.
-- Analytiikka-drawerissa sama upotus jos videolle löytyy match.
+- migraatio (uusi): first_scanned_at + backfill + jumissa olevien reset.
+- `src/routes/api/public/hooks/harvest-results.ts`: `done`-päättely huomioi `first_scanned_at`.
+- `src/components/AthleteAnalytics.tsx`: viivan tyyli + area + aputeksti.
 
-### Tekniset yksityiskohdat
-- Uusi `src/lib/result-videos.functions.ts` (createServerFn + requireSupabaseAuth): `getResultVideo`, `upsertResultVideo`, `deleteResultVideo`, `listResultVideosForAthlete`
-- Julkisten videoiden luku analytics-graafiin: lataa lista athlete_keyn kaikista match-videoista (isolla urheilijalla enintään kymmeniä rivejä)
-- Komponentti `src/components/ResultVideoButton.tsx` — nappi + Dialog + upotus
-- Integrointi olemassa oleville tuloslistoille athlete-sivulla ja watch-näkymässä (ei kaikkiin listauksiin — vain seuratuille/omissa profiilinäkymissä)
-
-## Osa 3 — Rajaukset
-- Ei kosketa nykyisiin PB-korjauksiin, muistiinpanojen jakoihin tai auth-flowhun
-- Analytiikka on read-only olemassa olevasta datasta
-- Video ei näy jakolinkeissä (`/seuraa/`, `/urheilija/`) vielä — voidaan lisätä myöhemmin `get_shared_*`-RPC:iden kautta
-
-Vahvista niin toteutan.
+Ei kosketa muihin osiin (auth, jaot, muut näkymät).
