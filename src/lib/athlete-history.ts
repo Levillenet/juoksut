@@ -28,6 +28,7 @@ export interface AthleteResultRow {
   result_rank: number | null;
   wind: number | null;
   was_pb?: boolean;
+  was_district_record?: boolean;
   age_class?: string;
 }
 
