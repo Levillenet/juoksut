@@ -383,7 +383,21 @@ function RoundView() {
                                 )}
                               </div>
                               {(() => {
-                                const eff = effectiveRecord((a as AllocWithMeta)._eventId ?? parseInt(eventId, 10), a);
+                                const eff = effectiveRecord(
+                                  (a as AllocWithMeta)._eventId ?? parseInt(eventId, 10),
+                                  a,
+                                  {
+                                    competitionId,
+                                    athleteKey: athleteKey(
+                                      a.Surname,
+                                      a.Firstname,
+                                      a.Organization?.Id ?? null,
+                                    ),
+                                    eventName: data?.Name ?? "",
+                                    ageClass: data?.Group ?? null,
+                                    category: data?.EventCategory ?? null,
+                                  },
+                                );
                                 return (
                                   <RecordBadge
                                     category={data?.EventCategory ?? ""}
