@@ -1,25 +1,42 @@
-## Ongelma
+## Tavoite
 
-Stellan (T11, 60 m aidat) sivustolla näkyy edelleen "PB 11,71" väärin. Oikea nykyinen ennätys on 11,55 (Pika- ja aitajuoksukarnevaalit 25.6.), ja aiempi paras oli 11,71 (Lasyn pm-ottelut 4-ottelu 6.6.).
+Urheilijasivulle (`/athlete/$key`) lisätään kaksi uutta muistiinpanotasoa nykyisen tulosrivin muistiinpanon lisäksi:
 
-Debug: DB:ssä on molemmat tulokset oikein tallennettuna (Väli-Klemelä|Stella|378, T11 60m aidat 11,55 comp 19800; T11 4-ottelu 60m aidat 11,71 comp 19577). `effectiveRecord`-korjaus watch-sivulle toimii, mutta **erä-/round-sivu (`/round/$eventId/$roundId`) näyttää yhä raakaa `alloc.PB`-arvoa suoraan tuloslistasta**, joka on 11,71.
+- **Lajitason muistiinpano** — koskee lajia kaikkien kilpailujen yli (esim. "60 m aidat": askelmerkit, tekniikka, kausitavoite). Näkyy "Lajikohtainen kehitys" -osiossa jokaisen lajin alla.
+- **Kilpailutason muistiinpano** — koskee koko kilpailua (esim. olosuhteet, matkakommentit, sää). Näkyy "Kilpailut" -osiossa jokaisen kilpailukortin otsikon alla.
+- **Tulosrivin muistiinpano** (kilpailu × laji) — säilyy sellaisenaan.
 
-## Juurisyy
+## Toteutus
 
-`src/routes/round.$eventId.$roundId.tsx`:
-1. Ilmoittautuneet-listassa (rivi 285) ja erän lähtörivissä ennen tulosta (rivi 417) näytetään `{e.PB}` / `{a.PB}` suoraan — ei effectiveRecordin läpi.
-2. Sivu **ei kutsu `useHistoryBaseline(competitionId)`** lainkaan, joten vaikka nykyiset `effectiveRecord`-kutsut (rivit 386, 471) välittävät `ageClass/category`, historia-välimuisti on tyhjä ja fallback ei löydä 11,55:tä.
+### 1. Data-malli (ei migraatiota)
 
-## Korjaus
+`athlete_notes`-taulun uniikkiavain `(user_id, athlete_key, competition_id, event_name, sub_category)` tukee jo useaa scoped-riviä sentineliarvoilla:
 
-Yksi tiedosto: `src/routes/round.$eventId.$roundId.tsx`.
+- **Tulosrivi**: `competition_id`, `event_name`, `sub_category` — nykyinen tila, ei muutosta.
+- **Lajitaso**: `competition_id = 0`, `event_name = <lajin nimi>`, `sub_category = <sub>`.
+- **Kilpailutaso**: `competition_id = <kisan id>`, `event_name = ""`, `sub_category = ""`.
 
-1. **Lataa historia-baseline sivulle**: importtaa `useHistoryBaseline` ja kutsu se `competitionId`:llä komponentin alussa (samoin kuin `scoreboard.tsx`:ssä).
-2. **Ilmoittautuneet-lista (rivi ~282–286)**: laske `effectiveRecord(e.EventId ?? parseInt(eventId,10), e, { competitionId, athleteKey, eventName, ageClass, category })` ja näytä `eff.pb` / `eff.sb` (tekstit `PB {eff.pb}` / `SB {eff.sb}`).
-3. **Erän lähtörivi ennen tulosta (rivi ~415–418)**: sama muutos — käytä `effectiveRecord`ista laskettuja `eff.pb` / `eff.sb`.
+Kaikki kentät ovat NOT NULL ja hyväksyvät `0`/`""`, joten migraatiota ei tarvita.
 
-Molemmat käyttävät samoja meta-tietoja (`data?.Name`, `data?.Group`, `data?.EventCategory`) jotka jo ovat käytössä sivun muissa `effectiveRecord`-kutsuissa.
+### 2. `src/lib/athlete-notes.ts`
 
-## Verifiointi
+- Vakiot `EVENT_SCOPE_COMPETITION_ID = 0` ja `COMPETITION_SCOPE_EVENT_NAME = ""`.
+- Yleistetään `upsertNote` (jo tukee kaikkia kenttiä — käyttökohde vain valitsee sentinelit).
+- Lisätään pieni apuri `noteScope(note)` → `"result" | "event" | "competition"` `notesByEvent`-koosteen hyväksi (jotta yhteinen lista näyttää oikean sijainnin).
+- `placeholderForEvent` saa toisen version kilpailutasolle (esim. "Sää, kuljetus, ruokailu, tunnelma…").
 
-Playwright: avaa `/round/<eventId>/<roundId>` T11 60m aidat pika- ja aitajuoksukarnevaaleista, tarkasta että Stella Väli-Klemelällä ei näy "PB 11,71" ilmoittautumis-/lähtörivissä. Tulosrivin (11,55) badge näyttää oikein `(PB 11,71)` koska historia sulkee nykyisen kilpailun pois — se on odotettu käyttäytyminen.
+### 3. `src/routes/athlete.$key.tsx`
+
+- **Kilpailukortin otsikko** (rivi ~608): otsikon oheen `NoteButton` (sama UI-komponentti kuin tulosrivissä) → tallentaa scope=competition. Näytä myös tiimiläisten kilpailumuistiinpanot samaan tapaan kuin nyt.
+- **Lajikohtainen kehitys** (`EventGroupView`, rivi ~596): jokaisen lajin viimeisen tulosrivin alle `NoteButton` scope=event.
+- Refaktoroidaan nykyinen `CompetitionResultRow`in muistiinpanolohko omaksi komponentiksi `NoteEditor` (nappi + textarea + tallennus + otherNotes-lista), jota kolme sijaintia käyttävät. Placeholder tulee scopen mukaan.
+- `notesQuery.data`-haku pysyy samana (kaikki muistiinpanot per athleteKey); sisäinen `noteKey`-mapin lookup toimii kaikilla kolmella sentinelillä.
+- "Näytä kaikki muistiinpanot" -yhteenveto: koostetta laajennetaan näyttämään scope-otsikko ("Laji", "Kilpailu", tulos-rivi näyttää kilpailun+lajin nykyiseen tapaan) ja tunnistetaan sentinelit.
+
+### 4. Verifiointi
+
+Playwright: kirjaudu sisään, avaa `/athlete/<key>`.
+- Lajikohtainen kehitys -osiossa näkyy "Lisää muistiinpano" -nappi jokaiselle lajille; tallentuu ja säilyy reloadin jälkeen.
+- Kilpailut-osiossa jokaisen kilpailun otsikon alla samoin nappi kilpailulaajuiselle muistiinpanolle.
+- Tulosrivien muistiinpanot toimivat kuten ennen.
+- "Näytä kaikki muistiinpanot" -yhteenveto listaa kaikki kolme tyyppiä eroteltuina.

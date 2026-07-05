@@ -33,9 +33,14 @@ import {
   type AthleteResultRow,
 } from "@/lib/athlete-history";
 import {
+  competitionScopeKey,
+  eventScopeKey,
   fetchNotesForAthlete,
   noteKey,
+  noteScopeOf,
+  placeholderForCompetition,
   placeholderForEvent,
+  placeholderForEventOverall,
   upsertNote,
   type AthleteNote,
 } from "@/lib/athlete-notes";
@@ -242,7 +247,8 @@ function AthletePage() {
 
   const [allNotesOpen, setAllNotesOpen] = useState(false);
 
-  // Group existing notes by event_name; include competition context from rows
+  // Group existing notes; bucket by scope + event (event scope + result scope
+  // group under the event name; competition scope goes in its own bucket).
   const notesByEvent = useMemo(() => {
     const notes = notesQuery.data;
     if (!notes || notes.size === 0) return [] as Array<{
@@ -252,15 +258,24 @@ function AthletePage() {
         competitionName: string;
         competitionDate: string | null;
         location: string;
+        scope: "result" | "event" | "competition";
       }>;
     }>;
-    // Build a lookup: competition_id|event_name|sub_category -> row
+    // Lookups from result rows
     const rowLookup = new Map<string, AthleteResultRow>();
+    const compLookup = new Map<number, { name: string; date: string | null; location: string }>();
     for (const r of rows) {
       rowLookup.set(
         `${r.competition_id}|${r.event_name}|${r.sub_category ?? ""}`,
         r,
       );
+      if (!compLookup.has(r.competition_id)) {
+        compLookup.set(r.competition_id, {
+          name: r.competition_name,
+          date: r.competition_date,
+          location: r.location,
+        });
+      }
     }
     const groupsMap = new Map<
       string,
@@ -269,22 +284,38 @@ function AthletePage() {
         competitionName: string;
         competitionDate: string | null;
         location: string;
+        scope: "result" | "event" | "competition";
       }>
     >();
     for (const noteList of notes.values()) {
       for (const n of noteList) {
         if (!n.note?.trim()) continue;
-        const r = rowLookup.get(
-          `${n.competition_id}|${n.event_name}|${n.sub_category ?? ""}`,
-        );
-        const list = groupsMap.get(n.event_name) ?? [];
-        list.push({
-          note: n,
-          competitionName: r?.competition_name ?? "",
-          competitionDate: r?.competition_date ?? null,
-          location: r?.location ?? "",
-        });
-        groupsMap.set(n.event_name, list);
+        const scope = noteScopeOf(n);
+        let bucket: string;
+        let competitionName = "";
+        let competitionDate: string | null = null;
+        let location = "";
+        if (scope === "competition") {
+          bucket = "Kilpailun muistiinpanot";
+          const c = compLookup.get(n.competition_id);
+          competitionName = c?.name ?? "";
+          competitionDate = c?.date ?? null;
+          location = c?.location ?? "";
+        } else if (scope === "event") {
+          bucket = n.event_name;
+          competitionName = "Lajitason muistiinpano (kaikki kilpailut)";
+        } else {
+          bucket = n.event_name;
+          const r = rowLookup.get(
+            `${n.competition_id}|${n.event_name}|${n.sub_category ?? ""}`,
+          );
+          competitionName = r?.competition_name ?? "";
+          competitionDate = r?.competition_date ?? null;
+          location = r?.location ?? "";
+        }
+        const list = groupsMap.get(bucket) ?? [];
+        list.push({ note: n, competitionName, competitionDate, location, scope });
+        groupsMap.set(bucket, list);
       }
     }
     return Array.from(groupsMap.entries())
@@ -592,9 +623,32 @@ function AthletePage() {
                 Lajikohtainen kehitys
               </h2>
               <ul className="space-y-3">
-                {groups.map((g) => (
-                  <EventGroupView key={`${g.eventName}|${g.subCategory}`} group={g} />
-                ))}
+                {groups.map((g) => {
+                  const all = notesQuery.data?.get(
+                    eventScopeKey(g.eventName, g.subCategory ?? ""),
+                  ) ?? [];
+                  const own = all.find((n) => n.user_id === myUserId) ?? null;
+                  const others = all.filter((n) => n.user_id !== myUserId);
+                  return (
+                    <EventGroupView
+                      key={`${g.eventName}|${g.subCategory}`}
+                      group={g}
+                      footer={
+                        <NoteEditor
+                          athleteKey={key}
+                          competitionId={0}
+                          eventName={g.eventName}
+                          subCategory={g.subCategory ?? ""}
+                          placeholder={placeholderForEventOverall(g.eventName, g.category)}
+                          addLabel="Lisää lajitason muistiinpano (tekniikka, kausitavoite)"
+                          note={own}
+                          otherNotes={others}
+                          labelMap={labelMap}
+                        />
+                      }
+                    />
+                  );
+                })}
               </ul>
             </section>
 
@@ -604,41 +658,59 @@ function AthletePage() {
                 Kilpailut ({competitions.length})
               </h2>
               <ul className="space-y-2">
-                {competitions.map((c) => (
-                  <li key={c.id} className="rounded-lg border bg-card p-3">
-                    <div className="mb-2 flex items-baseline justify-between gap-2">
-                      <p className="truncate text-sm font-semibold">{c.name}</p>
-                      <p className="shrink-0 text-xs text-muted-foreground">
-                        {fmtDate(c.date)}
-                      </p>
-                    </div>
-                    {c.location && (
-                      <p className="mb-2 flex items-center gap-1 text-[11px] text-muted-foreground">
-                        <MapPin className="h-3 w-3" /> {c.location}
-                      </p>
-                    )}
-                    <ul className="divide-y divide-border text-xs">
-                      {c.results.map((r) => {
-                        const all = notesQuery.data?.get(
-                          noteKey(r.competition_id, r.event_name, r.sub_category ?? ""),
-                        ) ?? [];
-                        const own = all.find((n) => n.user_id === myUserId) ?? null;
-                        const others = all.filter((n) => n.user_id !== myUserId);
-                        return (
-                          <CompetitionResultRow
-                            key={r.id}
-                            row={r}
-                            athleteKey={key}
-                            note={own}
-                            otherNotes={others}
-                            labelMap={labelMap}
-                            seasonTop={seasonTop.get(r.id) ?? null}
-                          />
-                        );
-                      })}
-                    </ul>
-                  </li>
-                ))}
+                {competitions.map((c) => {
+                  const compAll = notesQuery.data?.get(competitionScopeKey(c.id)) ?? [];
+                  const compOwn = compAll.find((n) => n.user_id === myUserId) ?? null;
+                  const compOthers = compAll.filter((n) => n.user_id !== myUserId);
+                  return (
+                    <li key={c.id} className="rounded-lg border bg-card p-3">
+                      <div className="mb-2 flex items-baseline justify-between gap-2">
+                        <p className="truncate text-sm font-semibold">{c.name}</p>
+                        <p className="shrink-0 text-xs text-muted-foreground">
+                          {fmtDate(c.date)}
+                        </p>
+                      </div>
+                      {c.location && (
+                        <p className="mb-2 flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <MapPin className="h-3 w-3" /> {c.location}
+                        </p>
+                      )}
+                      <div className="mb-2">
+                        <NoteEditor
+                          athleteKey={key}
+                          competitionId={c.id}
+                          eventName=""
+                          subCategory=""
+                          placeholder={placeholderForCompetition()}
+                          addLabel="Lisää kilpailun muistiinpano (olosuhteet, matka, tunnelma)"
+                          note={compOwn}
+                          otherNotes={compOthers}
+                          labelMap={labelMap}
+                        />
+                      </div>
+                      <ul className="divide-y divide-border text-xs">
+                        {c.results.map((r) => {
+                          const all = notesQuery.data?.get(
+                            noteKey(r.competition_id, r.event_name, r.sub_category ?? ""),
+                          ) ?? [];
+                          const own = all.find((n) => n.user_id === myUserId) ?? null;
+                          const others = all.filter((n) => n.user_id !== myUserId);
+                          return (
+                            <CompetitionResultRow
+                              key={r.id}
+                              row={r}
+                              athleteKey={key}
+                              note={own}
+                              otherNotes={others}
+                              labelMap={labelMap}
+                              seasonTop={seasonTop.get(r.id) ?? null}
+                            />
+                          );
+                        })}
+                      </ul>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           </>
@@ -663,38 +735,6 @@ function CompetitionResultRow({
   labelMap?: Map<string, string>;
   seasonTop: SeasonTopFlag | null;
 }) {
-  const queryClient = useQueryClient();
-  const [expanded, setExpanded] = useState(false);
-  const [draft, setDraft] = useState(note?.note ?? "");
-  const [saving, setSaving] = useState(false);
-  const hasNote = !!note?.note;
-
-  const open = () => {
-    setDraft(note?.note ?? "");
-    setExpanded(true);
-  };
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      await upsertNote({
-        athleteKey,
-        competitionId: row.competition_id,
-        eventName: row.event_name,
-        subCategory: row.sub_category ?? "",
-        note: draft,
-      });
-      await queryClient.invalidateQueries({ queryKey: ["athlete-notes", athleteKey] });
-      toast.success(draft.trim() ? "Muistiinpano tallennettu" : "Muistiinpano poistettu");
-      setExpanded(false);
-    } catch (err) {
-      console.error(err);
-      toast.error("Tallennus epäonnistui");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
     <li className="py-1">
       <div className="flex items-baseline justify-between gap-2">
@@ -734,7 +774,76 @@ function CompetitionResultRow({
           {seasonTop && <SeasonTopBadge flag={seasonTop} />}
         </span>
       </div>
+      <NoteEditor
+        athleteKey={athleteKey}
+        competitionId={row.competition_id}
+        eventName={row.event_name}
+        subCategory={row.sub_category ?? ""}
+        placeholder={placeholderForEvent(row.event_name, row.event_category)}
+        addLabel="Lisää muistiinpano (esim. askelmerkki)"
+        note={note}
+        otherNotes={otherNotes}
+        labelMap={labelMap}
+      />
+    </li>
+  );
+}
 
+function NoteEditor({
+  athleteKey,
+  competitionId,
+  eventName,
+  subCategory,
+  placeholder,
+  addLabel,
+  note,
+  otherNotes = [],
+  labelMap,
+}: {
+  athleteKey: string;
+  competitionId: number;
+  eventName: string;
+  subCategory: string;
+  placeholder: string;
+  addLabel: string;
+  note: AthleteNote | null;
+  otherNotes?: AthleteNote[];
+  labelMap?: Map<string, string>;
+}) {
+  const queryClient = useQueryClient();
+  const [expanded, setExpanded] = useState(false);
+  const [draft, setDraft] = useState(note?.note ?? "");
+  const [saving, setSaving] = useState(false);
+  const hasNote = !!note?.note;
+
+  const open = () => {
+    setDraft(note?.note ?? "");
+    setExpanded(true);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await upsertNote({
+        athleteKey,
+        competitionId,
+        eventName,
+        subCategory,
+        note: draft,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["athlete-notes", athleteKey] });
+      toast.success(draft.trim() ? "Muistiinpano tallennettu" : "Muistiinpano poistettu");
+      setExpanded(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Tallennus epäonnistui");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
       <div className="mt-1">
         {!expanded ? (
           <button
@@ -745,13 +854,13 @@ function CompetitionResultRow({
                 ? "bg-primary/10 text-primary hover:bg-primary/20"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
-            aria-label={hasNote ? "Avaa muistiinpano" : "Lisää muistiinpano"}
+            aria-label={hasNote ? "Avaa muistiinpano" : addLabel}
           >
             <StickyNote className="h-3 w-3" />
             {hasNote ? (
               <span className="max-w-[220px] truncate">{note!.note}</span>
             ) : (
-              <span>Lisää muistiinpano (esim. askelmerkki)</span>
+              <span>{addLabel}</span>
             )}
           </button>
         ) : (
@@ -759,7 +868,7 @@ function CompetitionResultRow({
             <Textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder={placeholderForEvent(row.event_name, row.event_category)}
+              placeholder={placeholder}
               className="min-h-[80px] text-xs"
               autoFocus
             />
@@ -797,7 +906,7 @@ function CompetitionResultRow({
           ))}
         </ul>
       )}
-    </li>
+    </>
   );
 }
 

@@ -1,3 +1,4 @@
+import type React from "react";
 import { useMemo } from "react";
 import { Trophy } from "lucide-react";
 
@@ -36,7 +37,7 @@ function formatDateShort(iso: string | null): string {
   }
 }
 
-export function EventGroupView({ group }: { group: EventGroup }) {
+export function EventGroupView({ group, footer }: { group: EventGroup; footer?: React.ReactNode }) {
   // Tulokset uusin ensin, PB-tieto rivikohtaisesti laskettuna oikein
   // (ei luoteta was_pb-kenttään, koska se voi olla ikäluokkakohtainen).
   const rows = useMemo(() => {
@@ -213,6 +214,7 @@ export function EventGroupView({ group }: { group: EventGroup }) {
           </tbody>
         </table>
       </div>
+      {footer && <div className="border-t bg-background/40 px-3 py-2">{footer}</div>}
     </li>
   );
 }
