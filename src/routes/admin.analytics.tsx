@@ -2,7 +2,16 @@ import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download, Wrench } from "lucide-react";
+import { ArrowLeft, Download, Wrench, Circle } from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip as RTooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
