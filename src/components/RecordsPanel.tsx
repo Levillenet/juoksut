@@ -126,7 +126,8 @@ export function EventGroupView({
           </thead>
           <tbody>
             {rows.map(({ row, isPb, isPbIn, isPbOut, indoor }) => (
-              <>
+              <React.Fragment key={row.id}>
+              <tr
               <tr
                 key={row.id}
                 className={`border-t border-border/60 ${
