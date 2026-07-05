@@ -382,6 +382,10 @@ function Page() {
           </div>
         </section>
 
+        <Section title="Kävijämäärä (viim. 30 päivää)">
+          <VisitorsChart data={stats.byDayCombined} />
+        </Section>
+
         <Section title="Päivittäin – kävijät ja tapahtumat">
           <DailyTable data={stats.byDayCombined} />
         </Section>
