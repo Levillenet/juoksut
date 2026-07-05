@@ -465,9 +465,15 @@ async function harvestRange(ids: number[], latestIdHint: number) {
         // probetaan uudelleen kun kisan tulokset ehkä julkaistaan.
         const dateMs = v.competitionDate ? Date.parse(v.competitionDate) : NaN;
         const tooOldToRevisit = Number.isFinite(dateMs) && dateMs < cutoffMs;
+        const firstSeenAt = firstSeenMap.get(id) ?? nowIso;
+        const firstSeenMs = Date.parse(firstSeenAt);
+        const isFreshUnknown =
+          !v.existed &&
+          Number.isFinite(firstSeenMs) &&
+          firstSeenMs > Date.now() - NONEXIST_FRESH_MS;
         const isPermanentGap =
           !v.existed && id < runningLatestId - NONEXIST_PERMANENT_GAP;
-        const done = isPermanentGap || tooOldToRevisit;
+        const done = (isPermanentGap && !isFreshUnknown) || tooOldToRevisit;
         scanRecords.push({
           competition_id: id,
           competition_date: v.competitionDate,
@@ -475,6 +481,7 @@ async function harvestRange(ids: number[], latestIdHint: number) {
           exists_in_source: v.existed,
           done,
           last_scanned_at: nowIso,
+          first_scanned_at: firstSeenAt,
         });
         if (v.existed && v.rowsAdded === 0) revisited++;
       }
