@@ -1,30 +1,20 @@
-## Ongelma
+## Juurisyy
 
-Kuuluttajanäkymässä (Käynnissä / Lopputulokset) juoksujen alkuerät renderöidään `EventCard`-komponentissa yhtenä lopputuloslistana, jossa on kokonaisjärjestys (`ResultRank`). Alkuerissä ei ole olemassa "lopputulosta" eikä yhteisjärjestystä — jokaisella erällä on oma tulostaulukko.
+N15 100m alkuerät on `Status: "Official"` ja kaikki erät valmiit, joten se päätyy **Lopputulokset**-osioon. Siellä käytetään `UpcomingItem`-komponenttia (ei `EventCard`), ja `CompletedSection` välittää `groupHeats={false}`, mikä pakottaa alkuerätkin näkymään yhtenä litteänä listana. Aiemmin muokkaamani `EventCard`in eräkohtainen haara ei siis vaikuta lopputulokset-listaan.
 
-## Ratkaisu
+## Korjaus
 
-Näytetään alkuerä-tyyppisten kierrosten (Track-lajit, joiden `round.Name` sisältää "alkuer") kortti eräkohtaisina taulukoina samaan tapaan kuin `UpcomingItem` jo tekee (`isTrackHeats`-haara), sekä käynnissä- että lopputulokset-listalla. Ei kokonaisjärjestystä, ei ResultRank-otsikkoa "Lopputulokset".
+1. **`src/components/announcer/CompletedSection.tsx`**
+   - Importoidaan `isHeatRound` `@/lib/tuloslista`sta.
+   - `UpcomingItem`ille annetaan `groupHeats={isHeatRound(r)}` `false`n sijaan. Näin alkuerät renderöityvät eräkohtaisina, mutta finaalit/kenttälajit säilyvät nykyisenä yhtenä listana.
 
-### Muutokset
+2. **`src/components/announcer/shared.tsx` — `UpcomingItem`in eräryhmittelyhaara**
+   - Nykyisessä haarassa `AllocationRow`lle annetaan `showRank={heatHasResults ? "result" : "position"}`. `result` käyttää `ResultRank`ia (kokonaissijoitus koko lajissa), mikä on alkuerissä harhaanjohtavaa. Vaihdetaan alkuerärenderöinnissä `"heat"`-tilaan (käyttää `HeatRank`ia). Toteutus: kun `isHeatRound(round)`, käytetään `"heat"`, muuten säilytetään nykyinen `"result"`. Sortataan erän sisällä `HeatRank`illa kun tulokset ovat tulleet.
 
-1. **`src/lib/tuloslista.ts`** — lisätään pieni apuri `isHeatRound(round: Pick<Round, "Category" | "Name">): boolean`, joka palauttaa `true` kun `Category === "Track"` ja `Name` sisältää `alkuer` (case/aksentti-insensitiivisesti). Käytetään samaa logiikkaa kuin `yag-calling-match.ts:phaseTag`.
-
-2. **`src/components/announcer/shared.tsx`** — `EventCard`:ssä, kun `isHeatRound(round)` on tosi ja `detail` on ladattu:
-   - Renderöidään otsikko-osan alle eräkohtainen listaus samalla tyylillä kuin `UpcomingItem`:n `isTrackHeats`-haara: iteroidaan `matchingRound.Heats` `Index`-järjestyksessä, jokaisen erän sisällä sortataan `Position`-kentällä (tai `HeatRank`illa jos tulokset ovat tulleet), ja käytetään `AllocationRow`ta `showRank="position"` kunnes erän `Allocations` sisältää tuloksia, jolloin `"result"`. Näin näytetään ratanumero ja tulos, mutta ei kokonaissijoitusta.
-   - Kun `open === false` (kortti kiinni käynnissä-listalla), näytetään "Erä N — X/Y tulosta" -yhteenvetorivit tiiviisti sen sijaan, että näytettäisiin top-3.
-   - Kun `open === true`, näytetään kaikki erät kokonaan. Alareunan "Avaa täysi näkymä →" -linkki säilyy.
-   - Ei-alkuerä-kierrokset (finaalit, kenttälajit) säilyvät nykyisessä flat-ranking -esityksessä muuttumattomana.
-
-3. **Ei muutoksia** `useAnnouncerData`iin: alkuerä siirtyy edelleen `completedAllMerged`-listalle vasta kun kaikki erät ovat valmiit (aiemmin tehty korjaus). Näytetään siellä samalla eräkohtaisella tyylillä `EventCard`in kautta.
-
-### Muuta huomioitavaa
-
-- Ennätysmerkintöjen (`RecordBadge`) tunnistus säilyy `AllocationRow`ssa.
-- FLIP-animaatio ja rank-nuolet koskevat vain flat-listaa; alkuerä-haara ei tarvitse niitä.
+3. **Ei muutoksia** `useAnnouncerData`iin, `EventCard`iin eikä muihin osioihin.
 
 ### Verifiointi
 
-- Kouvola Games N1500 alkuerä käynnissä: kortti näyttää Erä 1 / Erä 2 -taulukot ratajärjestyksessä, ei kokonaissijoitusta.
-- Kun kaikki erät valmiit, sama kortti siirtyy Lopputulokset-osioon ja näyttää edelleen eräkohtaiset taulukot (nyt tulosten kera), ei "1. 2. 3." kokonaislistaa.
-- Finaali/kenttälaji: ennallaan.
+- Kouvola Games (kisa 19719), N15 100m alkuerät: Lopputulokset-osiossa kortti aukeaa ja näyttää "Erä 1" ja "Erä 2" omina taulukoina rata- tai HeatRank-järjestyksessä, ei yhtä 11 hengen yhteislistaa.
+- Loppukilpailu (kun se on ohi): näkyy nykyiseen tapaan yhtenä 1–8 listana.
+- Käynnissä olevat alkuerät: EventCard-heat-mode toimii aiemman toteutuksen mukaisesti.
