@@ -676,18 +676,29 @@ function WatchPage() {
             <ul className="space-y-4">
               {watchedSections.map(({ athlete, entries }) => (
                 <li key={athlete.key} className="rounded-xl border bg-card p-4 shadow-sm">
-                  <div className="mb-3 flex items-baseline justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-base font-bold leading-tight">
-                        {athlete.surname} {athlete.firstname}
-                      </p>
-                      {athlete.organization && (
-                        <p className="truncate text-xs text-muted-foreground">
-                          {athlete.organization}
+                  <div className="mb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-bold leading-tight break-words">
+                          {athlete.surname} {athlete.firstname}
                         </p>
-                      )}
+                        {athlete.organization && (
+                          <p className="truncate text-xs text-muted-foreground">
+                            {athlete.organization}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => remove(athlete.key)}
+                        aria-label="Poista seurannasta"
+                        className="-mr-2 -mt-1 shrink-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
+                    <div className="mt-2">
                       <Link
                         to="/athlete/$key"
                         params={{ key: athlete.key }}
@@ -695,14 +706,6 @@ function WatchPage() {
                       >
                         Urheilijatilastot
                       </Link>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => remove(athlete.key)}
-                        aria-label="Poista seurannasta"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
 
