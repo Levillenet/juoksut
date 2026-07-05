@@ -1,41 +1,30 @@
 ## Ongelma
 
-Kuuluttajanäkymässä juoksulaji siirtyy "Lopputuloksiin" heti kun aikataulun `Status = "Official"`, vaikka osa eristä olisi vielä juoksematta. Lisäksi "Näytä myös juoksut" -kytkin ei nosta noita ei-vielä-valmiita juoksuja meneillään oleviin.
+Kuuluttajanäkymässä (Käynnissä / Lopputulokset) juoksujen alkuerät renderöidään `EventCard`-komponentissa yhtenä lopputuloslistana, jossa on kokonaisjärjestys (`ResultRank`). Alkuerissä ei ole olemassa "lopputulosta" eikä yhteisjärjestystä — jokaisella erällä on oma tulostaulukko.
 
-## Korjaus
+## Ratkaisu
 
-Muutetaan **vain** `src/hooks/useAnnouncerData.ts`. Käytetään lajin details-dataa (`ev.Rounds[].Heats[].Allocations[].Result`) todelliseksi valmistumissignaaliksi juoksulajeille.
+Näytetään alkuerä-tyyppisten kierrosten (Track-lajit, joiden `round.Name` sisältää "alkuer") kortti eräkohtaisina taulukoina samaan tapaan kuin `UpcomingItem` jo tekee (`isTrackHeats`-haara), sekä käynnissä- että lopputulokset-listalla. Ei kokonaisjärjestystä, ei ResultRank-otsikkoa "Lopputulokset".
 
-### Uusi apukäsite
-`isRoundFullyComplete(ev, roundId)` = kierroksella on vähintään yksi erä JA jokaisessa erässä jokaisella allokaatiolla on `Result` (ei-null). Jos details puuttuu, tuloksena `undefined` → käytetään aikataulun statusta fallbackina (nykyinen käytös).
+### Muutokset
 
-### Meneillään olevat (`inProgress`)
-Nykyinen: `todayRounds.filter(r => r.Status === "Progress")`, ja jos `showRunning=false`, poistetaan Track.
+1. **`src/lib/tuloslista.ts`** — lisätään pieni apuri `isHeatRound(round: Pick<Round, "Category" | "Name">): boolean`, joka palauttaa `true` kun `Category === "Track"` ja `Name` sisältää `alkuer` (case/aksentti-insensitiivisesti). Käytetään samaa logiikkaa kuin `yag-calling-match.ts:phaseTag`.
 
-Uusi lisäys — Track-kierrokset, joilla aikataulun Status = "Official" mutta details osoittaa että kaikki erät eivät ole vielä valmiit (`isRoundFullyComplete === false`), käsitellään "virtuaalisesti Progressina":
-- Yhdistetään `inProgressAll`-listaan.
-- Jos `showRunning=false`, ne suodattuvat pois kuten muutkin Track-kierrokset → nykykäytös säilyy kun kuuntelija katsoo vain kenttiä.
-- Jos `showRunning=true`, ne näkyvät meneillään olevissa erä­kohtaisin tuloksin.
+2. **`src/components/announcer/shared.tsx`** — `EventCard`:ssä, kun `isHeatRound(round)` on tosi ja `detail` on ladattu:
+   - Renderöidään otsikko-osan alle eräkohtainen listaus samalla tyylillä kuin `UpcomingItem`:n `isTrackHeats`-haara: iteroidaan `matchingRound.Heats` `Index`-järjestyksessä, jokaisen erän sisällä sortataan `Position`-kentällä (tai `HeatRank`illa jos tulokset ovat tulleet), ja käytetään `AllocationRow`ta `showRank="position"` kunnes erän `Allocations` sisältää tuloksia, jolloin `"result"`. Näin näytetään ratanumero ja tulos, mutta ei kokonaissijoitusta.
+   - Kun `open === false` (kortti kiinni käynnissä-listalla), näytetään "Erä N — X/Y tulosta" -yhteenvetorivit tiiviisti sen sijaan, että näytettäisiin top-3.
+   - Kun `open === true`, näytetään kaikki erät kokonaan. Alareunan "Avaa täysi näkymä →" -linkki säilyy.
+   - Ei-alkuerä-kierrokset (finaalit, kenttälajit) säilyvät nykyisessä flat-ranking -esityksessä muuttumattomana.
 
-Käytännössä muutetaan `inProgressAll`-määritelmä:
-- säilytetään kaikki Progress-kierrokset
-- lisätään Track-kierrokset joilla `Status === "Official"` mutta `isRoundFullyComplete(details, r) === false`
-- jotta details ehditään hakea, huolehditaan että näiden `EventId` on `wantedIds`-joukossa (nykyinen `completed.forEach` hakee ne jo, koska ne ovat completed-listassa alkuun asti — säilytetään).
+3. **Ei muutoksia** `useAnnouncerData`iin: alkuerä siirtyy edelleen `completedAllMerged`-listalle vasta kun kaikki erät ovat valmiit (aiemmin tehty korjaus). Näytetään siellä samalla eräkohtaisella tyylillä `EventCard`in kautta.
 
-### Lopputulokset (`completed` / `completedAllMerged`)
-Nykyinen: `todayRounds.filter(r => r.Status === "Official")` + Track-Progress joissa round.Status kääntyi Officialiksi.
+### Muuta huomioitavaa
 
-Uusi:
-- Jätetään Track-kierrokset pois `completedAll`-listasta jos details on saatavilla ja `isRoundFullyComplete === false` (eli vielä eriä juoksematta). Ne näkyvät nyt meneillään olevissa yllä olevan sääntöön.
-- `finishedProgressRoundIds` käyttää samaa `isRoundFullyComplete`-tarkistusta pelkän `round.Status === "Official"` sijaan → Track-Progress siirtyy lopputuloksiin vasta kun oikeasti kaikki erät valmiit.
-- Field- ja muut ei-Track-kierrokset toimivat kuten ennen (aikataulun Status ratkaisee).
+- Ennätysmerkintöjen (`RecordBadge`) tunnistus säilyy `AllocationRow`ssa.
+- FLIP-animaatio ja rank-nuolet koskevat vain flat-listaa; alkuerä-haara ei tarvitse niitä.
 
-### Tekniset yksityiskohdat
-- `isRoundFullyComplete` elää samassa hookissa (pieni sisäinen apufunktio) tai lisätään `src/lib/tuloslista.ts`:ään; pidetään hookin sisällä yksinkertaisuuden vuoksi.
-- `wantedIds`-muistetun listan sisältö säilyy oikeana: mukaan päätyvät sekä (a) uudet virtuaali-Progress-track-EventIdt (jotka tulevat completedAll-lähteestä), että (b) alkuperäiset Progress-kierrokset. Ei uusia queryjä tarvita.
-- Ei muutoksia UI-komponentteihin (`InProgressSection`, `CompletedSection`, `AnnouncerLayoutControls`); ne saavat vain oikeat listat hookilta.
+### Verifiointi
 
-## Odotettu käytös
-- Track-laji jonka aikataulu-status on "Official" mutta erä 3/4 vailla tuloksia: näkyy meneillään olevissa (kun "Näytä juoksut" päällä) erä­kohtaisin tuloksin, EI lopputuloksissa.
-- Kun viimeisenkin erän tulokset saapuvat: siirtyy lopputuloksiin automaattisesti.
-- Kenttälajien käyttäytyminen ennallaan.
+- Kouvola Games N1500 alkuerä käynnissä: kortti näyttää Erä 1 / Erä 2 -taulukot ratajärjestyksessä, ei kokonaissijoitusta.
+- Kun kaikki erät valmiit, sama kortti siirtyy Lopputulokset-osioon ja näyttää edelleen eräkohtaiset taulukot (nyt tulosten kera), ei "1. 2. 3." kokonaislistaa.
+- Finaali/kenttälaji: ennallaan.
