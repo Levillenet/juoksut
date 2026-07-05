@@ -5,7 +5,7 @@ import { trackEvent } from "@/lib/analytics";
 import { useQuery, useQueryClient, useQueries } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Wind } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { ResultVideo } from "@/lib/result-videos";
+import { fetchHeatVideos, heatAthleteKey, type ResultVideo } from "@/lib/result-videos";
 import { ResultVideoButton } from "@/components/ResultVideoButton";
 
 
