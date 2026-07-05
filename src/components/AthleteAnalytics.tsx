@@ -354,6 +354,7 @@ function ResultDetailSheet({
   notes,
   videos,
   myUserId,
+  labelMap,
 }: {
   row: AthleteResultRow | null;
   onClose: () => void;
@@ -361,6 +362,7 @@ function ResultDetailSheet({
   notes: Map<string, AthleteNote[]> | undefined;
   videos: Map<string, ResultVideo[]> | undefined;
   myUserId: string;
+  labelMap?: Map<string, string>;
 }) {
   const collected = useMemo(() => {
     if (!row) return { resultNotes: [], eventNotes: [], compNotes: [], videos: [] };
