@@ -46,40 +46,40 @@ export function LiveCompetitionsSection() {
                 onClick={() => setActiveId(c.Id)}
                 className={`flex w-full items-center gap-3 border-l-4 px-4 py-3 text-left transition-colors ${
                   isActive
-                    ? "border-l-destructive bg-destructive/10 hover:bg-destructive/15"
+                    ? "border-l-destructive bg-destructive/15 shadow-inner hover:bg-destructive/20"
                     : "border-l-transparent hover:border-l-destructive/40 hover:bg-secondary"
                 }`}
               >
                 <span
                   className={`relative flex shrink-0 items-center justify-center rounded-full ${
-                    isActive ? "h-5 w-5 ring-2 ring-destructive/35" : "h-3 w-3"
+                    isActive ? "h-6 w-6 ring-[3px] ring-destructive/40" : "h-3 w-3"
                   }`}
                   aria-hidden="true"
                 >
                   {isActive && (
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-60" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-80" />
                   )}
                   <span
                     className={`relative inline-flex rounded-full ${
-                      isActive ? "h-3.5 w-3.5 bg-destructive" : "h-2 w-2 bg-muted-foreground/45"
+                      isActive ? "h-4 w-4 bg-destructive" : "h-2 w-2 bg-muted-foreground/45"
                     }`}
                   />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p
                     className={`truncate text-sm leading-tight ${
-                      isActive ? "font-extrabold text-foreground" : "font-semibold"
+                      isActive ? "font-black text-foreground" : "font-semibold"
                     }`}
                   >
                     {c.Name}
                   </p>
-                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                  <p className={`mt-0.5 truncate text-[11px] ${isActive ? "text-destructive-foreground/80 font-medium" : "text-muted-foreground"}`}>
                     {[c.OrganizationName, c.Location].filter(Boolean).join(" · ")}
                   </p>
                 </div>
                 {isActive ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-destructive px-2.5 py-1 text-[11px] font-black text-destructive-foreground shadow-sm">
-                    <Check className="h-3 w-3" />
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-destructive px-3 py-1.5 text-[11px] font-black text-destructive-foreground shadow-sm ring-2 ring-destructive/25">
+                    <Check className="h-3.5 w-3.5" />
                     Seurataan
                   </span>
                 ) : (
