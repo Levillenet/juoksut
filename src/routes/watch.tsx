@@ -406,6 +406,14 @@ function WatchPage() {
           <ShareInviteBanner competitionId={competitionId} />
         )}
 
+        {watched.length > 0 && (
+          <TodayCompetitionsForWatched
+            watchedKeys={watchedHistoryKeys}
+            currentCompetitionId={competitionId}
+            onSelect={setCompetitionId}
+          />
+        )}
+
         <div>
 
         {/* Search results */}
