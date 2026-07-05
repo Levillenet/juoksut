@@ -239,7 +239,7 @@ export function useAnnouncerData() {
               competitionId,
               athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
               eventName: ev.Name,
-              ageClass: round.GroupName,
+              ageClass: ev.Group,
               category: ev.EventCategory,
             });
             const rec = detectRecord(ev.EventCategory, a.Result, eff.pb, eff.sb);
