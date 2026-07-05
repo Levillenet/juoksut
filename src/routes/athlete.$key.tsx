@@ -247,7 +247,8 @@ function AthletePage() {
 
   const [allNotesOpen, setAllNotesOpen] = useState(false);
 
-  // Group existing notes by event_name; include competition context from rows
+  // Group existing notes; bucket by scope + event (event scope + result scope
+  // group under the event name; competition scope goes in its own bucket).
   const notesByEvent = useMemo(() => {
     const notes = notesQuery.data;
     if (!notes || notes.size === 0) return [] as Array<{
@@ -257,15 +258,24 @@ function AthletePage() {
         competitionName: string;
         competitionDate: string | null;
         location: string;
+        scope: "result" | "event" | "competition";
       }>;
     }>;
-    // Build a lookup: competition_id|event_name|sub_category -> row
+    // Lookups from result rows
     const rowLookup = new Map<string, AthleteResultRow>();
+    const compLookup = new Map<number, { name: string; date: string | null; location: string }>();
     for (const r of rows) {
       rowLookup.set(
         `${r.competition_id}|${r.event_name}|${r.sub_category ?? ""}`,
         r,
       );
+      if (!compLookup.has(r.competition_id)) {
+        compLookup.set(r.competition_id, {
+          name: r.competition_name,
+          date: r.competition_date,
+          location: r.location,
+        });
+      }
     }
     const groupsMap = new Map<
       string,
@@ -274,22 +284,38 @@ function AthletePage() {
         competitionName: string;
         competitionDate: string | null;
         location: string;
+        scope: "result" | "event" | "competition";
       }>
     >();
     for (const noteList of notes.values()) {
       for (const n of noteList) {
         if (!n.note?.trim()) continue;
-        const r = rowLookup.get(
-          `${n.competition_id}|${n.event_name}|${n.sub_category ?? ""}`,
-        );
-        const list = groupsMap.get(n.event_name) ?? [];
-        list.push({
-          note: n,
-          competitionName: r?.competition_name ?? "",
-          competitionDate: r?.competition_date ?? null,
-          location: r?.location ?? "",
-        });
-        groupsMap.set(n.event_name, list);
+        const scope = noteScopeOf(n);
+        let bucket: string;
+        let competitionName = "";
+        let competitionDate: string | null = null;
+        let location = "";
+        if (scope === "competition") {
+          bucket = "Kilpailun muistiinpanot";
+          const c = compLookup.get(n.competition_id);
+          competitionName = c?.name ?? "";
+          competitionDate = c?.date ?? null;
+          location = c?.location ?? "";
+        } else if (scope === "event") {
+          bucket = n.event_name;
+          competitionName = "Lajitason muistiinpano (kaikki kilpailut)";
+        } else {
+          bucket = n.event_name;
+          const r = rowLookup.get(
+            `${n.competition_id}|${n.event_name}|${n.sub_category ?? ""}`,
+          );
+          competitionName = r?.competition_name ?? "";
+          competitionDate = r?.competition_date ?? null;
+          location = r?.location ?? "";
+        }
+        const list = groupsMap.get(bucket) ?? [];
+        list.push({ note: n, competitionName, competitionDate, location, scope });
+        groupsMap.set(bucket, list);
       }
     }
     return Array.from(groupsMap.entries())
