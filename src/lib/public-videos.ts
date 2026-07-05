@@ -66,7 +66,7 @@ export async function fetchPublicVideos(opts?: {
   const { data: results } = await supabase
     .from("athlete_results")
     .select(
-      "athlete_key, surname, firstname, organization, competition_id, competition_name, competition_date, event_name, sub_category, age_class, result_text, result_rank, captured_at",
+      "athlete_key, surname, firstname, organization, competition_id, competition_name, competition_date, event_name, event_id, sub_category, age_class, result_text, result_rank, captured_at",
     )
     .in("competition_id", competitionIds)
     .in("event_name", eventNames);
