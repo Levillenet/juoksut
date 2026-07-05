@@ -62,7 +62,7 @@ const STATUS_STYLE: Record<"Unallocated" | "Allocated" | "Progress" | "Official"
 };
 
 function WatchPage() {
-  const [competitionId] = useCompetitionId();
+  const [competitionId, setCompetitionId] = useCompetitionId();
   const queryClient = useQueryClient();
   const { list: watched, add, remove } = useWatchedAthletes();
   const [query, setQuery] = useState<string>("");
