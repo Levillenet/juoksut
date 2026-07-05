@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { HeatResultSnapshot } from "@/lib/result-videos";
 
 export interface PublicVideoItem {
   id: string;
@@ -10,6 +11,7 @@ export interface PublicVideoItem {
   firstname: string | null;
   organization: string | null;
   event_name: string;
+  event_id: number | null;
   age_class: string | null;
   sub_category: string | null;
   result_text: string | null;
@@ -17,6 +19,7 @@ export interface PublicVideoItem {
   competition_name: string | null;
   competition_date: string | null;
   competition_id: number;
+  heat_results: HeatResultSnapshot[] | null;
 }
 
 /**
