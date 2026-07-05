@@ -123,6 +123,35 @@ function VideotPage() {
         hakusanan mukaan.
       </p>
 
+      <details className="group mb-4 rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
+        <summary className="cursor-pointer list-none font-semibold text-foreground marker:hidden">
+          ❓ Miten jaan oman videon?
+          <span className="ml-2 text-xs font-normal text-muted-foreground group-open:hidden">
+            (avaa ohje)
+          </span>
+        </summary>
+        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-foreground">
+          <li>
+            <strong>Lataa video omalle YouTube-tilillesi.</strong> Aseta se tarpeen mukaan{" "}
+            <em>Piilotettu (Unlisted)</em> -tilaan – silloin videota ei löydä hausta, mutta
+            linkin avulla sen voi katsoa.
+          </li>
+          <li>
+            <strong>Kopioi videon linkki</strong> YouTuben <em>Jaa</em>-toiminnolla.
+          </li>
+          <li>
+            <strong>Liitä linkki urheilijaseurannassa</strong> oikean urheilijan oikeaan
+            juoksuerään (rivin lopussa oleva YouTube-nappi).
+          </li>
+        </ol>
+        <p className="mt-3 rounded-md bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+          <strong>Huom:</strong> Juoksulajien videot voi asettaa julkiseksi tai
+          yksityiseksi. Kenttälajien videot ovat aina yksityisiä ja jäävät vain sinulle omaan
+          arkistoosi myöhempää katselua varten.
+        </p>
+      </details>
+
+
       {/* Filters */}
       <div className="mb-4 grid gap-2 sm:grid-cols-3">
         <div>
