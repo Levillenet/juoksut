@@ -742,6 +742,8 @@ function AthletePage() {
                 })}
               </ul>
             </section>
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </main>
