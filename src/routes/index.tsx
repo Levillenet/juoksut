@@ -27,6 +27,7 @@ import { LiveCompetitionsSection } from "@/components/LiveCompetitionsSection";
 import { SeasonStatsSection } from "@/components/SeasonStatsSection";
 import { Button } from "@/components/ui/button";
 import { NoteLinkInvitesBanner } from "@/components/NoteLinkInvitesBanner";
+import { DistrictRecordsSection } from "@/components/DistrictRecordsSection";
 
 export const Route = createFileRoute("/")({
   head: () => ({
