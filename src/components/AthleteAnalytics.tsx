@@ -341,6 +341,7 @@ export function AthleteAnalytics({
         notes={notes}
         videos={videos}
         myUserId={myUserId}
+        labelMap={labelMap}
       />
     </div>
   );
