@@ -69,14 +69,15 @@ function resultRowsToSnapshot(rows: AthleteResultRow[]): HeatResultSnapshot[] | 
         "fi",
       );
     })
-    .map((row, index) => ({
-      position: index + 1,
+    .map((row) => ({
+      position: null,
       surname: row.surname ?? null,
       firstname: row.firstname ?? null,
       organization: row.organization ?? null,
       result_text: row.result_text ?? null,
       result_rank: row.result_rank ?? null,
     }));
+
 }
 
 function buildStoredHeatSnapshot(
