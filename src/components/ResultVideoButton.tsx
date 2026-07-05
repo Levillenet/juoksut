@@ -153,6 +153,7 @@ export function ResultVideoButton({
                   subCategory={subCategory}
                   eventCategory={eventCategory ?? null}
                   heatKey={heatKey ?? null}
+                  heatSnapshot={heatSnapshot ?? null}
                   canBePublic={canBePublic}
                   invalidationKeys={invalidationKeys}
                 />
