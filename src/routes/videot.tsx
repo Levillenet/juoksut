@@ -327,3 +327,71 @@ function VideotPage() {
     </div>
   );
 }
+
+function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
+  const [open, setOpen] = useState(false);
+  const { data, isLoading } = useQuery({
+    queryKey: [
+      "heat-results",
+      video.competition_id,
+      video.event_name,
+      video.sub_category,
+    ],
+    queryFn: () =>
+      fetchHeatResults(video.competition_id, video.event_name, video.sub_category),
+    enabled: open,
+    staleTime: 60_000,
+  });
+
+  return (
+    <div className="border-t">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        className="flex w-full items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted/50"
+        aria-expanded={open}
+      >
+        <span>{open ? "Piilota erän tulokset" : "Näytä erän tulokset"}</span>
+        <ChevronDown
+          className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && (
+        <div className="px-3 pb-3 pt-1 text-xs">
+          {isLoading ? (
+            <p className="text-muted-foreground">Ladataan…</p>
+          ) : !data || data.length === 0 ? (
+            <p className="text-muted-foreground">Ei tuloksia.</p>
+          ) : (
+            <ul className="space-y-1">
+              {data.map((r) => (
+                <li
+                  key={r.athlete_key}
+                  className="flex items-baseline justify-between gap-2"
+                >
+                  <span className="min-w-0 truncate">
+                    <span className="tabular-nums text-muted-foreground">
+                      {r.result_rank != null ? `${r.result_rank}.` : "–"}
+                    </span>{" "}
+                    <span className="font-medium">
+                      {[r.surname, r.firstname].filter(Boolean).join(" ") || "—"}
+                    </span>
+                    {r.organization && (
+                      <span className="text-muted-foreground"> · {r.organization}</span>
+                    )}
+                  </span>
+                  <span className="shrink-0 font-bold tabular-nums">
+                    {r.result_text || "—"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
