@@ -471,7 +471,7 @@ function HeatResultsList({ video, enabled }: { video: PublicVideoItem; enabled: 
         <p className="text-muted-foreground">Ei tuloksia tallennettu tälle videolle.</p>
       ) : (
         <div className="overflow-hidden rounded-md border">
-          <div className="grid grid-cols-[3.5rem_3.5rem_minmax(0,1fr)_4.5rem] gap-2 bg-muted/50 px-2 py-1.5 text-[11px] font-semibold uppercase text-muted-foreground">
+          <div className="grid grid-cols-[2.25rem_2.25rem_minmax(0,1fr)_3.75rem] gap-1.5 bg-muted/50 px-2 py-1.5 text-[11px] font-semibold uppercase text-muted-foreground sm:grid-cols-[3.5rem_3.5rem_minmax(0,1fr)_4.5rem] sm:gap-2">
             <span>Sija</span>
             <span>Rata</span>
             <span>Nimi</span>
@@ -481,7 +481,7 @@ function HeatResultsList({ video, enabled }: { video: PublicVideoItem; enabled: 
             {sorted.map((r, i) => (
               <li
                 key={`${r.surname ?? ""}-${r.firstname ?? ""}-${r.position ?? i}`}
-                className="grid grid-cols-[3.5rem_3.5rem_minmax(0,1fr)_4.5rem] items-baseline gap-2 px-2 py-1.5"
+                className="grid grid-cols-[2.25rem_2.25rem_minmax(0,1fr)_3.75rem] items-baseline gap-1.5 px-2 py-1.5 sm:grid-cols-[3.5rem_3.5rem_minmax(0,1fr)_4.5rem] sm:gap-2"
               >
                 <span className="tabular-nums text-muted-foreground">
                   {r.result_rank != null ? `${r.result_rank}.` : "–"}
@@ -489,7 +489,7 @@ function HeatResultsList({ video, enabled }: { video: PublicVideoItem; enabled: 
                 <span className="tabular-nums font-semibold text-foreground/80">
                   {r.position != null ? `R${r.position}` : "–"}
                 </span>
-                <span className="min-w-0 truncate font-medium">
+                <span className="min-w-0 break-words font-medium leading-tight">
                   {[r.surname, r.firstname].filter(Boolean).join(" ") || "—"}
                   {r.organization && (
                     <span className="text-muted-foreground"> · {r.organization}</span>
@@ -502,6 +502,7 @@ function HeatResultsList({ video, enabled }: { video: PublicVideoItem; enabled: 
             ))}
           </ul>
         </div>
+
       )}
     </>
   );
