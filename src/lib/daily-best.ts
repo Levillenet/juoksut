@@ -23,6 +23,8 @@ export interface DailyBestRow {
   competition_id: number;
   competition_date: string | null;
   event_id: number;
+  was_pb: boolean | null;
+  was_district_record: boolean | null;
 }
 
 /** [startISO, endISO) covering the given calendar date in Helsinki TZ. */
