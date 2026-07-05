@@ -376,19 +376,34 @@ function RoundView() {
                   key={heat.Id}
                   className="overflow-hidden rounded-xl border bg-card shadow-sm"
                 >
-                  <div className="flex items-center justify-between border-b bg-secondary px-4 py-2">
+                  <div className="flex items-center justify-between gap-2 border-b bg-secondary px-4 py-2">
                     <h2 className="text-sm font-semibold">
                       Erä {heat.Index}{" "}
                       <span className="font-normal text-muted-foreground">
                         ({allocs.length} kilpailijaa)
                       </span>
                     </h2>
-                    {heat.Wind != null && (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Wind className="h-3 w-3" />
-                        {heat.Wind} m/s
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {heat.Wind != null && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Wind className="h-3 w-3" />
+                          {heat.Wind} m/s
+                        </span>
+                      )}
+                      {isTrack && (
+                        <ResultVideoButton
+                          athleteKey={heatAthleteKey(heat.Id)}
+                          competitionId={competitionId}
+                          eventName={eventName}
+                          subCategory={`Erä ${heat.Index}`}
+                          eventCategory={eventCategory}
+                          heatKey={`heat:${heat.Id}`}
+                          videos={heatVideos.get(`heat:${heat.Id}`) ?? []}
+                          contextLabel={`${eventName} · Erä ${heat.Index}`}
+                          size="sm"
+                        />
+                      )}
+                    </div>
                   </div>
                   <ol className="divide-y">
                     {allocs.map((a) => (
