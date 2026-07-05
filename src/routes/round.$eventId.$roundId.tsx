@@ -283,8 +283,21 @@ function RoundView() {
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs tabular-nums text-muted-foreground">
                       {e.Number && <div>#{e.Number}</div>}
-                      {e.SB && <div>SB {e.SB}</div>}
-                      {e.PB && <div>PB {e.PB}</div>}
+                      {(() => {
+                        const eff = effectiveRecord(e._eventId ?? eid, e, {
+                          competitionId,
+                          athleteKey: athleteKey(e.Surname, e.Firstname, e.Organization?.Id ?? null),
+                          eventName: data?.Name ?? "",
+                          ageClass: data?.Group ?? null,
+                          category: data?.EventCategory ?? null,
+                        });
+                        return (
+                          <>
+                            {eff.sb && <div>SB {eff.sb}</div>}
+                            {eff.pb && <div>PB {eff.pb}</div>}
+                          </>
+                        );
+                      })()}
                     </div>
                   </li>
                 ))}
