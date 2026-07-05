@@ -33,9 +33,14 @@ import {
   type AthleteResultRow,
 } from "@/lib/athlete-history";
 import {
+  competitionScopeKey,
+  eventScopeKey,
   fetchNotesForAthlete,
   noteKey,
+  noteScopeOf,
+  placeholderForCompetition,
   placeholderForEvent,
+  placeholderForEventOverall,
   upsertNote,
   type AthleteNote,
 } from "@/lib/athlete-notes";
