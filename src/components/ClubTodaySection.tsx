@@ -344,6 +344,15 @@ export function ClubTodaySection({
                                 </p>
                               )}
                             </div>
+                            {r.was_district_record && (
+                              <span
+                                title="Lahden piirin piiriennätys"
+                                className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
+                              >
+                                <Trophy className="h-2.5 w-2.5" />
+                                PE
+                              </span>
+                            )}
                             {isPb && (
                               <span
                                 title="Henkilökohtainen ennätys"

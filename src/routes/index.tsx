@@ -27,6 +27,7 @@ import { LiveCompetitionsSection } from "@/components/LiveCompetitionsSection";
 import { SeasonStatsSection } from "@/components/SeasonStatsSection";
 import { Button } from "@/components/ui/button";
 import { NoteLinkInvitesBanner } from "@/components/NoteLinkInvitesBanner";
+import { DistrictRecordsSection } from "@/components/DistrictRecordsSection";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -165,6 +166,17 @@ function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; is
           <div className="text-sm font-semibold leading-tight">Kilpailukalenteri</div>
           <div className="mt-0.5 text-[11px] text-muted-foreground">
             Tulevat yleisurheilukisat lähteestä kilpailukalenteri.fi
+          </div>
+        </Link>
+      )}
+      {!isOfficial && (
+        <Link
+          to="/piirienn"
+          className="rounded-xl border-2 border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-center hover:bg-emerald-500/20"
+        >
+          <div className="text-sm font-semibold leading-tight">Lahden piiriennätykset</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            Sisulisäsarjojen (P/T 8–22) ennätykset ja tuoreet PE-rikkomiset
           </div>
         </Link>
       )}
@@ -413,6 +425,7 @@ function Index({ role, isAdmin = false, isPlanner = false }: { role: Role; isAdm
           <>
             <TodayStatsSection />
             <DailyBestSection />
+            <DistrictRecordsSection />
             <ClubTodaySection />
             <LiveCompetitionsSection />
             <SeasonStatsSection />
