@@ -15,6 +15,11 @@ import { normalizeEventName } from "@/lib/event-name";
 import { pbEventKey } from "@/lib/pb-key";
 import { formatImprovement } from "@/lib/records";
 import { formatRelayLegsFromRows } from "@/lib/tuloslista";
+import {
+  hasPublicVideo,
+  usePublicVideoIndex,
+  VideoAvailableBadge,
+} from "@/components/VideoAvailableBadge";
 
 const STORAGE_KEY = "clubToday.orgId";
 
@@ -63,6 +68,7 @@ export function ClubTodaySection({
   const [dateYmd, setDateYmd] = useState<string>(() => helsinkiTodayYmd());
   const isToday = dateYmd === helsinkiTodayYmd();
   const selectedDate = useMemo(() => ymdToDate(dateYmd), [dateYmd]);
+  const videoIndex = usePublicVideoIndex();
 
   const clubsQuery = useQuery({
     queryKey: ["club-today", "clubs", excludeCompetitionId ?? 0, dateYmd],
@@ -329,7 +335,10 @@ export function ClubTodaySection({
                                 </Link>
                               </p>
                               <p className="truncate text-[11px] text-muted-foreground">
-                                {r.event_name}
+                                <span>{r.event_name}</span>
+                                {hasPublicVideo(videoIndex.data, r.competition_id, r.event_name) && (
+                                  <VideoAvailableBadge size="xs" className="ml-1 align-middle" />
+                                )}
                                 {r.age_class && ` · ${r.age_class}`}
                                 {r.result_rank != null && r.result_round_name
                                   ? ` · ${r.result_round_name} sija ${r.result_rank}`

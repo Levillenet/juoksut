@@ -5,7 +5,7 @@ import { trackEvent } from "@/lib/analytics";
 import { useQuery, useQueryClient, useQueries } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Wind } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { ResultVideo } from "@/lib/result-videos";
+import { fetchHeatVideos, heatAthleteKey, type ResultVideo } from "@/lib/result-videos";
 import { ResultVideoButton } from "@/components/ResultVideoButton";
 
 
@@ -158,13 +158,17 @@ function RoundView() {
     return Array.from(set);
   }, [heats]);
 
+  const eventCategory = data?.EventCategory ?? null;
+  const isTrack = eventCategory === "Track" || eventCategory === "Relay";
+  const heatIds = useMemo(() => heats.map((h) => h.Id), [heats]);
+
   const videosQuery = useQuery({
     queryKey: ["round-videos", competitionId, eventName, allAthleteKeys.slice().sort().join(",")],
     queryFn: async () => {
       if (allAthleteKeys.length === 0 || !eventName) return new Map<string, ResultVideo[]>();
       const { data, error } = await supabase
         .from("result_videos")
-        .select("id, user_id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, is_public, updated_at")
+        .select("id, user_id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, is_public, event_category, heat_key, updated_at")
         .eq("competition_id", competitionId)
         .eq("event_name", eventName)
         .in("athlete_key", allAthleteKeys);
@@ -177,10 +181,18 @@ function RoundView() {
       }
       return map;
     },
-    enabled: allAthleteKeys.length > 0 && !!eventName,
+    enabled: allAthleteKeys.length > 0 && !!eventName && !isTrack,
     staleTime: 30_000,
   });
   const videosByAthlete = videosQuery.data ?? new Map<string, ResultVideo[]>();
+
+  const heatVideosQuery = useQuery({
+    queryKey: ["heat-videos", competitionId, heatIds.slice().sort().join(",")],
+    queryFn: () => fetchHeatVideos(competitionId, heatIds),
+    enabled: isTrack && heatIds.length > 0,
+    staleTime: 30_000,
+  });
+  const heatVideos = heatVideosQuery.data ?? new Map<string, ResultVideo[]>();
 
 
 
@@ -364,19 +376,34 @@ function RoundView() {
                   key={heat.Id}
                   className="overflow-hidden rounded-xl border bg-card shadow-sm"
                 >
-                  <div className="flex items-center justify-between border-b bg-secondary px-4 py-2">
+                  <div className="flex items-center justify-between gap-2 border-b bg-secondary px-4 py-2">
                     <h2 className="text-sm font-semibold">
                       Erä {heat.Index}{" "}
                       <span className="font-normal text-muted-foreground">
                         ({allocs.length} kilpailijaa)
                       </span>
                     </h2>
-                    {heat.Wind != null && (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Wind className="h-3 w-3" />
-                        {heat.Wind} m/s
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {heat.Wind != null && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Wind className="h-3 w-3" />
+                          {heat.Wind} m/s
+                        </span>
+                      )}
+                      {isTrack && (
+                        <ResultVideoButton
+                          athleteKey={heatAthleteKey(heat.Id)}
+                          competitionId={competitionId}
+                          eventName={eventName}
+                          subCategory={`Erä ${heat.Index}`}
+                          eventCategory={eventCategory}
+                          heatKey={`heat:${heat.Id}`}
+                          videos={heatVideos.get(`heat:${heat.Id}`) ?? []}
+                          contextLabel={`${eventName} · Erä ${heat.Index}`}
+                          size="sm"
+                        />
+                      )}
+                    </div>
                   </div>
                   <ol className="divide-y">
                     {allocs.map((a) => (
@@ -495,7 +522,7 @@ function RoundView() {
                             </>
                           )}
                         </div>
-                        {(() => {
+                        {!isTrack && (() => {
                           const key = athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null);
                           const vids = videosByAthlete.get(key) ?? [];
                           return (
@@ -505,6 +532,7 @@ function RoundView() {
                                 competitionId={competitionId}
                                 eventName={eventName}
                                 subCategory=""
+                                eventCategory={eventCategory}
                                 videos={vids}
                                 contextLabel={`${eventName} · ${a.Name}`}
                                 size="sm"

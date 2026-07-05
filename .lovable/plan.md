@@ -1,32 +1,63 @@
 ## Tavoite
-Etusivulle uusi lohko **"Päivän videot"**, joka listaa järjestelmään lisätyt **julkiset** YouTube-suoritusvideot (is_public = true). Kokoaa suoritukset, joissa on julkinen video, ja näyttää ne kompaktisti.
+1. **Julkinen video sallitaan vain juoksulajeille** (event_category = 'Track' tai 'Relay'). Yksilölajeille (Field ym.) videolinkin voi tallentaa vain yksityisenä (esim. valmentaja itselleen).
+2. **Juoksulajien video on eräkohtainen**, ei urheilijakohtainen. Yhdellä erällä yksi (tai useita) videoita, jotka näkyvät kaikille erän urheilijoille.
+3. **Yksilölajeissa video on urheilijakohtainen** ja pakotetusti yksityinen.
+4. **Etusivulla indikoidaan** selvästi (esim. punainen 🎥-merkki), millä juoksulajilla on julkinen video järjestelmässä.
 
-## Kysely
-Uusi tiedosto `src/lib/public-videos.ts`:
-- Hakee `result_videos`-taulusta rivit `is_public = true`, järjestettynä `created_at desc`, rajoitus 20.
-- Rikastaa jokaisen videon vastaavalla urheilijalla + tuloksella hakemalla `athlete_results`:sta `athlete_key + competition_id + event_name` (+ `sub_category` jos annettu). Otetaan uusin (`captured_at desc`) match.
-- Palauttaa: `{ id, youtube_video_id, youtube_url, created_at, athlete_key, surname, firstname, organization, event_name, age_class, result_text, result_rank, competition_name, competition_date, competition_id }`.
-- Käyttää selainpuolen `supabase`-clientia (julkinen anon-luku sallittu politiikalla).
+## Tietokantamuutokset
+Uusi migraatio `result_videos`-tauluun:
+- Lisätään sarake `event_category text` (nullable aluksi, backfilloidaan `athlete_results`:n perusteella).
+- Lisätään sarake `heat_key text` (nullable) — juoksulajien erätunniste (`<roundId>` tai `<roundId>|<heatIndex>`).
+- Lisätään trigger `enforce_public_only_for_track`: `IF NEW.is_public AND coalesce(NEW.event_category,'') NOT IN ('Track','Relay') THEN RAISE EXCEPTION ...` — pakottaa yksilölajien videot yksityisiksi.
+- RLS pysyy: julkinen luku sallii `is_public=true`; DB estää julkiseksi merkitsemisen kentän/hyppylajeille.
+- Ei uusia GRANTeja — sarakemuutos vain.
 
-## Uusi komponentti
-`src/components/PublicVideosSection.tsx`:
-- React Query key `["public-videos"]`, `staleTime: 60_000`.
-- Otsikko "Päivän videot" + pieni kuvake (Youtube).
-- Jos ei videoita: näytä lyhyt ohje ("Ei vielä julkisia suoritusvideoita — lisää omat urheilijaseurannassa ja aseta julkiseksi.").
-- Muutoin: vaakasuunnassa vieritettävä lista korteista (mobiili) / grid `sm:grid-cols-2 lg:grid-cols-3` (desktop).
-  - Kortti: YouTube-thumbnail (`https://i.ytimg.com/vi/{id}/mqdefault.jpg`) 16:9, päällä Play-ikoni.
-  - Alle: `Sukunimi Etunimi` · `Seura`, sitten `event_name age_class` ja tulos + sija.
-  - Kortin klikkaus avaa `Dialog`in jossa iframe-embed (samat asetukset kuin `ResultVideoButton`).
-- Filtteröi pois duplikaatit samasta (athlete_key, competition_id, event_name, sub_category) — näyttää uusimman videon per suoritus.
-- Näytetään vain videot, joiden `created_at` on **viimeisen 48 h sisällä** (matchaa "päivän" luonteen ja pysyy tuoreena myös illan puolella eri aikavyöhykkeissä).
+## Lib-muutokset
 
-## Sijoitus etusivulla
-`src/routes/index.tsx`, rivi ~419: uusi `<PublicVideosSection />` `LiveCompetitionsSection`in ja `SeasonStatsSection`in väliin. Näytetään vain kun `!isOfficial` (kuten muut päivän lohkot).
+### `src/lib/result-videos.ts`
+- Lisää `event_category` ja `heat_key` `ResultVideo`-tyyppiin ja `insertResultVideo` / `updateResultVideo`-payloadeihin.
+- `insertResultVideo` saa uudet parametrit `eventCategory: string`, `heatKey?: string | null`; jos `isPublic && !isTrackCategory(eventCategory)` → heitä virhe ennen tietokantaa (UX-tason ehkäisy).
+- Uusi helper `isTrackCategory(c) = c === 'Track' || c === 'Relay'`.
+- Uusi funktio `fetchHeatVideos(competitionId, heatKeys[])` → julkiset + omat videot annetuille erille (`.in('heat_key', keys)`).
 
-## Ei tehdä
-- Ei tietokantamuutoksia (RLS sallii jo julkisen luvun).
-- Ei muuteta olemassa olevaa `ResultVideoButton`- tai `watch`/`round`-logiikkaa.
-- Ei kirjautumisvaatimusta — kaikki näkevät julkiset videot.
+### `src/lib/public-videos.ts`
+- Ei muutoksia kyselyyn (julkiset videot ovat jo vain juoksulajien takia enforce-triggerillä).
+- Filter: näytä vain `event_category IN ('Track','Relay')` varmuuden vuoksi.
+
+## Komponenttimuutokset
+
+### `src/components/ResultVideoButton.tsx`
+- Uusi prop `eventCategory: string`.
+- Jos `!isTrackCategory(eventCategory)`: piilota "Julkinen"-toggle sekä lisäys- että muokkauslomakkeista, pakota `isPublic = false`. Näytä pieni infoteksti "Yksilölajin video on aina yksityinen".
+- Julkisten muiden käyttäjien videot näytetään vain track-lajeille (kentällä list on käytännössä aina tyhjä).
+- Kun `heatKey` annetaan, tallenna se videoon ja käytä sitä pääasiallisena avaimena (`athlete_key` voi jäädä nykyiseksi jotta athlete-sivun listaus säilyy).
+
+### `src/routes/watch.tsx`
+- Erotellaan renderöinti event-categoryn mukaan:
+  - **Track/Relay**: yksi videopainike per erä (ei per urheilija). Käytetään heat_keytä `${round.Id}|${heatIndex}`. Painike sijoitetaan erätiedon perään (esim. rivin oikean laidan alle) ja käyttää heat-videokyselyä.
+  - **Field ym.**: nykyinen per-urheilija videopainike, mutta `eventCategory` propina niin että toggle piilotettu.
+- Ei duplikoi useaa painiketta samaan erään: track-erien painike renderöidään vain silloin kun kyseinen erä ei ole vielä rendattu tässä urheilijalistassa (Set `renderedHeats`), tai — yksinkertaisemmin — painike jokaisen track-rivin kohdalla mutta jaettu (sama heat_key) → sama listaus.
+- Käytännön kompromissi: pidetään painike per rivi, mutta se on **jaettu** (kaikilla saman erän urheilijoilla samat videot). Se toteuttaa "eräkohtaisuuden" datatasolla ja käyttäjä huomaa selkeästi että sama linkki jaettu.
+
+### `src/routes/round.$eventId.$roundId.tsx`
+- Sama logiikka: track → heat_key-pohjainen painike per erä, field → per urheilija (private only).
+
+### `src/components/PublicVideosSection.tsx`
+- Ei toiminnallista muutosta — dedup jo tehdään. Voi näyttää lisäksi "Erän tulokset" -linkin.
+
+## Etusivun indikointi
+- Uusi kevyt kysely `fetchPublicVideoIndex()` → palauttaa Set-muodossa avaimet `${competition_id}|${event_name}|${age_class}` niille, joilla on julkinen video (viimeisen 14 päivän ajalta, rajoitus 500).
+- React Query: `["public-video-index"]`, `staleTime: 60_000`.
+- `TodayStatsSection`, `DailyBestSection`, `ClubTodaySection`: jokaisen tulosrivin viereen renderöidään `<YoutubeBadge />` (pieni punainen Youtube-ikoni) kun avain löytyy indeksistä. Klikkaus vie ao. urheilijan sivulle (nykyinen linkki riittää).
+- Toteutetaan uutena pikkukomponenttina `src/components/VideoAvailableBadge.tsx`.
+
+## Ei muuteta
+- Julkisten videoiden RLS-politiikkaa (jo OK).
+- Athlete-sivun videot (näkyvät edelleen).
+- Muita etusivun lohkoja.
 
 ## Vahvistus
-Playwright-ajolla `/`-sivulle, otetaan kuvakaappaus ja todetaan että "Päivän videot" -lohko näkyy ja renderöi vähintään yhden thumbnailin (kun tietokannassa on julkinen video viimeisen 48 h ajalta).
+1. Migraation jälkeen yritetään INSERT `is_public=true, event_category='Field'` → virhe.
+2. INSERT `is_public=true, event_category='Track'` → onnistuu.
+3. Playwright: `/watch` mobiilissa — juoksulajilla nappi näkyy, kentällä toggle piilotettu.
+4. Etusivun `TodayStats`- ja `DailyBest`-riveille tulee punainen youtube-merkki niille juoksulajeille joilla on julkinen video.

@@ -60,10 +60,12 @@ export function PublicVideosSection() {
               </div>
               <div className="p-3">
                 <p className="truncate text-sm font-bold leading-tight">
-                  {[v.surname, v.firstname].filter(Boolean).join(" ") ||
-                    "Urheilija"}
+                  {v.athlete_key.startsWith("heat:")
+                    ? (v.sub_category || "Eräkooste")
+                    : [v.surname, v.firstname].filter(Boolean).join(" ") ||
+                      "Urheilija"}
                 </p>
-                {v.organization && (
+                {v.organization && !v.athlete_key.startsWith("heat:") && (
                   <p className="truncate text-xs text-muted-foreground">
                     {v.organization}
                   </p>

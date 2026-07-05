@@ -826,7 +826,7 @@ function WatchPage() {
                                 )}
                               </div>
                             </Link>
-                            {(() => {
+                            {e.round.Category !== "Track" && e.round.Category !== "Relay" && (() => {
                               const vids =
                                 videosByAthlete.get(athlete.key)?.get(
                                   videoKey(competitionId, e.round.EventName, ""),
@@ -838,6 +838,7 @@ function WatchPage() {
                                     competitionId={competitionId}
                                     eventName={e.round.EventName}
                                     subCategory=""
+                                    eventCategory={e.round.Category}
                                     videos={vids}
                                     contextLabel={`${e.round.EventName} · ${athlete.surname} ${athlete.firstname}`}
                                     size="sm"

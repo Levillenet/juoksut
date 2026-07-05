@@ -9,6 +9,11 @@ import {
   sortAgeClass,
 } from "@/lib/daily-best";
 import { useCompetitionId } from "@/lib/competition-store";
+import {
+  hasPublicVideo,
+  usePublicVideoIndex,
+  VideoAvailableBadge,
+} from "@/components/VideoAvailableBadge";
 
 const STORAGE_KEY = "dailyBest.ageClasses";
 
@@ -51,6 +56,8 @@ export function DailyBestSection() {
   });
 
   useEffect(() => saveSelected(selected), [selected]);
+
+  const videoIndex = usePublicVideoIndex();
 
   const allClasses = ageClassesQuery.data ?? [];
 
@@ -149,8 +156,11 @@ export function DailyBestSection() {
                               className="flex w-full items-baseline gap-3 px-3 py-2 text-left transition-colors hover:bg-secondary"
                             >
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-semibold">
-                                  {r.event_name}
+                                <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
+                                  <span className="truncate">{r.event_name}</span>
+                                  {hasPublicVideo(videoIndex.data, r.competition_id, r.event_name) && (
+                                    <VideoAvailableBadge size="xs" />
+                                  )}
                                 </p>
                                 <p className="truncate text-[11px] text-muted-foreground">
                                   <Link
