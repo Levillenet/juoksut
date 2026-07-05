@@ -24,7 +24,7 @@ import { DailyBestSection } from "@/components/DailyBestSection";
 import { HarvestStatusBadge } from "@/components/HarvestStatusBadge";
 import { ClubTodaySection } from "@/components/ClubTodaySection";
 import { LiveCompetitionsSection } from "@/components/LiveCompetitionsSection";
-import { PublicVideosSection } from "@/components/PublicVideosSection";
+
 import { SeasonStatsSection } from "@/components/SeasonStatsSection";
 import { Button } from "@/components/ui/button";
 import { NoteLinkInvitesBanner } from "@/components/NoteLinkInvitesBanner";
