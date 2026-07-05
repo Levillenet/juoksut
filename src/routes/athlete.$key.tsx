@@ -433,6 +433,7 @@ function AthletePage() {
                   notes={notesQuery.data}
                   videos={videosQuery.data}
                   myUserId={myUserId}
+                  labelMap={labelMap}
                 />
               </TabsContent>
               <TabsContent value="overview" className="mt-0 space-y-0">
