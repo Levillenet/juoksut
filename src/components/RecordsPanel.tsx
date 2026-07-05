@@ -36,7 +36,7 @@ function formatDateShort(iso: string | null): string {
   }
 }
 
-export function EventGroupView({ group }: { group: EventGroup }) {
+export function EventGroupView({ group, footer }: { group: EventGroup; footer?: React.ReactNode }) {
   // Tulokset uusin ensin, PB-tieto rivikohtaisesti laskettuna oikein
   // (ei luoteta was_pb-kenttään, koska se voi olla ikäluokkakohtainen).
   const rows = useMemo(() => {
