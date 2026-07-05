@@ -20,6 +20,80 @@ export interface PublicVideoItem {
   competition_date: string | null;
   competition_id: number;
   heat_results: HeatResultSnapshot[] | null;
+  stored_heat_results: HeatResultSnapshot[] | null;
+}
+
+type AthleteResultRow = {
+  athlete_key: string;
+  surname: string | null;
+  firstname: string | null;
+  organization: string | null;
+  competition_id: number;
+  competition_name: string | null;
+  competition_date: string | null;
+  event_name: string;
+  event_id: number | null;
+  sub_category: string | null;
+  result_round_name: string | null;
+  age_class: string | null;
+  result_text: string | null;
+  result_rank: number | null;
+  captured_at: string | null;
+};
+
+function normalizeHeatLabel(value: string | null | undefined): string {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[äå]/g, "a")
+    .replace(/ö/g, "o")
+    .replace(/\s+/g, " ");
+}
+
+function resultRowsToSnapshot(rows: AthleteResultRow[]): HeatResultSnapshot[] | null {
+  if (rows.length === 0) return null;
+  const newestByAthlete = new Map<string, AthleteResultRow>();
+  for (const row of rows) {
+    const prev = newestByAthlete.get(row.athlete_key);
+    if (!prev || (row.captured_at ?? "") > (prev.captured_at ?? "")) {
+      newestByAthlete.set(row.athlete_key, row);
+    }
+  }
+  return Array.from(newestByAthlete.values())
+    .sort((a, b) => {
+      const ar = a.result_rank ?? 9999;
+      const br = b.result_rank ?? 9999;
+      if (ar !== br) return ar - br;
+      return `${a.surname ?? ""} ${a.firstname ?? ""}`.localeCompare(
+        `${b.surname ?? ""} ${b.firstname ?? ""}`,
+        "fi",
+      );
+    })
+    .map((row, index) => ({
+      position: index + 1,
+      surname: row.surname ?? null,
+      firstname: row.firstname ?? null,
+      organization: row.organization ?? null,
+      result_text: row.result_text ?? null,
+      result_rank: row.result_rank ?? null,
+    }));
+}
+
+function buildStoredHeatSnapshot(
+  video: { competition_id: number; event_name: string; sub_category: string | null },
+  results: AthleteResultRow[] | null | undefined,
+): HeatResultSnapshot[] | null {
+  const wanted = normalizeHeatLabel(video.sub_category);
+  if (!wanted || !results || results.length === 0) return null;
+  const rows = results.filter((row) => {
+    if (row.competition_id !== video.competition_id || row.event_name !== video.event_name) {
+      return false;
+    }
+    const roundName = normalizeHeatLabel(row.result_round_name);
+    const subCategory = normalizeHeatLabel(row.sub_category);
+    return roundName === wanted || subCategory === wanted;
+  });
+  return resultRowsToSnapshot(rows);
 }
 
 /**
@@ -66,14 +140,16 @@ export async function fetchPublicVideos(opts?: {
   const { data: results } = await supabase
     .from("athlete_results")
     .select(
-      "athlete_key, surname, firstname, organization, competition_id, competition_name, competition_date, event_name, event_id, sub_category, age_class, result_text, result_rank, captured_at",
+      "athlete_key, surname, firstname, organization, competition_id, competition_name, competition_date, event_name, event_id, sub_category, result_round_name, age_class, result_text, result_rank, captured_at",
     )
     .in("competition_id", competitionIds)
     .in("event_name", eventNames);
   void athleteKeys;
 
-  const resultIndex = new Map<string, any>();
-  for (const r of results ?? []) {
+  const typedResults = (results ?? []) as AthleteResultRow[];
+
+  const resultIndex = new Map<string, AthleteResultRow>();
+  for (const r of typedResults) {
     const k = `${r.athlete_key}|${r.competition_id}|${r.event_name}|${r.sub_category ?? ""}`;
     const prev = resultIndex.get(k);
     if (!prev || (r.captured_at ?? "") > (prev.captured_at ?? "")) {
@@ -87,7 +163,7 @@ export async function fetchPublicVideos(opts?: {
     let r = resultIndex.get(k);
     if (!r) {
       // Fallback: same competition+event (best rank / newest)
-      for (const cand of results ?? []) {
+      for (const cand of typedResults) {
         if (
           cand.competition_id === v.competition_id &&
           cand.event_name === v.event_name &&
@@ -122,6 +198,7 @@ export async function fetchPublicVideos(opts?: {
       competition_date: r?.competition_date ?? null,
       competition_id: v.competition_id,
       heat_results: (v.heat_results as HeatResultSnapshot[] | null) ?? null,
+      stored_heat_results: isHeat ? buildStoredHeatSnapshot(v, typedResults) : null,
     };
   });
 }
@@ -150,13 +227,15 @@ export async function fetchPublicVideosForEvent(
   const { data: results } = await supabase
     .from("athlete_results")
     .select(
-      "athlete_key, surname, firstname, organization, competition_id, competition_name, competition_date, event_name, event_id, sub_category, age_class, result_text, result_rank, captured_at",
+      "athlete_key, surname, firstname, organization, competition_id, competition_name, competition_date, event_name, event_id, sub_category, result_round_name, age_class, result_text, result_rank, captured_at",
     )
     .eq("competition_id", competitionId)
     .eq("event_name", eventName);
 
-  const resultIndex = new Map<string, any>();
-  for (const r of results ?? []) {
+  const typedResults = (results ?? []) as AthleteResultRow[];
+
+  const resultIndex = new Map<string, AthleteResultRow>();
+  for (const r of typedResults) {
     const k = `${r.athlete_key}|${r.sub_category ?? ""}`;
     const prev = resultIndex.get(k);
     if (!prev || (r.captured_at ?? "") > (prev.captured_at ?? "")) {
@@ -186,6 +265,7 @@ export async function fetchPublicVideosForEvent(
       competition_date: r?.competition_date ?? null,
       competition_id: v.competition_id,
       heat_results: (v.heat_results as HeatResultSnapshot[] | null) ?? null,
+      stored_heat_results: isHeat ? buildStoredHeatSnapshot(v, typedResults) : null,
     };
   });
 }

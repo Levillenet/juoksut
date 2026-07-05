@@ -1,35 +1,17 @@
-## Toteutus
+Korjaan tämän niin, että kuvassa näkyvä vanha erävideo saa tulokset näkyviin heti palvelussa jo olevista tuloksista.
 
-Migraatio ajettu: `result_videos.heat_results jsonb` -sarake ja `set_heat_results_if_null(uuid, jsonb)` -RPC ovat valmiina.
+Ongelma nyt:
+- Video tietää oikean erän: `athlete_key = heat:400286` / `heat_key = heat:400286`.
+- `athlete_results`-taulussa on jo saman kilpailun ja lajin tulokset valmiina.
+- Nykyinen backfill yrittää hakea tulokset live-lajidatan kautta vain, jos videolle löytyy `event_id`. Tällä vanhalla videolla `event_id` päätellään epäsuorasti yhdestä osumatuloksesta, ja hakupolku voi jäädä tyhjäksi vaikka omassa tietokannassa tulokset ovat olemassa.
 
-### 1. `src/lib/result-videos.ts`
-- Uusi tyyppi `HeatResultSnapshot = { position, surname, firstname, organization, result_text, result_rank }`.
-- `ResultVideo`iin lisää `heat_results: HeatResultSnapshot[] | null`.
-- `SELECT_COLS`iin `heat_results`.
-- `insertResultVideo`iin optionaalinen `heatResults?: HeatResultSnapshot[] | null`; kirjoitetaan riville.
+Toteutus:
+1. Päivitetään `src/lib/public-videos.ts` niin, että erävideoille haetaan mukaan kaikki saman kilpailun, lajin ja erätekstin (`Erä 2`) tulosrivit palvelun `athlete_results`-datasta.
+2. Muodostetaan näistä riveistä `heat_results`-snapshot, jos videolla ei vielä ole tallennettua snapshotia.
+3. Päivitetään `src/routes/videot.tsx` niin, että “Näytä erän tulokset” käyttää ensisijaisesti videolle tallennettua snapshotia ja toissijaisesti näistä omista tulosriveistä muodostettua snapshotia.
+4. Kun vanhan videon tulokset löytyvät omasta datasta, tallennetaan snapshot videolle kerran `set_heat_results_if_null`-kutsulla, jotta jatkossa sitä ei tarvitse hakea uudelleen.
+5. Säilytetään nykyinen live-haun fallback viimeisenä varakeinona, mutta ei anneta sen näyttää “Ei tuloksia”, jos omasta tulostaulusta löytyy tuloksia.
 
-### 2. `src/components/ResultVideoButton.tsx`
-- Uusi prop `heatSnapshot?: HeatResultSnapshot[] | null`.
-- Välitä `VideoForm`iin, sieltä `insertResultVideo`n `heatResults`-parametriin.
-
-### 3. `src/routes/round.$eventId.$roundId.tsx`
-- Erän `ResultVideoButton`-kutsuun rakennetaan `heatSnapshot` `allocs`ista: `position: a.Position, surname: a.Surname, firstname: a.Firstname, organization: a.Organization?.Name ?? null, result_text: a.Result, result_rank: a.ResultRank`.
-
-### 4. `src/lib/public-videos.ts`
-- Lisää `heat_results` `PublicVideoItem`iin ja SELECT-listaan `fetchPublicVideos`issa.
-- Poista `fetchHeatResults` (ei enää käytössä).
-
-### 5. `src/routes/videot.tsx`
-- `HeatResultsToggle` lukee `video.heat_results`ista suoraan — ei enää useQuery/haku.
-- Jos snapshot on olemassa: renderöi listaus (sija, nimi, seura, tulos), järjestä `result_rank` mukaan (nulls last, sitten position).
-- Jos snapshot on null: käynnistä kertaluontoinen backfill:
-  - Fetch live: `fetchEvent(competitionId, event_id)` — mutta event_id ei ole `PublicVideoItem`issa nyt.
-  - **Ratkaisu**: lisää `event_id` `PublicVideoItem`iin (hae `athlete_results`ista competition_id + event_name -parilla, ottaen yhden tuloksen). Tämä on jo `results`-haussa `fetchPublicVideos`issa — lisää `event_id` sen SELECTiin ja välitä.
-  - Etsi live-datasta `Rounds[*].Heats[*]` jonka `Id === heatIdFromAthleteKey`, muunna `Allocations` snapshotiksi.
-  - Kutsu RPC `set_heat_results_if_null(video_id, snapshot)` — tallentaa vain jos yhä null.
-  - Näytä tulokset heti UI:ssa; onnistuneen kirjoituksen jälkeen invalidoi `public-videos-archive` -kysely, jolloin seuraavat lataukset saavat snapshotin suoraan.
-- Jos live-fetch epäonnistuu (vanha kisa 404): näytä "Ei tuloksia tallennettu tälle videolle".
-
-### Käytös
-- **Uudet erävideot**: snapshot tallennetaan heti lisäyshetkellä (kohta 3).
-- **Vanhat erävideot**: ensimmäinen käyttäjä joka avaa "Näytä erän tulokset" laukaisee live-haun + RPC-tallennuksen. Seuraavat käyttäjät näkevät ne heti kannasta.
+Tarkistus:
+- Varmistan tietokannasta, että kuvassa näkyvän `T11 60m aidat · Erä 2` -videon tulosrivit muodostuvat oikein.
+- Tarkistan, että laajennus näyttää juoksijat ja tulokset eikä “Ei tuloksia”.

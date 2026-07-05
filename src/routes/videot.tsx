@@ -14,7 +14,7 @@ import {
   type PublicVideoItem,
 } from "@/lib/public-videos";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchEvent } from "@/lib/tuloslista";
+import { fetchEvent, fetchRounds } from "@/lib/tuloslista";
 import type { HeatResultSnapshot } from "@/lib/result-videos";
 import { useQueryClient } from "@tanstack/react-query";
 import { embedUrl } from "@/lib/result-videos";
@@ -339,45 +339,76 @@ function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
     return m ? parseInt(m[1], 10) : null;
   }, [video.athlete_key]);
 
-  const canBackfill = open && !video.heat_results && heatId != null && video.event_id != null;
-  const { data: backfilled, isLoading } = useQuery({
-    queryKey: ["heat-backfill", video.id],
+  const storedRows = video.stored_heat_results ?? null;
+  const canStoreFromResults =
+    open && !video.heat_results && !!storedRows && storedRows.length > 0;
+  const { data: savedStoredRows } = useQuery({
+    queryKey: ["heat-results-store-from-results", video.id],
     queryFn: async () => {
-      const ev = await fetchEvent(video.competition_id, video.event_id!);
-      let allocs: HeatResultSnapshot[] | null = null;
-      for (const round of ev.Rounds ?? []) {
-        for (const heat of round.Heats ?? []) {
-          if (heat.Id === heatId) {
-            allocs = [...heat.Allocations]
-              .sort((a, b) => a.Position - b.Position)
-              .map((a) => ({
-                position: a.Position ?? null,
-                surname: a.Surname ?? null,
-                firstname: a.Firstname ?? null,
-                organization: a.Organization?.Name ?? null,
-                result_text: a.Result ?? null,
-                result_rank: a.ResultRank ?? null,
-              }));
-            break;
-          }
-        }
-        if (allocs) break;
-      }
-      if (allocs && allocs.length > 0) {
-        await supabase.rpc("set_heat_results_if_null", {
-          _video_id: video.id,
-          _snapshot: allocs as any,
-        });
-        qc.invalidateQueries({ queryKey: ["public-videos-archive"] });
-      }
-      return allocs;
+      await supabase.rpc("set_heat_results_if_null", {
+        _video_id: video.id,
+        _snapshot: storedRows as any,
+      });
+      qc.invalidateQueries({ queryKey: ["public-videos-archive"] });
+      return storedRows;
     },
-    enabled: canBackfill,
+    enabled: canStoreFromResults,
     staleTime: Infinity,
     retry: false,
   });
 
-  const rows = video.heat_results ?? backfilled ?? null;
+  const canBackfill =
+    open &&
+    !video.heat_results &&
+    !storedRows &&
+    heatId != null;
+  const { data: backfilled, isLoading } = useQuery({
+    queryKey: ["heat-backfill-v2", video.id, video.event_id ?? "discover"],
+    queryFn: async () => {
+      const eventIds = new Set<number>();
+      if (video.event_id != null) eventIds.add(video.event_id);
+      if (eventIds.size === 0) {
+        const byDate = await fetchRounds(video.competition_id);
+        for (const round of Object.values(byDate).flat()) {
+          if (round.EventName === video.event_name) eventIds.add(round.EventId);
+        }
+      }
+
+      for (const eventId of eventIds) {
+        const ev = await fetchEvent(video.competition_id, eventId);
+        for (const round of ev.Rounds ?? []) {
+          for (const heat of round.Heats ?? []) {
+            if (heat.Id === heatId) {
+              const allocs = [...heat.Allocations]
+                .sort((a, b) => a.Position - b.Position)
+                .map((a) => ({
+                  position: a.Position ?? null,
+                  surname: a.Surname ?? null,
+                  firstname: a.Firstname ?? null,
+                  organization: a.Organization?.Name ?? null,
+                  result_text: a.Result ?? null,
+                  result_rank: a.ResultRank ?? null,
+                }));
+              if (allocs.length > 0) {
+                await supabase.rpc("set_heat_results_if_null", {
+                  _video_id: video.id,
+                  _snapshot: allocs as any,
+                });
+                qc.invalidateQueries({ queryKey: ["public-videos-archive"] });
+              }
+              return allocs;
+            }
+          }
+        }
+      }
+      return null;
+    },
+    enabled: canBackfill,
+    staleTime: 0,
+    retry: false,
+  });
+
+  const rows = video.heat_results ?? savedStoredRows ?? storedRows ?? backfilled ?? null;
   const sorted = useMemo(() => {
     if (!rows) return null;
     return [...rows].sort((a, b) => {
