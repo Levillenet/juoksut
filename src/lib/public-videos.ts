@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { HeatResultSnapshot } from "@/lib/result-videos";
 
 export interface PublicVideoItem {
   id: string;
@@ -10,6 +11,7 @@ export interface PublicVideoItem {
   firstname: string | null;
   organization: string | null;
   event_name: string;
+  event_id: number | null;
   age_class: string | null;
   sub_category: string | null;
   result_text: string | null;
@@ -17,6 +19,7 @@ export interface PublicVideoItem {
   competition_name: string | null;
   competition_date: string | null;
   competition_id: number;
+  heat_results: HeatResultSnapshot[] | null;
 }
 
 /**
@@ -36,7 +39,7 @@ export async function fetchPublicVideos(opts?: {
   const { data: vids, error } = await supabase
     .from("result_videos")
     .select(
-      "id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, created_at",
+      "id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, created_at, heat_results",
     )
     .eq("is_public", true)
     .gte("created_at", sinceIso)
@@ -63,7 +66,7 @@ export async function fetchPublicVideos(opts?: {
   const { data: results } = await supabase
     .from("athlete_results")
     .select(
-      "athlete_key, surname, firstname, organization, competition_id, competition_name, competition_date, event_name, sub_category, age_class, result_text, result_rank, captured_at",
+      "athlete_key, surname, firstname, organization, competition_id, competition_name, competition_date, event_name, event_id, sub_category, age_class, result_text, result_rank, captured_at",
     )
     .in("competition_id", competitionIds)
     .in("event_name", eventNames);
@@ -110,6 +113,7 @@ export async function fetchPublicVideos(opts?: {
       firstname: isHeat ? null : r?.firstname ?? null,
       organization: isHeat ? null : r?.organization ?? null,
       event_name: v.event_name,
+      event_id: r?.event_id ?? null,
       age_class: r?.age_class ?? null,
       sub_category: v.sub_category ?? null,
       result_text: isHeat ? null : r?.result_text ?? null,
@@ -117,64 +121,9 @@ export async function fetchPublicVideos(opts?: {
       competition_name: r?.competition_name ?? null,
       competition_date: r?.competition_date ?? null,
       competition_id: v.competition_id,
+      heat_results: (v.heat_results as HeatResultSnapshot[] | null) ?? null,
     };
   });
-}
-
-export interface HeatResultRow {
-  athlete_key: string;
-  surname: string | null;
-  firstname: string | null;
-  organization: string | null;
-  result_text: string | null;
-  result_rank: number | null;
-  age_class: string | null;
-}
-
-/**
- * Fetch all athlete results for a specific heat (competition + event + sub_category).
- * Deduplicated by athlete_key (newest captured_at), sorted by result_rank.
- */
-export async function fetchHeatResults(
-  competitionId: number,
-  eventName: string,
-  subCategory: string | null,
-): Promise<HeatResultRow[]> {
-  let query = supabase
-    .from("athlete_results")
-    .select(
-      "athlete_key, surname, firstname, organization, result_text, result_rank, age_class, sub_category, captured_at",
-    )
-    .eq("competition_id", competitionId)
-    .eq("event_name", eventName);
-  if (subCategory) query = query.eq("sub_category", subCategory);
-  else query = query.is("sub_category", null);
-  const { data, error } = await query;
-  if (error) throw error;
-
-  const byKey = new Map<string, any>();
-  for (const r of data ?? []) {
-    if (r.athlete_key?.startsWith("heat:")) continue;
-    const prev = byKey.get(r.athlete_key);
-    if (!prev || (r.captured_at ?? "") > (prev.captured_at ?? "")) {
-      byKey.set(r.athlete_key, r);
-    }
-  }
-  return Array.from(byKey.values())
-    .map((r) => ({
-      athlete_key: r.athlete_key,
-      surname: r.surname,
-      firstname: r.firstname,
-      organization: r.organization,
-      result_text: r.result_text,
-      result_rank: r.result_rank,
-      age_class: r.age_class,
-    }))
-    .sort((a, b) => {
-      const ar = a.result_rank ?? 9999;
-      const br = b.result_rank ?? 9999;
-      return ar - br;
-    });
 }
 
 /**
@@ -188,7 +137,7 @@ export async function fetchPublicVideosForEvent(
   const { data: vids, error } = await supabase
     .from("result_videos")
     .select(
-      "id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, created_at",
+      "id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, created_at, heat_results",
     )
     .eq("is_public", true)
     .eq("competition_id", competitionId)
@@ -201,7 +150,7 @@ export async function fetchPublicVideosForEvent(
   const { data: results } = await supabase
     .from("athlete_results")
     .select(
-      "athlete_key, surname, firstname, organization, competition_id, competition_name, competition_date, event_name, sub_category, age_class, result_text, result_rank, captured_at",
+      "athlete_key, surname, firstname, organization, competition_id, competition_name, competition_date, event_name, event_id, sub_category, age_class, result_text, result_rank, captured_at",
     )
     .eq("competition_id", competitionId)
     .eq("event_name", eventName);
@@ -228,6 +177,7 @@ export async function fetchPublicVideosForEvent(
       firstname: isHeat ? null : r?.firstname ?? null,
       organization: isHeat ? null : r?.organization ?? null,
       event_name: v.event_name,
+      event_id: r?.event_id ?? null,
       age_class: r?.age_class ?? null,
       sub_category: v.sub_category ?? null,
       result_text: isHeat ? null : r?.result_text ?? null,
@@ -235,7 +185,9 @@ export async function fetchPublicVideosForEvent(
       competition_name: r?.competition_name ?? null,
       competition_date: r?.competition_date ?? null,
       competition_id: v.competition_id,
+      heat_results: (v.heat_results as HeatResultSnapshot[] | null) ?? null,
     };
   });
 }
+
 

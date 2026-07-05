@@ -21,6 +21,7 @@ import {
   isTrackCategory,
   parseYoutubeId,
   updateResultVideo,
+  type HeatResultSnapshot,
   type ResultVideo,
 } from "@/lib/result-videos";
 
@@ -34,6 +35,8 @@ interface Props {
   eventCategory?: string | null;
   /** Optional heat key marker (e.g. `heat:1234`) for heat-level videos. */
   heatKey?: string | null;
+  /** Snapshot of heat participants + results, stored with new videos. */
+  heatSnapshot?: HeatResultSnapshot[] | null;
   /** All videos visible for this result slot (own + public from others). */
   videos: ResultVideo[];
   /** Label used in dialog header. */
@@ -49,6 +52,7 @@ export function ResultVideoButton({
   subCategory,
   eventCategory,
   heatKey,
+  heatSnapshot,
   videos,
   contextLabel,
   size = "xs",
@@ -149,6 +153,7 @@ export function ResultVideoButton({
                   subCategory={subCategory}
                   eventCategory={eventCategory ?? null}
                   heatKey={heatKey ?? null}
+                  heatSnapshot={heatSnapshot ?? null}
                   canBePublic={canBePublic}
                   invalidationKeys={invalidationKeys}
                 />
@@ -297,6 +302,7 @@ function VideoForm({
   subCategory,
   eventCategory,
   heatKey,
+  heatSnapshot,
   canBePublic,
   invalidationKeys,
   editingId,
@@ -310,6 +316,7 @@ function VideoForm({
   subCategory: string;
   eventCategory: string | null;
   heatKey: string | null;
+  heatSnapshot?: HeatResultSnapshot[] | null;
   canBePublic: boolean;
   invalidationKeys: readonly (readonly unknown[])[];
   editingId?: string;
@@ -327,6 +334,7 @@ function VideoForm({
     qc.invalidateQueries({ queryKey: ["athlete-videos", athleteKey] });
     qc.invalidateQueries({ queryKey: ["public-videos"] });
     qc.invalidateQueries({ queryKey: ["public-video-index"] });
+    qc.invalidateQueries({ queryKey: ["public-videos-archive"] });
   };
 
   const save = useMutation({
@@ -346,6 +354,7 @@ function VideoForm({
             isPublic: canBePublic && isPublic,
             eventCategory,
             heatKey,
+            heatResults: heatSnapshot ?? null,
           }),
     onSuccess: () => {
       toast.success("Video tallennettu");

@@ -1,5 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export interface HeatResultSnapshot {
+  position: number | null;
+  surname: string | null;
+  firstname: string | null;
+  organization: string | null;
+  result_text: string | null;
+  result_rank: number | null;
+}
+
 export interface ResultVideo {
   id: string;
   user_id: string;
@@ -12,6 +21,7 @@ export interface ResultVideo {
   is_public: boolean;
   event_category: string | null;
   heat_key: string | null;
+  heat_results: HeatResultSnapshot[] | null;
   updated_at: string;
 }
 
@@ -35,7 +45,7 @@ export function heatAthleteKey(heatId: number | string): string {
 }
 
 const SELECT_COLS =
-  "id, user_id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, is_public, event_category, heat_key, updated_at";
+  "id, user_id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, is_public, event_category, heat_key, heat_results, updated_at";
 
 /** Parse a YouTube URL/id and return the 11-char video id, or null. */
 export function parseYoutubeId(input: string): string | null {
@@ -97,6 +107,7 @@ export async function insertResultVideo(params: {
   isPublic: boolean;
   eventCategory: string | null;
   heatKey?: string | null;
+  heatResults?: HeatResultSnapshot[] | null;
 }): Promise<ResultVideo> {
   const { data: auth } = await supabase.auth.getUser();
   const userId = auth.user?.id;
@@ -123,6 +134,7 @@ export async function insertResultVideo(params: {
       is_public: params.isPublic,
       event_category: params.eventCategory ?? null,
       heat_key: params.heatKey ?? null,
+      heat_results: (params.heatResults && params.heatResults.length > 0 ? params.heatResults : null) as any,
     })
     .select(SELECT_COLS)
     .single();
