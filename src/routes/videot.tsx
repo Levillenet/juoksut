@@ -295,7 +295,7 @@ function VideotPage() {
       )}
 
       <Dialog open={!!active} onOpenChange={(o) => !o && setActive(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Youtube className="h-5 w-5 text-red-600" />
@@ -309,6 +309,7 @@ function VideotPage() {
               <DialogDescription className="truncate">
                 {active.age_class ? `${active.age_class} ` : ""}
                 {active.event_name}
+                {active.sub_category ? ` · ${active.sub_category}` : ""}
                 {active.result_text ? ` · ${active.result_text}` : ""}
                 {active.competition_name ? ` · ${active.competition_name}` : ""}
               </DialogDescription>
@@ -325,6 +326,19 @@ function VideotPage() {
               />
             </div>
           )}
+          {active?.athlete_key.startsWith("heat:") && (
+            <div className="rounded-md border bg-card/50 px-3 py-3">
+              <div className="mb-2 flex items-baseline justify-between gap-2">
+                <h2 className="text-sm font-semibold">
+                  {active.sub_category ? `${active.sub_category} · ` : ""}Tulokset
+                </h2>
+                <span className="text-xs text-muted-foreground">
+                  {active.age_class ? `${active.age_class} ` : ""}{active.event_name}
+                </span>
+              </div>
+              <HeatResultsList video={active} enabled />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
@@ -333,6 +347,32 @@ function VideotPage() {
 
 function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
   const [open, setOpen] = useState(false);
+  return (
+    <div className="border-t">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        className="flex w-full items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted/50"
+        aria-expanded={open}
+      >
+        <span>{open ? "Piilota erän tulokset" : "Näytä erän tulokset"}</span>
+        <ChevronDown
+          className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && (
+        <div className="px-3 pb-3 pt-1 text-xs">
+          <HeatResultsList video={video} enabled={open} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HeatResultsList({ video, enabled }: { video: PublicVideoItem; enabled: boolean }) {
   const qc = useQueryClient();
   const heatId = useMemo(() => {
     const m = video.athlete_key.match(/^heat:(\d+)$/);
@@ -341,7 +381,7 @@ function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
 
   const storedRows = video.stored_heat_results ?? null;
   const canStoreFromResults =
-    open && !video.heat_results && !!storedRows && storedRows.length > 0;
+    enabled && !video.heat_results && !!storedRows && storedRows.length > 0;
   const { data: savedStoredRows } = useQuery({
     queryKey: ["heat-results-store-from-results", video.id],
     queryFn: async () => {
@@ -358,7 +398,7 @@ function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
   });
 
   const canBackfill =
-    open &&
+    enabled &&
     !video.heat_results &&
     !storedRows &&
     heatId != null;
@@ -423,63 +463,46 @@ function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
       return ar - br;
     });
   }, [rows]);
-
-
   return (
-    <div className="border-t">
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((v) => !v);
-        }}
-        className="flex w-full items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted/50"
-        aria-expanded={open}
-      >
-        <span>{open ? "Piilota erän tulokset" : "Näytä erän tulokset"}</span>
-        <ChevronDown
-          className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-      {open && (
-        <div className="px-3 pb-3 pt-1 text-xs">
-          {!sorted && isLoading ? (
-            <p className="text-muted-foreground">Ladataan…</p>
-          ) : !sorted || sorted.length === 0 ? (
-            <p className="text-muted-foreground">Ei tuloksia tallennettu tälle videolle.</p>
-          ) : (
-            <ul className="space-y-1">
-              {sorted.map((r, i) => (
-                <li
-                  key={`${r.surname ?? ""}-${r.firstname ?? ""}-${r.position ?? i}`}
-                  className="flex items-baseline justify-between gap-2"
-                >
-                  <span className="min-w-0 flex-1 truncate">
-                    <span className="tabular-nums text-muted-foreground">
-                      {r.result_rank != null ? `${r.result_rank}.` : "–"}
-                    </span>{" "}
-                    {r.position != null && (
-                      <span className="tabular-nums font-semibold text-foreground/80">
-                        R{r.position}
-                      </span>
-                    )}{" "}
-                    <span className="font-medium">
-                      {[r.surname, r.firstname].filter(Boolean).join(" ") || "—"}
-                    </span>
-                    {r.organization && (
-                      <span className="text-muted-foreground"> · {r.organization}</span>
-                    )}
-                  </span>
-                  <span className="shrink-0 font-bold tabular-nums">
-                    {r.result_text || "—"}
-                  </span>
-
-                </li>
-              ))}
-            </ul>
-          )}
+    <>
+      {!sorted && isLoading ? (
+        <p className="text-muted-foreground">Ladataan…</p>
+      ) : !sorted || sorted.length === 0 ? (
+        <p className="text-muted-foreground">Ei tuloksia tallennettu tälle videolle.</p>
+      ) : (
+        <div className="overflow-hidden rounded-md border">
+          <div className="grid grid-cols-[3.5rem_3.5rem_minmax(0,1fr)_4.5rem] gap-2 bg-muted/50 px-2 py-1.5 text-[11px] font-semibold uppercase text-muted-foreground">
+            <span>Sija</span>
+            <span>Rata</span>
+            <span>Nimi</span>
+            <span className="text-right">Tulos</span>
+          </div>
+          <ul className="divide-y">
+            {sorted.map((r, i) => (
+              <li
+                key={`${r.surname ?? ""}-${r.firstname ?? ""}-${r.position ?? i}`}
+                className="grid grid-cols-[3.5rem_3.5rem_minmax(0,1fr)_4.5rem] items-baseline gap-2 px-2 py-1.5"
+              >
+                <span className="tabular-nums text-muted-foreground">
+                  {r.result_rank != null ? `${r.result_rank}.` : "–"}
+                </span>
+                <span className="tabular-nums font-semibold text-foreground/80">
+                  {r.position != null ? `R${r.position}` : "–"}
+                </span>
+                <span className="min-w-0 truncate font-medium">
+                  {[r.surname, r.firstname].filter(Boolean).join(" ") || "—"}
+                  {r.organization && (
+                    <span className="text-muted-foreground"> · {r.organization}</span>
+                  )}
+                </span>
+                <span className="text-right font-bold tabular-nums">
+                  {r.result_text || "—"}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
-    </div>
+    </>
   );
 }
