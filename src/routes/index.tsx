@@ -117,6 +117,17 @@ function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; is
       )}
       {!isOfficial && (
         <Link
+          to="/videot"
+          className="rounded-xl border-2 border-red-500/40 bg-red-500/5 px-4 py-2.5 text-center hover:bg-red-500/10 sm:col-span-2"
+        >
+          <div className="text-sm font-semibold leading-tight text-red-700 dark:text-red-400">🎬 Päivän videot</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            Selaa viimeisimpiä julkisia juoksusuorituksia päivän ja kilpailun mukaan
+          </div>
+        </Link>
+      )}
+      {!isOfficial && (
+        <Link
           to="/search"
           className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
         >
