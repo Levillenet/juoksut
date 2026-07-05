@@ -618,6 +618,7 @@ function ScoreboardLive() {
                 category={ev?.EventCategory ?? ""}
                 competitionId={competitionId}
                 eventName={ev?.Name ?? ""}
+                ageClass={ev?.Group ?? ""}
                 scrollMode={scrollMode}
               />
 
