@@ -597,9 +597,32 @@ function AthletePage() {
                 Lajikohtainen kehitys
               </h2>
               <ul className="space-y-3">
-                {groups.map((g) => (
-                  <EventGroupView key={`${g.eventName}|${g.subCategory}`} group={g} />
-                ))}
+                {groups.map((g) => {
+                  const all = notesQuery.data?.get(
+                    eventScopeKey(g.eventName, g.subCategory ?? ""),
+                  ) ?? [];
+                  const own = all.find((n) => n.user_id === myUserId) ?? null;
+                  const others = all.filter((n) => n.user_id !== myUserId);
+                  return (
+                    <EventGroupView
+                      key={`${g.eventName}|${g.subCategory}`}
+                      group={g}
+                      footer={
+                        <NoteEditor
+                          athleteKey={key}
+                          competitionId={0}
+                          eventName={g.eventName}
+                          subCategory={g.subCategory ?? ""}
+                          placeholder={placeholderForEventOverall(g.eventName, g.category)}
+                          addLabel="Lisää lajitason muistiinpano (tekniikka, kausitavoite)"
+                          note={own}
+                          otherNotes={others}
+                          labelMap={labelMap}
+                        />
+                      }
+                    />
+                  );
+                })}
               </ul>
             </section>
 
@@ -609,41 +632,59 @@ function AthletePage() {
                 Kilpailut ({competitions.length})
               </h2>
               <ul className="space-y-2">
-                {competitions.map((c) => (
-                  <li key={c.id} className="rounded-lg border bg-card p-3">
-                    <div className="mb-2 flex items-baseline justify-between gap-2">
-                      <p className="truncate text-sm font-semibold">{c.name}</p>
-                      <p className="shrink-0 text-xs text-muted-foreground">
-                        {fmtDate(c.date)}
-                      </p>
-                    </div>
-                    {c.location && (
-                      <p className="mb-2 flex items-center gap-1 text-[11px] text-muted-foreground">
-                        <MapPin className="h-3 w-3" /> {c.location}
-                      </p>
-                    )}
-                    <ul className="divide-y divide-border text-xs">
-                      {c.results.map((r) => {
-                        const all = notesQuery.data?.get(
-                          noteKey(r.competition_id, r.event_name, r.sub_category ?? ""),
-                        ) ?? [];
-                        const own = all.find((n) => n.user_id === myUserId) ?? null;
-                        const others = all.filter((n) => n.user_id !== myUserId);
-                        return (
-                          <CompetitionResultRow
-                            key={r.id}
-                            row={r}
-                            athleteKey={key}
-                            note={own}
-                            otherNotes={others}
-                            labelMap={labelMap}
-                            seasonTop={seasonTop.get(r.id) ?? null}
-                          />
-                        );
-                      })}
-                    </ul>
-                  </li>
-                ))}
+                {competitions.map((c) => {
+                  const compAll = notesQuery.data?.get(competitionScopeKey(c.id)) ?? [];
+                  const compOwn = compAll.find((n) => n.user_id === myUserId) ?? null;
+                  const compOthers = compAll.filter((n) => n.user_id !== myUserId);
+                  return (
+                    <li key={c.id} className="rounded-lg border bg-card p-3">
+                      <div className="mb-2 flex items-baseline justify-between gap-2">
+                        <p className="truncate text-sm font-semibold">{c.name}</p>
+                        <p className="shrink-0 text-xs text-muted-foreground">
+                          {fmtDate(c.date)}
+                        </p>
+                      </div>
+                      {c.location && (
+                        <p className="mb-2 flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <MapPin className="h-3 w-3" /> {c.location}
+                        </p>
+                      )}
+                      <div className="mb-2">
+                        <NoteEditor
+                          athleteKey={key}
+                          competitionId={c.id}
+                          eventName=""
+                          subCategory=""
+                          placeholder={placeholderForCompetition()}
+                          addLabel="Lisää kilpailun muistiinpano (olosuhteet, matka, tunnelma)"
+                          note={compOwn}
+                          otherNotes={compOthers}
+                          labelMap={labelMap}
+                        />
+                      </div>
+                      <ul className="divide-y divide-border text-xs">
+                        {c.results.map((r) => {
+                          const all = notesQuery.data?.get(
+                            noteKey(r.competition_id, r.event_name, r.sub_category ?? ""),
+                          ) ?? [];
+                          const own = all.find((n) => n.user_id === myUserId) ?? null;
+                          const others = all.filter((n) => n.user_id !== myUserId);
+                          return (
+                            <CompetitionResultRow
+                              key={r.id}
+                              row={r}
+                              athleteKey={key}
+                              note={own}
+                              otherNotes={others}
+                              labelMap={labelMap}
+                              seasonTop={seasonTop.get(r.id) ?? null}
+                            />
+                          );
+                        })}
+                      </ul>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           </>
