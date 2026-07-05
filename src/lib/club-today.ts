@@ -24,6 +24,7 @@ export interface ClubTodayRow {
   result_rank: number | null;
   result_round_name: string;
   was_pb: boolean;
+  was_district_record: boolean;
 }
 
 export interface ClubOption {
