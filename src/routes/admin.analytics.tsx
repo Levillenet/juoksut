@@ -131,6 +131,8 @@ function Page() {
     const last7dUsers = new Set<string>();
     let last7dEvents = 0;
     const last24h = Date.now() - 24 * 3600 * 1000;
+    const onlineWindow = Date.now() - 5 * 60 * 1000;
+    const onlineSet = new Set<string>();
     let last24hCount = 0;
     for (const r of rows) {
       byEvent.set(r.event_name, (byEvent.get(r.event_name) ?? 0) + 1);
