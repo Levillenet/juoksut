@@ -425,6 +425,22 @@ function AthletePage() {
               />
             </section>
 
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="mb-4 grid w-full grid-cols-2 sm:w-auto">
+                <TabsTrigger value="overview">Yhteenveto</TabsTrigger>
+                <TabsTrigger value="analytics">Analytiikka</TabsTrigger>
+              </TabsList>
+              <TabsContent value="analytics" className="mt-0">
+                <AthleteAnalytics
+                  athleteKey={key}
+                  rows={rows}
+                  notes={notesQuery.data}
+                  videos={videosQuery.data}
+                  myUserId={myUserId}
+                />
+              </TabsContent>
+              <TabsContent value="overview" className="mt-0 space-y-0">
+
             {/* Top PBs summary */}
             {allPbs.length > 0 && (
               <section className="mb-6">
