@@ -20,11 +20,19 @@ export interface PublicVideoItem {
 }
 
 /**
- * Fetch recent public result videos (last 48h) and enrich each with the
- * matching athlete_results row (athlete + result).
+ * Fetch recent public result videos and enrich each with the matching
+ * athlete_results row (athlete + result).
+ *
+ * @param opts.sinceHours Lookback window in hours. Defaults to 48.
+ * @param opts.limit Max rows returned. Defaults to 30.
  */
-export async function fetchPublicVideos(): Promise<PublicVideoItem[]> {
-  const sinceIso = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
+export async function fetchPublicVideos(opts?: {
+  sinceHours?: number;
+  limit?: number;
+}): Promise<PublicVideoItem[]> {
+  const sinceHours = opts?.sinceHours ?? 48;
+  const limit = opts?.limit ?? 30;
+  const sinceIso = new Date(Date.now() - sinceHours * 3600 * 1000).toISOString();
   const { data: vids, error } = await supabase
     .from("result_videos")
     .select(
@@ -33,8 +41,9 @@ export async function fetchPublicVideos(): Promise<PublicVideoItem[]> {
     .eq("is_public", true)
     .gte("created_at", sinceIso)
     .order("created_at", { ascending: false })
-    .limit(30);
+    .limit(limit);
   if (error) throw error;
+
   const rows = vids ?? [];
   if (rows.length === 0) return [];
 
