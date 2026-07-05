@@ -141,7 +141,12 @@ export async function updateResultVideo(
       "Julkinen videolinkki on sallittu vain juoksu- ja viestilajeille.",
     );
   }
-  const patch: Record<string, unknown> = {
+  const patch: {
+    youtube_url: string;
+    youtube_video_id: string;
+    is_public: boolean;
+    event_category?: string | null;
+  } = {
     youtube_url: params.youtubeUrl.trim(),
     youtube_video_id: videoId,
     is_public: params.isPublic,
