@@ -411,13 +411,19 @@ function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
   const rows = video.heat_results ?? savedStoredRows ?? storedRows ?? backfilled ?? null;
   const sorted = useMemo(() => {
     if (!rows) return null;
+    const hasAnyLane = rows.some((r) => r.position != null);
     return [...rows].sort((a, b) => {
+      if (hasAnyLane) {
+        const ap = a.position ?? 9999;
+        const bp = b.position ?? 9999;
+        if (ap !== bp) return ap - bp;
+      }
       const ar = a.result_rank ?? 9999;
       const br = b.result_rank ?? 9999;
-      if (ar !== br) return ar - br;
-      return (a.position ?? 9999) - (b.position ?? 9999);
+      return ar - br;
     });
   }, [rows]);
+
 
   return (
     <div className="border-t">
