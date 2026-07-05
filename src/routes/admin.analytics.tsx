@@ -56,11 +56,16 @@ function Page() {
   });
 
   const usersQ = useQuery({
-    queryKey: ["admin", "auth-users"],
+    queryKey: ["admin", "auth-users-activity"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("list_auth_users");
+      const { data, error } = await supabase.rpc("list_auth_users_with_activity");
       if (error) throw error;
-      return (data ?? []) as { user_id: string; email: string; last_sign_in_at: string | null }[];
+      return (data ?? []) as {
+        user_id: string;
+        email: string;
+        last_sign_in_at: string | null;
+        last_seen_at: string | null;
+      }[];
     },
   });
 
@@ -75,9 +80,13 @@ function Page() {
   const downloadUsersCsv = () => {
     const list = usersQ.data ?? [];
     const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
-    const lines = ["email,last_sign_in_at"];
+    const lines = ["email,last_seen_at,last_sign_in_at"];
     for (const u of list) {
-      lines.push([escape(u.email ?? ""), escape(u.last_sign_in_at ?? "")].join(","));
+      lines.push([
+        escape(u.email ?? ""),
+        escape(u.last_seen_at ?? ""),
+        escape(u.last_sign_in_at ?? ""),
+      ].join(","));
     }
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -87,6 +96,7 @@ function Page() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
 
   const rows = q.data ?? [];
 
