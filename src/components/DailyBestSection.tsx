@@ -174,9 +174,21 @@ export function DailyBestSection() {
                                   {" "}({r.organization}) · {r.competition_name}
                                 </p>
                               </div>
-                              <span className="shrink-0 text-base font-bold tabular-nums">
-                                {r.result_text}
-                              </span>
+                              <div className="flex shrink-0 items-center gap-1.5">
+                                {r.was_pb && (
+                                  <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400" title="Oma ennätys">
+                                    PB
+                                  </span>
+                                )}
+                                {r.was_district_record && (
+                                  <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary" title="Piirin ennätys">
+                                    PE
+                                  </span>
+                                )}
+                                <span className="text-base font-bold tabular-nums">
+                                  {r.result_text}
+                                </span>
+                              </div>
                             </button>
                           </li>
                         ))}
