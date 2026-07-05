@@ -137,7 +137,7 @@ export async function fetchPublicVideosForEvent(
   const { data: vids, error } = await supabase
     .from("result_videos")
     .select(
-      "id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, created_at",
+      "id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, created_at, heat_results",
     )
     .eq("is_public", true)
     .eq("competition_id", competitionId)
@@ -150,7 +150,7 @@ export async function fetchPublicVideosForEvent(
   const { data: results } = await supabase
     .from("athlete_results")
     .select(
-      "athlete_key, surname, firstname, organization, competition_id, competition_name, competition_date, event_name, sub_category, age_class, result_text, result_rank, captured_at",
+      "athlete_key, surname, firstname, organization, competition_id, competition_name, competition_date, event_name, event_id, sub_category, age_class, result_text, result_rank, captured_at",
     )
     .eq("competition_id", competitionId)
     .eq("event_name", eventName);
@@ -177,6 +177,7 @@ export async function fetchPublicVideosForEvent(
       firstname: isHeat ? null : r?.firstname ?? null,
       organization: isHeat ? null : r?.organization ?? null,
       event_name: v.event_name,
+      event_id: r?.event_id ?? null,
       age_class: r?.age_class ?? null,
       sub_category: v.sub_category ?? null,
       result_text: isHeat ? null : r?.result_text ?? null,
@@ -184,6 +185,10 @@ export async function fetchPublicVideosForEvent(
       competition_name: r?.competition_name ?? null,
       competition_date: r?.competition_date ?? null,
       competition_id: v.competition_id,
+      heat_results: (v.heat_results as HeatResultSnapshot[] | null) ?? null,
+    };
+  });
+}
     };
   });
 }
