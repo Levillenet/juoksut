@@ -810,6 +810,14 @@ function CompetitionResultRow({
             </span>
           )}
           {seasonTop && <SeasonTopBadge flag={seasonTop} />}
+          <ResultVideoButton
+            athleteKey={athleteKey}
+            competitionId={row.competition_id}
+            eventName={row.event_name}
+            subCategory={row.sub_category ?? ""}
+            videos={videos}
+            contextLabel={`${row.event_name} · ${row.competition_name}`}
+          />
         </span>
       </div>
       <NoteEditor
