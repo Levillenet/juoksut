@@ -76,11 +76,8 @@ export function useAnnouncerData() {
     );
   }, [data, todayKey]);
 
-  const inProgressAll = todayRounds.filter((r) => r.Status === "Progress");
-  const inProgress = showRunning
-    ? inProgressAll
-    : inProgressAll.filter((r) => r.Category !== "Track");
-  const completedAll = todayRounds.filter((r) => r.Status === "Official").reverse();
+  const scheduleInProgress = todayRounds.filter((r) => r.Status === "Progress");
+  const scheduleCompleted = todayRounds.filter((r) => r.Status === "Official");
 
   const dismissKey = `announcer-dismissed-${competitionId}-${todayKey}`;
   const [dismissedCompletedIds, setDismissedCompletedIds] = useState<Set<number>>(
