@@ -418,7 +418,7 @@ function Index({ role, isAdmin = false, isPlanner = false }: { role: Role; isAdm
             
             <ClubTodaySection />
             <LiveCompetitionsSection />
-            <PublicVideosSection />
+            
             <SeasonStatsSection />
 
 
