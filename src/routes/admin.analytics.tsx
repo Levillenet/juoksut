@@ -213,6 +213,7 @@ function Page() {
     return {
       total: rows.length,
       last24h: last24hCount,
+      online: onlineSet.size,
       uniqueUsers: uniqueUsers.size,
       allUniqueVisitors: allUniqueVisitors.size,
       todayUsers: todayUsers.size,
