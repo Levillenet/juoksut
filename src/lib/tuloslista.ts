@@ -100,6 +100,7 @@ export interface Enrollment {
   Confirmed: boolean;
   NotInCompetition: boolean;
   Number: string | null;
+  TeamId?: number | null;
   Name: string;
   Firstname: string;
   Surname: string;
@@ -108,6 +109,7 @@ export interface Enrollment {
   Organization: { Name: string; NameShort: string; Id: number };
   Athletes?: RelayAthlete[];
 }
+
 
 /** Format relay leg list: "1. Etu Suku · 2. ... · 3. ... · 4. ...".
  * Uses AthleteOrders first, falls back to Athletes. Returns null if no team
