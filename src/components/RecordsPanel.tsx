@@ -213,6 +213,7 @@ export function EventGroupView({ group, footer }: { group: EventGroup; footer?: 
           </tbody>
         </table>
       </div>
+      {footer && <div className="border-t bg-background/40 px-3 py-2">{footer}</div>}
     </li>
   );
 }
