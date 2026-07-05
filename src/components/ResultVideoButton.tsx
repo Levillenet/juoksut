@@ -302,6 +302,7 @@ function VideoForm({
   subCategory,
   eventCategory,
   heatKey,
+  heatSnapshot,
   canBePublic,
   invalidationKeys,
   editingId,
@@ -315,6 +316,7 @@ function VideoForm({
   subCategory: string;
   eventCategory: string | null;
   heatKey: string | null;
+  heatSnapshot?: HeatResultSnapshot[] | null;
   canBePublic: boolean;
   invalidationKeys: readonly (readonly unknown[])[];
   editingId?: string;
@@ -332,6 +334,7 @@ function VideoForm({
     qc.invalidateQueries({ queryKey: ["athlete-videos", athleteKey] });
     qc.invalidateQueries({ queryKey: ["public-videos"] });
     qc.invalidateQueries({ queryKey: ["public-video-index"] });
+    qc.invalidateQueries({ queryKey: ["public-videos-archive"] });
   };
 
   const save = useMutation({
@@ -351,6 +354,7 @@ function VideoForm({
             isPublic: canBePublic && isPublic,
             eventCategory,
             heatKey,
+            heatResults: heatSnapshot ?? null,
           }),
     onSuccess: () => {
       toast.success("Video tallennettu");
