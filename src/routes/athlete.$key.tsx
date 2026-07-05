@@ -724,6 +724,10 @@ function AthletePage() {
                           ) ?? [];
                           const own = all.find((n) => n.user_id === myUserId) ?? null;
                           const others = all.filter((n) => n.user_id !== myUserId);
+                          const vids =
+                            videosQuery.data?.get(
+                              videoKey(r.competition_id, r.event_name, r.sub_category ?? ""),
+                            ) ?? [];
                           return (
                             <CompetitionResultRow
                               key={r.id}
@@ -733,6 +737,7 @@ function AthletePage() {
                               otherNotes={others}
                               labelMap={labelMap}
                               seasonTop={seasonTop.get(r.id) ?? null}
+                              videos={vids}
                             />
                           );
                         })}
