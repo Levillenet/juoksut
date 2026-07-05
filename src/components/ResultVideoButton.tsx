@@ -21,6 +21,7 @@ import {
   isTrackCategory,
   parseYoutubeId,
   updateResultVideo,
+  type HeatResultSnapshot,
   type ResultVideo,
 } from "@/lib/result-videos";
 
