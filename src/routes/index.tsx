@@ -90,6 +90,18 @@ function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; is
           </div>
         </Link>
       )}
+      {isAdmin && (
+        <Link
+          to="/admin/welcome"
+          className="rounded-xl border-2 border-accent-warm-border bg-accent-warm px-4 py-2.5 text-center text-accent-warm-foreground hover:opacity-90"
+        >
+          <div className="text-sm font-semibold leading-tight">Admin · Tervehdysviesti</div>
+          <div className="mt-0.5 text-[11px] opacity-80">
+            Muokkaa kirjautumisen jälkeistä viestiä
+          </div>
+        </Link>
+      )}
+
       {showPlannerLink && (
         <Link
           to="/planner"
