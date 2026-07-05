@@ -225,12 +225,14 @@ function VideoSection({
             competitionId={video.competition_id}
             eventName={video.event_name}
             subCategory={video.sub_category}
+            editingId={video.id}
             initialUrl={video.youtube_url}
             initialIsPublic={video.is_public}
             onDone={() => setEditing(false)}
           />
         </div>
       )}
+
     </div>
   );
 }
