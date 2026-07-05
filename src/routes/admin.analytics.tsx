@@ -412,6 +412,7 @@ function Page() {
                   <thead className="bg-muted/50 text-left">
                     <tr>
                       <th className="p-2">Sähköposti</th>
+                      <th className="p-2">Viimeksi nähty</th>
                       <th className="p-2">Viimeisin kirjautuminen</th>
                     </tr>
                   </thead>
@@ -419,6 +420,11 @@ function Page() {
                     {filteredUsers.map((u) => (
                       <tr key={u.user_id} className="border-t">
                         <td className="p-2">{u.email}</td>
+                        <td className="p-2 whitespace-nowrap text-muted-foreground">
+                          {u.last_seen_at
+                            ? new Date(u.last_seen_at).toLocaleString("fi-FI")
+                            : "—"}
+                        </td>
                         <td className="p-2 whitespace-nowrap text-muted-foreground">
                           {u.last_sign_in_at
                             ? new Date(u.last_sign_in_at).toLocaleString("fi-FI")
@@ -428,11 +434,12 @@ function Page() {
                     ))}
                     {filteredUsers.length === 0 && (
                       <tr>
-                        <td colSpan={2} className="p-2 text-center text-muted-foreground">
+                        <td colSpan={3} className="p-2 text-center text-muted-foreground">
                           Ei käyttäjiä.
                         </td>
                       </tr>
                     )}
+
                   </tbody>
                 </table>
               </div>
