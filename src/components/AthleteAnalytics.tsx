@@ -32,6 +32,12 @@ import { competitionScopeKey, eventScopeKey, noteKey } from "@/lib/athlete-notes
 import type { ResultVideo } from "@/lib/result-videos";
 import { videoKey, embedUrl } from "@/lib/result-videos";
 import { ResultVideoButton } from "@/components/ResultVideoButton";
+import { AthleteNoteEditor } from "@/components/AthleteNoteEditor";
+import {
+  placeholderForCompetition,
+  placeholderForEvent,
+  placeholderForEventOverall,
+} from "@/lib/athlete-notes";
 
 interface Props {
   athleteKey: string;
@@ -39,6 +45,7 @@ interface Props {
   notes: Map<string, AthleteNote[]> | undefined;
   videos: Map<string, ResultVideo[]> | undefined;
   myUserId: string;
+  labelMap?: Map<string, string>;
 }
 
 interface EventOption {
