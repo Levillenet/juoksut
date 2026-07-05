@@ -107,6 +107,7 @@ export async function insertResultVideo(params: {
   isPublic: boolean;
   eventCategory: string | null;
   heatKey?: string | null;
+  heatResults?: HeatResultSnapshot[] | null;
 }): Promise<ResultVideo> {
   const { data: auth } = await supabase.auth.getUser();
   const userId = auth.user?.id;
@@ -133,6 +134,7 @@ export async function insertResultVideo(params: {
       is_public: params.isPublic,
       event_category: params.eventCategory ?? null,
       heat_key: params.heatKey ?? null,
+      heat_results: params.heatResults && params.heatResults.length > 0 ? params.heatResults : null,
     })
     .select(SELECT_COLS)
     .single();
