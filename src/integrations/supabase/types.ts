@@ -1617,6 +1617,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      list_auth_users_with_activity: {
+        Args: never
+        Returns: {
+          email: string
+          last_seen_at: string
+          last_sign_in_at: string
+          user_id: string
+        }[]
+      }
       list_planner_template_competitions: {
         Args: { p_year: number }
         Returns: {
