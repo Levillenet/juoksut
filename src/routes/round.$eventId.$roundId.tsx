@@ -8,6 +8,7 @@ import { ArrowLeft, RefreshCw, Wind } from "lucide-react";
 import { formatRelayLegs, formatTime, STATUS_LABEL, type Heat, type Allocation, type Enrollment } from "@/lib/tuloslista";
 import { RecordBadge } from "@/lib/records";
 import { effectiveRecord } from "@/lib/record-baseline";
+import { useHistoryBaseline } from "@/lib/history-baseline";
 import {
   eventDetailsQueryOptions,
   eventDetailsKey,
