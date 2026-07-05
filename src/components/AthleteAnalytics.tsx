@@ -403,6 +403,7 @@ function ResultDetailSheet({
                   competitionId={row.competition_id}
                   eventName={row.event_name}
                   subCategory={row.sub_category ?? ""}
+                  eventCategory={row.event_category}
                   videos={collected.videos}
                   contextLabel={`${row.event_name} · ${row.competition_name}`}
                   size="sm"
