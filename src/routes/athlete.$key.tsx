@@ -658,6 +658,43 @@ function AthletePage() {
                     <EventGroupView
                       key={`${g.eventName}|${g.subCategory}`}
                       group={g}
+                      rowActions={(row) => {
+                        const rowAll = notesQuery.data?.get(
+                          noteKey(row.competition_id, row.event_name, row.sub_category ?? ""),
+                        ) ?? [];
+                        const rowOwn = rowAll.find((n) => n.user_id === myUserId) ?? null;
+                        const rowOthers = rowAll.filter((n) => n.user_id !== myUserId);
+                        const vids =
+                          videosQuery.data?.get(
+                            videoKey(row.competition_id, row.event_name, row.sub_category ?? ""),
+                          ) ?? [];
+                        return (
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <ResultVideoButton
+                                athleteKey={key}
+                                competitionId={row.competition_id}
+                                eventName={row.event_name}
+                                subCategory={row.sub_category ?? ""}
+                                videos={vids}
+                                contextLabel={`${row.event_name} · ${row.competition_name}`}
+                                size="sm"
+                              />
+                            </div>
+                            <NoteEditor
+                              athleteKey={key}
+                              competitionId={row.competition_id}
+                              eventName={row.event_name}
+                              subCategory={row.sub_category ?? ""}
+                              placeholder={placeholderForEvent(row.event_name, row.event_category)}
+                              addLabel="Lisää muistiinpano"
+                              note={rowOwn}
+                              otherNotes={rowOthers}
+                              labelMap={labelMap}
+                            />
+                          </div>
+                        );
+                      }}
                       footer={
                         <NoteEditor
                           athleteKey={key}
