@@ -134,7 +134,7 @@ export async function insertResultVideo(params: {
       is_public: params.isPublic,
       event_category: params.eventCategory ?? null,
       heat_key: params.heatKey ?? null,
-      heat_results: params.heatResults && params.heatResults.length > 0 ? params.heatResults : null,
+      heat_results: (params.heatResults && params.heatResults.length > 0 ? params.heatResults : null) as any,
     })
     .select(SELECT_COLS)
     .single();
