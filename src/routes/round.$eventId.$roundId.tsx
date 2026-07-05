@@ -158,13 +158,17 @@ function RoundView() {
     return Array.from(set);
   }, [heats]);
 
+  const eventCategory = data?.EventCategory ?? null;
+  const isTrack = eventCategory === "Track" || eventCategory === "Relay";
+  const heatIds = useMemo(() => heats.map((h) => h.Id), [heats]);
+
   const videosQuery = useQuery({
     queryKey: ["round-videos", competitionId, eventName, allAthleteKeys.slice().sort().join(",")],
     queryFn: async () => {
       if (allAthleteKeys.length === 0 || !eventName) return new Map<string, ResultVideo[]>();
       const { data, error } = await supabase
         .from("result_videos")
-        .select("id, user_id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, is_public, updated_at")
+        .select("id, user_id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, is_public, event_category, heat_key, updated_at")
         .eq("competition_id", competitionId)
         .eq("event_name", eventName)
         .in("athlete_key", allAthleteKeys);
@@ -177,10 +181,18 @@ function RoundView() {
       }
       return map;
     },
-    enabled: allAthleteKeys.length > 0 && !!eventName,
+    enabled: allAthleteKeys.length > 0 && !!eventName && !isTrack,
     staleTime: 30_000,
   });
   const videosByAthlete = videosQuery.data ?? new Map<string, ResultVideo[]>();
+
+  const heatVideosQuery = useQuery({
+    queryKey: ["heat-videos", competitionId, heatIds.slice().sort().join(",")],
+    queryFn: () => fetchHeatVideos(competitionId, heatIds),
+    enabled: isTrack && heatIds.length > 0,
+    staleTime: 30_000,
+  });
+  const heatVideos = heatVideosQuery.data ?? new Map<string, ResultVideo[]>();
 
 
 
