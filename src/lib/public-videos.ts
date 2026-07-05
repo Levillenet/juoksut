@@ -189,7 +189,5 @@ export async function fetchPublicVideosForEvent(
     };
   });
 }
-    };
-  });
-}
+
 
