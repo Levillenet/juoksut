@@ -4,6 +4,10 @@ import { LayoutGroup, motion } from "framer-motion";
 import { trackEvent } from "@/lib/analytics";
 import { useQuery, useQueryClient, useQueries } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Wind } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import type { ResultVideo } from "@/lib/result-videos";
+import { ResultVideoButton } from "@/components/ResultVideoButton";
+
 
 import { formatRelayLegs, formatTime, STATUS_LABEL, type Heat, type Allocation, type Enrollment } from "@/lib/tuloslista";
 import { RecordBadge } from "@/lib/records";
@@ -142,6 +146,43 @@ function RoundView() {
     if (ranked.length === 0) return [];
     return ranked.sort((a, b) => (a.ResultRank ?? 0) - (b.ResultRank ?? 0));
   }, [heats]);
+
+  const eventName = data?.Name ?? "";
+  const allAthleteKeys = useMemo(() => {
+    const set = new Set<string>();
+    for (const h of heats) {
+      for (const a of h.Allocations) {
+        set.add(athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null));
+      }
+    }
+    return Array.from(set);
+  }, [heats]);
+
+  const videosQuery = useQuery({
+    queryKey: ["round-videos", competitionId, eventName, allAthleteKeys.slice().sort().join(",")],
+    queryFn: async () => {
+      if (allAthleteKeys.length === 0 || !eventName) return new Map<string, ResultVideo[]>();
+      const { data, error } = await supabase
+        .from("result_videos")
+        .select("id, user_id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, is_public, updated_at")
+        .eq("competition_id", competitionId)
+        .eq("event_name", eventName)
+        .in("athlete_key", allAthleteKeys);
+      if (error) throw error;
+      const map = new Map<string, ResultVideo[]>();
+      for (const v of (data ?? []) as ResultVideo[]) {
+        const list = map.get(v.athlete_key) ?? [];
+        list.push(v);
+        map.set(v.athlete_key, list);
+      }
+      return map;
+    },
+    enabled: allAthleteKeys.length > 0 && !!eventName,
+    staleTime: 30_000,
+  });
+  const videosByAthlete = videosQuery.data ?? new Map<string, ResultVideo[]>();
+
+
 
 
 
@@ -454,6 +495,23 @@ function RoundView() {
                             </>
                           )}
                         </div>
+                        {(() => {
+                          const key = athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null);
+                          const vids = videosByAthlete.get(key) ?? [];
+                          return (
+                            <div className="shrink-0">
+                              <ResultVideoButton
+                                athleteKey={key}
+                                competitionId={competitionId}
+                                eventName={eventName}
+                                subCategory=""
+                                videos={vids}
+                                contextLabel={`${eventName} · ${a.Name}`}
+                                size="sm"
+                              />
+                            </div>
+                          );
+                        })()}
                       </motion.li>
                     ))}
                   </ol>
@@ -461,6 +519,7 @@ function RoundView() {
               );
             })}
           </div>
+
 
           {overall.length > 0 && (
             <section className="mt-6 overflow-hidden rounded-xl border bg-card shadow-sm">

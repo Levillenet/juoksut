@@ -17,10 +17,12 @@ import { useAuth } from "@/lib/auth";
 import {
   deleteResultVideo,
   embedUrl,
+  insertResultVideo,
   parseYoutubeId,
-  upsertResultVideo,
+  updateResultVideo,
   type ResultVideo,
 } from "@/lib/result-videos";
+
 
 interface Props {
   athleteKey: string;
@@ -48,11 +50,11 @@ export function ResultVideoButton({
   const myUserId = user?.id ?? "";
   const [open, setOpen] = useState(false);
 
-  const own = videos.find((v) => v.user_id === myUserId) ?? null;
+  const own = videos.filter((v) => v.user_id === myUserId);
   const publicOthers = videos.filter(
     (v) => v.user_id !== myUserId && v.is_public,
   );
-  const anyVisible = own || publicOthers.length > 0;
+  const anyVisible = own.length > 0 || publicOthers.length > 0;
   const canEdit = !!user;
 
   if (!anyVisible && !canEdit) return null;
@@ -80,15 +82,15 @@ export function ResultVideoButton({
         title={anyVisible ? "Suoritusvideo" : "Lisää videolinkki"}
       >
         <Youtube className={iconClass} />
-        {anyVisible ? null : <span>Video</span>}
+        {anyVisible ? (own.length + publicOthers.length > 1 ? <span className="ml-0.5">{own.length + publicOthers.length}</span> : null) : <span>Video</span>}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Youtube className="h-5 w-5 text-red-600" />
-              Suoritusvideo
+              Suoritusvideot
             </DialogTitle>
             {contextLabel && (
               <DialogDescription className="truncate">{contextLabel}</DialogDescription>
@@ -96,16 +98,9 @@ export function ResultVideoButton({
           </DialogHeader>
 
           <div className="space-y-4">
-            {own && (
-              <VideoSection
-                video={own}
-                label="Sinun lisäämäsi video"
-                editable
-                onChanged={() => {
-                  // dialog stays open; parent invalidates via mutation onSuccess
-                }}
-              />
-            )}
+            {own.map((v) => (
+              <VideoSection key={v.id} video={v} label="Sinun lisäämäsi video" editable />
+            ))}
             {publicOthers.map((v) => (
               <VideoSection
                 key={v.id}
@@ -115,13 +110,18 @@ export function ResultVideoButton({
               />
             ))}
 
-            {canEdit && !own && (
-              <VideoForm
-                athleteKey={athleteKey}
-                competitionId={competitionId}
-                eventName={eventName}
-                subCategory={subCategory}
-              />
+            {canEdit && (
+              <div className="rounded-lg border border-dashed bg-muted/30 p-3">
+                <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                  {own.length > 0 ? "Lisää uusi video" : "Lisää videolinkki"}
+                </p>
+                <VideoForm
+                  athleteKey={athleteKey}
+                  competitionId={competitionId}
+                  eventName={eventName}
+                  subCategory={subCategory}
+                />
+              </div>
             )}
           </div>
         </DialogContent>
@@ -129,6 +129,7 @@ export function ResultVideoButton({
     </>
   );
 }
+
 
 function VideoSection({
   video,
@@ -154,11 +155,7 @@ function VideoSection({
 
   const togglePublic = useMutation({
     mutationFn: (nextPublic: boolean) =>
-      upsertResultVideo({
-        athleteKey: video.athlete_key,
-        competitionId: video.competition_id,
-        eventName: video.event_name,
-        subCategory: video.sub_category,
+      updateResultVideo(video.id, {
         youtubeUrl: video.youtube_url,
         isPublic: nextPublic,
       }),
@@ -167,6 +164,7 @@ function VideoSection({
     },
     onError: (e) => toast.error((e as Error).message),
   });
+
 
   return (
     <div className="rounded-lg border bg-card p-3">
@@ -227,12 +225,14 @@ function VideoSection({
             competitionId={video.competition_id}
             eventName={video.event_name}
             subCategory={video.sub_category}
+            editingId={video.id}
             initialUrl={video.youtube_url}
             initialIsPublic={video.is_public}
             onDone={() => setEditing(false)}
           />
         </div>
       )}
+
     </div>
   );
 }
@@ -242,6 +242,7 @@ function VideoForm({
   competitionId,
   eventName,
   subCategory,
+  editingId,
   initialUrl = "",
   initialIsPublic = false,
   onDone,
@@ -250,6 +251,7 @@ function VideoForm({
   competitionId: number;
   eventName: string;
   subCategory: string;
+  editingId?: string;
   initialUrl?: string;
   initialIsPublic?: boolean;
   onDone?: () => void;
@@ -261,21 +263,25 @@ function VideoForm({
 
   const save = useMutation({
     mutationFn: () =>
-      upsertResultVideo({
-        athleteKey,
-        competitionId,
-        eventName,
-        subCategory,
-        youtubeUrl: url,
-        isPublic,
-      }),
+      editingId
+        ? updateResultVideo(editingId, { youtubeUrl: url, isPublic })
+        : insertResultVideo({
+            athleteKey,
+            competitionId,
+            eventName,
+            subCategory,
+            youtubeUrl: url,
+            isPublic,
+          }),
     onSuccess: () => {
       toast.success("Video tallennettu");
       qc.invalidateQueries({ queryKey: ["athlete-videos", athleteKey] });
+      if (!editingId) setUrl("");
       onDone?.();
     },
     onError: (e) => toast.error((e as Error).message),
   });
+
 
   return (
     <div className="space-y-3">

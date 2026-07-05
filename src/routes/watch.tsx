@@ -1,6 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
+import { fetchVideosForAthlete, videoKey, type ResultVideo } from "@/lib/result-videos";
+import { ResultVideoButton } from "@/components/ResultVideoButton";
+
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Search as SearchIcon, RefreshCw, Pin, X, UserPlus, Building2, Trophy, Share2, Copy, Check, Trash2 } from "lucide-react";
 import logo from "@/assets/lahden-ahkera-logo.png";
@@ -224,6 +227,24 @@ function WatchPage() {
     enabled: watchedKeysList.length > 0,
     staleTime: 60_000,
   });
+
+  // Fetch all videos for each watched athlete (own + public from others).
+  const videosQueries = useQueries({
+    queries: watched.map((w) => ({
+      queryKey: ["athlete-videos", w.key],
+      queryFn: () => fetchVideosForAthlete(w.key),
+      staleTime: 60_000,
+    })),
+  });
+  const videosByAthlete = useMemo(() => {
+    const m = new Map<string, Map<string, ResultVideo[]>>();
+    watched.forEach((w, i) => {
+      const q = videosQueries[i];
+      if (q?.data) m.set(w.key, q.data);
+    });
+    return m;
+  }, [watched, videosQueries]);
+
 
   // Club selector state for bulk add
   const [selectedBulkOrgId, setSelectedBulkOrgId] = useState<number | null>(null);
@@ -802,7 +823,27 @@ function WatchPage() {
                                 )}
                               </div>
                             </Link>
+                            {(() => {
+                              const vids =
+                                videosByAthlete.get(athlete.key)?.get(
+                                  videoKey(competitionId, e.round.EventName, ""),
+                                ) ?? [];
+                              return (
+                                <div className="mt-1 flex justify-end pr-1">
+                                  <ResultVideoButton
+                                    athleteKey={athlete.key}
+                                    competitionId={competitionId}
+                                    eventName={e.round.EventName}
+                                    subCategory=""
+                                    videos={vids}
+                                    contextLabel={`${e.round.EventName} · ${athlete.surname} ${athlete.firstname}`}
+                                    size="sm"
+                                  />
+                                </div>
+                              );
+                            })()}
                           </li>
+
                         );
                       })}
                     </ul>

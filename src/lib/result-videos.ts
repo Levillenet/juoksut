@@ -81,7 +81,7 @@ export async function fetchVideosForAthlete(
   return map;
 }
 
-export async function upsertResultVideo(params: {
+export async function insertResultVideo(params: {
   athleteKey: string;
   competitionId: number;
   eventName: string;
@@ -97,19 +97,38 @@ export async function upsertResultVideo(params: {
 
   const { data, error } = await supabase
     .from("result_videos")
-    .upsert(
-      {
-        user_id: userId,
-        athlete_key: params.athleteKey,
-        competition_id: params.competitionId,
-        event_name: params.eventName,
-        sub_category: params.subCategory ?? "",
-        youtube_url: params.youtubeUrl.trim(),
-        youtube_video_id: videoId,
-        is_public: params.isPublic,
-      },
-      { onConflict: "user_id,athlete_key,competition_id,event_name,sub_category" },
+    .insert({
+      user_id: userId,
+      athlete_key: params.athleteKey,
+      competition_id: params.competitionId,
+      event_name: params.eventName,
+      sub_category: params.subCategory ?? "",
+      youtube_url: params.youtubeUrl.trim(),
+      youtube_video_id: videoId,
+      is_public: params.isPublic,
+    })
+    .select(
+      "id, user_id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, is_public, updated_at",
     )
+    .single();
+  if (error) throw error;
+  return data as ResultVideo;
+}
+
+export async function updateResultVideo(
+  id: string,
+  params: { youtubeUrl: string; isPublic: boolean },
+): Promise<ResultVideo> {
+  const videoId = parseYoutubeId(params.youtubeUrl);
+  if (!videoId) throw new Error("Anna kelvollinen YouTube-linkki.");
+  const { data, error } = await supabase
+    .from("result_videos")
+    .update({
+      youtube_url: params.youtubeUrl.trim(),
+      youtube_video_id: videoId,
+      is_public: params.isPublic,
+    })
+    .eq("id", id)
     .select(
       "id, user_id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, is_public, updated_at",
     )
@@ -122,3 +141,4 @@ export async function deleteResultVideo(id: string): Promise<void> {
   const { error } = await supabase.from("result_videos").delete().eq("id", id);
   if (error) throw error;
 }
+
