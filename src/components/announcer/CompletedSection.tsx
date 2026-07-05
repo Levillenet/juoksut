@@ -52,11 +52,12 @@ export function CompletedSection({
               key={r.Id}
               round={r}
               detail={details[r.EventId]}
-              groupHeats={false}
+              groupHeats={isHeatRound(r)}
               defaultOpen={autoOpen}
               onDismiss={() => dismissCompleted(r.Id)}
             />
           ))}
+
         </ul>
       )}
     </section>
