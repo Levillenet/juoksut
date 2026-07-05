@@ -468,7 +468,17 @@ function RoundView() {
                         {a.Result}
                       </span>
                       {(() => {
-                        const eff = effectiveRecord(parseInt(eventId, 10), a);
+                        const eff = effectiveRecord(parseInt(eventId, 10), a, {
+                          competitionId,
+                          athleteKey: athleteKey(
+                            a.Surname,
+                            a.Firstname,
+                            a.Organization?.Id ?? null,
+                          ),
+                          eventName: data?.Name ?? "",
+                          ageClass: data?.Group ?? null,
+                          category: data?.EventCategory ?? null,
+                        });
                         return (
                           <RecordBadge
                             category={data?.EventCategory ?? ""}
