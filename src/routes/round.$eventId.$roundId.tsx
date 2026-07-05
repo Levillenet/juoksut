@@ -495,6 +495,23 @@ function RoundView() {
                             </>
                           )}
                         </div>
+                        {(() => {
+                          const key = athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null);
+                          const vids = videosByAthlete.get(key) ?? [];
+                          return (
+                            <div className="shrink-0">
+                              <ResultVideoButton
+                                athleteKey={key}
+                                competitionId={competitionId}
+                                eventName={eventName}
+                                subCategory=""
+                                videos={vids}
+                                contextLabel={`${eventName} · ${a.Name}`}
+                                size="sm"
+                              />
+                            </div>
+                          );
+                        })()}
                       </motion.li>
                     ))}
                   </ol>
@@ -502,6 +519,7 @@ function RoundView() {
               );
             })}
           </div>
+
 
           {overall.length > 0 && (
             <section className="mt-6 overflow-hidden rounded-xl border bg-card shadow-sm">
