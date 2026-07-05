@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WatchRouteImport } from './routes/watch'
+import { Route as VideotRouteImport } from './routes/videot'
 import { Route as TietoaPalvelustaRouteImport } from './routes/tietoa-palvelusta'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SeasonLeadersRouteImport } from './routes/season-leaders'
@@ -59,6 +60,11 @@ import { Route as ApiPublicTuloslistaLiveV1CompetitionIdPropertiesRouteImport } 
 const WatchRoute = WatchRouteImport.update({
   id: '/watch',
   path: '/watch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VideotRoute = VideotRouteImport.update({
+  id: '/videot',
+  path: '/videot',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TietoaPalvelustaRoute = TietoaPalvelustaRouteImport.update({
@@ -308,6 +314,7 @@ export interface FileRoutesByFullPath {
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRouteWithChildren
   '/tietoa-palvelusta': typeof TietoaPalvelustaRoute
+  '/videot': typeof VideotRoute
   '/watch': typeof WatchRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
@@ -353,6 +360,7 @@ export interface FileRoutesByTo {
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRouteWithChildren
   '/tietoa-palvelusta': typeof TietoaPalvelustaRoute
+  '/videot': typeof VideotRoute
   '/watch': typeof WatchRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
@@ -402,6 +410,7 @@ export interface FileRoutesById {
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRouteWithChildren
   '/tietoa-palvelusta': typeof TietoaPalvelustaRoute
+  '/videot': typeof VideotRoute
   '/watch': typeof WatchRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
@@ -452,6 +461,7 @@ export interface FileRouteTypes {
     | '/season-leaders'
     | '/settings'
     | '/tietoa-palvelusta'
+    | '/videot'
     | '/watch'
     | '/admin/analytics'
     | '/admin/club-locations'
@@ -497,6 +507,7 @@ export interface FileRouteTypes {
     | '/season-leaders'
     | '/settings'
     | '/tietoa-palvelusta'
+    | '/videot'
     | '/watch'
     | '/admin/analytics'
     | '/admin/club-locations'
@@ -545,6 +556,7 @@ export interface FileRouteTypes {
     | '/season-leaders'
     | '/settings'
     | '/tietoa-palvelusta'
+    | '/videot'
     | '/watch'
     | '/admin/analytics'
     | '/admin/club-locations'
@@ -594,6 +606,7 @@ export interface RootRouteChildren {
   SeasonLeadersRoute: typeof SeasonLeadersRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   TietoaPalvelustaRoute: typeof TietoaPalvelustaRoute
+  VideotRoute: typeof VideotRoute
   WatchRoute: typeof WatchRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminClubLocationsRoute: typeof AdminClubLocationsRoute
@@ -618,6 +631,13 @@ declare module '@tanstack/react-router' {
       path: '/watch'
       fullPath: '/watch'
       preLoaderRoute: typeof WatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/videot': {
+      id: '/videot'
+      path: '/videot'
+      fullPath: '/videot'
+      preLoaderRoute: typeof VideotRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tietoa-palvelusta': {
@@ -1046,6 +1066,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeasonLeadersRoute: SeasonLeadersRoute,
   SettingsRoute: SettingsRouteWithChildren,
   TietoaPalvelustaRoute: TietoaPalvelustaRoute,
+  VideotRoute: VideotRoute,
   WatchRoute: WatchRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminClubLocationsRoute: AdminClubLocationsRoute,

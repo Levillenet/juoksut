@@ -18,8 +18,8 @@ import { formatRelayLegsFromRows } from "@/lib/tuloslista";
 import {
   hasPublicVideo,
   usePublicVideoIndex,
-  VideoAvailableBadge,
 } from "@/components/VideoAvailableBadge";
+import { PublicVideoLinkButton } from "@/components/PublicVideoLinkButton";
 
 const STORAGE_KEY = "clubToday.orgId";
 
