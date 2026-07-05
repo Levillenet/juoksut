@@ -155,11 +155,7 @@ function VideoSection({
 
   const togglePublic = useMutation({
     mutationFn: (nextPublic: boolean) =>
-      upsertResultVideo({
-        athleteKey: video.athlete_key,
-        competitionId: video.competition_id,
-        eventName: video.event_name,
-        subCategory: video.sub_category,
+      updateResultVideo(video.id, {
         youtubeUrl: video.youtube_url,
         isPublic: nextPublic,
       }),
@@ -168,6 +164,7 @@ function VideoSection({
     },
     onError: (e) => toast.error((e as Error).message),
   });
+
 
   return (
     <div className="rounded-lg border bg-card p-3">
