@@ -522,7 +522,7 @@ function RoundView() {
                             </>
                           )}
                         </div>
-                        {(() => {
+                        {!isTrack && (() => {
                           const key = athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null);
                           const vids = videosByAthlete.get(key) ?? [];
                           return (
@@ -532,6 +532,7 @@ function RoundView() {
                                 competitionId={competitionId}
                                 eventName={eventName}
                                 subCategory=""
+                                eventCategory={eventCategory}
                                 videos={vids}
                                 contextLabel={`${eventName} · ${a.Name}`}
                                 size="sm"
