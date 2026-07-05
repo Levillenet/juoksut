@@ -52,6 +52,7 @@ export function ResultVideoButton({
   subCategory,
   eventCategory,
   heatKey,
+  heatSnapshot,
   videos,
   contextLabel,
   size = "xs",
