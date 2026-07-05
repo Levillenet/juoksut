@@ -106,7 +106,6 @@ export function useAnnouncerData() {
   };
   const restoreDismissed = () => persistDismissed(new Set());
 
-  const completed = completedAll.filter((r) => !dismissedCompletedIds.has(r.Id));
   const nowMs = (now ?? new Date()).getTime();
   const upcomingAll = todayRounds.filter(
     (r) => r.Status !== "Official" && r.Status !== "Progress",
@@ -118,16 +117,18 @@ export function useAnnouncerData() {
       );
   const pastUpcomingCount = upcomingAll.length - upcomingFiltered.length;
 
+  // Fetch details for every schedule-Progress/Official round + expanded, so we
+  // can validate track completeness before promoting to lopputulokset.
   const wantedIds = useMemo(() => {
     const ids = new Set<number>();
-    inProgress.forEach((r) => ids.add(r.EventId));
-    completed.forEach((r) => ids.add(r.EventId));
+    scheduleInProgress.forEach((r) => ids.add(r.EventId));
+    scheduleCompleted.forEach((r) => ids.add(r.EventId));
     expanded.forEach((id) => ids.add(id));
     return Array.from(ids);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    JSON.stringify(inProgress.map((r) => r.EventId)),
-    JSON.stringify(completed.map((r) => r.EventId)),
+    JSON.stringify(scheduleInProgress.map((r) => r.EventId)),
+    JSON.stringify(scheduleCompleted.map((r) => r.EventId)),
     expanded,
   ]);
 
@@ -144,27 +145,74 @@ export function useAnnouncerData() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailQueries.map((q) => q.dataUpdatedAt).join(","), wantedIds]);
 
+  // Kaikki erät valmiit = jokaisella allokaatiolla on Result.
+  // undefined jos details puuttuu → fallback aikataulun statusiin.
+  const isRoundFullyComplete = (eventId: number, roundId: number): boolean | undefined => {
+    const ev = details[eventId];
+    if (!ev) return undefined;
+    const round = ev.Rounds.find((rr) => rr.Id === roundId);
+    if (!round) return undefined;
+    if (round.Heats.length === 0) return false;
+    for (const h of round.Heats) {
+      if (h.Allocations.length === 0) return false;
+      for (const a of h.Allocations) {
+        if (!a.Result) return false;
+      }
+    }
+    return true;
+  };
+
+  // Track-kierrokset joita aikataulu pitää Officialina mutta erät kesken.
+  const trackNotYetDone = useMemo(
+    () =>
+      scheduleCompleted.filter(
+        (r) => r.Category === "Track" && isRoundFullyComplete(r.EventId, r.Id) === false,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(scheduleCompleted.map((r) => r.Id)), details],
+  );
+
+  // Track-Progress joilla details vahvistaa että kaikki erät valmiit.
   const finishedProgressRoundIds = useMemo(() => {
     const s = new Set<number>();
-    for (const r of inProgressAll) {
+    for (const r of scheduleInProgress) {
       if (r.Category !== "Track") continue;
-      const ev = details[r.EventId];
-      if (!ev) continue;
-      const round = ev.Rounds.find((rr) => rr.Id === r.Id);
-      if (!round) continue;
-      if (round.Status === "Official") s.add(r.Id);
+      if (isRoundFullyComplete(r.EventId, r.Id) === true) s.add(r.Id);
     }
     return s;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [details, JSON.stringify(inProgressAll.map((r) => r.Id))]);
+  }, [details, JSON.stringify(scheduleInProgress.map((r) => r.Id))]);
 
-  const inProgressVisible = inProgress.filter(
-    (r) => !finishedProgressRoundIds.has(r.Id),
-  );
-  const completedAllMerged = useMemo(() => {
-    const extra = inProgressAll.filter((r) => finishedProgressRoundIds.has(r.Id));
+  // Lopulliset listat.
+  const inProgressAll = useMemo(() => {
+    const notYetDoneIds = new Set(trackNotYetDone.map((r) => r.Id));
+    const merged = [
+      ...scheduleInProgress.filter((r) => !finishedProgressRoundIds.has(r.Id)),
+      ...trackNotYetDone,
+    ];
+    // Poista duplikaatit varmuuden vuoksi.
     const seen = new Set<number>();
-    const all = [...completedAll, ...extra].filter((r) => {
+    return merged.filter((r) => {
+      if (seen.has(r.Id)) return false;
+      seen.add(r.Id);
+      return true;
+    }).sort((a, b) => a.BeginDateTimeWithTZ.localeCompare(b.BeginDateTimeWithTZ));
+    // notYetDoneIds vain readability; ei tarvita depissä.
+    void notYetDoneIds;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scheduleInProgress, trackNotYetDone, finishedProgressRoundIds]);
+
+  const inProgress = showRunning
+    ? inProgressAll
+    : inProgressAll.filter((r) => r.Category !== "Track");
+  const inProgressVisible = inProgress;
+
+  const completedAllMerged = useMemo(() => {
+    const notYetDoneIds = new Set(trackNotYetDone.map((r) => r.Id));
+    const base = scheduleCompleted.filter((r) => !notYetDoneIds.has(r.Id));
+    const extra = scheduleInProgress.filter((r) => finishedProgressRoundIds.has(r.Id));
+    const seen = new Set<number>();
+    const all = [...base, ...extra].filter((r) => {
       if (seen.has(r.Id)) return false;
       seen.add(r.Id);
       return true;
@@ -172,11 +220,12 @@ export function useAnnouncerData() {
     return all.sort((a, b) =>
       b.BeginDateTimeWithTZ.localeCompare(a.BeginDateTimeWithTZ),
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [completedAll, inProgressAll, finishedProgressRoundIds]);
+  }, [scheduleCompleted, scheduleInProgress, trackNotYetDone, finishedProgressRoundIds]);
+
   const completedVisible = completedAllMerged.filter(
     (r) => !dismissedCompletedIds.has(r.Id),
   );
+
 
   useEffect(() => {
     const seen = seenResultsRef.current;
