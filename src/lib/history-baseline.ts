@@ -24,7 +24,12 @@ interface BaselineEntry {
 
 // competitionId -> (pbEventKey + athleteKey -> entry)
 const cache = new Map<number, Map<string, BaselineEntry>>();
-const inflight = new Map<number, Promise<Map<string, BaselineEntry>>>();
+const loadedKeys = new Map<number, Set<string>>();
+const inflight = new Map<string, Promise<Map<string, BaselineEntry>>>();
+
+function normalizeAthleteKeys(keys: readonly string[] = []): string[] {
+  return Array.from(new Set(keys.map((k) => k.trim()).filter(Boolean))).sort();
+}
 
 function lookupKeyFor(
   athleteKey: string,
@@ -145,29 +150,46 @@ function buildBaselineMap(rows: Row[]): Map<string, BaselineEntry> {
 /** Load (or return cached) historical-best lookup for a competition. */
 export async function loadHistoryBaselineForCompetition(
   competitionId: number,
+  athleteKeys: readonly string[] = [],
 ): Promise<Map<string, BaselineEntry>> {
   if (!competitionId) return new Map();
+  const requestedKeys = normalizeAthleteKeys(athleteKeys);
   const cached = cache.get(competitionId);
-  if (cached) return cached;
-  const pending = inflight.get(competitionId);
+  const alreadyLoaded = loadedKeys.get(competitionId);
+  if (
+    cached &&
+    (requestedKeys.length === 0 ||
+      requestedKeys.every((k) => alreadyLoaded?.has(k)))
+  ) {
+    return cached;
+  }
+
+  const inflightKey = `${competitionId}|${requestedKeys.join("\u0000")}`;
+  const pending = inflight.get(inflightKey);
   if (pending) return pending;
 
   const p = (async () => {
     try {
-      const keys = await fetchKeysForCompetition(competitionId);
+      const keys = normalizeAthleteKeys([
+        ...requestedKeys,
+        ...(await fetchKeysForCompetition(competitionId)),
+      ]);
       const rows = await fetchHistoryForKeys(keys, competitionId);
-      const map = buildBaselineMap(rows);
-      cache.set(competitionId, map);
-      return map;
+      const next = buildBaselineMap(rows);
+      const merged = cache.get(competitionId) ?? new Map<string, BaselineEntry>();
+      for (const [k, v] of next) merged.set(k, v);
+      cache.set(competitionId, merged);
+      loadedKeys.set(competitionId, new Set([...(loadedKeys.get(competitionId) ?? []), ...keys]));
+      return merged;
     } catch {
       const empty = new Map<string, BaselineEntry>();
       cache.set(competitionId, empty);
       return empty;
     } finally {
-      inflight.delete(competitionId);
+      inflight.delete(inflightKey);
     }
   })();
-  inflight.set(competitionId, p);
+  inflight.set(inflightKey, p);
   return p;
 }
 
@@ -178,9 +200,8 @@ export async function loadHistoryBaselineForSharedWatch(
   competitionId: number,
 ): Promise<Map<string, BaselineEntry>> {
   if (!competitionId || !token) return new Map();
-  const cached = cache.get(competitionId);
-  if (cached) return cached;
-  const pending = inflight.get(competitionId);
+  const inflightKey = `shared:${competitionId}:${token}`;
+  const pending = inflight.get(inflightKey);
   if (pending) return pending;
 
   const p = (async () => {
@@ -191,18 +212,20 @@ export async function loadHistoryBaselineForSharedWatch(
       });
       if (error) throw error;
       const rows = (data ?? []) as Row[];
-      const map = buildBaselineMap(rows);
-      cache.set(competitionId, map);
-      return map;
+      const next = buildBaselineMap(rows);
+      const merged = cache.get(competitionId) ?? new Map<string, BaselineEntry>();
+      for (const [k, v] of next) merged.set(k, v);
+      cache.set(competitionId, merged);
+      return merged;
     } catch {
       const empty = new Map<string, BaselineEntry>();
       cache.set(competitionId, empty);
       return empty;
     } finally {
-      inflight.delete(competitionId);
+      inflight.delete(inflightKey);
     }
   })();
-  inflight.set(competitionId, p);
+  inflight.set(inflightKey, p);
   return p;
 }
 
@@ -239,10 +262,14 @@ export function getHistoricalSeasonBest(
 /** React hook: loads (or returns cached) historical baseline and re-renders
  * the calling component once the data is ready. Returns `dataUpdatedAt`
  * which can be included in `useMemo` deps to recompute derived rows. */
-export function useHistoryBaseline(competitionId: number | null | undefined) {
+export function useHistoryBaseline(
+  competitionId: number | null | undefined,
+  athleteKeys: readonly string[] = [],
+) {
+  const keySig = normalizeAthleteKeys(athleteKeys).join("\u0000");
   const q = useQuery({
-    queryKey: ["history-baseline", competitionId ?? 0],
-    queryFn: () => loadHistoryBaselineForCompetition(competitionId!),
+    queryKey: ["history-baseline", competitionId ?? 0, keySig],
+    queryFn: () => loadHistoryBaselineForCompetition(competitionId!, athleteKeys),
     enabled: !!competitionId,
     staleTime: 5 * 60_000,
     gcTime: 10 * 60_000,

@@ -64,6 +64,7 @@ function WatchPage() {
   const { list: watched, add, remove } = useWatchedAthletes();
   const [query, setQuery] = useState<string>("");
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
+  const watchedHistoryKeys = useMemo(() => watched.map((a) => a.key), [watched]);
 
   const hasIndexData = useRef(false);
   const indexQuery = useQuery(
@@ -77,7 +78,7 @@ function WatchPage() {
     if (indexQuery.data) hasIndexData.current = true;
   }, [indexQuery.data]);
 
-  useHistoryBaseline(competitionId);
+  useHistoryBaseline(competitionId, watchedHistoryKeys);
 
   const index: IndexedEntry[] | null = indexQuery.data?.entries ?? null;
   const name = indexQuery.data?.name ?? "";
