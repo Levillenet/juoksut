@@ -35,6 +35,8 @@ interface Props {
   eventCategory?: string | null;
   /** Optional heat key marker (e.g. `heat:1234`) for heat-level videos. */
   heatKey?: string | null;
+  /** Snapshot of heat participants + results, stored with new videos. */
+  heatSnapshot?: HeatResultSnapshot[] | null;
   /** All videos visible for this result slot (own + public from others). */
   videos: ResultVideo[];
   /** Label used in dialog header. */
