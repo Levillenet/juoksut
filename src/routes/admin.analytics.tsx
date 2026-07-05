@@ -62,6 +62,7 @@ function Page() {
       if (error) throw error;
       return (data ?? []) as EventRow[];
     },
+    refetchInterval: 30_000,
   });
 
   const usersQ = useQuery({
