@@ -536,10 +536,16 @@ function AllocationRow({
 }: {
   a: Allocation;
   round: Round;
-  showRank: "result" | "position";
+  showRank: "result" | "position" | "heat";
 }) {
   const [competitionId] = useCompetitionId();
-  const rank = showRank === "result" ? a.ResultRank : a.Position;
+  const rank =
+    showRank === "result"
+      ? a.ResultRank
+      : showRank === "heat"
+        ? a.HeatRank
+        : a.Position;
+
   const eff = a.Result
     ? effectiveRecord(round.EventId, a, {
         competitionId,
