@@ -16,10 +16,12 @@ import { ConfirmedDot } from "@/components/ConfirmedDot";
 import {
   formatRelayLegs,
   formatTime,
+  isHeatRound,
   type Round,
   type Allocation,
   type EventResults,
 } from "@/lib/tuloslista";
+
 
 export function pad(n: number): string {
   return String(n).padStart(2, "0");
