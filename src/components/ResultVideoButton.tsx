@@ -17,10 +17,12 @@ import { useAuth } from "@/lib/auth";
 import {
   deleteResultVideo,
   embedUrl,
+  insertResultVideo,
   parseYoutubeId,
-  upsertResultVideo,
+  updateResultVideo,
   type ResultVideo,
 } from "@/lib/result-videos";
+
 
 interface Props {
   athleteKey: string;
