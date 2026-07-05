@@ -1,26 +1,15 @@
-## Ongelma
+## Toteutussuunnitelma
 
-"Seuran urheilijat tänään" -näkymässä (etusivu → ClubTodaySection) PB-parannus näytetään vain jos aiempi PB löytyy täsmälleen samalla `pbEventKey`-avaimella (event_name + age_class). Kun urheilija tekee ensimmäisen tuloksensa uudessa ikäluokassa (esim. Aavikko Siiri T11 Moukari 18,85), edellistä PB:tä ei löydy ja parannuslukua ei näytetä – vaikka `was_pb` on tosi.
+Muokkaan etusivun `Seuran urheilijat tänään` / käynnissä olevien kisojen valintalohkon niin, että seurattava kilpailu erottuu selvästi.
 
-## Ratkaisu
+### Muutokset
 
-Kun edellistä PB:tä ei löydy nykyisellä `pbEventKey`-avaimella, käytetään fallbackia: sama urheilija + sama normalisoitu lajinimi (ilman ikäluokka-erottelua) → lähin historiallinen tulos vertailuun. Näin ikäluokan vaihtuessa (esim. T13 Moukari → T11 Moukari) parannus lasketaan edelliseen ikäluokkatulokseen.
-
-## Muutokset
-
-### 1. `src/lib/club-today.ts`
-- `fetchClubPbs` rakentaa nyt vain `pbEventKey`-mappia. Lisätään toinen paluukartta: `fallbackByName` = `${athlete_key}|${normalizeEventName(event_name)}` → paras historiallinen tulos ilman age_class -erottelua (mutta samaa event_category).
-- Palautetaan sekä ensisijainen (`ClubPbMap`) että fallback-kartta.
-- `fetchClubPreviousPbs` välittää molemmat.
-
-### 2. `src/components/ClubTodaySection.tsx`
-- Muuttujat `pbs` ja `pbsFallback` erikseen.
-- Rivin renderöinnissä: jos `pb` ei löydy pääkartasta, katsotaan `pbsFallback`. Jos fallback-tulos on parempi kuin nykyinen ja `was_pb` on tosi, käytetään sitä improvement-laskuun.
-- Näytön tekstiin (esim. "ed. PB 22,15 (T13)") lisätään pieni vihje kun vertailu on eri ikäluokasta – luetaan fallback-rivin `age_class`.
-- `pb`-lookup-avain säilyy pääkartassa; fallback vain kun pääkartta puuttuu.
-
-### 3. Ei tietokantamuutoksia
-Kaikki data on jo `athlete_results`-taulussa. Ei uusia migraatioita.
-
-## Verifiointi
-Etusivu → valitse Aavikko Siirin seura → T11 Moukari 18,85 -rivillä pitäisi näkyä PB-badge parannuksella verrattuna edellisen ikäluokan (esim. T13) parhaaseen moukaritulokseen, ja tekstissä mainittava mistä ikäluokasta vertailu on.
+- Vaihdan otsikoksi: **Seurannassa oleva kilpailu**
+- Lisään ohjeistavan alaotsikon: **Valitse kilpailu, jota haluat seurata.**
+- Korostan aktiivista kilpailua selvästi:
+  - paksumpi punainen live-ympyrä
+  - punainen korostusreuna aktiiviselle riville
+  - vahvempi taustakorostus aktiiviselle riville
+  - selkeämpi **Seurataan**-merkintä
+  - koko lohkon reunus korostuu, kun listassa on aktiivinen seurattava kilpailu
+- Ei muutoksia datalogiikkaan tai kilpailun valinnan toimintaan — vain otsikko, alaotsikko ja näkyvämpi korostus.
