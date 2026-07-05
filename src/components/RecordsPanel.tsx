@@ -1,5 +1,4 @@
-import type React from "react";
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { Trophy } from "lucide-react";
 
 import { type EventGroup, isIndoorResult } from "@/lib/athlete-history";
@@ -37,7 +36,15 @@ function formatDateShort(iso: string | null): string {
   }
 }
 
-export function EventGroupView({ group, footer }: { group: EventGroup; footer?: React.ReactNode }) {
+export function EventGroupView({
+  group,
+  footer,
+  rowActions,
+}: {
+  group: EventGroup;
+  footer?: React.ReactNode;
+  rowActions?: (row: EventGroup["rows"][number]) => React.ReactNode;
+}) {
   // Tulokset uusin ensin, PB-tieto rivikohtaisesti laskettuna oikein
   // (ei luoteta was_pb-kenttään, koska se voi olla ikäluokkakohtainen).
   const rows = useMemo(() => {
@@ -118,8 +125,8 @@ export function EventGroupView({ group, footer }: { group: EventGroup; footer?: 
           </thead>
           <tbody>
             {rows.map(({ row, isPb, isPbIn, isPbOut, indoor }) => (
+              <React.Fragment key={row.id}>
               <tr
-                key={row.id}
                 className={`border-t border-border/60 ${
                   isPb ? "bg-primary/5" : ""
                 }`}
@@ -200,6 +207,14 @@ export function EventGroupView({ group, footer }: { group: EventGroup; footer?: 
                   {row.result_rank != null ? `${row.result_rank}.` : "—"}
                 </td>
               </tr>
+              {rowActions && (
+                <tr className={isPb ? "bg-primary/5" : ""}>
+                  <td colSpan={4} className="px-2 pb-2 sm:px-3">
+                    {rowActions(row)}
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
             ))}
             {rows.length === 0 && (
               <tr>
