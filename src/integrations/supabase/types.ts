@@ -493,6 +493,7 @@ export type Database = {
           competition_id: number
           done: boolean
           exists_in_source: boolean
+          first_scanned_at: string | null
           last_scanned_at: string
           row_count: number
         }
@@ -501,6 +502,7 @@ export type Database = {
           competition_id: number
           done?: boolean
           exists_in_source?: boolean
+          first_scanned_at?: string | null
           last_scanned_at?: string
           row_count?: number
         }
@@ -509,6 +511,7 @@ export type Database = {
           competition_id?: number
           done?: boolean
           exists_in_source?: boolean
+          first_scanned_at?: string | null
           last_scanned_at?: string
           row_count?: number
         }
