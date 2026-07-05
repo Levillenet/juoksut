@@ -94,6 +94,8 @@ export function NewResultOverlay({ item, onDone }: Props) {
         item.alloc.Organization?.Id ?? null,
       ),
       eventName: item.eventName ?? "",
+      ageClass: item.ageClass,
+      category: item.eventCategory,
     });
     return detectRecord(item.eventCategory, item.alloc.Result ?? null, eff.pb, eff.sb) === "PB";
   }, [item, competitionId]);
