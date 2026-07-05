@@ -11,11 +11,8 @@ import {
   Trophy,
   Activity,
   StickyNote,
-  Loader2,
-  X,
   ChevronDown,
   ChevronUp,
-} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 
