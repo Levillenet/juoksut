@@ -1,25 +1,35 @@
 ## Tavoite
-Päivän videot -sivun erätuloslistassa nimet katkeavat mobiilissa useammalle riville. Levennetään nimikenttä ja tehdään visualisointi tyylikkäämmäksi niin että nimi mahtuu yhdelle riville.
 
-## Muutokset (vain `src/routes/videot.tsx` – `HeatResultsList`)
+Kilpailijaseuranta (`/watch`) näyttää tällä hetkellä vain sen kisan sisältöä, joka on valittuna kisavalitsimessa. Jos seurattava urheilija kilpailee tänään eri kisassa kuin valittuna, häntä ei näy.
 
-### 1. Nimikentälle enemmän tilaa
-- Kavennetaan **Sija**- ja **Rata**-sarakkeet mobiilissa (`1.75rem` sija-numerolle, `2rem` radalle) ja tehdään niistä kompaktimmat myös `sm:` breakpointissa.
-- Kavennetaan **Tulos**-sarake mobiilissa (`3.25rem`) – tulokset kuten "8.45" tai "12,34" mahtuvat hyvin.
-- Näin nimelle jää mobiilissakin selvästi leveämpi `minmax(0,1fr)`.
+Halutaan: sivu tunnistaa automaattisesti kaikki kisat, joissa seurattavilla urheilijoilla on tänään tuloksia, listaa ne, ja käyttäjä voi klikata haluamansa kisan aktiiviseksi.
 
-### 2. Nimi & seura samalle riville, tyylikkäämmin
-- Nimirivi: `flex flex-col` – rivi 1 = nimi (`truncate`, font-semibold), rivi 2 = seura pienemmällä ja hillityllä värillä (`truncate`, text-[10px] muted).
-- Poistetaan `break-words` – korvataan `truncate` + `min-w-0` niin ettei sana pilkkoudu keskeltä.
-- Tuloksena kompakti kaksirivinen "chip": nimi ylhäällä, seura alla – näyttää siistiltä eikä katkea sanan keskeltä.
+## Muutokset
 
-### 3. Sija & rata visuaalisesti erottuvammiksi
-- Sija: pieni pyöristetty `bg-muted` -pallero numerolle (esim. `1.` → `1`), text-align keskitettynä.
-- Rata: `R3` monospace-fontilla + accent-värillä (`text-primary`), jotta silmä löytää radan nopeasti videota katsoessa.
+### 1. Uusi apufunktio `src/lib/watch-store.ts` (tai `src/lib/daily-best.ts`)
 
-### 4. Rivien tiheys
-- `py-2` mobiilissa (nykyisen `py-1.5` sijaan) koska rivit ovat nyt kaksirivisiä (nimi + seura).
-- Header-rivissä yksi sarake per otsikko, kevyt `text-[10px] tracking-wider`.
+Lisätään funktio `fetchTodayCompetitionsForAthletes(athleteKeys: string[])`, joka:
+- Hakee `athlete_results`-taulusta rivit, joissa `athlete_key IN (…)` ja `captured_at` on Helsinki-päivän sisällä (käyttää olemassa olevaa `helsinkiDayBounds` `daily-best.ts`:stä).
+- Ryhmittelee `competition_id`:n mukaan → palauttaa listan `{ competitionId, competitionName, competitionDate, location, athleteCount, resultCount, latestCapturedAt }`.
+- Järjestää: uusin `latestCapturedAt` ensin.
+
+### 2. Uusi komponentti `TodayCompetitionsForWatched` (samassa `src/routes/watch.tsx`)
+
+- Kutsuu `useQuery`:llä yllä olevaa funktiota, `queryKey: ["watch-today-competitions", sortedWatchedKeys]`, `refetchInterval: 60_000`.
+- Renderöityy vain kun seurattavia on ja kun palautuu ≥1 kisa.
+- Renderöi otsikon "Tänään käynnissä" ja listan korteista. Kortti näyttää:
+  - Kisan nimen + paikkakunnan
+  - `N seurattavaa · M tulosta tänään`
+  - Aktiivinen-merkki jos `competitionId === currentCompetitionId`
+- Kortin klikkaus kutsuu `setCompetitionId(id)` (`useCompetitionId`-hookin toinen palautusarvo), jolloin koko sivu vaihtaa kisaa ja `indexQuery` uudelleenlatautuu.
+- Sijoitetaan `<main>`-alueen alkuun, ennen hakutuloksia ja seuranta-listoja, mutta virheilmoituksen ja `ShareInviteBanner`in jälkeen.
+
+### 3. Ei muutoksia dataan
+
+Tämä on puhdas lukupolku: käyttää olemassa olevaa `athlete_results` -taulua ja sen nykyisiä `SELECT`-politiikkoja. Ei uusia migraatioita, tauluja, funktioita tai politiikkoja.
 
 ## Rajaus
-Vain `HeatResultsList`-komponentin JSX-muutos videoiden avausdialogissa ja korttien "Näytä erän tulokset" -listassa. Ei muutoksia dataan, kyselyihin eikä muuhun sivun rakenteeseen.
+
+- Vain `/watch`-sivu (`src/routes/watch.tsx` + yksi uusi apufunktio).
+- Ei muuteta olemassa olevaa `indexQuery`/`watchedSections`-logiikkaa. Käyttäjä saa listan tänään aktiivisista kisoista näkyviin; halutessaan hän klikkaa toisen kisan aktiiviseksi ja sivu vaihtaa normaalisti valittuun kisaan.
+- Ei kosketa jakolinkkeihin (`seuraa.$token.tsx`) tässä vaiheessa.
