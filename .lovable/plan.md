@@ -1,37 +1,49 @@
 ## Tavoite
 
-Videot ja muistiinpanot ovat nyt lisättävissä lähinnä analytiikkanäkymän kilpailulistalta. Laajennetaan lisäysmahdollisuus urheilijan lajilistausnäkymiin, joissa niitä tällä hetkellä ei voi lisätä. Näkyvyys säilyy nykyisenä (omat + jaetut).
+1. **Kilpailijaseurannassa** (`/watch`) jokaisen seurattavan urheilijan lajirivin viereen "Lisää suoritusvideo" ‑painike (YouTube-linkki + julkinen/yksityinen ‑valinta).
+2. **Useita videoita per laji per käyttäjä** (esim. pituushypyn eri kokeet). Nykyinen taulun UNIQUE-rajoite estää tämän.
+3. **Julkiset videot näkyvät kaikille** myös lajin/erän sivulla `/round/:eventId/:roundId` — pieni Video-nappi urheilijan rivillä avaa ne (ja kirjautunut voi lisätä oman videon sieltäkin).
 
 ## Muutokset
 
-### 1. Analytiikan tulossheet (`AthleteAnalytics.tsx` → `ResultDetailSheet`)
-Nyt: `ResultVideoButton` on, mutta muistiinpanot ovat vain lukutilassa (`NoteBlock`).
-Muutos: Korvataan/lisätään `NoteEditor`-komponentit kolmelle tasolle:
-- Tulosmuistiinpano (competitionId + eventName + subCategory)
-- Lajitason muistiinpano (eventScope)
-- Kilpailun muistiinpano (competitionScope)
+### A) DB-migraatio (`result_videos`)
+- Pudota UNIQUE-rajoite `(user_id, athlete_key, competition_id, event_name, sub_category)` → yhdellä käyttäjällä voi olla useita videoita samalle (athlete, kilpailu, laji, alalaji) ‑yhdistelmälle.
+- Ei muita skeemamuutoksia. RLS-käytännöt (julkinen SELECT + omat INSERT/UPDATE/DELETE) säilyvät.
 
-Muiden käyttäjien jaetut muistiinpanot näytetään `NoteEditor`:n `otherNotes`-propin kautta (sama malli kuin `athlete.$key.tsx`).
+### B) `src/lib/result-videos.ts`
+- Muuta `upsertResultVideo` kahdeksi funktioksi:
+  - `insertResultVideo({...})` — luo aina uuden rivin (ei onConflictia).
+  - `updateResultVideo(id, {youtubeUrl, isPublic})` — päivittää olemassa olevan rivin id:llä.
+- `deleteResultVideo(id)` säilyy.
 
-### 2. Lajikohtainen kehitys -taulukko (`RecordsPanel.tsx` → `EventGroupView`)
-Nyt: taulukko listaa tulokset, mutta rivikohtaisesti ei ole video- eikä muistiinpanotoimintoja.
-Muutos: lisätään jokaiseen tulosriviin pieni toimintopalkki oikeaan reunaan:
-- `ResultVideoButton` (competitionId + eventName + subCategory)
-- Pieni "muistiinpano"-ikonipainike, joka avaa Sheet-paneelin `NoteEditor`:llä samalla scopella
+### C) `src/components/ResultVideoButton.tsx`
+- Poista "yksi oma video per slot" ‑oletus:
+  - Näytä listassa **kaikki** omat videot (ei vain ensimmäinen) `VideoSection`-korteissa (muokattavat).
+  - Alla kaikki muiden julkiset videot (ei-muokattavat, kuten nyt).
+  - Alaosassa aina "Lisää uusi video" ‑lomake (`VideoForm`) — ei enää piiloteta kun oma video on olemassa.
+- `VideoForm` käyttää `insertResultVideo`, `VideoSection`n editointi käyttää `updateResultVideo(video.id, …)`.
+- Ulkoinen API (props) säilyy — kutsupaikkoihin ei tule breaking changea.
 
-Jotta `EventGroupView` pysyy uudelleenkäytettävänä (käytössä myös muissa paikoissa kuin urheilijasivulla), lisätään uusi valinnainen prop `rowActions?: (row) => ReactNode`. `athlete.$key.tsx` täyttää sen video/muistiinpano-painikkeilla; muut kutsupaikat jättävät pois eikä UI muutu.
+### D) `src/routes/watch.tsx`
+- Lisää `videosQuery` (React Query) joka hakee `fetchVideosForAthlete` kaikille seurattaville urheilijoille (yksi kutsu per urheilija tai batch-in). Käytä avainta `["athlete-videos", key]` yhteensopivuudeksi nykyisen invalidoinnin kanssa.
+- Jokaisen lajirivin lopussa (viimeisen `<div className="shrink-0 text-right">` ‑lohkon alle tai erillisenä action-rivinä) renderöi `<ResultVideoButton ... size="xs" />` — ilman ohjautumista `/round/...`-linkkiin klikattaessa (stopPropagation on jo napissa).
+- `subCategory`-arvo: käytetään tyhjää merkkijonoa `""` (watch-sivulla tuloslista.fi ei anna vielä sub_category-arvoa). Tätä käytetään konsistenttina "watch-slot" ‑avaimena; athlete-tilastojen tarkat sub_categoryt tallentuvat omina riveinään ja näytetään erikseen omassa kontekstissaan.
 
-### 3. Data
-`athlete.$key.tsx` hakee jo `notesQuery` ja `videosQuery` — käytetään samoja. Ei uusia serverfunktioita eikä migraatioita. Tallennus kulkee olemassa olevan `NoteEditor`:n ja `ResultVideoButton`:n kautta, jotka jo hoitavat invalidoinnin.
+### E) `src/routes/round.$eventId.$roundId.tsx`
+- Hae kaikkien erän urheilijoiden julkiset (+ omat) videot yhdellä kyselyllä `result_videos`-taulusta suodattaen `competition_id` + `athlete_key IN (...)` + `event_name = round.EventName`.
+- Kunkin allocation-rivin (urheilija) kohdalle lisää `<ResultVideoButton ... size="xs" />`. Nappi näkyy vain jos on julkisia videoita katsottavaksi TAI käyttäjä on kirjautunut ja voi lisätä oman.
+- `subCategory=""` (sama kuin watch-sivulla), jotta watch-sivulla lisätty video näkyy täällä.
 
-### 4. Näkyvyys ja RLS
-Ei muutoksia tauluihin tai policyihin. Toimivat nykyisillä `athlete_notes`- ja `result_videos`-oikeuksilla (omat + tiimi/note_links -kautta jaetut).
+### F) Ei muutoksia
+- `src/routes/athlete.$key.tsx` ja `src/components/AthleteAnalytics.tsx` toimivat jatkossakin — ResultVideoButton tukee edelleen useita omia videoita nyt kun sen sisällä on `insert` + `update` per rivi.
+- RLS ja jakolinkit (`athlete_shares`, `watch_shares`) säilyvät ennallaan.
 
-## Tiedostot
-- `src/components/AthleteAnalytics.tsx` — sheetin `NoteBlock`:ien tilalle `NoteEditor` (omat) + luku-lista muiden muistiinpanoista.
-- `src/components/RecordsPanel.tsx` — `EventGroupView` saa `rowActions`-propin ja renderöi sen tulossarakkeeseen.
-- `src/routes/athlete.$key.tsx` — antaa `rowActions`-funktion `EventGroupView`:lle; sisältää `ResultVideoButton` + pieni muistiinpanopainike.
+## Tekniset huomiot
 
-## Ei kuulu tähän
-- Ei muutoksia klubi-tänään- eikä kilpailulistausnäkymiin (rajattiin pois vastauksissasi).
-- Ei uusia tauluja, migraatioita eikä jakomallin muutoksia.
+- Migraatio: `ALTER TABLE public.result_videos DROP CONSTRAINT result_videos_user_id_athlete_key_competition_id_event_name_sub_category_key;` (todellinen nimi tarkistetaan; PostgreSQL nimeää UNIQUEn automaattisesti — käytetään DO-blockia joka löytää oikean nimen).
+- Query invalidointi: `["athlete-videos", athleteKey]` on jo käytössä; watch- ja round-sivujen queryt käyttävät samaa avainta jotta lisäys/muokkaus päivittää kaikki näkymät.
+- Painikkeen sijoitus watch-sivulla: uusi rivi `<Link>`-elementin ULKOPUOLELLA (nykyinen `<li>` sisältää yhden `<Link>`n koko rivin klikattavaksi). Rakenne muutetaan: `<li>`n sisällä `<Link>` + erillinen action-rivi napeille.
+
+## Muutetut/uudet tiedostot
+- **Migraatio**: `supabase/migrations/<uusi>.sql` — DROP UNIQUE.
+- **Muokattu**: `src/lib/result-videos.ts`, `src/components/ResultVideoButton.tsx`, `src/routes/watch.tsx`, `src/routes/round.$eventId.$roundId.tsx`.
