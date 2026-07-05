@@ -1,34 +1,45 @@
-## Juurisyy — kisa 19719 (Kouvola Junior Games, 4.7.)
+## Juurisyy — miksi Kouvola Junior Games ei näy "Seuran urheilijat tänään" -osiossa
 
-`harvest_competitions`-taulussa 19719 on `done=true, exists_in_source=false, last_scanned_at=29.6.` Kisa ei ollut vielä tuloslista.com:ssa kesäkuun lopussa, mutta ID oli varattu. Harvestteri merkitsi sen "permanent gap" -logiikalla lopullisesti valmiiksi (`NONEXIST_PERMANENT_GAP=300`), koska se oli tuolloin >300 ID:tä uusimman havaitun takana. Kisa julkaistiin tuloslistalla myöhemmin, mutta harvestteri ei enää käy sitä läpi → tulokset eivät päädy `athlete_results`-tauluun eivätkä siten analytiikkaan.
+- `cached-public-api.tuloslista.com` **sisältää** 19719 (Kouvola Junior Games, 4.7., Valkealan Kajo) — data on olemassa.
+- `harvest_competitions.19719` on tilassa `exists_in_source=false, row_count=0, last_scanned_at=29.6.` Migraatio nollasi `done=false`, mutta ei koskenut `last_scanned_at`-arvoon.
+- Harvestterin revisit-jono (`nonexistRes` osiossa `harvest-results.ts`) järjestää ei-olemassaolevat rivit **`last_scanned_at ASC`** ja ottaa vain 120/ajo. Jonossa on 594 riviä, joista vanhimmat (5.6.) ovat 19421–19440 → uusimmat ID:t (kuten 19719) tulevat vasta ~5 ajon kuluttua.
+- "Seuran urheilijat tänään" (`fetchClubTodayResults`) lukee `athlete_results`-taulua → koska harvestteri ei ole vielä upserttannut 19719:n rivejä, koko kisa puuttuu — sama syy kuin analytiikassa.
 
-## 1) Backend-korjaus (harvest-results.ts + migraatio)
+## Korjaus (frontend + backend rajallinen: vain harvestterin priorisointi)
 
-**Logiikka** — `src/routes/api/public/hooks/harvest-results.ts`:
-Ei merkitä ei-olemassaolevaa ID:tä koskaan lopullisesti valmiiksi pelkän ID-välin perusteella tuoreessa ikkunassa. Muutetaan `done`-päätös niin, että `exists_in_source=false` merkitään `done=true` vain jos ID on selvästi taakse jäänyt (`NONEXIST_PERMANENT_GAP`) JA sitä on jo probattu ainakin 30 päivää sitten ensimmäisen kerran. Käytännössä: säilytetään aiempi `last_scanned_at` päätöksessä — jos rivi on uusi (ei aiempaa `first_scanned_at`ia tai <30 pv) → `done=false` vaikka gap ylittyisi. Lisätään `harvest_competitions`-tauluun `first_scanned_at`-sarake (migraatio), joka asetetaan skannin ensimmäisellä havainnolla ja säilytetään upserteissa.
+Yksi backend-tiedostomuutos, ei uutta migraatiota. Muutetaan revisit-jonoa niin, että **uusimmat varatut mutta vielä ei-olemassaolevat ID:t skannataan aina ensin** — 19719 (ja tulevat vastaavat) tulee valituksi joka ajossa niin kauan kuin niitä ei ole harvestattu.
 
-**Migraatio**:
-- `ALTER TABLE harvest_competitions ADD COLUMN first_scanned_at timestamptz`.
-- Backfill: `UPDATE ... SET first_scanned_at = last_scanned_at WHERE first_scanned_at IS NULL`.
-- **Palauta jumissa olevat rivit revisit-tilaan** — kaikki ei-olemassaolevat kisat, joiden `first_scanned_at > now() - interval '30 days'` (mm. 19719): `UPDATE ... SET done=false`.
+### `src/routes/api/public/hooks/harvest-results.ts`
 
-Seuraavassa pg_cron-ajossa harvestteri probaa 19719:n uudelleen, löytää tulokset ja upserttaa `athlete_results`-tauluun.
+Jaetaan nykyinen `nonexistRes` (jono kaikille tuoreille ei-olemassaoleville) kahteen budjettiin:
 
-## 2) Analytiikkakäyrän visuaalinen viimeistely
+1. **Recent-bucket** (uusi): `exists_in_source=false, done=false, competition_id >= latestId - NONEXIST_PERMANENT_GAP` järjestettynä **`competition_id DESC`**, limit esim. 60. Nappaa aina ensin ne ID:t jotka ovat lähimpänä uusinta havaittua — käytännössä tämän viikon uudet kisat.
+2. **Older-bucket** (nykyinen behavior säilyy): sama query, `last_scanned_at ASC`, limit `NONEXIST_REVISIT_LIMIT - 60`. Näin ei jäädä koskaan jumiin viikkojen takaisiin gap-riveihin.
 
-Vain frontend-muutos `src/components/AthleteAnalytics.tsx`:
-- Line: `type="natural"`, `strokeWidth={2.5}`, primary-väri, `strokeLinecap="round"`.
-- Alueen (`<Area>`) täyttö lineaarisella gradientilla primary → transparent, opacity 0.25 → 0 pehmentää viivan taustaa.
-- Piste-tyylit: pieni valkoinen rengas (`r=3`) primary-reunuksella; PB-piste iso täytetty (`r=6`); hover `activeDot r=7`. Kaikki edelleen klikattavia.
-- Ruudukko vain vaakaviivat, `opacity 0.2`. Akselit ilman viivoja/tickejä, `axisLine opacity 0.3`.
-- ReferenceLine PB:lle: `strokeDasharray="2 4"`, opacity 0.4.
-- Marginit: `right: 16` jotta viimeinen piste ei leikkaannu.
-- Aputeksti valintarivin alle: "Uusimmat kilpailut näkyvät parin tunnin viiveellä."
+`revisitRows`-listaan yhdistetään molemmat (Set-dedupe on jo paikalla). Ei muita muutoksia — `nearTodayRes`, `freshRes`, `staleRes` säilyvät.
 
-## Tiedostot
+Vaikutus: seuraavassa cron-ajossa 19719 (ja muut viimeaikaiset varatut ID:t) probataan uudelleen, upserttaantuu `athlete_results`-tauluun, ja näkyy sekä "Seuran urheilijat tänään" -osiossa että urheilijoiden analytiikassa parin tunnin sisällä.
 
-- migraatio (uusi): first_scanned_at + backfill + jumissa olevien reset.
-- `src/routes/api/public/hooks/harvest-results.ts`: `done`-päättely huomioi `first_scanned_at`.
-- `src/components/AthleteAnalytics.tsx`: viivan tyyli + area + aputeksti.
+## Ei muuteta
 
-Ei kosketa muihin osiin (auth, jaot, muut näkymät).
+- Ei migraatiota (edellinen `first_scanned_at` -migraatio riittää).
+- Ei `ClubTodaySection.tsx` / `club-today.ts` -muutoksia — nämä lukevat suoraan `athlete_results`ista ja korjaantuvat kun harvestteri saa datan sisään.
+- Ei touch AthleteAnalytics-komponenttiin.
+
+## Tekniset yksityiskohdat
+
+```ts
+const RECENT_NONEXIST_LIMIT = 60; // uusi
+// nykyisen nonexistRes:n rinnalle:
+const recentNonexistRes = await supabaseAdmin
+  .from("harvest_competitions")
+  .select("competition_id")
+  .eq("exists_in_source", false)
+  .eq("done", false)
+  .gte("competition_id", Math.max(FLOOR_ID, latestId - NONEXIST_PERMANENT_GAP))
+  .order("competition_id", { ascending: false })
+  .limit(RECENT_NONEXIST_LIMIT);
+// nykyisen nonexistRes-limitin päivitys: NONEXIST_REVISIT_LIMIT - RECENT_NONEXIST_LIMIT
+```
+
+Rivit yhdistetään `revisitRows`-arrayhin ennen dedupe-luuppia.
