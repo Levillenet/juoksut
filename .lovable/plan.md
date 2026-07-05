@@ -1,17 +1,23 @@
-Korjaan tämän niin, että kuvassa näkyvä vanha erävideo saa tulokset näkyviin heti palvelussa jo olevista tuloksista.
+## Tavoite
+Videon "Näytä erän tulokset" -listaan lisätään rata numeron kanssa, jotta katsoja tietää kuka juoksee millä radalla. Rivi muotoon: **sija · rata · nimi · seura · tulos**.
 
-Ongelma nyt:
-- Video tietää oikean erän: `athlete_key = heat:400286` / `heat_key = heat:400286`.
-- `athlete_results`-taulussa on jo saman kilpailun ja lajin tulokset valmiina.
-- Nykyinen backfill yrittää hakea tulokset live-lajidatan kautta vain, jos videolle löytyy `event_id`. Tällä vanhalla videolla `event_id` päätellään epäsuorasti yhdestä osumatuloksesta, ja hakupolku voi jäädä tyhjäksi vaikka omassa tietokannassa tulokset ovat olemassa.
+## Muutokset
 
-Toteutus:
-1. Päivitetään `src/lib/public-videos.ts` niin, että erävideoille haetaan mukaan kaikki saman kilpailun, lajin ja erätekstin (`Erä 2`) tulosrivit palvelun `athlete_results`-datasta.
-2. Muodostetaan näistä riveistä `heat_results`-snapshot, jos videolla ei vielä ole tallennettua snapshotia.
-3. Päivitetään `src/routes/videot.tsx` niin, että “Näytä erän tulokset” käyttää ensisijaisesti videolle tallennettua snapshotia ja toissijaisesti näistä omista tulosriveistä muodostettua snapshotia.
-4. Kun vanhan videon tulokset löytyvät omasta datasta, tallennetaan snapshot videolle kerran `set_heat_results_if_null`-kutsulla, jotta jatkossa sitä ei tarvitse hakea uudelleen.
-5. Säilytetään nykyinen live-haun fallback viimeisenä varakeinona, mutta ei anneta sen näyttää “Ei tuloksia”, jos omasta tulostaulusta löytyy tuloksia.
+### 1. `src/routes/videot.tsx` – `HeatResultsToggle`-rivin ulkoasu
+Nykyisin näytetään joko sija tai rata (`r{position}`), ei molempia. Uusi rivi:
+```
+1.  R3  Meikäläinen Matti · Seura   8,45
+```
+- `sija`: `result_rank` + "."
+- `rata`: `R{position}` (position on live-datan `Allocation.Position`, joka on rata Track-lajeissa)
+- Jos sija puuttuu (esim. hyppy/heitto tms.), näytetään pelkkä rata; jos rata puuttuu, pelkkä sija.
+- Järjestys: ensin radan mukaan nousevasti, tai sijan mukaan jos rata puuttuu.
 
-Tarkistus:
-- Varmistan tietokannasta, että kuvassa näkyvän `T11 60m aidat · Erä 2` -videon tulosrivit muodostuvat oikein.
-- Tarkistan, että laajennus näyttää juoksijat ja tulokset eikä “Ei tuloksia”.
+### 2. `src/lib/public-videos.ts` – `buildStoredHeatSnapshot`
+Nykyisin `position: index + 1` asetetaan väärin "radaksi", vaikka `athlete_results`-taulussa ei ole rataa. Korjaus: aseta `position: null`, jotta ratakenttää ei näytetä virheellisenä. Sija tulee `result_rank`-kentästä normaalisti.
+
+### 3. Ei muutoksia tallennettuun snapshottiin
+`round.$eventId.$roundId.tsx` tallentaa jo `position`-kentän Allocationsista (= rata). Samoin `videot.tsx`:n live-backfill. Nämä toimivat sellaisenaan – vain näyttö muuttuu.
+
+## Rajaus
+Vain UI-muutos + yksi pieni korjaus snapshotin rakentamiseen. Ei tietokantamigraatiota, ei uusia kenttiä.
