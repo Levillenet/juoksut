@@ -471,9 +471,9 @@ function HeatResultsList({ video, enabled }: { video: PublicVideoItem; enabled: 
         <p className="text-muted-foreground">Ei tuloksia tallennettu tälle videolle.</p>
       ) : (
         <div className="overflow-hidden rounded-md border">
-          <div className="grid grid-cols-[2.25rem_2.25rem_minmax(0,1fr)_3.75rem] gap-1.5 bg-muted/50 px-2 py-1.5 text-[11px] font-semibold uppercase text-muted-foreground sm:grid-cols-[3.5rem_3.5rem_minmax(0,1fr)_4.5rem] sm:gap-2">
-            <span>Sija</span>
-            <span>Rata</span>
+          <div className="grid grid-cols-[1.75rem_2rem_minmax(0,1fr)_3.25rem] items-center gap-2 bg-muted/50 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:grid-cols-[2rem_2.25rem_minmax(0,1fr)_4rem] sm:gap-3 sm:px-3">
+            <span className="text-center">Sija</span>
+            <span className="text-center">Rata</span>
             <span>Nimi</span>
             <span className="text-right">Tulos</span>
           </div>
@@ -481,27 +481,32 @@ function HeatResultsList({ video, enabled }: { video: PublicVideoItem; enabled: 
             {sorted.map((r, i) => (
               <li
                 key={`${r.surname ?? ""}-${r.firstname ?? ""}-${r.position ?? i}`}
-                className="grid grid-cols-[2.25rem_2.25rem_minmax(0,1fr)_3.75rem] items-baseline gap-1.5 px-2 py-1.5 sm:grid-cols-[3.5rem_3.5rem_minmax(0,1fr)_4.5rem] sm:gap-2"
+                className="grid grid-cols-[1.75rem_2rem_minmax(0,1fr)_3.25rem] items-center gap-2 px-2 py-2 sm:grid-cols-[2rem_2.25rem_minmax(0,1fr)_4rem] sm:gap-3 sm:px-3"
               >
-                <span className="tabular-nums text-muted-foreground">
-                  {r.result_rank != null ? `${r.result_rank}.` : "–"}
+                <span className="grid h-6 w-6 place-items-center justify-self-center rounded-full bg-muted text-[11px] font-semibold tabular-nums text-foreground/80">
+                  {r.result_rank != null ? r.result_rank : "–"}
                 </span>
-                <span className="tabular-nums font-semibold text-foreground/80">
+                <span className="justify-self-center font-mono text-[11px] font-bold tabular-nums text-primary">
                   {r.position != null ? `R${r.position}` : "–"}
                 </span>
-                <span className="min-w-0 break-words font-medium leading-tight">
-                  {[r.surname, r.firstname].filter(Boolean).join(" ") || "—"}
+                <span className="flex min-w-0 flex-col leading-tight">
+                  <span className="truncate text-[13px] font-semibold text-foreground">
+                    {[r.surname, r.firstname].filter(Boolean).join(" ") || "—"}
+                  </span>
                   {r.organization && (
-                    <span className="text-muted-foreground"> · {r.organization}</span>
+                    <span className="truncate text-[10px] text-muted-foreground">
+                      {r.organization}
+                    </span>
                   )}
                 </span>
-                <span className="text-right font-bold tabular-nums">
+                <span className="text-right text-[13px] font-bold tabular-nums">
                   {r.result_text || "—"}
                 </span>
               </li>
             ))}
           </ul>
         </div>
+
 
       )}
     </>
