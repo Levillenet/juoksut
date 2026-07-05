@@ -213,6 +213,8 @@ function Card({ item }: { item: NewResultItem }) {
     competitionId,
     athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
     eventName: item.eventName ?? "",
+    ageClass: item.ageClass,
+    category: item.eventCategory,
   });
   return (
     <div className="flex flex-col items-center gap-3 text-center">
