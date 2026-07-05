@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getHistoricalBest, getHistoricalSeasonBest } from "@/lib/history-baseline";
+import { parseResult } from "@/lib/result-parse";
 import type { Allocation } from "@/lib/tuloslista";
 
 export interface Baseline {
