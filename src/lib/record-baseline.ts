@@ -107,23 +107,57 @@ export function getCachedBaseline(
 }
 
 /**
- * Resolve effective PB/SB for comparison: captured baseline takes precedence,
- * then the source tuloslista PB/SB, then (for PB only) the athlete's own
- * historical best from athlete_results across all age classes.
+ * Resolve effective PB/SB for comparison. Kaikki kolme lähdettä (kaappaus,
+ * tuloslistan alloc, oma historia) huomioidaan ja lopuksi valitaan aidosti
+ * paras — tuloslistan `alloc.PB` voi olla vanhentunut, joten sitä ei saa
+ * suoraan luottaa jos DB:ssä on parempi tulos.
+ *
+ * `history.category` kertoo suunnan (Track = pienempi voittaa). Jos sitä ei
+ * anneta, tyydytään vanhaan prioriteettijärjestykseen (kaappaus → alloc →
+ * historia).
  */
 export function effectiveRecord(
   eventId: number,
   alloc: { Id: number; PB: string; SB: string },
-  history?: { competitionId: number; athleteKey: string; eventName: string; ageClass?: string | null } | null,
+  history?:
+    | {
+        competitionId: number;
+        athleteKey: string;
+        eventName: string;
+        ageClass?: string | null;
+        category?: string | null;
+      }
+    | null,
 ): { pb: string; sb: string } {
   const b = getCachedBaseline(eventId, alloc.Id);
-  let pb = b?.pb || alloc.PB || "";
-  if (!pb && history) {
-    pb = getHistoricalBest(history.competitionId, history.athleteKey, history.eventName, history.ageClass) ?? "";
+  const historicalPb = history
+    ? getHistoricalBest(history.competitionId, history.athleteKey, history.eventName, history.ageClass)
+    : null;
+  const historicalSb = history
+    ? getHistoricalSeasonBest(history.competitionId, history.athleteKey, history.eventName, history.ageClass)
+    : null;
+
+  const isTrack = history?.category === "Track";
+  return {
+    pb: pickBest([b?.pb, alloc.PB, historicalPb], isTrack),
+    sb: pickBest([b?.sb, alloc.SB, historicalSb], isTrack),
+  };
+}
+
+function pickBest(values: (string | null | undefined)[], lowerBetter: boolean): string {
+  let bestText = "";
+  let bestNum: number | null = null;
+  for (const v of values) {
+    if (!v) continue;
+    const n = parseResult(v);
+    if (n == null) {
+      if (!bestText) bestText = v;
+      continue;
+    }
+    if (bestNum == null || (lowerBetter ? n < bestNum : n > bestNum)) {
+      bestNum = n;
+      bestText = v;
+    }
   }
-  let sb = b?.sb || alloc.SB || "";
-  if (!sb && history) {
-    sb = getHistoricalSeasonBest(history.competitionId, history.athleteKey, history.eventName, history.ageClass) ?? "";
-  }
-  return { pb, sb };
+  return bestText;
 }
