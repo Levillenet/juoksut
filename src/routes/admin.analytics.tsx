@@ -2,7 +2,16 @@ import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download, Wrench } from "lucide-react";
+import { ArrowLeft, Download, Wrench, Circle } from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip as RTooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -53,6 +62,7 @@ function Page() {
       if (error) throw error;
       return (data ?? []) as EventRow[];
     },
+    refetchInterval: 30_000,
   });
 
   const usersQ = useQuery({
@@ -121,6 +131,8 @@ function Page() {
     const last7dUsers = new Set<string>();
     let last7dEvents = 0;
     const last24h = Date.now() - 24 * 3600 * 1000;
+    const onlineWindow = Date.now() - 5 * 60 * 1000;
+    const onlineSet = new Set<string>();
     let last24hCount = 0;
     for (const r of rows) {
       byEvent.set(r.event_name, (byEvent.get(r.event_name) ?? 0) + 1);
@@ -151,7 +163,9 @@ function Page() {
       }
       if (day === todayStr) todayEvents++;
       if (day >= last7dStart) last7dEvents++;
-      if (new Date(r.created_at).getTime() >= last24h) last24hCount++;
+      const ts = new Date(r.created_at).getTime();
+      if (ts >= last24h) last24hCount++;
+      if (ts >= onlineWindow && visitorId) onlineSet.add(visitorId);
 
       const md = (r.metadata ?? {}) as Record<string, unknown>;
       if (r.event_name === "athlete_view") {
@@ -199,6 +213,7 @@ function Page() {
     return {
       total: rows.length,
       last24h: last24hCount,
+      online: onlineSet.size,
       uniqueUsers: uniqueUsers.size,
       allUniqueVisitors: allUniqueVisitors.size,
       todayUsers: todayUsers.size,
@@ -312,6 +327,19 @@ function Page() {
 
         <section className="space-y-3">
           <div>
+            <h2 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+              <Circle className="h-2 w-2 animate-pulse fill-emerald-500 text-emerald-500" />
+              Sivustolla nyt
+            </h2>
+            <div className="grid grid-cols-1">
+              <StatCard
+                label="Uniikit kävijät (viim. 5 min)"
+                value={stats.online}
+                hint="päivittyy 30 sekunnin välein"
+              />
+            </div>
+          </div>
+          <div>
             <h2 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
               Tänään
             </h2>
@@ -353,6 +381,10 @@ function Page() {
             </div>
           </div>
         </section>
+
+        <Section title="Kävijämäärä (viim. 30 päivää)">
+          <VisitorsChart data={stats.byDayCombined} />
+        </Section>
 
         <Section title="Päivittäin – kävijät ja tapahtumat">
           <DailyTable data={stats.byDayCombined} />
@@ -546,6 +578,73 @@ function DailyTable({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function VisitorsChart({
+  data,
+}: {
+  data: { day: string; uniqueVisitors: number; uniqueLoggedIn: number; events: number }[];
+}) {
+  const chartData = useMemo(
+    () =>
+      data
+        .slice(0, 30)
+        .slice()
+        .reverse()
+        .map((d) => ({
+          day: d.day.slice(5),
+          "Uniikit kävijät": d.uniqueVisitors,
+          Kirjautuneet: d.uniqueLoggedIn,
+        })),
+    [data],
+  );
+  if (chartData.length === 0)
+    return <p className="text-xs text-muted-foreground">Ei dataa.</p>;
+  return (
+    <div className="rounded-md border bg-card p-3">
+      <div className="h-64 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="gradVisitors" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+              </linearGradient>
+              <linearGradient id="gradLoggedIn" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--chart-2, 142 71% 45%))" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="hsl(var(--chart-2, 142 71% 45%))" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+            <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+            <RTooltip
+              contentStyle={{
+                background: "hsl(var(--background))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: 8,
+                fontSize: 12,
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="Uniikit kävijät"
+              stroke="hsl(var(--primary))"
+              strokeWidth={2}
+              fill="url(#gradVisitors)"
+            />
+            <Area
+              type="monotone"
+              dataKey="Kirjautuneet"
+              stroke="hsl(var(--chart-2, 142 71% 45%))"
+              strokeWidth={2}
+              fill="url(#gradLoggedIn)"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
