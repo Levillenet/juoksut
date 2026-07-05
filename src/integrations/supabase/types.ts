@@ -1097,7 +1097,9 @@ export type Database = {
           athlete_key: string
           competition_id: number
           created_at: string
+          event_category: string | null
           event_name: string
+          heat_key: string | null
           id: string
           is_public: boolean
           sub_category: string
@@ -1110,7 +1112,9 @@ export type Database = {
           athlete_key: string
           competition_id: number
           created_at?: string
+          event_category?: string | null
           event_name: string
+          heat_key?: string | null
           id?: string
           is_public?: boolean
           sub_category?: string
@@ -1123,7 +1127,9 @@ export type Database = {
           athlete_key?: string
           competition_id?: number
           created_at?: string
+          event_category?: string | null
           event_name?: string
+          heat_key?: string | null
           id?: string
           is_public?: boolean
           sub_category?: string
