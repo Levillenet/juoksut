@@ -39,7 +39,7 @@ export async function fetchPublicVideos(opts?: {
   const { data: vids, error } = await supabase
     .from("result_videos")
     .select(
-      "id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, created_at",
+      "id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, created_at, heat_results",
     )
     .eq("is_public", true)
     .gte("created_at", sinceIso)
