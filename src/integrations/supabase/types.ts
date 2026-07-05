@@ -943,6 +943,48 @@ export type Database = {
         }
         Relationships: []
       }
+      result_videos: {
+        Row: {
+          athlete_key: string
+          competition_id: number
+          created_at: string
+          event_name: string
+          id: string
+          is_public: boolean
+          sub_category: string
+          updated_at: string
+          user_id: string
+          youtube_url: string
+          youtube_video_id: string
+        }
+        Insert: {
+          athlete_key: string
+          competition_id: number
+          created_at?: string
+          event_name: string
+          id?: string
+          is_public?: boolean
+          sub_category?: string
+          updated_at?: string
+          user_id: string
+          youtube_url: string
+          youtube_video_id: string
+        }
+        Update: {
+          athlete_key?: string
+          competition_id?: number
+          created_at?: string
+          event_name?: string
+          id?: string
+          is_public?: boolean
+          sub_category?: string
+          updated_at?: string
+          user_id?: string
+          youtube_url?: string
+          youtube_video_id?: string
+        }
+        Relationships: []
+      }
       stadium_conflict_groups: {
         Row: {
           created_at: string
