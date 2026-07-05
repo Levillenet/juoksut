@@ -68,7 +68,6 @@ function SharedWatchPage() {
 
   const competitionId = shareQuery.data?.competitionId ?? null;
   const athletes: SharedWatchAthlete[] = shareQuery.data?.athletes ?? [];
-  const athleteKeys = useMemo(() => athletes.map((a) => a.key), [athletes]);
   const ownerLabel = shareQuery.data?.ownerLabel ?? "";
 
   const indexQuery = useQuery({
@@ -97,7 +96,7 @@ function SharedWatchPage() {
     });
   }, [index, athletes]);
 
-  useSharedHistoryBaseline(token, competitionId ?? null, athleteKeys);
+  useSharedHistoryBaseline(token, competitionId ?? null);
 
   const reload = () => {
     if (competitionId != null) {
