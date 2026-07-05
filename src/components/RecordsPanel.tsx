@@ -191,6 +191,14 @@ export function EventGroupView({
                         Ulko-PB
                       </span>
                     )}
+                    {row.was_district_record && (
+                      <span
+                        title="Lahden piirin piiriennätys"
+                        className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
+                      >
+                        PE
+                      </span>
+                    )}
                     {row.wind != null && (
                       <span className="whitespace-nowrap text-[10px] text-muted-foreground">
                         {row.wind > 0 ? `+${row.wind.toFixed(1)}` : row.wind.toFixed(1)} m/s
