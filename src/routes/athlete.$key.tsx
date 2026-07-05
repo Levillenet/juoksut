@@ -24,6 +24,7 @@ import { ShareAthleteButton } from "@/components/ShareAthleteButton";
 import { EventGroupView } from "@/components/RecordsPanel";
 import { AthleteAnalytics } from "@/components/AthleteAnalytics";
 import { ResultVideoButton } from "@/components/ResultVideoButton";
+import { AthleteNoteEditor as NoteEditor } from "@/components/AthleteNoteEditor";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
