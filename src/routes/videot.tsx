@@ -333,18 +333,60 @@ function VideotPage() {
 
 function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
   const [open, setOpen] = useState(false);
-  const { data, isLoading } = useQuery({
-    queryKey: [
-      "heat-results",
-      video.competition_id,
-      video.event_name,
-      video.sub_category,
-    ],
-    queryFn: () =>
-      fetchHeatResults(video.competition_id, video.event_name, video.sub_category),
-    enabled: open,
-    staleTime: 60_000,
+  const qc = useQueryClient();
+  const heatId = useMemo(() => {
+    const m = video.athlete_key.match(/^heat:(\d+)$/);
+    return m ? parseInt(m[1], 10) : null;
+  }, [video.athlete_key]);
+
+  const canBackfill = open && !video.heat_results && heatId != null && video.event_id != null;
+  const { data: backfilled, isLoading } = useQuery({
+    queryKey: ["heat-backfill", video.id],
+    queryFn: async () => {
+      const ev = await fetchEvent(video.competition_id, video.event_id!);
+      let allocs: HeatResultSnapshot[] | null = null;
+      for (const round of ev.Rounds ?? []) {
+        for (const heat of round.Heats ?? []) {
+          if (heat.Id === heatId) {
+            allocs = [...heat.Allocations]
+              .sort((a, b) => a.Position - b.Position)
+              .map((a) => ({
+                position: a.Position ?? null,
+                surname: a.Surname ?? null,
+                firstname: a.Firstname ?? null,
+                organization: a.Organization?.Name ?? null,
+                result_text: a.Result ?? null,
+                result_rank: a.ResultRank ?? null,
+              }));
+            break;
+          }
+        }
+        if (allocs) break;
+      }
+      if (allocs && allocs.length > 0) {
+        await supabase.rpc("set_heat_results_if_null", {
+          _video_id: video.id,
+          _snapshot: allocs as any,
+        });
+        qc.invalidateQueries({ queryKey: ["public-videos-archive"] });
+      }
+      return allocs;
+    },
+    enabled: canBackfill,
+    staleTime: Infinity,
+    retry: false,
   });
+
+  const rows = video.heat_results ?? backfilled ?? null;
+  const sorted = useMemo(() => {
+    if (!rows) return null;
+    return [...rows].sort((a, b) => {
+      const ar = a.result_rank ?? 9999;
+      const br = b.result_rank ?? 9999;
+      if (ar !== br) return ar - br;
+      return (a.position ?? 9999) - (b.position ?? 9999);
+    });
+  }, [rows]);
 
   return (
     <div className="border-t">
@@ -364,20 +406,24 @@ function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
       </button>
       {open && (
         <div className="px-3 pb-3 pt-1 text-xs">
-          {isLoading ? (
+          {!sorted && isLoading ? (
             <p className="text-muted-foreground">Ladataan…</p>
-          ) : !data || data.length === 0 ? (
-            <p className="text-muted-foreground">Ei tuloksia.</p>
+          ) : !sorted || sorted.length === 0 ? (
+            <p className="text-muted-foreground">Ei tuloksia tallennettu tälle videolle.</p>
           ) : (
             <ul className="space-y-1">
-              {data.map((r) => (
+              {sorted.map((r, i) => (
                 <li
-                  key={r.athlete_key}
+                  key={`${r.surname ?? ""}-${r.firstname ?? ""}-${r.position ?? i}`}
                   className="flex items-baseline justify-between gap-2"
                 >
                   <span className="min-w-0 truncate">
                     <span className="tabular-nums text-muted-foreground">
-                      {r.result_rank != null ? `${r.result_rank}.` : "–"}
+                      {r.result_rank != null
+                        ? `${r.result_rank}.`
+                        : r.position != null
+                          ? `r${r.position}`
+                          : "–"}
                     </span>{" "}
                     <span className="font-medium">
                       {[r.surname, r.firstname].filter(Boolean).join(" ") || "—"}
