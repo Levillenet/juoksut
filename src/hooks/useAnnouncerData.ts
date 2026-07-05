@@ -185,21 +185,18 @@ export function useAnnouncerData() {
 
   // Lopulliset listat.
   const inProgressAll = useMemo(() => {
-    const notYetDoneIds = new Set(trackNotYetDone.map((r) => r.Id));
     const merged = [
       ...scheduleInProgress.filter((r) => !finishedProgressRoundIds.has(r.Id)),
       ...trackNotYetDone,
     ];
-    // Poista duplikaatit varmuuden vuoksi.
     const seen = new Set<number>();
-    return merged.filter((r) => {
-      if (seen.has(r.Id)) return false;
-      seen.add(r.Id);
-      return true;
-    }).sort((a, b) => a.BeginDateTimeWithTZ.localeCompare(b.BeginDateTimeWithTZ));
-    // notYetDoneIds vain readability; ei tarvita depissä.
-    void notYetDoneIds;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return merged
+      .filter((r) => {
+        if (seen.has(r.Id)) return false;
+        seen.add(r.Id);
+        return true;
+      })
+      .sort((a, b) => a.BeginDateTimeWithTZ.localeCompare(b.BeginDateTimeWithTZ));
   }, [scheduleInProgress, trackNotYetDone, finishedProgressRoundIds]);
 
   const inProgress = showRunning
