@@ -308,10 +308,11 @@ export function EventCard({
                           key={a.AllocId}
                           a={a}
                           round={round}
-                          showRank={heatHasResults ? "result" : "position"}
+                          showRank={heatHasResults ? "heat" : "position"}
                         />
                       ))}
                     </ol>
+
                   </div>
                 );
               })}
