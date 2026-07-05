@@ -160,6 +160,9 @@ export function AthleteAnalytics({
           </SelectContent>
         </Select>
       </div>
+      <p className="text-[11px] text-muted-foreground">
+        Uusimmat kilpailut näkyvät parin tunnin viiveellä.
+      </p>
 
       {active && chartData.length > 0 && (
         <div className="rounded-xl border bg-card p-3">
