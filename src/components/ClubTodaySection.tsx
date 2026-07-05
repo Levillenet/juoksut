@@ -337,7 +337,12 @@ export function ClubTodaySection({
                               <p className="truncate text-[11px] text-muted-foreground">
                                 <span>{r.event_name}</span>
                                 {hasPublicVideo(videoIndex.data, r.competition_id, r.event_name) && (
-                                  <VideoAvailableBadge size="xs" className="ml-1 align-middle" />
+                                  <PublicVideoLinkButton
+                                    competitionId={r.competition_id}
+                                    eventName={r.event_name}
+                                    contextLabel={`${r.surname} ${r.firstname}${r.age_class ? ` · ${r.age_class}` : ""}${r.competition_name ? ` · ${r.competition_name}` : ""}`}
+                                    className="ml-1 align-middle"
+                                  />
                                 )}
                                 {r.age_class && ` · ${r.age_class}`}
                                 {r.result_rank != null && r.result_round_name
