@@ -1,21 +1,25 @@
-## Lyhyt ohjekortti videot-sivulle
+## Tavoite
 
-Lisää `/videot`-sivulle (src/routes/videot.tsx) otsikon ja suodattimien väliin taitettava ohjekortti "Miten lisään oman videon?", oletuksena kiinni. Ei muuta toimintaa – vain ohjeteksti.
+Päivän videot -sivulla erävideoihin (esim. "T11 60 m aidat, erä 1") lisätään laajennettava osio, joka näyttää kyseisen erän juoksijat ja heidän tuloksensa.
 
-### Sisältö
+## Muutokset
 
-Ohje kolmena numeroituna askeleena + huomautus lajeista:
+### 1. `src/lib/public-videos.ts`
+Lisää uusi funktio `fetchHeatResults(competitionId, eventName, subCategory)`:
+- Hakee `athlete_results`-rivit joilla `competition_id`, `event_name` ja `sub_category` täsmäävät (sub_category on erän tunniste, esim. "Erä 1").
+- Palauttaa listan: `surname`, `firstname`, `organization`, `result_text`, `result_rank`, `age_class` — järjestettynä `result_rank` mukaan (nulls last).
+- Ryhmittele duplikaatit `athlete_key`:n mukaan (uusin `captured_at`).
 
-1. **Lataa video omalle YouTube-tilillesi.** Aseta se tarpeen mukaan **Piilotettu (Unlisted)** -tilaan, jolloin sitä ei löydä hausta mutta linkillä voi katsoa.
-2. **Kopioi videon linkki** YouTuben "Jaa"-toiminnolla.
-3. **Liitä linkki urheilijaseurannassa** oikean urheilijan oikeaan juoksuerään (YouTube-nappi rivin lopussa).
+### 2. `src/routes/videot.tsx`
+- Näytä laajennusnappi vain erävideoille (`v.athlete_key.startsWith("heat:")`).
+- Nappi kortin alaosaan: pieni chevron + teksti "Näytä erän tulokset".
+- Klikkaus lataa tulokset lazysti (useQuery) ja näyttää ne pieninä riveinä:
+  `1. Sukunimi Etunimi (seura) — 9,87`
+- Ei avaa videomodalia — pysäytä `stopPropagation`.
+- Käytä `Collapsible`-komponenttia (`@/components/ui/collapsible`) tai natiivi `<details>`.
 
-**Huom:** Juoksulajien videot voi asettaa julkiseksi tai yksityiseksi. Kenttälajien videot ovat aina yksityisiä ja jäävät vain sinulle omaan arkistoosi myöhempää katselua varten.
+## Tekniset huomiot
 
-### Toteutus
-
-- Kortti `<details>`-elementillä (natiivi avaus/piilotus, ei extra deppaa) tai olemassa olevalla `Collapsible`-shadcn-komponentilla jos se on jo käytössä.
-- Sijoitus: heti otsikkokappaleen alle, ennen suodatinruudukkoa.
-- Tyyli: `rounded-xl border bg-card`, otsikkona esim. "❓ Miten jaan oman videon?" jotta erottuu selkeästi.
-
-Ei muita muutoksia.
+- Erä tunnistetaan: `athlete_key` alkaa `"heat:"` ja `sub_category` sisältää erän nimen.
+- Ei-erävideoihin (yksittäisen urheilijan video) ei laajennusta lisätä — niissä tieto on jo kortissa.
+- Kortin `button`-elementti sisältää nyt sisäkkäisen napin → vaihda ulompi `button` `div`iksi, jolla `onClick` avaa modalin, ja laajennusnappi on erillinen `button` `stopPropagation`illa. Tämä pitää a11y:n kunnossa ja välttää nested-button varoitukset.
