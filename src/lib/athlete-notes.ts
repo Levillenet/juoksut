@@ -136,3 +136,14 @@ export function placeholderForEvent(eventName: string, category: string): string
   }
   return "Lisää muistiinpanoja: olosuhteet, tuntuma, tavoite, kehityskohta…";
 }
+
+/** Placeholder for whole-competition notes (not tied to a single event). */
+export function placeholderForCompetition(): string {
+  return "Sää, olosuhteet, matka, ruokailu, tunnelma, oppia seuraavaan kertaan…";
+}
+
+/** Placeholder for a whole-event (across competitions) note. */
+export function placeholderForEventOverall(eventName: string, category: string): string {
+  const base = placeholderForEvent(eventName, category);
+  return `Tekniikka ja kausitavoite (yli kilpailurajojen). ${base}`;
+}
