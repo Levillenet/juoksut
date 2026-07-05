@@ -113,6 +113,7 @@ export async function fetchPublicVideos(opts?: {
       firstname: isHeat ? null : r?.firstname ?? null,
       organization: isHeat ? null : r?.organization ?? null,
       event_name: v.event_name,
+      event_id: r?.event_id ?? null,
       age_class: r?.age_class ?? null,
       sub_category: v.sub_category ?? null,
       result_text: isHeat ? null : r?.result_text ?? null,
@@ -120,6 +121,7 @@ export async function fetchPublicVideos(opts?: {
       competition_name: r?.competition_name ?? null,
       competition_date: r?.competition_date ?? null,
       competition_id: v.competition_id,
+      heat_results: (v.heat_results as HeatResultSnapshot[] | null) ?? null,
     };
   });
 }
