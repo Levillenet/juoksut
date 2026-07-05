@@ -202,6 +202,14 @@ export function isRunningEvent(r: Pick<Round, "Category">): boolean {
   return r.Category === "Track";
 }
 
+/** True when the round is a track heat round (alkuerä / välierä) rather than a final. */
+export function isHeatRound(r: Pick<Round, "Category" | "Name">): boolean {
+  if (r.Category !== "Track") return false;
+  const x = (r.Name || "").toLowerCase().replace(/[äå]/g, "a").replace(/ö/g, "o");
+  return /alkuer|valier/.test(x);
+}
+
+
 /** True for high jump and pole vault (data has one Attempts entry per height). */
 export function isVerticalJump(
   ev: { EventSubCategory?: string | null } | { SubCategory?: string | null } | null | undefined,
