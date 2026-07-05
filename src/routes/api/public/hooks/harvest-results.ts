@@ -401,14 +401,33 @@ async function harvestRange(ids: number[], latestIdHint: number) {
     exists_in_source: boolean;
     done: boolean;
     last_scanned_at: string;
+    first_scanned_at: string;
   }> = [];
 
   const cutoffMs = Date.now() - REVISIT_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+  const NONEXIST_FRESH_MS = 30 * 24 * 60 * 60 * 1000;
   // Päivitä latestId-arvio jo skannauksen aikana, jotta uusin nähty ID
   // huomioidaan permanent-gap-päätöksessä saman ajon sisällä.
   let runningLatestId = latestIdHint;
   for (const id of ids) {
     if (id > runningLatestId) runningLatestId = id;
+  }
+
+  // Lataa aiemmat first_scanned_at -arvot, jotta ne säilyvät upsertissa ja
+  // niitä voidaan käyttää done-päättelyssä.
+  const firstSeenMap = new Map<number, string>();
+  if (ids.length > 0) {
+    const CHUNK = 500;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const slice = ids.slice(i, i + CHUNK);
+      const { data } = await supabaseAdmin
+        .from("harvest_competitions")
+        .select("competition_id, first_scanned_at")
+        .in("competition_id", slice);
+      for (const r of data ?? []) {
+        if (r.first_scanned_at) firstSeenMap.set(r.competition_id, r.first_scanned_at);
+      }
+    }
   }
 
   // Process IDs in chunks of CONCURRENCY in source order, so that if we
