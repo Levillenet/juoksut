@@ -615,7 +615,7 @@ async function run(request: Request): Promise<Response> {
       const nearTodayHi = hasNearToday
         ? nearTodayMax + NONEXIST_NEAR_TODAY_RADIUS
         : 0;
-      const [freshRes, staleRes, nonexistRes, nearTodayRes] = await Promise.all([
+      const [freshRes, staleRes, nonexistRes, recentNonexistRes, nearTodayRes] = await Promise.all([
         supabaseAdmin
           .from("harvest_competitions")
           .select("competition_id")
@@ -641,7 +641,15 @@ async function run(request: Request): Promise<Response> {
           .eq("done", false)
           .gte("competition_id", Math.max(FLOOR_ID, latestId - NONEXIST_PERMANENT_GAP * 4))
           .order("last_scanned_at", { ascending: true })
-          .limit(NONEXIST_REVISIT_LIMIT),
+          .limit(Math.max(0, NONEXIST_REVISIT_LIMIT - RECENT_NONEXIST_LIMIT)),
+        supabaseAdmin
+          .from("harvest_competitions")
+          .select("competition_id")
+          .eq("exists_in_source", false)
+          .eq("done", false)
+          .gte("competition_id", Math.max(FLOOR_ID, latestId - NONEXIST_PERMANENT_GAP))
+          .order("competition_id", { ascending: false })
+          .limit(RECENT_NONEXIST_LIMIT),
         hasNearToday
           ? supabaseAdmin
               .from("harvest_competitions")
