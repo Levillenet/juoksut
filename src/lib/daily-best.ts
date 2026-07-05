@@ -27,6 +27,84 @@ export interface DailyBestRow {
   was_district_record: boolean | null;
 }
 
+export interface TodayCompetitionForWatched {
+  competitionId: number;
+  competitionName: string;
+  competitionDate: string | null;
+  location: string;
+  athleteCount: number;
+  resultCount: number;
+  latestCapturedAt: string;
+}
+
+/** Competitions where the given watched athletes have results captured today. */
+export async function fetchTodayCompetitionsForAthletes(
+  athleteKeys: string[],
+): Promise<TodayCompetitionForWatched[]> {
+  if (athleteKeys.length === 0) return [];
+  const { startISO, endISO } = helsinkiDayBounds(new Date());
+  const { data, error } = await supabase
+    .from("athlete_results")
+    .select(
+      "athlete_key, competition_id, competition_name, competition_date, location, captured_at",
+    )
+    .in("athlete_key", athleteKeys)
+    .gte("captured_at", startISO)
+    .lt("captured_at", endISO);
+  if (error) throw error;
+  const map = new Map<
+    number,
+    {
+      competitionId: number;
+      competitionName: string;
+      competitionDate: string | null;
+      location: string;
+      athletes: Set<string>;
+      resultCount: number;
+      latestCapturedAt: string;
+    }
+  >();
+  for (const r of (data ?? []) as Array<{
+    athlete_key: string;
+    competition_id: number | null;
+    competition_name: string | null;
+    competition_date: string | null;
+    location: string | null;
+    captured_at: string;
+  }>) {
+    if (r.competition_id == null) continue;
+    const cur = map.get(r.competition_id);
+    if (cur) {
+      cur.athletes.add(r.athlete_key);
+      cur.resultCount += 1;
+      if (r.captured_at > cur.latestCapturedAt) cur.latestCapturedAt = r.captured_at;
+      if (!cur.competitionName && r.competition_name) cur.competitionName = r.competition_name;
+      if (!cur.location && r.location) cur.location = r.location;
+    } else {
+      map.set(r.competition_id, {
+        competitionId: r.competition_id,
+        competitionName: r.competition_name ?? `Kisa #${r.competition_id}`,
+        competitionDate: r.competition_date,
+        location: r.location ?? "",
+        athletes: new Set([r.athlete_key]),
+        resultCount: 1,
+        latestCapturedAt: r.captured_at,
+      });
+    }
+  }
+  return Array.from(map.values())
+    .map((c) => ({
+      competitionId: c.competitionId,
+      competitionName: c.competitionName,
+      competitionDate: c.competitionDate,
+      location: c.location,
+      athleteCount: c.athletes.size,
+      resultCount: c.resultCount,
+      latestCapturedAt: c.latestCapturedAt,
+    }))
+    .sort((a, b) => b.latestCapturedAt.localeCompare(a.latestCapturedAt));
+}
+
 /** [startISO, endISO) covering the given calendar date in Helsinki TZ. */
 export function helsinkiDayBounds(date: Date): { startISO: string; endISO: string } {
   // Format the date in Helsinki to get its Y-M-D, then interpret midnight Helsinki as UTC.
