@@ -371,6 +371,14 @@ function RoundView() {
             )}
             {heats.map((heat) => {
               const allocs = [...heat.Allocations].sort((a, b) => a.Position - b.Position);
+              const heatSnapshot = allocs.map((a) => ({
+                position: a.Position ?? null,
+                surname: a.Surname ?? null,
+                firstname: a.Firstname ?? null,
+                organization: a.Organization?.Name ?? null,
+                result_text: a.Result ?? null,
+                result_rank: a.ResultRank ?? null,
+              }));
               return (
                 <section
                   key={heat.Id}
@@ -398,6 +406,7 @@ function RoundView() {
                           subCategory={`Erä ${heat.Index}`}
                           eventCategory={eventCategory}
                           heatKey={`heat:${heat.Id}`}
+                          heatSnapshot={heatSnapshot}
                           videos={heatVideos.get(`heat:${heat.Id}`) ?? []}
                           contextLabel={`${eventName} · Erä ${heat.Index}`}
                           size="sm"
