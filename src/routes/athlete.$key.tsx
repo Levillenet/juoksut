@@ -22,6 +22,9 @@ import { trackEvent } from "@/lib/analytics";
 import { RequireRole } from "@/components/RequireRole";
 import { ShareAthleteButton } from "@/components/ShareAthleteButton";
 import { EventGroupView } from "@/components/RecordsPanel";
+import { AthleteAnalytics } from "@/components/AthleteAnalytics";
+import { ResultVideoButton } from "@/components/ResultVideoButton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -44,6 +47,11 @@ import {
   upsertNote,
   type AthleteNote,
 } from "@/lib/athlete-notes";
+import {
+  fetchVideosForAthlete,
+  videoKey,
+  type ResultVideo,
+} from "@/lib/result-videos";
 import { loadAthleteSeasonTopFlags, type SeasonTopFlag } from "@/lib/season-top";
 
 export const Route = createFileRoute("/athlete/$key")({
