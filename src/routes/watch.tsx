@@ -30,7 +30,7 @@ import {
 } from "@/lib/tuloslista-queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { fetchDailyBestForAthletes } from "@/lib/daily-best";
+import { fetchDailyBestForAthletes, fetchTodayCompetitionsForAthletes } from "@/lib/daily-best";
 import { LiveTicker } from "@/components/announcer/LiveTicker";
 import { useWatchedFieldChanges } from "@/hooks/useWatchedFieldChanges";
 import { useWatchedAllocationChanges } from "@/hooks/useWatchedAllocationChanges";
@@ -62,7 +62,7 @@ const STATUS_STYLE: Record<"Unallocated" | "Allocated" | "Progress" | "Official"
 };
 
 function WatchPage() {
-  const [competitionId] = useCompetitionId();
+  const [competitionId, setCompetitionId] = useCompetitionId();
   const queryClient = useQueryClient();
   const { list: watched, add, remove } = useWatchedAthletes();
   const [query, setQuery] = useState<string>("");
@@ -404,6 +404,14 @@ function WatchPage() {
 
         {watched.length > 0 && (
           <ShareInviteBanner competitionId={competitionId} />
+        )}
+
+        {watched.length > 0 && (
+          <TodayCompetitionsForWatched
+            watchedKeys={watchedHistoryKeys}
+            currentCompetitionId={competitionId}
+            onSelect={setCompetitionId}
+          />
         )}
 
         <div>
@@ -1099,5 +1107,77 @@ function ShareInviteBanner({ competitionId }: { competitionId: number }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function TodayCompetitionsForWatched({
+  watchedKeys,
+  currentCompetitionId,
+  onSelect,
+}: {
+  watchedKeys: string[];
+  currentCompetitionId: number;
+  onSelect: (id: number) => void;
+}) {
+  const sortedKey = useMemo(
+    () => watchedKeys.slice().sort().join(","),
+    [watchedKeys],
+  );
+  const query = useQuery({
+    queryKey: ["watch-today-competitions", sortedKey],
+    queryFn: () => fetchTodayCompetitionsForAthletes(watchedKeys),
+    enabled: watchedKeys.length > 0,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+  const list = query.data ?? [];
+  if (list.length === 0) return null;
+  return (
+    <section className="mb-6">
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Seurattavien kisat tänään
+      </h3>
+      <ul className="space-y-2">
+        {list.map((c) => {
+          const active = c.competitionId === currentCompetitionId;
+          return (
+            <li key={c.competitionId}>
+              <button
+                type="button"
+                onClick={() => onSelect(c.competitionId)}
+                className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition ${
+                  active
+                    ? "border-primary bg-primary/10"
+                    : "bg-card hover:bg-accent"
+                }`}
+                aria-pressed={active}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">
+                    {c.competitionName}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {c.location ? `${c.location} · ` : ""}
+                    {c.athleteCount}{" "}
+                    {c.athleteCount === 1 ? "seurattava" : "seurattavaa"} ·{" "}
+                    {c.resultCount}{" "}
+                    {c.resultCount === 1 ? "tulos" : "tulosta"}
+                  </p>
+                </div>
+                {active ? (
+                  <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">
+                    Aktiivinen
+                  </span>
+                ) : (
+                  <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                    Valitse
+                  </span>
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
