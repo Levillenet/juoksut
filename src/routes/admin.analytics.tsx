@@ -327,6 +327,19 @@ function Page() {
 
         <section className="space-y-3">
           <div>
+            <h2 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+              <Circle className="h-2 w-2 animate-pulse fill-emerald-500 text-emerald-500" />
+              Sivustolla nyt
+            </h2>
+            <div className="grid grid-cols-1">
+              <StatCard
+                label="Uniikit kävijät (viim. 5 min)"
+                value={stats.online}
+                hint="päivittyy 30 sekunnin välein"
+              />
+            </div>
+          </div>
+          <div>
             <h2 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
               Tänään
             </h2>
