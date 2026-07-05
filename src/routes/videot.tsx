@@ -411,13 +411,19 @@ function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
   const rows = video.heat_results ?? savedStoredRows ?? storedRows ?? backfilled ?? null;
   const sorted = useMemo(() => {
     if (!rows) return null;
+    const hasAnyLane = rows.some((r) => r.position != null);
     return [...rows].sort((a, b) => {
+      if (hasAnyLane) {
+        const ap = a.position ?? 9999;
+        const bp = b.position ?? 9999;
+        if (ap !== bp) return ap - bp;
+      }
       const ar = a.result_rank ?? 9999;
       const br = b.result_rank ?? 9999;
-      if (ar !== br) return ar - br;
-      return (a.position ?? 9999) - (b.position ?? 9999);
+      return ar - br;
     });
   }, [rows]);
+
 
   return (
     <div className="border-t">
@@ -448,14 +454,15 @@ function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
                   key={`${r.surname ?? ""}-${r.firstname ?? ""}-${r.position ?? i}`}
                   className="flex items-baseline justify-between gap-2"
                 >
-                  <span className="min-w-0 truncate">
+                  <span className="min-w-0 flex-1 truncate">
                     <span className="tabular-nums text-muted-foreground">
-                      {r.result_rank != null
-                        ? `${r.result_rank}.`
-                        : r.position != null
-                          ? `r${r.position}`
-                          : "–"}
+                      {r.result_rank != null ? `${r.result_rank}.` : "–"}
                     </span>{" "}
+                    {r.position != null && (
+                      <span className="tabular-nums font-semibold text-foreground/80">
+                        R{r.position}
+                      </span>
+                    )}{" "}
                     <span className="font-medium">
                       {[r.surname, r.firstname].filter(Boolean).join(" ") || "—"}
                     </span>
@@ -466,6 +473,7 @@ function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
                   <span className="shrink-0 font-bold tabular-nums">
                     {r.result_text || "—"}
                   </span>
+
                 </li>
               ))}
             </ul>
