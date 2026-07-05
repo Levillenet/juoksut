@@ -363,7 +363,7 @@ function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
     !storedRows &&
     heatId != null;
   const { data: backfilled, isLoading } = useQuery({
-    queryKey: ["heat-backfill", video.id],
+    queryKey: ["heat-backfill-v2", video.id, video.event_id ?? "discover"],
     queryFn: async () => {
       const eventIds = new Set<number>();
       if (video.event_id != null) eventIds.add(video.event_id);
@@ -404,7 +404,7 @@ function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
       return null;
     },
     enabled: canBackfill,
-    staleTime: Infinity,
+    staleTime: 0,
     retry: false,
   });
 
