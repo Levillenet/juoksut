@@ -26,10 +26,10 @@ export function LiveCompetitionsSection() {
         <Radio className="h-4 w-4 text-muted-foreground" />
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-extrabold leading-tight">
-            Seurannassa oleva kilpailu
+            Valitse seurattava kilpailu
           </h2>
           <p className="mt-0.5 text-xs font-medium text-muted-foreground">
-            Valitse kilpailu, jota haluat seurata.
+            Näytetään tämän päivän kilpailut.
           </p>
         </div>
         <span className="ml-auto text-[11px] text-muted-foreground">
