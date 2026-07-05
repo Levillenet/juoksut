@@ -60,11 +60,12 @@ export interface Allocation {
   Position: number;
   Number: string | null;
   TeamName: string;
+  TeamId?: number | null;
   Name: string;
   Firstname: string;
   Surname: string;
   NotInCompetition: boolean;
-  Confirmed?: boolean;
+  Confirmed?: boolean | null;
   PB: string;
   SB: string;
   Result: string | null;
@@ -76,6 +77,7 @@ export interface Allocation {
   AthleteOrders?: AthleteOrder[];
   Athletes?: RelayAthlete[];
 }
+
 
 export interface Heat {
   Id: number;
