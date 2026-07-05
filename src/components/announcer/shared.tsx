@@ -641,6 +641,8 @@ export function UpcomingItem({
   const allocations = useMemo(() => heats.flatMap((h) => h.Allocations), [heats]);
   const hasResults = allocations.some((a) => a.Result);
   const isTrackHeats = groupHeats && round.Category === "Track" && heats.length > 1;
+  const heatRoundMode = isHeatRound(round);
+
 
   const sortAllocs = (list: Allocation[]) => {
     if (hasResults) {
@@ -687,8 +689,20 @@ export function UpcomingItem({
               {[...heats]
                 .sort((a, b) => a.Index - b.Index)
                 .map((heat) => {
-                  const heatAllocs = sortAllocs(heat.Allocations);
                   const heatHasResults = heat.Allocations.some((a) => a.Result);
+                  const heatAllocs = heatRoundMode
+                    ? [...heat.Allocations].sort((a, b) => {
+                        if (heatHasResults) {
+                          return (a.HeatRank ?? 999) - (b.HeatRank ?? 999);
+                        }
+                        return (a.Position ?? 999) - (b.Position ?? 999);
+                      })
+                    : sortAllocs(heat.Allocations);
+                  const rowMode: "result" | "position" | "heat" = heatHasResults
+                    ? heatRoundMode
+                      ? "heat"
+                      : "result"
+                    : "position";
                   return (
                     <div key={heat.Index}>
                       <div className="mb-1 flex items-center justify-between px-1">
@@ -707,7 +721,8 @@ export function UpcomingItem({
                             key={a.AllocId}
                             a={a}
                             round={round}
-                            showRank={heatHasResults ? "result" : "position"}
+                            showRank={rowMode}
+
                           />
                         ))}
                       </ol>
