@@ -763,6 +763,7 @@ function CompetitionResultRow({
   otherNotes = [],
   labelMap,
   seasonTop,
+  videos = [],
 }: {
   row: AthleteResultRow;
   athleteKey: string;
@@ -770,6 +771,7 @@ function CompetitionResultRow({
   otherNotes?: AthleteNote[];
   labelMap?: Map<string, string>;
   seasonTop: SeasonTopFlag | null;
+  videos?: ResultVideo[];
 }) {
   return (
     <li className="py-1">
