@@ -45,7 +45,7 @@ export function heatAthleteKey(heatId: number | string): string {
 }
 
 const SELECT_COLS =
-  "id, user_id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, is_public, event_category, heat_key, updated_at";
+  "id, user_id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, is_public, event_category, heat_key, heat_results, updated_at";
 
 /** Parse a YouTube URL/id and return the 11-char video id, or null. */
 export function parseYoutubeId(input: string): string | null {
