@@ -428,8 +428,29 @@ function RoundView() {
                           ) : (
                             <>
                               {a.Number && <div>#{a.Number}</div>}
-                              {a.SB && <div>SB {a.SB}</div>}
-                              {!a.SB && a.PB && <div>PB {a.PB}</div>}
+                              {(() => {
+                                const eff = effectiveRecord(
+                                  (a as AllocWithMeta)._eventId ?? eid,
+                                  a,
+                                  {
+                                    competitionId,
+                                    athleteKey: athleteKey(
+                                      a.Surname,
+                                      a.Firstname,
+                                      a.Organization?.Id ?? null,
+                                    ),
+                                    eventName: data?.Name ?? "",
+                                    ageClass: data?.Group ?? null,
+                                    category: data?.EventCategory ?? null,
+                                  },
+                                );
+                                return (
+                                  <>
+                                    {eff.sb && <div>SB {eff.sb}</div>}
+                                    {!eff.sb && eff.pb && <div>PB {eff.pb}</div>}
+                                  </>
+                                );
+                              })()}
                             </>
                           )}
                         </div>
