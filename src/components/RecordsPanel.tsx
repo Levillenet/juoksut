@@ -1,3 +1,4 @@
+import type React from "react";
 import { useMemo } from "react";
 import { Trophy } from "lucide-react";
 
