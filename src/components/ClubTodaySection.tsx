@@ -15,6 +15,11 @@ import { normalizeEventName } from "@/lib/event-name";
 import { pbEventKey } from "@/lib/pb-key";
 import { formatImprovement } from "@/lib/records";
 import { formatRelayLegsFromRows } from "@/lib/tuloslista";
+import {
+  hasPublicVideo,
+  usePublicVideoIndex,
+  VideoAvailableBadge,
+} from "@/components/VideoAvailableBadge";
 
 const STORAGE_KEY = "clubToday.orgId";
 
