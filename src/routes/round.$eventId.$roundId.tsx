@@ -4,6 +4,10 @@ import { LayoutGroup, motion } from "framer-motion";
 import { trackEvent } from "@/lib/analytics";
 import { useQuery, useQueryClient, useQueries } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw, Wind } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import type { ResultVideo } from "@/lib/result-videos";
+import { ResultVideoButton } from "@/components/ResultVideoButton";
+
 
 import { formatRelayLegs, formatTime, STATUS_LABEL, type Heat, type Allocation, type Enrollment } from "@/lib/tuloslista";
 import { RecordBadge } from "@/lib/records";
