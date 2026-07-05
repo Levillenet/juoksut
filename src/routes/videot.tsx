@@ -339,7 +339,30 @@ function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
     return m ? parseInt(m[1], 10) : null;
   }, [video.athlete_key]);
 
-  const canBackfill = open && !video.heat_results && heatId != null && video.event_id != null;
+  const storedRows = video.stored_heat_results ?? null;
+  const canStoreFromResults =
+    open && !video.heat_results && !!storedRows && storedRows.length > 0;
+  const { data: savedStoredRows } = useQuery({
+    queryKey: ["heat-results-store-from-results", video.id],
+    queryFn: async () => {
+      await supabase.rpc("set_heat_results_if_null", {
+        _video_id: video.id,
+        _snapshot: storedRows as any,
+      });
+      qc.invalidateQueries({ queryKey: ["public-videos-archive"] });
+      return storedRows;
+    },
+    enabled: canStoreFromResults,
+    staleTime: Infinity,
+    retry: false,
+  });
+
+  const canBackfill =
+    open &&
+    !video.heat_results &&
+    !storedRows &&
+    heatId != null &&
+    video.event_id != null;
   const { data: backfilled, isLoading } = useQuery({
     queryKey: ["heat-backfill", video.id],
     queryFn: async () => {
@@ -377,7 +400,7 @@ function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
     retry: false,
   });
 
-  const rows = video.heat_results ?? backfilled ?? null;
+  const rows = video.heat_results ?? savedStoredRows ?? storedRows ?? backfilled ?? null;
   const sorted = useMemo(() => {
     if (!rows) return null;
     return [...rows].sort((a, b) => {
