@@ -163,7 +163,9 @@ function Page() {
       }
       if (day === todayStr) todayEvents++;
       if (day >= last7dStart) last7dEvents++;
-      if (new Date(r.created_at).getTime() >= last24h) last24hCount++;
+      const ts = new Date(r.created_at).getTime();
+      if (ts >= last24h) last24hCount++;
+      if (ts >= onlineWindow && visitorId) onlineSet.add(visitorId);
 
       const md = (r.metadata ?? {}) as Record<string, unknown>;
       if (r.event_name === "athlete_view") {
