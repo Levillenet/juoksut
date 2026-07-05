@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Play, Search, Youtube } from "lucide-react";
+import { ArrowLeft, ChevronDown, Play, Search, Youtube } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { fetchPublicVideos, type PublicVideoItem } from "@/lib/public-videos";
+import {
+  fetchHeatResults,
+  fetchPublicVideos,
+  type PublicVideoItem,
+} from "@/lib/public-videos";
 import { embedUrl } from "@/lib/result-videos";
 
 export const Route = createFileRoute("/videot")({
@@ -219,63 +223,71 @@ function VideotPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              onClick={() => setActive(v)}
-              className="group overflow-hidden rounded-xl border bg-card text-left shadow-sm transition-shadow hover:shadow-md"
-            >
-              <div className="relative aspect-video overflow-hidden bg-black">
-                <img
-                  src={`https://i.ytimg.com/vi/${v.youtube_video_id}/mqdefault.jpg`}
-                  alt=""
-                  loading="lazy"
-                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="grid h-12 w-12 place-items-center rounded-full bg-black/60 text-white transition-colors group-hover:bg-red-600">
-                    <Play className="h-6 w-6 fill-current" />
+          {filtered.map((v) => {
+            const isHeat = v.athlete_key.startsWith("heat:");
+            return (
+              <div
+                key={v.id}
+                className="group overflow-hidden rounded-xl border bg-card text-left shadow-sm transition-shadow hover:shadow-md"
+              >
+                <button
+                  type="button"
+                  onClick={() => setActive(v)}
+                  className="block w-full text-left"
+                >
+                  <div className="relative aspect-video overflow-hidden bg-black">
+                    <img
+                      src={`https://i.ytimg.com/vi/${v.youtube_video_id}/mqdefault.jpg`}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="grid h-12 w-12 place-items-center rounded-full bg-black/60 text-white transition-colors group-hover:bg-red-600">
+                        <Play className="h-6 w-6 fill-current" />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div className="p-3">
-                <p className="truncate text-sm font-bold leading-tight">
-                  {v.athlete_key.startsWith("heat:")
-                    ? v.sub_category || "Eräkooste"
-                    : [v.surname, v.firstname].filter(Boolean).join(" ") || "Urheilija"}
-                </p>
-                {v.organization && !v.athlete_key.startsWith("heat:") && (
-                  <p className="truncate text-xs text-muted-foreground">
-                    {v.organization}
-                  </p>
-                )}
-                <p className="mt-1 truncate text-xs">
-                  <span className="font-semibold">
-                    {v.age_class ? `${v.age_class} ` : ""}
-                    {v.event_name}
-                  </span>
-                  {v.result_text && (
-                    <>
-                      {" · "}
-                      <span className="font-bold tabular-nums">{v.result_text}</span>
-                      {v.result_rank != null && (
-                        <span className="ml-1 text-muted-foreground">
-                          ({v.result_rank}.)
-                        </span>
+                  <div className="p-3">
+                    <p className="truncate text-sm font-bold leading-tight">
+                      {isHeat
+                        ? v.sub_category || "Eräkooste"
+                        : [v.surname, v.firstname].filter(Boolean).join(" ") || "Urheilija"}
+                    </p>
+                    {v.organization && !isHeat && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {v.organization}
+                      </p>
+                    )}
+                    <p className="mt-1 truncate text-xs">
+                      <span className="font-semibold">
+                        {v.age_class ? `${v.age_class} ` : ""}
+                        {v.event_name}
+                      </span>
+                      {v.result_text && (
+                        <>
+                          {" · "}
+                          <span className="font-bold tabular-nums">{v.result_text}</span>
+                          {v.result_rank != null && (
+                            <span className="ml-1 text-muted-foreground">
+                              ({v.result_rank}.)
+                            </span>
+                          )}
+                        </>
                       )}
-                    </>
-                  )}
-                </p>
-                {v.competition_name && (
-                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                    {v.competition_date ? `${v.competition_date} · ` : ""}
-                    {v.competition_name}
-                  </p>
-                )}
+                    </p>
+                    {v.competition_name && (
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        {v.competition_date ? `${v.competition_date} · ` : ""}
+                        {v.competition_name}
+                      </p>
+                    )}
+                  </div>
+                </button>
+                {isHeat && <HeatResultsToggle video={v} />}
               </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -312,6 +324,74 @@ function VideotPage() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function HeatResultsToggle({ video }: { video: PublicVideoItem }) {
+  const [open, setOpen] = useState(false);
+  const { data, isLoading } = useQuery({
+    queryKey: [
+      "heat-results",
+      video.competition_id,
+      video.event_name,
+      video.sub_category,
+    ],
+    queryFn: () =>
+      fetchHeatResults(video.competition_id, video.event_name, video.sub_category),
+    enabled: open,
+    staleTime: 60_000,
+  });
+
+  return (
+    <div className="border-t">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        className="flex w-full items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted/50"
+        aria-expanded={open}
+      >
+        <span>{open ? "Piilota erän tulokset" : "Näytä erän tulokset"}</span>
+        <ChevronDown
+          className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && (
+        <div className="px-3 pb-3 pt-1 text-xs">
+          {isLoading ? (
+            <p className="text-muted-foreground">Ladataan…</p>
+          ) : !data || data.length === 0 ? (
+            <p className="text-muted-foreground">Ei tuloksia.</p>
+          ) : (
+            <ul className="space-y-1">
+              {data.map((r) => (
+                <li
+                  key={r.athlete_key}
+                  className="flex items-baseline justify-between gap-2"
+                >
+                  <span className="min-w-0 truncate">
+                    <span className="tabular-nums text-muted-foreground">
+                      {r.result_rank != null ? `${r.result_rank}.` : "–"}
+                    </span>{" "}
+                    <span className="font-medium">
+                      {[r.surname, r.firstname].filter(Boolean).join(" ") || "—"}
+                    </span>
+                    {r.organization && (
+                      <span className="text-muted-foreground"> · {r.organization}</span>
+                    )}
+                  </span>
+                  <span className="shrink-0 font-bold tabular-nums">
+                    {r.result_text || "—"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }
