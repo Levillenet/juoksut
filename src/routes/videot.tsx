@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Play, Search, Youtube } from "lucide-react";
+import { ArrowLeft, ChevronDown, Play, Search, Youtube } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { fetchPublicVideos, type PublicVideoItem } from "@/lib/public-videos";
+import {
+  fetchHeatResults,
+  fetchPublicVideos,
+  type PublicVideoItem,
+} from "@/lib/public-videos";
 import { embedUrl } from "@/lib/result-videos";
 
 export const Route = createFileRoute("/videot")({
