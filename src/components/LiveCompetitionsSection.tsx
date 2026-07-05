@@ -10,15 +10,28 @@ export function LiveCompetitionsSection() {
   if (loading || error) return null;
   if (list.length === 0) return null;
 
+  const hasActiveCompetition = list.some((c) => c.Id === activeId);
+
   return (
-    <section className="mb-4 rounded-xl border bg-card shadow-sm">
-      <header className="flex items-center gap-2 border-b px-4 py-2.5">
-        <span className="relative flex h-2.5 w-2.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+    <section
+      className={`mb-4 overflow-hidden rounded-xl border bg-card shadow-sm transition-colors ${
+        hasActiveCompetition ? "border-destructive/50 shadow-md" : ""
+      }`}
+    >
+      <header className="flex items-center gap-3 border-b px-4 py-3">
+        <span className="relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full ring-2 ring-destructive/35">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-70" />
+          <span className="relative inline-flex h-3 w-3 rounded-full bg-destructive" />
         </span>
         <Radio className="h-4 w-4 text-muted-foreground" />
-        <h2 className="text-sm font-semibold">Käynnissä olevat kisat</h2>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-sm font-extrabold leading-tight">
+            Seurannassa oleva kilpailu
+          </h2>
+          <p className="mt-0.5 text-xs font-medium text-muted-foreground">
+            Valitse kilpailu, jota haluat seurata.
+          </p>
+        </div>
         <span className="ml-auto text-[11px] text-muted-foreground">
           {list.length} kpl
         </span>
@@ -31,12 +44,33 @@ export function LiveCompetitionsSection() {
               <button
                 type="button"
                 onClick={() => setActiveId(c.Id)}
-                className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-secondary ${
-                  isActive ? "bg-secondary/60" : ""
+                className={`flex w-full items-center gap-3 border-l-4 px-4 py-3 text-left transition-colors ${
+                  isActive
+                    ? "border-l-destructive bg-destructive/10 hover:bg-destructive/15"
+                    : "border-l-transparent hover:border-l-destructive/40 hover:bg-secondary"
                 }`}
               >
+                <span
+                  className={`relative flex shrink-0 items-center justify-center rounded-full ${
+                    isActive ? "h-5 w-5 ring-2 ring-destructive/35" : "h-3 w-3"
+                  }`}
+                  aria-hidden="true"
+                >
+                  {isActive && (
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-60" />
+                  )}
+                  <span
+                    className={`relative inline-flex rounded-full ${
+                      isActive ? "h-3.5 w-3.5 bg-destructive" : "h-2 w-2 bg-muted-foreground/45"
+                    }`}
+                  />
+                </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold leading-tight">
+                  <p
+                    className={`truncate text-sm leading-tight ${
+                      isActive ? "font-extrabold text-foreground" : "font-semibold"
+                    }`}
+                  >
                     {c.Name}
                   </p>
                   <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
@@ -44,7 +78,7 @@ export function LiveCompetitionsSection() {
                   </p>
                 </div>
                 {isActive ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-medium text-primary-foreground">
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-destructive px-2.5 py-1 text-[11px] font-black text-destructive-foreground shadow-sm">
                     <Check className="h-3 w-3" />
                     Seurataan
                   </span>
