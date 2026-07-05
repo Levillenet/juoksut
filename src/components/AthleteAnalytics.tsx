@@ -442,21 +442,54 @@ function ResultDetailSheet({
                 </div>
               )}
 
-              <NoteBlock
-                title="Tulosmuistiinpanot"
-                notes={collected.resultNotes}
-                myUserId={myUserId}
-              />
-              <NoteBlock
-                title="Lajitason muistiinpanot"
-                notes={collected.eventNotes}
-                myUserId={myUserId}
-              />
-              <NoteBlock
-                title="Kilpailun muistiinpanot"
-                notes={collected.compNotes}
-                myUserId={myUserId}
-              />
+              <div>
+                <h4 className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <StickyNote className="h-3.5 w-3.5" /> Tulosmuistiinpano
+                </h4>
+                <AthleteNoteEditor
+                  athleteKey={athleteKey}
+                  competitionId={row.competition_id}
+                  eventName={row.event_name}
+                  subCategory={row.sub_category ?? ""}
+                  placeholder={placeholderForEvent(row.event_name, row.event_category)}
+                  addLabel="Lisää muistiinpano"
+                  note={collected.resultNotes.find((n) => n.user_id === myUserId) ?? null}
+                  otherNotes={collected.resultNotes.filter((n) => n.user_id !== myUserId)}
+                  labelMap={labelMap}
+                />
+              </div>
+              <div>
+                <h4 className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <StickyNote className="h-3.5 w-3.5" /> Lajitason muistiinpano
+                </h4>
+                <AthleteNoteEditor
+                  athleteKey={athleteKey}
+                  competitionId={0}
+                  eventName={row.event_name}
+                  subCategory={row.sub_category ?? ""}
+                  placeholder={placeholderForEventOverall(row.event_name, row.event_category)}
+                  addLabel="Lisää lajitason muistiinpano"
+                  note={collected.eventNotes.find((n) => n.user_id === myUserId) ?? null}
+                  otherNotes={collected.eventNotes.filter((n) => n.user_id !== myUserId)}
+                  labelMap={labelMap}
+                />
+              </div>
+              <div>
+                <h4 className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <StickyNote className="h-3.5 w-3.5" /> Kilpailun muistiinpano
+                </h4>
+                <AthleteNoteEditor
+                  athleteKey={athleteKey}
+                  competitionId={row.competition_id}
+                  eventName=""
+                  subCategory=""
+                  placeholder={placeholderForCompetition()}
+                  addLabel="Lisää kilpailun muistiinpano"
+                  note={collected.compNotes.find((n) => n.user_id === myUserId) ?? null}
+                  otherNotes={collected.compNotes.filter((n) => n.user_id !== myUserId)}
+                  labelMap={labelMap}
+                />
+              </div>
             </div>
           </>
         )}
