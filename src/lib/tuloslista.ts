@@ -60,11 +60,12 @@ export interface Allocation {
   Position: number;
   Number: string | null;
   TeamName: string;
+  TeamId?: number | null;
   Name: string;
   Firstname: string;
   Surname: string;
   NotInCompetition: boolean;
-  Confirmed?: boolean;
+  Confirmed?: boolean | null;
   PB: string;
   SB: string;
   Result: string | null;
@@ -76,6 +77,7 @@ export interface Allocation {
   AthleteOrders?: AthleteOrder[];
   Athletes?: RelayAthlete[];
 }
+
 
 export interface Heat {
   Id: number;
@@ -98,6 +100,7 @@ export interface Enrollment {
   Confirmed: boolean;
   NotInCompetition: boolean;
   Number: string | null;
+  TeamId?: number | null;
   Name: string;
   Firstname: string;
   Surname: string;
@@ -106,6 +109,7 @@ export interface Enrollment {
   Organization: { Name: string; NameShort: string; Id: number };
   Athletes?: RelayAthlete[];
 }
+
 
 /** Format relay leg list: "1. Etu Suku · 2. ... · 3. ... · 4. ...".
  * Uses AthleteOrders first, falls back to Athletes. Returns null if no team

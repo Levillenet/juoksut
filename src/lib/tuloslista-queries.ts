@@ -252,6 +252,34 @@ export function eventDetailsQueryOptions(
     queryKey: eventDetailsKey(competitionId, eventId),
     queryFn: async (): Promise<EventResults> => {
       const ev = await fetchEvent(competitionId, eventId);
+      // Rikasta allokaatiot Confirmed-tiedolla Enrollments-listasta:
+      // osassa kilpailuista (esim. Kouvola Junior Games) API palauttaa
+      // Confirmed-kentän vain ilmoittautumisissa, ei allokaatioissa.
+      const enrollments = ev.Enrollments ?? [];
+      if (enrollments.length > 0) {
+        const byTeamId = new Map<number, boolean>();
+        const byNameOrg = new Map<string, boolean>();
+        for (const e of enrollments) {
+          if (typeof e.Confirmed !== "boolean") continue;
+          if (e.TeamId != null) byTeamId.set(e.TeamId, e.Confirmed);
+          const nk = `${e.Firstname ?? ""}|${e.Surname ?? ""}|${e.Organization?.Id ?? ""}`;
+          byNameOrg.set(nk, e.Confirmed);
+        }
+        for (const round of ev.Rounds) {
+          for (const heat of round.Heats) {
+            for (const a of heat.Allocations) {
+              if (a.Confirmed === true || a.Confirmed === false) continue;
+              let c: boolean | undefined;
+              if (a.TeamId != null) c = byTeamId.get(a.TeamId);
+              if (c === undefined) {
+                const nk = `${a.Firstname ?? ""}|${a.Surname ?? ""}|${a.Organization?.Id ?? ""}`;
+                c = byNameOrg.get(nk);
+              }
+              if (c !== undefined) a.Confirmed = c;
+            }
+          }
+        }
+      }
       const allocs = ev.Rounds.flatMap((r) =>
         r.Heats.flatMap((h) => h.Allocations),
       );
@@ -259,6 +287,7 @@ export function eventDetailsQueryOptions(
       await loadBaselines(competitionId, eventId);
       return ev;
     },
+
     staleTime: 0,
     gcTime: 10 * 60_000,
     refetchInterval: 15_000,
