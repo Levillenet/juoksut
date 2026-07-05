@@ -823,7 +823,27 @@ function WatchPage() {
                                 )}
                               </div>
                             </Link>
+                            {(() => {
+                              const vids =
+                                videosByAthlete.get(athlete.key)?.get(
+                                  videoKey(competitionId, e.round.EventName, ""),
+                                ) ?? [];
+                              return (
+                                <div className="mt-1 flex justify-end pr-1">
+                                  <ResultVideoButton
+                                    athleteKey={athlete.key}
+                                    competitionId={competitionId}
+                                    eventName={e.round.EventName}
+                                    subCategory=""
+                                    videos={vids}
+                                    contextLabel={`${e.round.EventName} · ${athlete.surname} ${athlete.firstname}`}
+                                    size="sm"
+                                  />
+                                </div>
+                              );
+                            })()}
                           </li>
+
                         );
                       })}
                     </ul>
