@@ -20,11 +20,19 @@ export interface PublicVideoItem {
 }
 
 /**
- * Fetch recent public result videos (last 48h) and enrich each with the
- * matching athlete_results row (athlete + result).
+ * Fetch recent public result videos and enrich each with the matching
+ * athlete_results row (athlete + result).
+ *
+ * @param opts.sinceHours Lookback window in hours. Defaults to 48.
+ * @param opts.limit Max rows returned. Defaults to 30.
  */
-export async function fetchPublicVideos(): Promise<PublicVideoItem[]> {
-  const sinceIso = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
+export async function fetchPublicVideos(opts?: {
+  sinceHours?: number;
+  limit?: number;
+}): Promise<PublicVideoItem[]> {
+  const sinceHours = opts?.sinceHours ?? 48;
+  const limit = opts?.limit ?? 30;
+  const sinceIso = new Date(Date.now() - sinceHours * 3600 * 1000).toISOString();
   const { data: vids, error } = await supabase
     .from("result_videos")
     .select(
@@ -33,8 +41,9 @@ export async function fetchPublicVideos(): Promise<PublicVideoItem[]> {
     .eq("is_public", true)
     .gte("created_at", sinceIso)
     .order("created_at", { ascending: false })
-    .limit(30);
+    .limit(limit);
   if (error) throw error;
+
   const rows = vids ?? [];
   if (rows.length === 0) return [];
 
@@ -111,3 +120,66 @@ export async function fetchPublicVideos(): Promise<PublicVideoItem[]> {
     };
   });
 }
+
+/**
+ * Fetch all public videos for a single (competition_id, event_name) pair.
+ * Newest first, enriched with athlete + result info.
+ */
+export async function fetchPublicVideosForEvent(
+  competitionId: number,
+  eventName: string,
+): Promise<PublicVideoItem[]> {
+  const { data: vids, error } = await supabase
+    .from("result_videos")
+    .select(
+      "id, athlete_key, competition_id, event_name, sub_category, youtube_url, youtube_video_id, created_at",
+    )
+    .eq("is_public", true)
+    .eq("competition_id", competitionId)
+    .eq("event_name", eventName)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  const rows = vids ?? [];
+  if (rows.length === 0) return [];
+
+  const { data: results } = await supabase
+    .from("athlete_results")
+    .select(
+      "athlete_key, surname, firstname, organization, competition_id, competition_name, competition_date, event_name, sub_category, age_class, result_text, result_rank, captured_at",
+    )
+    .eq("competition_id", competitionId)
+    .eq("event_name", eventName);
+
+  const resultIndex = new Map<string, any>();
+  for (const r of results ?? []) {
+    const k = `${r.athlete_key}|${r.sub_category ?? ""}`;
+    const prev = resultIndex.get(k);
+    if (!prev || (r.captured_at ?? "") > (prev.captured_at ?? "")) {
+      resultIndex.set(k, r);
+    }
+  }
+
+  return rows.map((v) => {
+    const isHeat = v.athlete_key.startsWith("heat:");
+    const r = resultIndex.get(`${v.athlete_key}|${v.sub_category ?? ""}`);
+    return {
+      id: v.id,
+      youtube_video_id: v.youtube_video_id,
+      youtube_url: v.youtube_url,
+      created_at: v.created_at,
+      athlete_key: v.athlete_key,
+      surname: isHeat ? null : r?.surname ?? null,
+      firstname: isHeat ? null : r?.firstname ?? null,
+      organization: isHeat ? null : r?.organization ?? null,
+      event_name: v.event_name,
+      age_class: r?.age_class ?? null,
+      sub_category: v.sub_category ?? null,
+      result_text: isHeat ? null : r?.result_text ?? null,
+      result_rank: isHeat ? null : r?.result_rank ?? null,
+      competition_name: r?.competition_name ?? null,
+      competition_date: r?.competition_date ?? null,
+      competition_id: v.competition_id,
+    };
+  });
+}
+
