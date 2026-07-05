@@ -1236,6 +1236,36 @@ export type Database = {
         }
         Relationships: []
       }
+      welcome_messages: {
+        Row: {
+          body: string
+          enabled: boolean
+          id: string
+          singleton: boolean
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body?: string
+          enabled?: boolean
+          id?: string
+          singleton?: boolean
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          enabled?: boolean
+          id?: string
+          singleton?: boolean
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

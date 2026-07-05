@@ -43,6 +43,7 @@ import { Route as AthleteKeyRouteImport } from './routes/athlete.$key'
 import { Route as AnnouncerPlanningRouteImport } from './routes/announcer.planning'
 import { Route as AnnouncerLiveRouteImport } from './routes/announcer.live'
 import { Route as AnnouncerCombinedRouteImport } from './routes/announcer.combined'
+import { Route as AdminWelcomeRouteImport } from './routes/admin.welcome'
 import { Route as AdminRolesRouteImport } from './routes/admin.roles'
 import { Route as AdminClubLocationsRouteImport } from './routes/admin.club-locations'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
@@ -224,6 +225,11 @@ const AnnouncerCombinedRoute = AnnouncerCombinedRouteImport.update({
   path: '/combined',
   getParentRoute: () => AnnouncerRoute,
 } as any)
+const AdminWelcomeRoute = AdminWelcomeRouteImport.update({
+  id: '/admin/welcome',
+  path: '/admin/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRolesRoute = AdminRolesRouteImport.update({
   id: '/admin/roles',
   path: '/admin/roles',
@@ -299,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/admin/roles': typeof AdminRolesRoute
+  '/admin/welcome': typeof AdminWelcomeRoute
   '/announcer/combined': typeof AnnouncerCombinedRoute
   '/announcer/live': typeof AnnouncerLiveRoute
   '/announcer/planning': typeof AnnouncerPlanningRoute
@@ -342,6 +349,7 @@ export interface FileRoutesByTo {
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/admin/roles': typeof AdminRolesRoute
+  '/admin/welcome': typeof AdminWelcomeRoute
   '/announcer/combined': typeof AnnouncerCombinedRoute
   '/announcer/live': typeof AnnouncerLiveRoute
   '/announcer/planning': typeof AnnouncerPlanningRoute
@@ -389,6 +397,7 @@ export interface FileRoutesById {
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/admin/roles': typeof AdminRolesRoute
+  '/admin/welcome': typeof AdminWelcomeRoute
   '/announcer/combined': typeof AnnouncerCombinedRoute
   '/announcer/live': typeof AnnouncerLiveRoute
   '/announcer/planning': typeof AnnouncerPlanningRoute
@@ -437,6 +446,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/club-locations'
     | '/admin/roles'
+    | '/admin/welcome'
     | '/announcer/combined'
     | '/announcer/live'
     | '/announcer/planning'
@@ -480,6 +490,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/club-locations'
     | '/admin/roles'
+    | '/admin/welcome'
     | '/announcer/combined'
     | '/announcer/live'
     | '/announcer/planning'
@@ -526,6 +537,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/club-locations'
     | '/admin/roles'
+    | '/admin/welcome'
     | '/announcer/combined'
     | '/announcer/live'
     | '/announcer/planning'
@@ -573,6 +585,7 @@ export interface RootRouteChildren {
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminClubLocationsRoute: typeof AdminClubLocationsRoute
   AdminRolesRoute: typeof AdminRolesRoute
+  AdminWelcomeRoute: typeof AdminWelcomeRoute
   AthleteKeyRoute: typeof AthleteKeyRoute
   SeuraaTokenRoute: typeof SeuraaTokenRoute
   StadiumsStadiumIdRoute: typeof StadiumsStadiumIdRoute
@@ -825,6 +838,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnnouncerCombinedRouteImport
       parentRoute: typeof AnnouncerRoute
     }
+    '/admin/welcome': {
+      id: '/admin/welcome'
+      path: '/admin/welcome'
+      fullPath: '/admin/welcome'
+      preLoaderRoute: typeof AdminWelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/roles': {
       id: '/admin/roles'
       path: '/admin/roles'
@@ -1009,6 +1029,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminClubLocationsRoute: AdminClubLocationsRoute,
   AdminRolesRoute: AdminRolesRoute,
+  AdminWelcomeRoute: AdminWelcomeRoute,
   AthleteKeyRoute: AthleteKeyRoute,
   SeuraaTokenRoute: SeuraaTokenRoute,
   StadiumsStadiumIdRoute: StadiumsStadiumIdRoute,
