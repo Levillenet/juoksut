@@ -1,5 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export interface HeatResultSnapshot {
+  position: number | null;
+  surname: string | null;
+  firstname: string | null;
+  organization: string | null;
+  result_text: string | null;
+  result_rank: number | null;
+}
+
 export interface ResultVideo {
   id: string;
   user_id: string;
@@ -12,6 +21,7 @@ export interface ResultVideo {
   is_public: boolean;
   event_category: string | null;
   heat_key: string | null;
+  heat_results: HeatResultSnapshot[] | null;
   updated_at: string;
 }
 

@@ -1,25 +1,35 @@
-## Tavoite
+## Toteutus
 
-Päivän videot -sivulla erävideoihin (esim. "T11 60 m aidat, erä 1") lisätään laajennettava osio, joka näyttää kyseisen erän juoksijat ja heidän tuloksensa.
+Migraatio ajettu: `result_videos.heat_results jsonb` -sarake ja `set_heat_results_if_null(uuid, jsonb)` -RPC ovat valmiina.
 
-## Muutokset
+### 1. `src/lib/result-videos.ts`
+- Uusi tyyppi `HeatResultSnapshot = { position, surname, firstname, organization, result_text, result_rank }`.
+- `ResultVideo`iin lisää `heat_results: HeatResultSnapshot[] | null`.
+- `SELECT_COLS`iin `heat_results`.
+- `insertResultVideo`iin optionaalinen `heatResults?: HeatResultSnapshot[] | null`; kirjoitetaan riville.
 
-### 1. `src/lib/public-videos.ts`
-Lisää uusi funktio `fetchHeatResults(competitionId, eventName, subCategory)`:
-- Hakee `athlete_results`-rivit joilla `competition_id`, `event_name` ja `sub_category` täsmäävät (sub_category on erän tunniste, esim. "Erä 1").
-- Palauttaa listan: `surname`, `firstname`, `organization`, `result_text`, `result_rank`, `age_class` — järjestettynä `result_rank` mukaan (nulls last).
-- Ryhmittele duplikaatit `athlete_key`:n mukaan (uusin `captured_at`).
+### 2. `src/components/ResultVideoButton.tsx`
+- Uusi prop `heatSnapshot?: HeatResultSnapshot[] | null`.
+- Välitä `VideoForm`iin, sieltä `insertResultVideo`n `heatResults`-parametriin.
 
-### 2. `src/routes/videot.tsx`
-- Näytä laajennusnappi vain erävideoille (`v.athlete_key.startsWith("heat:")`).
-- Nappi kortin alaosaan: pieni chevron + teksti "Näytä erän tulokset".
-- Klikkaus lataa tulokset lazysti (useQuery) ja näyttää ne pieninä riveinä:
-  `1. Sukunimi Etunimi (seura) — 9,87`
-- Ei avaa videomodalia — pysäytä `stopPropagation`.
-- Käytä `Collapsible`-komponenttia (`@/components/ui/collapsible`) tai natiivi `<details>`.
+### 3. `src/routes/round.$eventId.$roundId.tsx`
+- Erän `ResultVideoButton`-kutsuun rakennetaan `heatSnapshot` `allocs`ista: `position: a.Position, surname: a.Surname, firstname: a.Firstname, organization: a.Organization?.Name ?? null, result_text: a.Result, result_rank: a.ResultRank`.
 
-## Tekniset huomiot
+### 4. `src/lib/public-videos.ts`
+- Lisää `heat_results` `PublicVideoItem`iin ja SELECT-listaan `fetchPublicVideos`issa.
+- Poista `fetchHeatResults` (ei enää käytössä).
 
-- Erä tunnistetaan: `athlete_key` alkaa `"heat:"` ja `sub_category` sisältää erän nimen.
-- Ei-erävideoihin (yksittäisen urheilijan video) ei laajennusta lisätä — niissä tieto on jo kortissa.
-- Kortin `button`-elementti sisältää nyt sisäkkäisen napin → vaihda ulompi `button` `div`iksi, jolla `onClick` avaa modalin, ja laajennusnappi on erillinen `button` `stopPropagation`illa. Tämä pitää a11y:n kunnossa ja välttää nested-button varoitukset.
+### 5. `src/routes/videot.tsx`
+- `HeatResultsToggle` lukee `video.heat_results`ista suoraan — ei enää useQuery/haku.
+- Jos snapshot on olemassa: renderöi listaus (sija, nimi, seura, tulos), järjestä `result_rank` mukaan (nulls last, sitten position).
+- Jos snapshot on null: käynnistä kertaluontoinen backfill:
+  - Fetch live: `fetchEvent(competitionId, event_id)` — mutta event_id ei ole `PublicVideoItem`issa nyt.
+  - **Ratkaisu**: lisää `event_id` `PublicVideoItem`iin (hae `athlete_results`ista competition_id + event_name -parilla, ottaen yhden tuloksen). Tämä on jo `results`-haussa `fetchPublicVideos`issa — lisää `event_id` sen SELECTiin ja välitä.
+  - Etsi live-datasta `Rounds[*].Heats[*]` jonka `Id === heatIdFromAthleteKey`, muunna `Allocations` snapshotiksi.
+  - Kutsu RPC `set_heat_results_if_null(video_id, snapshot)` — tallentaa vain jos yhä null.
+  - Näytä tulokset heti UI:ssa; onnistuneen kirjoituksen jälkeen invalidoi `public-videos-archive` -kysely, jolloin seuraavat lataukset saavat snapshotin suoraan.
+- Jos live-fetch epäonnistuu (vanha kisa 404): näytä "Ei tuloksia tallennettu tälle videolle".
+
+### Käytös
+- **Uudet erävideot**: snapshot tallennetaan heti lisäyshetkellä (kohta 3).
+- **Vanhat erävideot**: ensimmäinen käyttäjä joka avaa "Näytä erän tulokset" laukaisee live-haun + RPC-tallennuksen. Seuraavat käyttäjät näkevät ne heti kannasta.
