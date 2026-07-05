@@ -110,6 +110,11 @@ function AthletePage() {
     queryFn: () => fetchNotesForAthlete(key),
   });
 
+  const videosQuery = useQuery({
+    queryKey: ["athlete-videos", key],
+    queryFn: () => fetchVideosForAthlete(key),
+  });
+
   const fetchLabels = useServerFn(getTeammateLabels);
   const otherUserIds = useMemo(() => {
     const set = new Set<string>();
