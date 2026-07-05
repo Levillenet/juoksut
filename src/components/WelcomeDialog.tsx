@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -10,66 +11,76 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-const STORAGE_PREFIX = "welcome.dialog.seen.v3-yag";
+const STORAGE_PREFIX = "welcome.dialog.seen";
+
+interface WelcomeMessage {
+  id: string;
+  title: string;
+  body: string;
+  enabled: boolean;
+  updated_at: string;
+}
 
 export function WelcomeDialog() {
   const { user, loading } = useAuth();
   const [open, setOpen] = useState(false);
 
+  const msgQuery = useQuery({
+    queryKey: ["welcome-message"],
+    enabled: !loading && !!user?.id,
+    queryFn: async (): Promise<WelcomeMessage | null> => {
+      const { data, error } = await supabase
+        .from("welcome_messages")
+        .select("id,title,body,enabled,updated_at")
+        .eq("singleton", true)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as WelcomeMessage | null) ?? null;
+    },
+    staleTime: 60_000,
+  });
+
+  const msg = msgQuery.data;
+  const seenKey =
+    user?.id && msg
+      ? `${STORAGE_PREFIX}:${user.id}:${msg.id}:${msg.updated_at}`
+      : null;
+
   useEffect(() => {
-    if (loading || !user?.id) return;
+    if (!msg || !msg.enabled) return;
+    if (!seenKey) return;
     if (typeof window === "undefined") return;
+    if (!msg.title.trim() && !msg.body.trim()) return;
     try {
-      const key = `${STORAGE_PREFIX}:${user.id}`;
-      if (localStorage.getItem(key) !== "1") setOpen(true);
+      if (localStorage.getItem(seenKey) !== "1") setOpen(true);
     } catch {
       /* ignore */
     }
-  }, [loading, user?.id]);
+  }, [msg, seenKey]);
 
   const handleClose = (next: boolean) => {
     setOpen(next);
-    if (!next && user?.id) {
+    if (!next && seenKey) {
       try {
-        localStorage.setItem(`${STORAGE_PREFIX}:${user.id}`, "1");
+        localStorage.setItem(seenKey, "1");
       } catch {
         /* ignore */
       }
     }
   };
 
+  if (!msg || !msg.enabled) return null;
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Uutta: YAG Calling-aikataulu</DialogTitle>
+          <DialogTitle>{msg.title || "Tiedote"}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3 text-sm leading-relaxed text-foreground">
-          <p>
-            YAG Espoo 2026 -kisaan on nyt saatavilla oma <strong>calling-aikataulu</strong>,
-            joka kertoo milloin urheilijoiden tulee olla calling roomissa.
-          </p>
-          <p>
-            Aikataulun löydät <strong>Kilpailun aikataulu</strong> -valikon yläreunan{" "}
-            <strong>YAG</strong>-välilehdeltä.
-          </p>
-          <p>Voit valita näkymäksi joko:</p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Seurannassa</strong> — omat seurattavat urheilijasi</li>
-            <li><strong>Oma seura</strong> — kaikki valitun seuran urheilijat</li>
-          </ul>
-          <p>
-            Aikataulun saa myös ladattua kätevästi PDF-tiedostona tulostusta varten.
-          </p>
+        <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+          {msg.body}
         </div>
-        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
-          <Link
-            to="/print/yag-calling"
-            onClick={() => handleClose(false)}
-            className="text-xs text-primary underline-offset-2 hover:underline"
-          >
-            Avaa YAG calling-aikataulu →
-          </Link>
+        <DialogFooter>
           <Button onClick={() => handleClose(false)}>Selvä, kiitos!</Button>
         </DialogFooter>
       </DialogContent>
