@@ -223,63 +223,71 @@ function VideotPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              onClick={() => setActive(v)}
-              className="group overflow-hidden rounded-xl border bg-card text-left shadow-sm transition-shadow hover:shadow-md"
-            >
-              <div className="relative aspect-video overflow-hidden bg-black">
-                <img
-                  src={`https://i.ytimg.com/vi/${v.youtube_video_id}/mqdefault.jpg`}
-                  alt=""
-                  loading="lazy"
-                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="grid h-12 w-12 place-items-center rounded-full bg-black/60 text-white transition-colors group-hover:bg-red-600">
-                    <Play className="h-6 w-6 fill-current" />
+          {filtered.map((v) => {
+            const isHeat = v.athlete_key.startsWith("heat:");
+            return (
+              <div
+                key={v.id}
+                className="group overflow-hidden rounded-xl border bg-card text-left shadow-sm transition-shadow hover:shadow-md"
+              >
+                <button
+                  type="button"
+                  onClick={() => setActive(v)}
+                  className="block w-full text-left"
+                >
+                  <div className="relative aspect-video overflow-hidden bg-black">
+                    <img
+                      src={`https://i.ytimg.com/vi/${v.youtube_video_id}/mqdefault.jpg`}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="grid h-12 w-12 place-items-center rounded-full bg-black/60 text-white transition-colors group-hover:bg-red-600">
+                        <Play className="h-6 w-6 fill-current" />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div className="p-3">
-                <p className="truncate text-sm font-bold leading-tight">
-                  {v.athlete_key.startsWith("heat:")
-                    ? v.sub_category || "Eräkooste"
-                    : [v.surname, v.firstname].filter(Boolean).join(" ") || "Urheilija"}
-                </p>
-                {v.organization && !v.athlete_key.startsWith("heat:") && (
-                  <p className="truncate text-xs text-muted-foreground">
-                    {v.organization}
-                  </p>
-                )}
-                <p className="mt-1 truncate text-xs">
-                  <span className="font-semibold">
-                    {v.age_class ? `${v.age_class} ` : ""}
-                    {v.event_name}
-                  </span>
-                  {v.result_text && (
-                    <>
-                      {" · "}
-                      <span className="font-bold tabular-nums">{v.result_text}</span>
-                      {v.result_rank != null && (
-                        <span className="ml-1 text-muted-foreground">
-                          ({v.result_rank}.)
-                        </span>
+                  <div className="p-3">
+                    <p className="truncate text-sm font-bold leading-tight">
+                      {isHeat
+                        ? v.sub_category || "Eräkooste"
+                        : [v.surname, v.firstname].filter(Boolean).join(" ") || "Urheilija"}
+                    </p>
+                    {v.organization && !isHeat && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {v.organization}
+                      </p>
+                    )}
+                    <p className="mt-1 truncate text-xs">
+                      <span className="font-semibold">
+                        {v.age_class ? `${v.age_class} ` : ""}
+                        {v.event_name}
+                      </span>
+                      {v.result_text && (
+                        <>
+                          {" · "}
+                          <span className="font-bold tabular-nums">{v.result_text}</span>
+                          {v.result_rank != null && (
+                            <span className="ml-1 text-muted-foreground">
+                              ({v.result_rank}.)
+                            </span>
+                          )}
+                        </>
                       )}
-                    </>
-                  )}
-                </p>
-                {v.competition_name && (
-                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                    {v.competition_date ? `${v.competition_date} · ` : ""}
-                    {v.competition_name}
-                  </p>
-                )}
+                    </p>
+                    {v.competition_name && (
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        {v.competition_date ? `${v.competition_date} · ` : ""}
+                        {v.competition_name}
+                      </p>
+                    )}
+                  </div>
+                </button>
+                {isHeat && <HeatResultsToggle video={v} />}
               </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
       )}
 
