@@ -225,6 +225,24 @@ function WatchPage() {
     staleTime: 60_000,
   });
 
+  // Fetch all videos for each watched athlete (own + public from others).
+  const videosQueries = useQueries({
+    queries: watched.map((w) => ({
+      queryKey: ["athlete-videos", w.key],
+      queryFn: () => fetchVideosForAthlete(w.key),
+      staleTime: 60_000,
+    })),
+  });
+  const videosByAthlete = useMemo(() => {
+    const m = new Map<string, Map<string, ResultVideo[]>>();
+    watched.forEach((w, i) => {
+      const q = videosQueries[i];
+      if (q?.data) m.set(w.key, q.data);
+    });
+    return m;
+  }, [watched, videosQueries]);
+
+
   // Club selector state for bulk add
   const [selectedBulkOrgId, setSelectedBulkOrgId] = useState<number | null>(null);
   const [selectedAgeClasses, setSelectedAgeClasses] = useState<Set<string>>(new Set());
