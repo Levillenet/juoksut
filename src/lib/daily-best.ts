@@ -140,7 +140,7 @@ export async function fetchDailyBestForAthletes(
   const { data: all, error: e2 } = await supabase
     .from("athlete_results")
     .select(
-      "event_name, sub_category, event_category, age_class, result_text, result_numeric, result_rank, athlete_key, surname, firstname, organization, organization_id, competition_name, competition_id, competition_date, event_id",
+      "event_name, sub_category, event_category, age_class, result_text, result_numeric, result_rank, athlete_key, surname, firstname, organization, organization_id, competition_name, competition_id, competition_date, event_id, was_pb, was_district_record",
     )
     .in("event_name", eventNames)
     .in("age_class", ageClasses.length > 0 ? ageClasses : [""])
