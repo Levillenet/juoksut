@@ -242,6 +242,7 @@ function VideoForm({
   competitionId,
   eventName,
   subCategory,
+  editingId,
   initialUrl = "",
   initialIsPublic = false,
   onDone,
@@ -250,6 +251,7 @@ function VideoForm({
   competitionId: number;
   eventName: string;
   subCategory: string;
+  editingId?: string;
   initialUrl?: string;
   initialIsPublic?: boolean;
   onDone?: () => void;
@@ -261,21 +263,25 @@ function VideoForm({
 
   const save = useMutation({
     mutationFn: () =>
-      upsertResultVideo({
-        athleteKey,
-        competitionId,
-        eventName,
-        subCategory,
-        youtubeUrl: url,
-        isPublic,
-      }),
+      editingId
+        ? updateResultVideo(editingId, { youtubeUrl: url, isPublic })
+        : insertResultVideo({
+            athleteKey,
+            competitionId,
+            eventName,
+            subCategory,
+            youtubeUrl: url,
+            isPublic,
+          }),
     onSuccess: () => {
       toast.success("Video tallennettu");
       qc.invalidateQueries({ queryKey: ["athlete-videos", athleteKey] });
+      if (!editingId) setUrl("");
       onDone?.();
     },
     onError: (e) => toast.error((e as Error).message),
   });
+
 
   return (
     <div className="space-y-3">
