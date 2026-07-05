@@ -24,6 +24,7 @@ import { DailyBestSection } from "@/components/DailyBestSection";
 import { HarvestStatusBadge } from "@/components/HarvestStatusBadge";
 import { ClubTodaySection } from "@/components/ClubTodaySection";
 import { LiveCompetitionsSection } from "@/components/LiveCompetitionsSection";
+import { PublicVideosSection } from "@/components/PublicVideosSection";
 import { SeasonStatsSection } from "@/components/SeasonStatsSection";
 import { Button } from "@/components/ui/button";
 import { NoteLinkInvitesBanner } from "@/components/NoteLinkInvitesBanner";
@@ -417,7 +418,9 @@ function Index({ role, isAdmin = false, isPlanner = false }: { role: Role; isAdm
             
             <ClubTodaySection />
             <LiveCompetitionsSection />
+            <PublicVideosSection />
             <SeasonStatsSection />
+
 
             {/* LOHKO 3 — Päivän lajit */}
             <section className="pt-2">
