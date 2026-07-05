@@ -10,10 +10,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  fetchHeatResults,
   fetchPublicVideos,
   type PublicVideoItem,
 } from "@/lib/public-videos";
+import { supabase } from "@/integrations/supabase/client";
+import { fetchEvent } from "@/lib/tuloslista";
+import type { HeatResultSnapshot } from "@/lib/result-videos";
+import { useQueryClient } from "@tanstack/react-query";
 import { embedUrl } from "@/lib/result-videos";
 
 export const Route = createFileRoute("/videot")({
