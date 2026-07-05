@@ -582,6 +582,73 @@ function DailyTable({
   );
 }
 
+function VisitorsChart({
+  data,
+}: {
+  data: { day: string; uniqueVisitors: number; uniqueLoggedIn: number; events: number }[];
+}) {
+  const chartData = useMemo(
+    () =>
+      data
+        .slice(0, 30)
+        .slice()
+        .reverse()
+        .map((d) => ({
+          day: d.day.slice(5),
+          "Uniikit kävijät": d.uniqueVisitors,
+          Kirjautuneet: d.uniqueLoggedIn,
+        })),
+    [data],
+  );
+  if (chartData.length === 0)
+    return <p className="text-xs text-muted-foreground">Ei dataa.</p>;
+  return (
+    <div className="rounded-md border bg-card p-3">
+      <div className="h-64 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="gradVisitors" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+              </linearGradient>
+              <linearGradient id="gradLoggedIn" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--chart-2, 142 71% 45%))" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="hsl(var(--chart-2, 142 71% 45%))" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+            <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+            <RTooltip
+              contentStyle={{
+                background: "hsl(var(--background))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: 8,
+                fontSize: 12,
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="Uniikit kävijät"
+              stroke="hsl(var(--primary))"
+              strokeWidth={2}
+              fill="url(#gradVisitors)"
+            />
+            <Area
+              type="monotone"
+              dataKey="Kirjautuneet"
+              stroke="hsl(var(--chart-2, 142 71% 45%))"
+              strokeWidth={2}
+              fill="url(#gradLoggedIn)"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
