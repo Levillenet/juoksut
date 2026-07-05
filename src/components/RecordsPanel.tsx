@@ -126,6 +126,7 @@ export function EventGroupView({
           </thead>
           <tbody>
             {rows.map(({ row, isPb, isPbIn, isPbOut, indoor }) => (
+              <>
               <tr
                 key={row.id}
                 className={`border-t border-border/60 ${
@@ -208,6 +209,14 @@ export function EventGroupView({
                   {row.result_rank != null ? `${row.result_rank}.` : "—"}
                 </td>
               </tr>
+              {rowActions && (
+                <tr key={`${row.id}-actions`} className={isPb ? "bg-primary/5" : ""}>
+                  <td colSpan={4} className="px-2 pb-2 sm:px-3">
+                    {rowActions(row)}
+                  </td>
+                </tr>
+              )}
+              </>
             ))}
             {rows.length === 0 && (
               <tr>
