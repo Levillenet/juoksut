@@ -416,7 +416,7 @@ function RoundView() {
             <section className="mt-6 overflow-hidden rounded-xl border bg-card shadow-sm">
               <div className="border-b bg-secondary px-4 py-2">
                 <h2 className="text-sm font-semibold">
-                  Lopputulokset{" "}
+                  {round?.Status === "Official" ? "Lopputulokset" : "Tilanne tällä hetkellä"}{" "}
                   <span className="font-normal text-muted-foreground">
                     ({overall.length} kilpailijaa)
                   </span>
