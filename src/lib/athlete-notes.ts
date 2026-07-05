@@ -13,12 +13,40 @@ export interface AthleteNote {
 
 export type NoteKey = string;
 
+/** Sentinel values for scoped notes. */
+export const EVENT_SCOPE_COMPETITION_ID = 0;
+export const COMPETITION_SCOPE_EVENT_NAME = "";
+export const COMPETITION_SCOPE_SUB_CATEGORY = "";
+
+export type NoteScope = "result" | "event" | "competition";
+
+export function noteScopeOf(n: {
+  competition_id: number;
+  event_name: string;
+}): NoteScope {
+  if (n.competition_id === EVENT_SCOPE_COMPETITION_ID) return "event";
+  if (!n.event_name) return "competition";
+  return "result";
+}
+
 export function noteKey(
   competitionId: number,
   eventName: string,
   subCategory: string,
 ): NoteKey {
   return `${competitionId}|${eventName}|${subCategory ?? ""}`;
+}
+
+/** Convenience keys for the two new scopes. */
+export function eventScopeKey(eventName: string, subCategory: string): NoteKey {
+  return noteKey(EVENT_SCOPE_COMPETITION_ID, eventName, subCategory ?? "");
+}
+export function competitionScopeKey(competitionId: number): NoteKey {
+  return noteKey(
+    competitionId,
+    COMPETITION_SCOPE_EVENT_NAME,
+    COMPETITION_SCOPE_SUB_CATEGORY,
+  );
 }
 
 /**
