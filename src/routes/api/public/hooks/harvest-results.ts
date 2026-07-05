@@ -31,6 +31,7 @@ const REVISIT_MAX_AGE_DAYS = 365; // kuinka kauan palataan kisoihin (alkuerä→
 // ID jää selvästi taakse uusimmasta nähdystä ID:stä.
 const NONEXIST_PERMANENT_GAP = 300; // jos id < latest_id - tämä, merkitään lopullisesti done
 const NONEXIST_REVISIT_LIMIT = 120; // tuoreiden ei-olemassaolevien ID:iden uudelleenprobeja per ajo
+const RECENT_NONEXIST_LIMIT = 60; // uusimmat varatut mutta ei-olemassaolevat ID:t (competition_id DESC)
 const NONEXIST_NEAR_TODAY_LIMIT = 20; // priorisoitu probe lähellä tämän päivän olemassa olevia ID:itä
 const NONEXIST_NEAR_TODAY_RADIUS = 100; // ±ID-säde tämän päivän olemassa olevien kisojen ympärillä
 const CONCURRENCY = 5;       // parallel competitions per chunk
