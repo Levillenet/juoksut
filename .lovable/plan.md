@@ -1,51 +1,21 @@
-## Ongelma
+## Lyhyt ohjekortti videot-sivulle
 
-- Etusivun `PublicVideosSection` on sivun alalaidassa alle muiden lohkojen; käyttäjät eivät löydä sitä.
-- 48 h ikkuna on liian tiukka — pitäisi olla yleinen videoarkisto, jota voi selata päivämäärän ja kilpailun mukaan.
-- Seuran urheilijat -listalla näkyy pieni punainen YouTube-merkki, mutta se ei ole klikattava — käyttäjä ei pääse videoon urheilijan riviltä.
+Lisää `/videot`-sivulle (src/routes/videot.tsx) otsikon ja suodattimien väliin taitettava ohjekortti "Miten lisään oman videon?", oletuksena kiinni. Ei muuta toimintaa – vain ohjeteksti.
 
-## Ratkaisu
+### Sisältö
 
-Kolme kohtaa: uusi videosivu, nostaminen päävalikkoon, klikattava videolinkki seura-riviin.
+Ohje kolmena numeroituna askeleena + huomautus lajeista:
 
-### 1. Uusi `/videot`-reitti (videoarkisto)
+1. **Lataa video omalle YouTube-tilillesi.** Aseta se tarpeen mukaan **Piilotettu (Unlisted)** -tilaan, jolloin sitä ei löydä hausta mutta linkillä voi katsoa.
+2. **Kopioi videon linkki** YouTuben "Jaa"-toiminnolla.
+3. **Liitä linkki urheilijaseurannassa** oikean urheilijan oikeaan juoksuerään (YouTube-nappi rivin lopussa).
 
-`src/routes/videot.tsx`:
-- Hakee julkiset videot viimeisiltä 30 päivältä.
-- Filtterit yläpalkissa:
-  - **Päivämäärävalitsin** (default: tänään; vaihdettaessa suodattaa `competition_date`- tai `created_at`-mukaan).
-  - **Kilpailu-dropdown** — täytetään dynaamisesti tuoduista videoista.
-  - **Vapaa haku** lajille tai nimelle.
-- Grid `sm:grid-cols-2 lg:grid-cols-3` — jokainen kortti näyttää lajin, ikäluokan, urheilijan/erän, kilpailun, päivämäärän, YouTube-thumbnailin.
-- Klikkaus avaa dialogin, jossa videon iframe-upotus.
-- `head()`: title "Päivän juoksuvideot", meta-kuvaus.
+**Huom:** Juoksulajien videot voi asettaa julkiseksi tai yksityiseksi. Kenttälajien videot ovat aina yksityisiä ja jäävät vain sinulle omaan arkistoosi myöhempää katselua varten.
 
-### 2. Kortti "Päivän videot" päävalikkoon (NavCards)
+### Toteutus
 
-`src/routes/index.tsx`:
-- Lisää `NavCards`-komponenttiin punaisen sävyinen kortti "🎬 Päivän videot" → `/videot`, näkyy kaikille rooleille (`!isOfficial` && role !== "official-only") — sijoita `Hae nimellä` -kortin viereen (ensimmäisiin).
-- **Poista** `<PublicVideosSection />` alalaidan rungosta (koko komponentti jää tiedostona olemassa; refactor: käytännössä uusi `/videot`-sivu korvaa sen). Vaihtoehtoisesti poistetaan komponenttitiedosto — tehdään poisto jotta ei jää kuollutta koodia.
+- Kortti `<details>`-elementillä (natiivi avaus/piilotus, ei extra deppaa) tai olemassa olevalla `Collapsible`-shadcn-komponentilla jos se on jo käytössä.
+- Sijoitus: heti otsikkokappaleen alle, ennen suodatinruudukkoa.
+- Tyyli: `rounded-xl border bg-card`, otsikkona esim. "❓ Miten jaan oman videon?" jotta erottuu selkeästi.
 
-### 3. Klikattava YouTube-merkki `ClubTodaySection`iin
-
-- Uusi kevyt komponentti `src/components/PublicVideoLinkButton.tsx`:
-  - Prop: `competitionId`, `eventName`, `contextLabel`.
-  - Näyttää saman punaisen YouTube-badgen (nappina).
-  - Klikkaus → dialogi, joka:
-    - Kutsuu uutta helperia `fetchPublicVideosForEvent(competitionId, eventName)` (haetaan kaikki julkiset videot ko. lajille, järjestys uusin ensin).
-    - Yksi video → suora iframe-upotus otsikolla.
-    - Useampi video → lista jossa jokainen avautuu upotukseksi (accordion tai peräkkäin).
-- Korvaa `<VideoAvailableBadge />` `<PublicVideoLinkButton />`-kutsulla `ClubTodaySection`in urheilijarivillä.
-- Sama komponentti voidaan käyttää myöhemmin muilla listoilla (`TodayStatsSection`, `DailyBestSection`) — ei tehdä muutosta niihin tässä muutoksessa (pysytään pyynnön skoopissa).
-
-### 4. Uusi helper
-
-`src/lib/public-videos.ts`:
-- `fetchPublicVideosForEvent(competitionId, eventName)` → hakee `result_videos` missä `is_public = true`, `competition_id = ?`, `event_name = ?`. Liitä athlete_results-tiedot (erä-labelia / nimeä varten).
-- `fetchPublicVideosRange(sinceIso)` yleinen listaus (30 pv default) käytettäväksi /videot-sivulla.
-
-## Verifiointi
-
-- Playwright: `/videot` renderöityy, filtterit toimivat, tyhjä tila näytetään kun päivälle ei ole videoita.
-- Etusivun päävalikossa uusi "Päivän videot" -kortti ja `PublicVideosSection` on poistettu alalaidasta.
-- ClubTodaySection: julkisen videon urheilijarivillä nappi klikattava → dialogi avautuu ja video pyörii.
+Ei muita muutoksia.
