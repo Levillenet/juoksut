@@ -22,6 +22,9 @@ import { trackEvent } from "@/lib/analytics";
 import { RequireRole } from "@/components/RequireRole";
 import { ShareAthleteButton } from "@/components/ShareAthleteButton";
 import { EventGroupView } from "@/components/RecordsPanel";
+import { AthleteAnalytics } from "@/components/AthleteAnalytics";
+import { ResultVideoButton } from "@/components/ResultVideoButton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -44,6 +47,11 @@ import {
   upsertNote,
   type AthleteNote,
 } from "@/lib/athlete-notes";
+import {
+  fetchVideosForAthlete,
+  videoKey,
+  type ResultVideo,
+} from "@/lib/result-videos";
 import { loadAthleteSeasonTopFlags, type SeasonTopFlag } from "@/lib/season-top";
 
 export const Route = createFileRoute("/athlete/$key")({
@@ -100,6 +108,11 @@ function AthletePage() {
   const notesQuery = useQuery({
     queryKey: ["athlete-notes", key],
     queryFn: () => fetchNotesForAthlete(key),
+  });
+
+  const videosQuery = useQuery({
+    queryKey: ["athlete-videos", key],
+    queryFn: () => fetchVideosForAthlete(key),
   });
 
   const fetchLabels = useServerFn(getTeammateLabels);
@@ -412,6 +425,22 @@ function AthletePage() {
               />
             </section>
 
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="mb-4 grid w-full grid-cols-2 sm:w-auto">
+                <TabsTrigger value="overview">Yhteenveto</TabsTrigger>
+                <TabsTrigger value="analytics">Analytiikka</TabsTrigger>
+              </TabsList>
+              <TabsContent value="analytics" className="mt-0">
+                <AthleteAnalytics
+                  athleteKey={key}
+                  rows={rows}
+                  notes={notesQuery.data}
+                  videos={videosQuery.data}
+                  myUserId={myUserId}
+                />
+              </TabsContent>
+              <TabsContent value="overview" className="mt-0 space-y-0">
+
             {/* Top PBs summary */}
             {allPbs.length > 0 && (
               <section className="mb-6">
@@ -695,6 +724,10 @@ function AthletePage() {
                           ) ?? [];
                           const own = all.find((n) => n.user_id === myUserId) ?? null;
                           const others = all.filter((n) => n.user_id !== myUserId);
+                          const vids =
+                            videosQuery.data?.get(
+                              videoKey(r.competition_id, r.event_name, r.sub_category ?? ""),
+                            ) ?? [];
                           return (
                             <CompetitionResultRow
                               key={r.id}
@@ -704,6 +737,7 @@ function AthletePage() {
                               otherNotes={others}
                               labelMap={labelMap}
                               seasonTop={seasonTop.get(r.id) ?? null}
+                              videos={vids}
                             />
                           );
                         })}
@@ -713,6 +747,8 @@ function AthletePage() {
                 })}
               </ul>
             </section>
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </main>
@@ -727,6 +763,7 @@ function CompetitionResultRow({
   otherNotes = [],
   labelMap,
   seasonTop,
+  videos = [],
 }: {
   row: AthleteResultRow;
   athleteKey: string;
@@ -734,6 +771,7 @@ function CompetitionResultRow({
   otherNotes?: AthleteNote[];
   labelMap?: Map<string, string>;
   seasonTop: SeasonTopFlag | null;
+  videos?: ResultVideo[];
 }) {
   return (
     <li className="py-1">
@@ -772,6 +810,14 @@ function CompetitionResultRow({
             </span>
           )}
           {seasonTop && <SeasonTopBadge flag={seasonTop} />}
+          <ResultVideoButton
+            athleteKey={athleteKey}
+            competitionId={row.competition_id}
+            eventName={row.event_name}
+            subCategory={row.sub_category ?? ""}
+            videos={videos}
+            contextLabel={`${row.event_name} · ${row.competition_name}`}
+          />
         </span>
       </div>
       <NoteEditor
