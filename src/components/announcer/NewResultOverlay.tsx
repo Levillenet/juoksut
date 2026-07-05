@@ -12,6 +12,7 @@ export interface NewResultItem {
   eventId: number;
   eventName?: string;
   eventCategory: string;
+  ageClass?: string | null;
   heatIndex: number;
   /** 1-based attempt number for field events, if known. */
   attemptIndex?: number | null;
@@ -93,6 +94,8 @@ export function NewResultOverlay({ item, onDone }: Props) {
         item.alloc.Organization?.Id ?? null,
       ),
       eventName: item.eventName ?? "",
+      ageClass: item.ageClass,
+      category: item.eventCategory,
     });
     return detectRecord(item.eventCategory, item.alloc.Result ?? null, eff.pb, eff.sb) === "PB";
   }, [item, competitionId]);
@@ -210,6 +213,8 @@ function Card({ item }: { item: NewResultItem }) {
     competitionId,
     athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
     eventName: item.eventName ?? "",
+    ageClass: item.ageClass,
+    category: item.eventCategory,
   });
   return (
     <div className="flex flex-col items-center gap-3 text-center">

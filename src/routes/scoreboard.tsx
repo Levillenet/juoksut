@@ -618,6 +618,7 @@ function ScoreboardLive() {
                 category={ev?.EventCategory ?? ""}
                 competitionId={competitionId}
                 eventName={ev?.Name ?? ""}
+                ageClass={ev?.Group ?? ""}
                 scrollMode={scrollMode}
               />
 
@@ -683,6 +684,7 @@ function ScoreRow({
   category,
   competitionId,
   eventName,
+  ageClass,
   scrollMode,
 }: {
   row: RankedRow;
@@ -694,6 +696,7 @@ function ScoreRow({
   category: string;
   competitionId: number;
   eventName: string;
+  ageClass: string;
   scrollMode: boolean;
 }) {
   const vw = useViewportWidth();
@@ -719,6 +722,8 @@ function ScoreRow({
     competitionId,
     athleteKey: athleteKey(row.Surname, row.Firstname, row.Organization?.Id ?? null),
     eventName,
+    ageClass,
+    category,
   });
   const recordKind = detectRecord(category, row.best, eff.pb, eff.sb);
 

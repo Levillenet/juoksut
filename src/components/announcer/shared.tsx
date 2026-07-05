@@ -385,6 +385,8 @@ export function EventCard({
                     competitionId,
                     athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
                     eventName: round.EventName,
+                    ageClass: round.GroupName,
+                    category: round.Category,
                   })
                 : null;
               const recordKind =
@@ -552,6 +554,8 @@ function AllocationRow({
         competitionId,
         athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
         eventName: round.EventName,
+        ageClass: round.GroupName,
+        category: round.Category,
       })
     : null;
   const recordKind =

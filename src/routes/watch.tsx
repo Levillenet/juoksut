@@ -782,6 +782,8 @@ function WatchPage() {
                                           competitionId,
                                           athleteKey: athlete.key,
                                           eventName: e.round.EventName,
+                                          ageClass: e.round.GroupName,
+                                          category: e.round.Category,
                                         });
                                         return (
                                           <RecordBadge

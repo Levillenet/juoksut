@@ -38,6 +38,7 @@ export function useNewResultsQueue(
               eventId: ev.Id,
               eventName: ev.Name,
               eventCategory: ev.EventCategory ?? "",
+              ageClass: ev.Group ?? null,
               heatIndex: heat.Index,
               attemptIndex: visualState.attemptIndex,
             });
