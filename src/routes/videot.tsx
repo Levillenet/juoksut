@@ -295,8 +295,8 @@ function VideotPage() {
       )}
 
       <Dialog open={!!active} onOpenChange={(o) => !o && setActive(null)}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col gap-3 overflow-hidden p-4 sm:p-6">
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Youtube className="h-5 w-5 text-red-600" />
               {active
@@ -316,18 +316,20 @@ function VideotPage() {
             )}
           </DialogHeader>
           {active && (
-            <div className="aspect-video overflow-hidden rounded-md bg-black">
-              <iframe
-                src={embedUrl(active.youtube_video_id)}
-                title="YouTube video"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="h-full w-full"
-              />
+            <div className="mx-auto w-full shrink-0 overflow-hidden rounded-md bg-black" style={{ maxWidth: "min(100%, calc((45vh) * 16 / 9))" }}>
+              <div className="aspect-video w-full">
+                <iframe
+                  src={embedUrl(active.youtube_video_id)}
+                  title="YouTube video"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="h-full w-full"
+                />
+              </div>
             </div>
           )}
           {active?.athlete_key.startsWith("heat:") && (
-            <div className="rounded-md border bg-card/50 px-3 py-3">
+            <div className="min-h-0 flex-1 overflow-y-auto rounded-md border bg-card/50 px-3 py-3">
               <div className="mb-2 flex items-baseline justify-between gap-2">
                 <h2 className="text-sm font-semibold">
                   {active.sub_category ? `${active.sub_category} · ` : ""}Tulokset
@@ -341,6 +343,7 @@ function VideotPage() {
           )}
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }
