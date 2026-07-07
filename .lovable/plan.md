@@ -1,35 +1,27 @@
-## Tavoite
+## Ongelma
 
-Kilpailijaseuranta (`/watch`) näyttää tällä hetkellä vain sen kisan sisältöä, joka on valittuna kisavalitsimessa. Jos seurattava urheilija kilpailee tänään eri kisassa kuin valittuna, häntä ei näy.
+`/videot`-sivun dialogissa (kun video avataan) iframe käyttää `aspect-video`-luokkaa ilman korkeusrajaa. Leveällä näytöllä (esim. tabletti/foldable) iframe venyy niin korkeaksi, että se täyttää koko `max-h-[90vh]` dialogin. Erän tulokset renderöityvät DOM:issa videon jälkeen, mutta koska dialogilla on `overflow-y-auto` ja iframe vie kaiken näkyvän tilan, tulokset näyttävät menevän "videon päälle" scrollatessa. Kapealla mobiilissa sama vaikutus näkyy myös kun close-nappi jää ylös ja iframe työntyy tulosten alle visuaalisesti (screenshot 1).
 
-Halutaan: sivu tunnistaa automaattisesti kaikki kisat, joissa seurattavilla urheilijoilla on tänään tuloksia, listaa ne, ja käyttäjä voi klikata haluamansa kisan aktiiviseksi.
+## Ratkaisu
 
-## Muutokset
+Muokataan vain `src/routes/videot.tsx` dialogin sisältöä:
 
-### 1. Uusi apufunktio `src/lib/watch-store.ts` (tai `src/lib/daily-best.ts`)
+1. **Rajaa iframen korkeus** – korvaa `aspect-video` -laatikko rakenteella joka pitää 16:9-suhteen mutta rajaa maksimikorkeuden esim. `max-h-[45vh]` (mobiili) / `sm:max-h-[50vh]`, esim.:
+   ```tsx
+   <div className="relative w-full overflow-hidden rounded-md bg-black">
+     <div className="aspect-video max-h-[45vh] w-full mx-auto" style={{ aspectRatio: "16 / 9" }}>
+       <iframe ... className="h-full w-full" />
+     </div>
+   </div>
+   ```
+   Käytännössä käytetään wrapper-diviä jossa `max-h` + `aspect-video`, ja iframe täyttää sen. Näin videosta jää aina tilaa tulosten näkymiselle.
 
-Lisätään funktio `fetchTodayCompetitionsForAthletes(athleteKeys: string[])`, joka:
-- Hakee `athlete_results`-taulusta rivit, joissa `athlete_key IN (…)` ja `captured_at` on Helsinki-päivän sisällä (käyttää olemassa olevaa `helsinkiDayBounds` `daily-best.ts`:stä).
-- Ryhmittelee `competition_id`:n mukaan → palauttaa listan `{ competitionId, competitionName, competitionDate, location, athleteCount, resultCount, latestCapturedAt }`.
-- Järjestää: uusin `latestCapturedAt` ensin.
+2. **Tee dialogista pystyflex jossa video on kiinteä ja tulokset scrollaavat** – muutetaan `DialogContent`-luokat: `flex max-h-[90vh] flex-col gap-3 max-w-2xl` ja lisätään tulos-lohkolle `min-h-0 flex-1 overflow-y-auto`. Näin video pysyy aina ylhäällä näkyvissä, ja tulokset scrollaavat oman lohkonsa sisällä sen alla – ne eivät koskaan visuaalisesti mene videon päälle.
 
-### 2. Uusi komponentti `TodayCompetitionsForWatched` (samassa `src/routes/watch.tsx`)
-
-- Kutsuu `useQuery`:llä yllä olevaa funktiota, `queryKey: ["watch-today-competitions", sortedWatchedKeys]`, `refetchInterval: 60_000`.
-- Renderöityy vain kun seurattavia on ja kun palautuu ≥1 kisa.
-- Renderöi otsikon "Tänään käynnissä" ja listan korteista. Kortti näyttää:
-  - Kisan nimen + paikkakunnan
-  - `N seurattavaa · M tulosta tänään`
-  - Aktiivinen-merkki jos `competitionId === currentCompetitionId`
-- Kortin klikkaus kutsuu `setCompetitionId(id)` (`useCompetitionId`-hookin toinen palautusarvo), jolloin koko sivu vaihtaa kisaa ja `indexQuery` uudelleenlatautuu.
-- Sijoitetaan `<main>`-alueen alkuun, ennen hakutuloksia ja seuranta-listoja, mutta virheilmoituksen ja `ShareInviteBanner`in jälkeen.
-
-### 3. Ei muutoksia dataan
-
-Tämä on puhdas lukupolku: käyttää olemassa olevaa `athlete_results` -taulua ja sen nykyisiä `SELECT`-politiikkoja. Ei uusia migraatioita, tauluja, funktioita tai politiikkoja.
+3. **Sama korjaus** koskee myös `PublicVideoLinkButton.tsx`:n dialogia jos siinä on sama ongelma (tässä useita videoita listalla). Käydään läpi ja lisätään samat max-korkeudet iframeihin, jottei yksi video vie koko dialogia.
 
 ## Rajaus
 
-- Vain `/watch`-sivu (`src/routes/watch.tsx` + yksi uusi apufunktio).
-- Ei muuteta olemassa olevaa `indexQuery`/`watchedSections`-logiikkaa. Käyttäjä saa listan tänään aktiivisista kisoista näkyviin; halutessaan hän klikkaa toisen kisan aktiiviseksi ja sivu vaihtaa normaalisti valittuun kisaan.
-- Ei kosketa jakolinkkeihin (`seuraa.$token.tsx`) tässä vaiheessa.
+- Vain esitysmuutos (CSS-luokat) `src/routes/videot.tsx`-tiedostoon ja tarvittaessa `src/components/PublicVideoLinkButton.tsx`-tiedostoon.
+- Ei muutoksia dataan, kyselyihin, reitteihin tai muihin sivuihin.
+- Ei muutoksia korttinäkymään (grid) – vain avattuun dialogiin.
