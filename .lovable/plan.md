@@ -1,23 +1,18 @@
-## Diagnoosi
+## Ongelma
 
-Ruudulla lukee "Ei kisoja tällä aikavälillä" — eli `fetchCompetitionList()` palautti tyhjän listan. `src/lib/competition-list.ts` hakee kisalistan **suoraan selaimesta** osoitteesta `https://cached-public-api.tuloslista.com/live/v1/competition`. Tämä kutsu epäonnistuu tällä laitteella (CORS/verkko), jolloin listasta tulee tyhjä ja valikossa näkyy vain nykyinen "Kisa #19963" fallback‑rivi.
+`src/components/PrintTabs.tsx` käyttää mobiilissa `grid`-layoutia, jossa kaikki välilehdet pakotetaan yhtä leveisiin sarakkeisiin. 374 px näytöllä lyhyetkin lyhenteet ("Aikataulu", "Raportti", "Joukkue") katkeavat `truncate`-luokan takia. Lisäksi YAG-välilehti on näkyvissä vaikka YAG on jo ohi.
 
-Muut päätepisteet (`/competition/{id}`, `/competition/{id}/properties`, `/results/…`) menevät jo sisäisen proxyn läpi (`/api/public/tuloslista/live/v1/…`) — vain kisalistan haku unohtui proxyn taakse.
+## Korjaus (vain `src/components/PrintTabs.tsx`)
 
-## Korjaus
-
-1. **Uusi server-reitti** `src/routes/api/public/tuloslista/live/v1/competition/index.ts` — proxaa `/live/v1/competition` `proxyTuloslista`-funktion läpi. TTL: käytetään uutta lyhyttä TTL:ää (esim. `edgeTtl: 60, swrWindow: 300`), koska lista muuttuu harvakseltaan mutta uudet kisat pitää saada näkyviin nopeasti.
-2. **`src/lib/tuloslista-proxy.ts`** — lisää `competitionListTtl`.
-3. **`src/lib/competition-list.ts`** — vaihda `fetchCompetitionList` käyttämään `/api/public/tuloslista/live/v1/competition` -osoitetta suoran upstream-URL:n sijaan.
+1. **Poista YAG-välilehti kokonaan** — pudotetaan `/print/yag-calling`-rivi ja siihen liittyvät `YAG_COMPETITION_ID` / `useCompetitionId` importit.
+2. **Vaihda mobiilin layout `flex flex-wrap`-tyyliin** gridin sijaan:
+   - Pillit saavat sisällön mukaisen leveyden (`w-auto`), poistetaan `truncate`.
+   - Rivit menevät luonnollisesti kahdelle riville kapealla näytöllä, kaikki tekstit näkyvät kokonaan.
+   - Näytetään mobiilissakin täydet otsikot (esim. "Kilpailun aikataulu", "Seuran urheilijat") — `shortLabel`-haara voidaan poistaa tai jättää lyhyempänä varmuudeksi hyvin kapeille napeille.
+3. Työpöytäkäytös (`sm:`) pysyy ennallaan: yksi rivi, `overflow-x-auto` varmistuksena.
 
 ## Vaikutus
 
-- Kisavalitsin (myös urheilijaseurannan yläosassa jatkossa) toimii kaikilla selaimilla/laitteilla ilman CORS-ongelmia.
-- Tämän päivän ja huomisen kisat näkyvät heti valikossa.
-- Cloudflare-reunacache pienentää upstream-kuormaa.
-
-## Tiedostot
-
-- `src/routes/api/public/tuloslista/live/v1/competition/index.ts` (uusi)
-- `src/lib/tuloslista-proxy.ts` (lisää TTL)
-- `src/lib/competition-list.ts` (vaihda URL)
+- Kilpailun aikataulusivun (`/print/*`) yläreunan välilehtien tekstit näkyvät kokonaan myös mobiilissa.
+- YAG-välilehti häviää valikosta kaikilta käyttäjiltä.
+- Muut sivut eivät muutu, koska `PrintTabs` on käytössä vain `/print`-alireiteillä.
