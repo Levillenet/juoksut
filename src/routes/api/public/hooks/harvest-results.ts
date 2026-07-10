@@ -675,6 +675,37 @@ async function run(request: Request): Promise<Response> {
           ids.push(r.competition_id);
         }
       }
+
+      // Totuuslähde: tuloslistan oma kilpailulista. Poimitaan aina ID:t,
+      // joiden Date osuu välille [tänään - 3 vrk, tänään + 1 vrk], jotta
+      // yksittäinen hetkellinen probe-virhe ei jätä tämän päivän kisaa
+      // pysyvästi harvestin ulkopuolelle.
+      const FRESH_LIST_LOOKBACK_DAYS = 3;
+      const FRESH_LIST_LOOKAHEAD_DAYS = 1;
+      const FRESH_LIST_MAX = 40;
+      const compList = await fetchJson<Array<{ Id?: number; Date?: string }>>(
+        `${API}/competition`,
+      );
+      if (Array.isArray(compList)) {
+        const nowMs = Date.now();
+        const lo = nowMs - FRESH_LIST_LOOKBACK_DAYS * 86_400_000;
+        const hi = nowMs + (FRESH_LIST_LOOKAHEAD_DAYS + 1) * 86_400_000;
+        const fresh = compList
+          .filter((c) => typeof c.Id === "number" && !!c.Date)
+          .filter((c) => {
+            const t = Date.parse(c.Date!);
+            return Number.isFinite(t) && t >= lo && t < hi;
+          })
+          .map((c) => c.Id as number)
+          .sort((a, b) => b - a)
+          .slice(0, FRESH_LIST_MAX);
+        for (const cid of fresh) {
+          if (!existing.has(cid)) {
+            existing.add(cid);
+            ids.push(cid);
+          }
+        }
+      }
     }
 
     const result = await harvestRange(ids, latestId);
