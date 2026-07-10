@@ -242,6 +242,9 @@ export const scheduleTtl = (): TtlConfig => ({ edgeTtl: 30, swrWindow: 30 });
 /** Kisan properties — muuttuu erittäin harvoin. */
 export const propertiesTtl = (): TtlConfig => ({ edgeTtl: 300, swrWindow: 600 });
 
+/** Kisalista (`/competition`) — uusia kisoja tulee harvakseltaan. */
+export const competitionListTtl = (): TtlConfig => ({ edgeTtl: 60, swrWindow: 300 });
+
 interface EventBody {
   Rounds?: { Status?: string }[];
 }

@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { fetchRounds, helsinkiDateKey } from "./tuloslista";
 
-const API = "https://cached-public-api.tuloslista.com/live/v1";
+// Käytetään sisäistä proxya, jotta selain ei törmää CORS/verkko-ongelmiin
+// suoraan upstream-osoitteeseen. Muut tuloslistan endpointit menevät jo
+// saman proxyn läpi (`/api/public/tuloslista/…`).
+const LIST_URL = "/api/public/tuloslista/live/v1/competition";
 
 export interface CompetitionListItem {
   Id: number;
@@ -12,7 +15,7 @@ export interface CompetitionListItem {
 }
 
 export async function fetchCompetitionList(): Promise<CompetitionListItem[]> {
-  const res = await fetch(`${API}/competition`);
+  const res = await fetch(LIST_URL);
   if (!res.ok) throw new Error(`Kisalistan haku epäonnistui (${res.status})`);
   return res.json();
 }
