@@ -104,6 +104,16 @@ function EndpointCard({
   );
 }
 
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded border bg-background p-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-lg font-semibold">{value}</div>
+      {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
+    </div>
+  );
+}
+
 const PRESETS = [
   { id: "harvester", label: "juoksut-harvester/1.0" },
   { id: "proxy", label: "juoksut-proxy/1.0" },
