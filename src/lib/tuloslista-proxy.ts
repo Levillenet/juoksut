@@ -154,6 +154,7 @@ async function fetchFromOrigin(
       },
       signal: controller.signal,
     });
+    bumpOriginCall("proxy_origin", path, res.status);
     if (res.status === 429 || res.status === 503) {
       console.warn(`[tl-proxy] origin ${res.status} ${path} — circuit open ${CIRCUIT_OPEN_MS}ms`);
       circuitOpenUntil.set(path, Date.now() + CIRCUIT_OPEN_MS);
@@ -195,6 +196,7 @@ async function fetchFromOrigin(
     } else {
       console.error(`[tl-proxy] fetch error ${path}`, e);
     }
+    bumpOriginCall("proxy_origin", path, 0);
     // Avaa breaker myös timeoutille ja verkkovirheille, jottei Worker jää
     // jumiin samaan hitaaseen upstreamiin.
     circuitOpenUntil.set(path, Date.now() + CIRCUIT_OPEN_MS);
