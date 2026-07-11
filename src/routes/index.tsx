@@ -425,6 +425,7 @@ function Index({ role, isAdmin = false, isPlanner = false }: { role: Role; isAdm
 
         {!isOfficial && (
           <>
+            <HarvestLight />
             <TodayStatsSection />
             <DailyBestSection />
             
