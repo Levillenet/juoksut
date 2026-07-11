@@ -46,6 +46,7 @@ import { Route as AnnouncerPlanningRouteImport } from './routes/announcer.planni
 import { Route as AnnouncerLiveRouteImport } from './routes/announcer.live'
 import { Route as AnnouncerCombinedRouteImport } from './routes/announcer.combined'
 import { Route as AdminWelcomeRouteImport } from './routes/admin.welcome'
+import { Route as AdminTuloslistaProbeRouteImport } from './routes/admin.tuloslista-probe'
 import { Route as AdminRolesRouteImport } from './routes/admin.roles'
 import { Route as AdminClubLocationsRouteImport } from './routes/admin.club-locations'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
@@ -243,6 +244,11 @@ const AdminWelcomeRoute = AdminWelcomeRouteImport.update({
   path: '/admin/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminTuloslistaProbeRoute = AdminTuloslistaProbeRouteImport.update({
+  id: '/admin/tuloslista-probe',
+  path: '/admin/tuloslista-probe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRolesRoute = AdminRolesRouteImport.update({
   id: '/admin/roles',
   path: '/admin/roles',
@@ -326,6 +332,7 @@ export interface FileRoutesByFullPath {
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/admin/roles': typeof AdminRolesRoute
+  '/admin/tuloslista-probe': typeof AdminTuloslistaProbeRoute
   '/admin/welcome': typeof AdminWelcomeRoute
   '/announcer/combined': typeof AnnouncerCombinedRoute
   '/announcer/live': typeof AnnouncerLiveRoute
@@ -373,6 +380,7 @@ export interface FileRoutesByTo {
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/admin/roles': typeof AdminRolesRoute
+  '/admin/tuloslista-probe': typeof AdminTuloslistaProbeRoute
   '/admin/welcome': typeof AdminWelcomeRoute
   '/announcer/combined': typeof AnnouncerCombinedRoute
   '/announcer/live': typeof AnnouncerLiveRoute
@@ -424,6 +432,7 @@ export interface FileRoutesById {
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/club-locations': typeof AdminClubLocationsRoute
   '/admin/roles': typeof AdminRolesRoute
+  '/admin/tuloslista-probe': typeof AdminTuloslistaProbeRoute
   '/admin/welcome': typeof AdminWelcomeRoute
   '/announcer/combined': typeof AnnouncerCombinedRoute
   '/announcer/live': typeof AnnouncerLiveRoute
@@ -476,6 +485,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/club-locations'
     | '/admin/roles'
+    | '/admin/tuloslista-probe'
     | '/admin/welcome'
     | '/announcer/combined'
     | '/announcer/live'
@@ -523,6 +533,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/club-locations'
     | '/admin/roles'
+    | '/admin/tuloslista-probe'
     | '/admin/welcome'
     | '/announcer/combined'
     | '/announcer/live'
@@ -573,6 +584,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/club-locations'
     | '/admin/roles'
+    | '/admin/tuloslista-probe'
     | '/admin/welcome'
     | '/announcer/combined'
     | '/announcer/live'
@@ -624,6 +636,7 @@ export interface RootRouteChildren {
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminClubLocationsRoute: typeof AdminClubLocationsRoute
   AdminRolesRoute: typeof AdminRolesRoute
+  AdminTuloslistaProbeRoute: typeof AdminTuloslistaProbeRoute
   AdminWelcomeRoute: typeof AdminWelcomeRoute
   AthleteKeyRoute: typeof AthleteKeyRoute
   SeuraaTokenRoute: typeof SeuraaTokenRoute
@@ -899,6 +912,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminWelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/tuloslista-probe': {
+      id: '/admin/tuloslista-probe'
+      path: '/admin/tuloslista-probe'
+      fullPath: '/admin/tuloslista-probe'
+      preLoaderRoute: typeof AdminTuloslistaProbeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/roles': {
       id: '/admin/roles'
       path: '/admin/roles'
@@ -1092,6 +1112,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminClubLocationsRoute: AdminClubLocationsRoute,
   AdminRolesRoute: AdminRolesRoute,
+  AdminTuloslistaProbeRoute: AdminTuloslistaProbeRoute,
   AdminWelcomeRoute: AdminWelcomeRoute,
   AthleteKeyRoute: AthleteKeyRoute,
   SeuraaTokenRoute: SeuraaTokenRoute,
@@ -1112,13 +1133,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
