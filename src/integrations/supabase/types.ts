@@ -656,6 +656,10 @@ export type Database = {
           blocked: boolean
           consecutive_result_failures: number
           id: string
+          last_api_message: string | null
+          last_api_message_at: string | null
+          last_api_message_endpoint: string | null
+          last_api_message_source: string | null
           last_run_at: string | null
           latest_id: number
           next_id: number
@@ -668,6 +672,10 @@ export type Database = {
           blocked?: boolean
           consecutive_result_failures?: number
           id?: string
+          last_api_message?: string | null
+          last_api_message_at?: string | null
+          last_api_message_endpoint?: string | null
+          last_api_message_source?: string | null
           last_run_at?: string | null
           latest_id?: number
           next_id?: number
@@ -680,6 +688,10 @@ export type Database = {
           blocked?: boolean
           consecutive_result_failures?: number
           id?: string
+          last_api_message?: string | null
+          last_api_message_at?: string | null
+          last_api_message_endpoint?: string | null
+          last_api_message_source?: string | null
           last_run_at?: string | null
           latest_id?: number
           next_id?: number
