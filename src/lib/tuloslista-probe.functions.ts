@@ -134,8 +134,9 @@ export const getMonitorSnapshot = createServerFn({ method: "GET" })
         supabaseAdmin
           .from("harvest_state")
           .select(
-            "blocked, block_reason, block_checked_at, block_since, last_run_at, consecutive_result_failures",
+            "blocked, block_reason, block_checked_at, block_since, last_run_at, consecutive_result_failures, last_api_message, last_api_message_at, last_api_message_source, last_api_message_endpoint",
           )
+
           .eq("id", "singleton")
           .maybeSingle(),
         supabaseAdmin
