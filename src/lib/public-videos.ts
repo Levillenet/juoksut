@@ -186,6 +186,20 @@ export async function fetchPublicVideos(opts?: {
         });
       }
     }
+    // Final fallback: fetch competition name from tuloslista live API
+    const stillMissing = missingCompIds.filter((id) => !compMeta.has(id));
+    await Promise.all(
+      stillMissing.map(async (id) => {
+        try {
+          const props = await fetchProperties(id);
+          if (props?.Competition?.Name) {
+            compMeta.set(id, { name: props.Competition.Name, date: null });
+          }
+        } catch {
+          // ignore
+        }
+      }),
+    );
   }
 
   return unique.map((v) => {
