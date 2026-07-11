@@ -206,8 +206,28 @@ function Page() {
                   <> · peräkkäisiä tulos-epäonnistumisia: {snap.consecutiveResultFailures}</>
                 )}
               </div>
+              {snap?.lastApiMessage && (
+                <div className="mt-2 rounded border border-amber-400/60 bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                  <div className="font-semibold">
+                    Tuloslista-viesti
+                    {snap.lastApiMessageAt
+                      ? ` · ${formatRelativeFi(new Date(snap.lastApiMessageAt), now)}`
+                      : ""}
+                    {snap.lastApiMessageSource
+                      ? ` · lähde: ${snap.lastApiMessageSource}`
+                      : ""}
+                    {snap.lastApiMessageEndpoint
+                      ? ` · ${snap.lastApiMessageEndpoint}`
+                      : ""}
+                  </div>
+                  <div className="mt-1 whitespace-pre-wrap break-words">
+                    {snap.lastApiMessage}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
+
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
               size="sm"
