@@ -562,22 +562,38 @@ async function persistApiMessageIfAny(state: RunState): Promise<void> {
 async function run(request: Request): Promise<Response> {
   const url = new URL(request.url);
 
-  // Hotlist-tila: käynnissä olevien kisojen 15 s sykli. Ei kosketa
+  // Hotlist-tila: käynnissä olevien kisojen sykli. Ei kosketa
   // harvest_competitions.done-merkintää, jotta hot cycle voi käydä
-  // samassa kisassa monta kertaa päivän aikana.
+  // samassa kuluvan päivän kisassa monta kertaa päivän aikana.
   const idsParam = url.searchParams.get("ids");
-  if (idsParam) {
+  const isHotMode = url.searchParams.get("mode") === "hot" || idsParam != null;
+  if (isHotMode) {
     const state: RunState = { source: "hot_cycle", rateLimited: false, lastApiMessage: null };
-    const hotIds = Array.from(
-      new Set(
-        idsParam
-          .split(",")
-          .map((s) => Number(s.trim()))
-          .filter((n) => Number.isFinite(n) && n > 0),
-      ),
-    ).slice(0, HOT_BATCH_SIZE);
+    let hotIds: number[] = [];
+    if (idsParam) {
+      hotIds = Array.from(
+        new Set(
+          idsParam
+            .split(",")
+            .map((s) => Number(s.trim()))
+            .filter((n) => Number.isFinite(n) && n > 0),
+        ),
+      ).slice(0, HOT_BATCH_SIZE);
+    } else {
+      const { data, error } = await supabaseAdmin.rpc("get_hot_competition_ids");
+      if (error) {
+        console.error("get_hot_competition_ids error:", error.message);
+      }
+      hotIds = Array.from(
+        new Set(
+          ((data ?? []) as Array<number | { get_hot_competition_ids?: number }>)
+            .map((row) => (typeof row === "number" ? row : row.get_hot_competition_ids))
+            .filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0),
+        ),
+      ).slice(0, HOT_BATCH_SIZE);
+    }
     if (hotIds.length === 0) {
-      return Response.json({ ok: true, skipped: "no-ids" });
+      return Response.json({ ok: true, skipped: "no-hot-ids", mode: "hotlist" });
     }
 
     const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock");
