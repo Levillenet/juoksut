@@ -52,6 +52,12 @@ function classify(
   if (status === 404) return { ok: false, reason: "ei löydy (HTTP 404)" };
   if (status >= 500) return { ok: false, reason: `origin-virhe (HTTP ${status})` };
   if (status !== 200) return { ok: false, reason: `odottamaton status (HTTP ${status})` };
+  if (
+    body.includes("lähettää rajapintakutsuja aivan liikaa") ||
+    body.includes("Ole yhteydessä")
+  ) {
+    return { ok: false, reason: "tuloslista palautti estoviestin" };
+  }
   const ct = (contentType ?? "").toLowerCase();
   if (!ct.includes("application/json") && !ct.includes("text/json"))
     return { ok: false, reason: `ei-JSON-vastaus (${contentType ?? "?"})` };
