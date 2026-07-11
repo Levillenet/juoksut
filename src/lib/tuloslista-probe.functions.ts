@@ -103,6 +103,10 @@ export interface MonitorSnapshot {
   blockSince: string | null;
   lastHarvestRunAt: string | null;
   consecutiveResultFailures: number;
+  lastApiMessage: string | null;
+  lastApiMessageAt: string | null;
+  lastApiMessageSource: string | null;
+  lastApiMessageEndpoint: string | null;
   list: EndpointStatus | null;
   results: EndpointStatus | null;
   recent: Array<{
@@ -117,6 +121,7 @@ export interface MonitorSnapshot {
     reason: string | null;
   }>;
 }
+
 
 export const getMonitorSnapshot = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
