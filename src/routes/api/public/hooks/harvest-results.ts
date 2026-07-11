@@ -550,11 +550,52 @@ async function run(request: Request): Promise<Response> {
   rateLimited = false;
   const url = new URL(request.url);
 
+  // Hotlist-tila: 15 s välein pyörivä nopea sykli, joka käsittelee vain
+  // annetut ID:t (kuumat kilpailut). Ei liikuta harvest_state-kursoria,
+  // ei tee revisit-hakuja, ei käytä samaa lukkoa kuin tausta-sykli.
+  const idsParam = url.searchParams.get("ids");
+  if (idsParam) {
+    const hotIds = Array.from(
+      new Set(
+        idsParam
+          .split(",")
+          .map((s) => Number(s.trim()))
+          .filter((n) => Number.isFinite(n) && n > 0 && n <= HARD_MAX_ID),
+      ),
+    );
+    if (hotIds.length === 0) {
+      return Response.json({ ok: true, skipped: "no-ids" });
+    }
+    const { data: stateRow } = await supabaseAdmin
+      .from("harvest_state")
+      .select("blocked, block_reason")
+      .eq("id", "singleton")
+      .maybeSingle();
+    if (stateRow?.blocked === true) {
+      return Response.json({
+        ok: true,
+        skipped: "blocked",
+        reason: stateRow.block_reason ?? null,
+      });
+    }
+    const result = await harvestRange(hotIds, hotIds[hotIds.length - 1]);
+    return Response.json({
+      ok: true,
+      mode: "hotlist",
+      scanned: result.scanned,
+      existed: result.existed,
+      revisited: result.revisited,
+      rateLimited,
+      ids: hotIds,
+    });
+  }
+
   // Acquire advisory lock so overlapping cron runs don't double-process.
   const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock");
   if (lockData !== true) {
     return Response.json({ ok: true, skipped: "locked" });
   }
+
 
   try {
     const fromOverride = Number(url.searchParams.get("fromId"));
