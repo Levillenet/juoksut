@@ -12,6 +12,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { bumpOriginCall } from "@/lib/origin-call-counter";
+import { isTuloslistaPollingWindow } from "@/lib/helsinki-time";
 
 const ORIGIN = "https://cached-public-api.tuloslista.com";
 const LIST_PATH = "/live/v1/competition";
@@ -220,6 +221,36 @@ export interface MonitorRunResult {
 }
 
 export async function runTuloslistaMonitor(): Promise<MonitorRunResult> {
+  if (!isTuloslistaPollingWindow()) {
+    const nowIso = new Date().toISOString();
+    await supabaseAdmin
+      .from("harvest_state")
+      .update({
+        blocked: true,
+        block_reason: "Tuloslistan automaattiset kyselyt ovat yökatkolla klo 21-09.",
+        block_checked_at: nowIso,
+        block_since: nowIso,
+        updated_at: nowIso,
+      })
+      .eq("id", "singleton");
+
+    return {
+      list: { ok: true, reason: "night-window", status: 0, durationMs: 0, bodyBytes: 0 },
+      results: {
+        ok: true,
+        reason: "night-window",
+        status: 0,
+        durationMs: 0,
+        bodyBytes: 0,
+        competitionId: 0,
+      },
+      transition: "blocked",
+      consecutiveResultFailures: 0,
+      apiMessage: null,
+      apiMessageEndpoint: null,
+    };
+  }
+
   const [listOutcome, referenceId] = await Promise.all([
     runProbe(LIST_PATH, LIST_MIN_OK_BYTES),
     pickReferenceCompetitionId(),

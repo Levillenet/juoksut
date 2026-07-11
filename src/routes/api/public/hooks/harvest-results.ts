@@ -13,6 +13,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { parseResult } from "@/lib/result-parse";
 import { bumpOriginCall, type CounterSource } from "@/lib/origin-call-counter";
+import { isTuloslistaPollingWindow } from "@/lib/helsinki-time";
 
 const API = "https://cached-public-api.tuloslista.com/live/v1";
 const UA = "juoksut-harvester/1.1 (+https://tulokset.online)";
@@ -606,6 +607,9 @@ async function persistApiMessageIfAny(state: RunState): Promise<void> {
 
 async function run(request: Request): Promise<Response> {
   const url = new URL(request.url);
+  if (!isTuloslistaPollingWindow()) {
+    return Response.json({ ok: true, skipped: "night-window" });
+  }
 
   // Hotlist-tila: käynnissä olevien kisojen sykli. Ei kosketa
   // harvest_competitions.done-merkintää, jotta hot cycle voi käydä
