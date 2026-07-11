@@ -11,6 +11,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { bumpOriginCall } from "@/lib/origin-call-counter";
 
 const ORIGIN = "https://cached-public-api.tuloslista.com";
 const LIST_PATH = "/live/v1/competition";
