@@ -65,10 +65,12 @@ export async function proxyTuloslista(
         const ttl = ttlOf(env.body);
         const ageSec = (Date.now() - env.cachedAt) / 1000;
         if (ageSec < ttl.edgeTtl) {
+          bumpOriginCall("proxy_cache", path, "hit");
           return jsonResponse(env.body, "hit", ageSec);
         }
         if (ageSec < ttl.edgeTtl + ttl.swrWindow) {
           // SWR: palauta stale heti, päivitä taustalla.
+          bumpOriginCall("proxy_cache", path, "stale");
           kickRefresh(originUrl, cacheKey, cache, ttlOf, path);
           return jsonResponse(env.body, "stale", ageSec);
         }
