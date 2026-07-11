@@ -19,6 +19,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { parseResult } from "@/lib/result-parse";
 
 const API = "https://cached-public-api.tuloslista.com/live/v1";
+const UA = "juoksut-harvester/1.0 (+https://tulokset.online)";
 const BATCH_SIZE = 100;      // competition IDs scanned per invocation
 const TAIL_RESCAN = 30;      // IDs to re-scan when caught up
 const REVISIT_LIMIT = 120;   // tuloksellisten/tuloksettomien kisojen uudelleentarkistus per ajo
@@ -113,14 +114,26 @@ function parseResultNumeric(
 async function fetchJson<T>(url: string): Promise<T | null> {
   try {
     const r = await fetch(url, {
-      headers: { "User-Agent": "juoksut-harvester/1.0" },
+      headers: { "User-Agent": UA, accept: "application/json" },
     });
     if (r.status === 429 || r.status === 503) {
       rateLimited = true;
       return null;
     }
     if (!r.ok) return null;
-    return (await r.json()) as T;
+    const contentType = (r.headers.get("content-type") ?? "").toLowerCase();
+    const text = await r.text();
+    if (
+      text.includes("lähettää rajapintakutsuja aivan liikaa") ||
+      text.includes("Ole yhteydessä")
+    ) {
+      rateLimited = true;
+      return null;
+    }
+    if (!contentType.includes("application/json") && !contentType.includes("text/json")) {
+      return null;
+    }
+    return JSON.parse(text) as T;
   } catch {
     return null;
   }
@@ -561,6 +574,21 @@ async function run(request: Request): Promise<Response> {
     }
     let nextId = stateRow?.next_id ?? FLOOR_ID;
     let latestId = stateRow?.latest_id ?? FLOOR_ID;
+    const compList = await fetchJson<Array<{ Id?: number; Date?: string }>>(
+      `${API}/competition`,
+    );
+    const sourceMaxId = Array.isArray(compList)
+      ? Math.max(
+          FLOOR_ID,
+          ...compList
+            .map((c) => c.Id)
+            .filter((id): id is number => typeof id === "number"),
+        )
+      : null;
+    if (sourceMaxId != null && latestId > sourceMaxId) {
+      latestId = sourceMaxId;
+      nextId = Math.min(nextId, sourceMaxId + 1);
+    }
 
     let ids: number[];
     let mode: "manual" | "backfill" | "tail";
@@ -690,9 +718,6 @@ async function run(request: Request): Promise<Response> {
       const FRESH_LIST_LOOKBACK_DAYS = 3;
       const FRESH_LIST_LOOKAHEAD_DAYS = 1;
       const FRESH_LIST_MAX = 40;
-      const compList = await fetchJson<Array<{ Id?: number; Date?: string }>>(
-        `${API}/competition`,
-      );
       if (Array.isArray(compList)) {
         const nowMs = Date.now();
         const lo = nowMs - FRESH_LIST_LOOKBACK_DAYS * 86_400_000;
