@@ -43,6 +43,39 @@ const FLOOR_ID = 16456;      // tuloslista API:n vanhin saatavilla oleva kisa (5
 // returning 429/503 we stop advancing so the cursor can retry these IDs
 // on a later run instead of skipping them.
 let rateLimited = false;
+// Viimeisin tuloslistan API-viesti tässä ajossa (tallennetaan harvest_stateen
+// ajon lopussa, jotta admin näkee viestin heti eikä vasta monitor-cronin
+// kautta).
+let lastApiMessage: string | null = null;
+
+const API_MESSAGE_PATTERNS: RegExp[] = [
+  /lähettää rajapintakutsuja aivan liikaa/i,
+  /rajapintakutsuja.*liikaa/i,
+  /ole yhteydessä/i,
+  /liikaa kutsuja/i,
+  /kohtuuton/i,
+  /please contact/i,
+  /rate.?limit/i,
+  /too many requests/i,
+];
+
+function detectApiMessage(body: string): string | null {
+  if (!body) return null;
+  for (const re of API_MESSAGE_PATTERNS) {
+    if (re.test(body)) {
+      const idx = body.search(re);
+      const start = Math.max(0, idx - 80);
+      const end = Math.min(body.length, idx + 220);
+      return body
+        .slice(start, end)
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+  }
+  return null;
+}
+
 
 interface RelayAthlete {
   Id?: number;
