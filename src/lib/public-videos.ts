@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { HeatResultSnapshot } from "@/lib/result-videos";
+import { fetchProperties } from "@/lib/tuloslista";
 
 export interface PublicVideoItem {
   id: string;
