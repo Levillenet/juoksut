@@ -1,51 +1,27 @@
 // Background harvester for tuloslista.com.
 //
-// Stores results for ALL athletes in every competition (not just watched),
-// so the user-facing dashboard can read history without ever triggering a
-// fetch. The job is driven by pg_cron and walks a singleton cursor stored
-// in `harvest_state`:
+// ID-lähde: TULOSLISTAN OMA KISALISTA (/live/v1/competition). Emme enää
+// arvaa/probaa ID:tä sekventiaalisesti — se aiheutti 404-virheitä joista
+// tuloslistan ylläpito valitti. Kukin listalta löytyvä uusi ID skannataan
+// kerran, tallennetaan tulokset ja merkitään harvest_competitions.done=true.
+// Emme myöskään palaa jo skannattuihin kisoihin taustatyössä.
 //
-//   - On each run it scans BATCH_SIZE competition IDs starting at next_id.
-//   - The cursor advances by the number of IDs scanned.
-//   - When the cursor catches up with `latest_id` (the most recently
-//     observed real competition), the job switches to "tail" mode and
-//     re-scans the most recent ~30 IDs so updated/late-uploaded results
-//     get refreshed.
-//
-// Each run is bounded so we stay well within Cloudflare Worker limits.
+// Käynnissä olevat kisat päivittyvät hot cyclen kautta (?ids=…), joka
+// pyörii omalla 15 s syklillä competition_plans-aikataulun mukaan.
 
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { parseResult } from "@/lib/result-parse";
 
 const API = "https://cached-public-api.tuloslista.com/live/v1";
-const UA = "juoksut-harvester/1.0 (+https://tulokset.online)";
-const BATCH_SIZE = 100;      // competition IDs scanned per invocation
-const TAIL_RESCAN = 30;      // IDs to re-scan when caught up
-const REVISIT_LIMIT = 120;   // tuloksellisten/tuloksettomien kisojen uudelleentarkistus per ajo
-const FRESH_REVISIT_LIMIT = 80;   // näistä budjetoidaan tämän päivän + eilisen kisoille
-const FRESH_REVISIT_WINDOW_DAYS = 2;
-const REVISIT_MAX_AGE_DAYS = 365; // kuinka kauan palataan kisoihin (alkuerä→finaali voi täydentyä myöhemmin)
-// Kun haravoidaan ID joka ei vielä ole tuloslista.com:ssa, sitä saatetaan
-// julkaista myöhemmin (esim. tämän päivän kisa, jolle ID on jo varattu mutta
-// tuloksia ei ole vielä syötetty). Pidetään tällaiset revisit-tilassa kunnes
-// ID jää selvästi taakse uusimmasta nähdystä ID:stä.
-const NONEXIST_PERMANENT_GAP = 300; // jos id < latest_id - tämä, merkitään lopullisesti done
-const NONEXIST_REVISIT_LIMIT = 120; // tuoreiden ei-olemassaolevien ID:iden uudelleenprobeja per ajo
-const RECENT_NONEXIST_LIMIT = 60; // uusimmat varatut mutta ei-olemassaolevat ID:t (competition_id DESC)
-const NONEXIST_NEAR_TODAY_LIMIT = 20; // priorisoitu probe lähellä tämän päivän olemassa olevia ID:itä
-const NONEXIST_NEAR_TODAY_RADIUS = 100; // ±ID-säde tämän päivän olemassa olevien kisojen ympärillä
-const CONCURRENCY = 5;       // parallel competitions per chunk
-const HARD_MAX_ID = 30000;   // safety ceiling
-const FLOOR_ID = 16456;      // tuloslista API:n vanhin saatavilla oleva kisa (5.1.2025)
+const UA = "juoksut-harvester/1.1 (+https://tulokset.online)";
+const BATCH_SIZE = 60;      // uusia kisoja per taustatyön ajo (worker-budjetti)
+const CONCURRENCY = 5;      // rinnakkaiset kisat per chunk
 
-// Soft rate-limit signal shared across the run. If tuloslista.com starts
-// returning 429/503 we stop advancing so the cursor can retry these IDs
-// on a later run instead of skipping them.
+// Rate-limit-signaali jaetaan koko ajon kesken. Jos tuloslista alkaa
+// palauttaa 429/503 tai välittää viestin ("liikaa kutsuja"), pysäytämme
+// ajon ja jätämme loput ID:t seuraavaan ajoon.
 let rateLimited = false;
-// Viimeisin tuloslistan API-viesti tässä ajossa (tallennetaan harvest_stateen
-// ajon lopussa, jotta admin näkee viestin heti eikä vasta monitor-cronin
-// kautta).
 let lastApiMessage: string | null = null;
 
 const API_MESSAGE_PATTERNS: RegExp[] = [
@@ -75,7 +51,6 @@ function detectApiMessage(body: string): string | null {
   }
   return null;
 }
-
 
 interface RelayAthlete {
   Id?: number;
@@ -133,6 +108,12 @@ interface EventShape {
 
 interface RoundsByDateShape {
   [date: string]: { EventId: number; GroupName?: string }[];
+}
+
+interface CompetitionListEntry {
+  Id?: number;
+  Name?: string;
+  Date?: string;
 }
 
 function parseResultNumeric(
@@ -206,15 +187,15 @@ async function processCompetition(
   id: number,
   pending: Row[],
   pendingLegs: RelayLegRow[],
+  competitionDateHint: string | null,
 ): Promise<{ existed: boolean; rowsAdded: number; competitionDate: string | null }> {
   const props = await fetchJson<PropertiesShape>(
     `${API}/competition/${id}/properties`,
   );
-  if (!props?.Competition?.Id) return { existed: false, rowsAdded: 0, competitionDate: null };
-  const competitionDate = props.Competition?.BeginDate ?? null;
+  if (!props?.Competition?.Id) return { existed: false, rowsAdded: 0, competitionDate: competitionDateHint };
+  const competitionDate = props.Competition?.BeginDate ?? competitionDateHint;
   const byDate = await fetchJson<RoundsByDateShape>(`${API}/competition/${id}`);
   if (!byDate) return { existed: true, rowsAdded: 0, competitionDate };
-  // Map EventId → GroupName (age class) from the schedule
   const ageByEvent = new Map<number, string>();
   for (const list of Object.values(byDate)) {
     for (const r of list) {
@@ -229,18 +210,6 @@ async function processCompetition(
     const category = ev.EventCategory ?? "";
     const subCategory = ev.EventSubCategory ?? "";
     const ageClass = ageByEvent.get(eid) ?? "";
-    // Lajilla voi olla useita kierroksia (alkuerät + loppukilpailu/A-/B-finaali)
-    // saman event_id:n alla. API palauttaa Rounds-listan kronologisesti.
-    //
-    // Track: pidetään urheilijan PARAS numeerinen aika kaikista kierroksista.
-    // Jos paras tuli muusta kierroksesta kuin viimeisestä (esim. alkuerä,
-    // kun loppukilpailussa DNS), talletetaan kierroksen nimi
-    // (result_round_name) jotta UI voi näyttää sen.
-    // Jos kellään ei ollut numeerista tulosta missään kierroksessa, käytetään
-    // viimeisen kierroksen riviä (esim. DNS).
-    //
-    // Muut kategoriat (Field, Throw, Combined…): pidetään paras numeerinen
-    // (vanha logiikka), result_round_name jää tyhjäksi.
     const isTrack = category === "Track";
     type Tracked = {
       latest: Row;
@@ -291,12 +260,10 @@ async function processCompetition(
             });
             continue;
           }
-          // latest = viimeisin kierros
           if (rIdx >= prev.latestRoundIdx) {
             prev.latest = row;
             prev.latestRoundIdx = rIdx;
           }
-          // best = paras numeerinen (Track: pienin aika; muut: suurin tulos)
           if (row.result_numeric != null) {
             const cur = prev.best?.result_numeric ?? null;
             let better = false;
@@ -315,9 +282,6 @@ async function processCompetition(
     for (const t of tracked.values()) {
       let out: Row;
       if (isTrack) {
-        // Track: suosi viimeisintä kierrosta (loppukilpailu on virallinen
-        // sijoitus). Vain jos viimeinen on ei-numeerinen (DNS/DNF/DQ),
-        // pudottaudu parhaaseen aiempaan kierrokseen ja näytä sen nimi.
         if (t.latest.result_numeric != null) {
           out = { ...t.latest, result_round_name: "" };
         } else if (t.best) {
@@ -334,9 +298,6 @@ async function processCompetition(
       rowsAdded++;
     }
 
-    // Relay-lajeille: kerätään viestin juoksijat vaihtojärjestyksessä.
-    // Käytetään viimeisintä kierrosta, jonka allokaatiossa on AthleteOrders
-    // (loppukilpailun joukkuekokoonpano voittaa alkuerän).
     if (category === "Relay") {
       for (let rIdx = rounds.length - 1; rIdx >= 0; rIdx--) {
         const r = rounds[rIdx];
@@ -404,7 +365,6 @@ function parseWind(w: unknown): number | null {
 
 async function flush(rows: Row[]) {
   if (rows.length === 0) return;
-  // Chunk to keep request bodies small.
   const CHUNK = 500;
   for (let i = 0; i < rows.length; i += CHUNK) {
     const slice = rows.slice(i, i + CHUNK);
@@ -433,11 +393,11 @@ async function flushLegs(rows: RelayLegRow[]) {
   }
 }
 
-async function harvestRange(ids: number[], latestIdHint: number) {
+async function harvestIds(
+  entries: Array<{ id: number; date: string | null }>,
+): Promise<{ scanned: number; existed: number; touchedCompIds: Set<number> }> {
   let scanned = 0;
   let existed = 0;
-  let revisited = 0;
-  let lastScannedId = ids.length > 0 ? ids[0] - 1 : -1;
   const pending: Row[] = [];
   const pendingLegs: RelayLegRow[] = [];
   const touchedCompIds = new Set<number>();
@@ -451,19 +411,10 @@ async function harvestRange(ids: number[], latestIdHint: number) {
     first_scanned_at: string;
   }> = [];
 
-  const cutoffMs = Date.now() - REVISIT_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
-  const NONEXIST_FRESH_MS = 30 * 24 * 60 * 60 * 1000;
-  // Päivitä latestId-arvio jo skannauksen aikana, jotta uusin nähty ID
-  // huomioidaan permanent-gap-päätöksessä saman ajon sisällä.
-  let runningLatestId = latestIdHint;
-  for (const id of ids) {
-    if (id > runningLatestId) runningLatestId = id;
-  }
-
-  // Lataa aiemmat first_scanned_at -arvot, jotta ne säilyvät upsertissa ja
-  // niitä voidaan käyttää done-päättelyssä.
+  // Lataa aiemmat first_scanned_at -arvot upsertia varten.
   const firstSeenMap = new Map<number, string>();
-  if (ids.length > 0) {
+  if (entries.length > 0) {
+    const ids = entries.map((e) => e.id);
     const CHUNK = 500;
     for (let i = 0; i < ids.length; i += CHUNK) {
       const slice = ids.slice(i, i + CHUNK);
@@ -477,62 +428,39 @@ async function harvestRange(ids: number[], latestIdHint: number) {
     }
   }
 
-  // Process IDs in chunks of CONCURRENCY in source order, so that if we
-  // bail out on rate-limit we know exactly which IDs were attempted.
-  for (let i = 0; i < ids.length; i += CONCURRENCY) {
+  for (let i = 0; i < entries.length; i += CONCURRENCY) {
     if (rateLimited) break;
-    const chunk = ids.slice(i, i + CONCURRENCY);
+    const chunk = entries.slice(i, i + CONCURRENCY);
     const results = await Promise.allSettled(
-      chunk.map(async (id) => {
+      chunk.map(async (e) => {
         await jitter();
-        return processCompetition(id, pending, pendingLegs);
+        return processCompetition(e.id, pending, pendingLegs, e.date);
       }),
     );
     const nowIso = new Date().toISOString();
     for (let j = 0; j < results.length; j++) {
       const r = results[j];
-      const id = chunk[j];
+      const e = chunk[j];
       scanned++;
-      lastScannedId = id;
       if (r.status === "fulfilled") {
         const v = r.value;
         if (v.existed) {
           existed++;
-          if (v.rowsAdded > 0) touchedCompIds.add(id);
-          if (id > runningLatestId) runningLatestId = id;
+          if (v.rowsAdded > 0) touchedCompIds.add(e.id);
         }
-        // Päätä onko tämä kisa "done" — eli ei tarvitse palata.
-        // Pidetään revisit-tilassa myös jo tuloksellisia kisoja, koska
-        // alkuerien jälkeen voi tulla finaali (tai uusia kierroksia), ja
-        // upsert valitsee parhaan tuloksen per urheilija/laji uudelleen.
-        //
-        // Ei-olemassaolevat ID:t merkitään done=true VAIN jos ne ovat
-        // selvästi taakse jääneitä (id < latest - NONEXIST_PERMANENT_GAP).
-        // Tuoreille ei-olemassaoleville pidetään done=false, jotta ne
-        // probetaan uudelleen kun kisan tulokset ehkä julkaistaan.
-        const dateMs = v.competitionDate ? Date.parse(v.competitionDate) : NaN;
-        const tooOldToRevisit = Number.isFinite(dateMs) && dateMs < cutoffMs;
-        const firstSeenAt = firstSeenMap.get(id) ?? nowIso;
-        const firstSeenMs = Date.parse(firstSeenAt);
-        const isFreshUnknown =
-          !v.existed &&
-          Number.isFinite(firstSeenMs) &&
-          firstSeenMs > Date.now() - NONEXIST_FRESH_MS;
-        const isPermanentGap =
-          !v.existed && id < runningLatestId - NONEXIST_PERMANENT_GAP;
-        const done = (isPermanentGap && !isFreshUnknown) || tooOldToRevisit;
+        // Merkitään aina done=true — ei revisit-kierroksia. Käynnissä olevat
+        // kisat päivittyvät hot cyclen (?ids=…) kautta, ei tätä reittiä.
         scanRecords.push({
-          competition_id: id,
-          competition_date: v.competitionDate,
+          competition_id: e.id,
+          competition_date: v.competitionDate ?? e.date ?? null,
           row_count: v.rowsAdded,
           exists_in_source: v.existed,
-          done,
+          done: true,
           last_scanned_at: nowIso,
-          first_scanned_at: firstSeenAt,
+          first_scanned_at: firstSeenMap.get(e.id) ?? nowIso,
         });
-        if (v.existed && v.rowsAdded === 0) revisited++;
       }
-      if (r.status === "rejected") console.error("comp", id, r.reason);
+      if (r.status === "rejected") console.error("comp", e.id, r.reason);
     }
     if (pending.length >= 400) await flush(pending.splice(0));
     if (pendingLegs.length >= 400) await flushLegs(pendingLegs.splice(0));
@@ -540,8 +468,6 @@ async function harvestRange(ids: number[], latestIdHint: number) {
   await flush(pending);
   await flushLegs(pendingLegs);
 
-
-  // Kirjaa skannauskirjanpito (chunked upsert)
   if (scanRecords.length > 0) {
     const CHUNK = 500;
     for (let i = 0; i < scanRecords.length; i += CHUNK) {
@@ -553,9 +479,6 @@ async function harvestRange(ids: number[], latestIdHint: number) {
     }
   }
 
-  // After all rows are inserted, mark which ones broke the athlete's PB.
-  // Ajetaan yksi kilpailu kerrallaan — funktio JOINaa koko urheilijan
-  // historian, joten iso batch aikakatkaisee statement_timeoutiin.
   if (touchedCompIds.size > 0) {
     const ids = Array.from(touchedCompIds);
     let ok = 0;
@@ -576,7 +499,7 @@ async function harvestRange(ids: number[], latestIdHint: number) {
     }
   }
 
-  return { scanned, existed, revisited, lastScannedId };
+  return { scanned, existed, touchedCompIds };
 }
 
 async function persistApiMessageIfAny(): Promise<void> {
@@ -598,9 +521,9 @@ async function run(request: Request): Promise<Response> {
 
   const url = new URL(request.url);
 
-  // Hotlist-tila: 15 s välein pyörivä nopea sykli, joka käsittelee vain
-  // annetut ID:t (kuumat kilpailut). Ei liikuta harvest_state-kursoria,
-  // ei tee revisit-hakuja, ei käytä samaa lukkoa kuin tausta-sykli.
+  // Hotlist-tila: käynnissä olevien kisojen 15 s sykli. Ei kosketa
+  // harvest_competitions.done-merkintää, jotta hot cycle voi käydä
+  // samassa kisassa monta kertaa päivän aikana.
   const idsParam = url.searchParams.get("ids");
   if (idsParam) {
     const hotIds = Array.from(
@@ -608,7 +531,7 @@ async function run(request: Request): Promise<Response> {
         idsParam
           .split(",")
           .map((s) => Number(s.trim()))
-          .filter((n) => Number.isFinite(n) && n > 0 && n <= HARD_MAX_ID),
+          .filter((n) => Number.isFinite(n) && n > 0),
       ),
     );
     if (hotIds.length === 0) {
@@ -626,35 +549,58 @@ async function run(request: Request): Promise<Response> {
         reason: stateRow.block_reason ?? null,
       });
     }
-    const result = await harvestRange(hotIds, hotIds[hotIds.length - 1]);
+    const pending: Row[] = [];
+    const pendingLegs: RelayLegRow[] = [];
+    const touched = new Set<number>();
+    let scanned = 0;
+    let existed = 0;
+    for (let i = 0; i < hotIds.length; i += CONCURRENCY) {
+      if (rateLimited) break;
+      const chunk = hotIds.slice(i, i + CONCURRENCY);
+      const results = await Promise.allSettled(
+        chunk.map(async (id) => {
+          await jitter();
+          return processCompetition(id, pending, pendingLegs, null);
+        }),
+      );
+      for (let j = 0; j < results.length; j++) {
+        scanned++;
+        const r = results[j];
+        if (r.status === "fulfilled" && r.value.existed) {
+          existed++;
+          if (r.value.rowsAdded > 0) touched.add(chunk[j]);
+        }
+      }
+    }
+    await flush(pending);
+    await flushLegs(pendingLegs);
+    for (const cid of touched) {
+      await supabaseAdmin.rpc("mark_pbs_for_competitions", { comp_ids: [cid] });
+    }
     await persistApiMessageIfAny();
     return Response.json({
       ok: true,
       mode: "hotlist",
-      scanned: result.scanned,
-      existed: result.existed,
-      revisited: result.revisited,
+      scanned,
+      existed,
       rateLimited,
       apiMessage: lastApiMessage,
       ids: hotIds,
     });
   }
 
-
-  // Acquire advisory lock so overlapping cron runs don't double-process.
+  // Taustatyö: hae kisalista ja poimi uudet ID:t joita ei vielä ole
+  // skannattu (done=false tai puuttuu kokonaan). Ei arvauksia, ei
+  // revisit-kierroksia.
   const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock");
   if (lockData !== true) {
     return Response.json({ ok: true, skipped: "locked" });
   }
 
-
   try {
-    const fromOverride = Number(url.searchParams.get("fromId"));
-    const toOverride = Number(url.searchParams.get("toId"));
-
     const { data: stateRow } = await supabaseAdmin
       .from("harvest_state")
-      .select("next_id, latest_id, blocked, block_reason")
+      .select("blocked, block_reason")
       .eq("id", "singleton")
       .maybeSingle();
     if (stateRow?.blocked === true) {
@@ -664,193 +610,62 @@ async function run(request: Request): Promise<Response> {
         reason: stateRow.block_reason ?? null,
       });
     }
-    let nextId = stateRow?.next_id ?? FLOOR_ID;
-    let latestId = stateRow?.latest_id ?? FLOOR_ID;
-    const compList = await fetchJson<Array<{ Id?: number; Date?: string }>>(
-      `${API}/competition`,
-    );
-    const sourceMaxId = Array.isArray(compList)
-      ? Math.max(
-          FLOOR_ID,
-          ...compList
-            .map((c) => c.Id)
-            .filter((id): id is number => typeof id === "number"),
-        )
-      : null;
-    if (sourceMaxId != null && latestId > sourceMaxId) {
-      latestId = sourceMaxId;
-      nextId = Math.min(nextId, sourceMaxId + 1);
+
+    const compList = await fetchJson<CompetitionListEntry[]>(`${API}/competition`);
+    if (!Array.isArray(compList)) {
+      return Response.json({
+        ok: false,
+        error: "competition-list-unavailable",
+        rateLimited,
+        apiMessage: lastApiMessage,
+      });
     }
 
-    let ids: number[];
-    let mode: "manual" | "backfill" | "tail";
+    // Kaikki listalta löytyvät kelvolliset ID:t (uusimmat ensin).
+    const listed = compList
+      .filter((c): c is { Id: number; Date?: string } => typeof c.Id === "number")
+      .map((c) => ({ id: c.Id, date: c.Date ?? null }))
+      .sort((a, b) => b.id - a.id);
 
-    if (fromOverride && toOverride) {
-      ids = [];
-      for (let i = fromOverride; i <= Math.min(toOverride, HARD_MAX_ID); i++) ids.push(i);
-      mode = "manual";
-    } else if (nextId <= latestId + BATCH_SIZE) {
-      const start = nextId;
-      const end = Math.min(start + BATCH_SIZE - 1, HARD_MAX_ID);
-      ids = [];
-      for (let i = start; i <= end; i++) ids.push(i);
-      mode = "backfill";
-    } else {
-      const tailStart = Math.max(FLOOR_ID, latestId - TAIL_RESCAN);
-      const probeEnd = Math.min(latestId + BATCH_SIZE, HARD_MAX_ID);
-      ids = [];
-      for (let i = tailStart; i <= probeEnd; i++) ids.push(i);
-      mode = "tail";
-    }
-
-    // Lisää uudelleenkäyntiin kisat, jotka olivat aiemmin tuloksettomia
-    // mutta saattavat nyt olla valmiina (esim. tämän päivän kisa). Vain
-    // backfill/tail-moodissa, ei manuaalisessa toistossa.
-    if (mode !== "manual") {
-      const freshCutoff = new Date(
-        Date.now() - FRESH_REVISIT_WINDOW_DAYS * 24 * 60 * 60 * 1000,
-      ).toISOString();
-      const staleLimit = Math.max(0, REVISIT_LIMIT - FRESH_REVISIT_LIMIT);
-      // Tuoreet ei-olemassaolevat ID:t: kisa-ID on jo varattu mutta tuloksia
-      // ei ole vielä julkaistu. Probetaan uudestaan jos ID on lähellä uusinta
-      // nähtyä (eli ei selvästi taakse jäänyt aukko).
-      const nonexistFloor = Math.max(FLOOR_ID, latestId - NONEXIST_PERMANENT_GAP);
-      // Priorisoitu probe: ID:t jotka ovat ±NONEXIST_NEAR_TODAY_RADIUS päässä
-      // viime ~2 vrk:n aikana skannattujen, OLEMASSA OLEVIEN kisojen ID:istä.
-      // Näin tämän päivän "puuttuvat" ID:t (kuten Hyvän Tuulen Kisat 19355,
-      // jonka ympärillä oli 19394–19427 olemassa) skannataan joka ajossa.
-      const todayCutoff = new Date(
-        Date.now() - 2 * 24 * 60 * 60 * 1000,
-      ).toISOString();
-      const { data: nearTodayAnchors } = await supabaseAdmin
+    // Jo valmiiksi merkityt ID:t → jätetään pois.
+    const listedIds = listed.map((e) => e.id);
+    const doneSet = new Set<number>();
+    const CHUNK = 500;
+    for (let i = 0; i < listedIds.length; i += CHUNK) {
+      const slice = listedIds.slice(i, i + CHUNK);
+      const { data } = await supabaseAdmin
         .from("harvest_competitions")
         .select("competition_id")
-        .eq("exists_in_source", true)
-        .gte("last_scanned_at", todayCutoff)
-        .order("competition_id", { ascending: false })
-        .limit(20);
-      let nearTodayMin = Number.POSITIVE_INFINITY;
-      let nearTodayMax = Number.NEGATIVE_INFINITY;
-      for (const a of (nearTodayAnchors ?? []) as Array<{ competition_id: number }>) {
-        if (a.competition_id < nearTodayMin) nearTodayMin = a.competition_id;
-        if (a.competition_id > nearTodayMax) nearTodayMax = a.competition_id;
-      }
-      const hasNearToday = Number.isFinite(nearTodayMin) && Number.isFinite(nearTodayMax);
-      const nearTodayLo = hasNearToday
-        ? Math.max(FLOOR_ID, nearTodayMin - NONEXIST_NEAR_TODAY_RADIUS)
-        : 0;
-      const nearTodayHi = hasNearToday
-        ? nearTodayMax + NONEXIST_NEAR_TODAY_RADIUS
-        : 0;
-      const [freshRes, staleRes, nonexistRes, recentNonexistRes, nearTodayRes] = await Promise.all([
-        supabaseAdmin
-          .from("harvest_competitions")
-          .select("competition_id")
-          .eq("done", false)
-          .eq("exists_in_source", true)
-          .gte("competition_date", freshCutoff)
-          .order("last_scanned_at", { ascending: true })
-          .limit(FRESH_REVISIT_LIMIT),
-        staleLimit > 0
-          ? supabaseAdmin
-              .from("harvest_competitions")
-              .select("competition_id")
-              .eq("done", false)
-              .eq("exists_in_source", true)
-              .lt("competition_date", freshCutoff)
-              .order("last_scanned_at", { ascending: true })
-              .limit(staleLimit)
-          : Promise.resolve({ data: [] as Array<{ competition_id: number }> }),
-        supabaseAdmin
-          .from("harvest_competitions")
-          .select("competition_id")
-          .eq("exists_in_source", false)
-          .eq("done", false)
-          .gte("competition_id", Math.max(FLOOR_ID, latestId - NONEXIST_PERMANENT_GAP * 4))
-          .order("last_scanned_at", { ascending: true })
-          .limit(Math.max(0, NONEXIST_REVISIT_LIMIT - RECENT_NONEXIST_LIMIT)),
-        supabaseAdmin
-          .from("harvest_competitions")
-          .select("competition_id")
-          .eq("exists_in_source", false)
-          .eq("done", false)
-          .gte("competition_id", Math.max(FLOOR_ID, latestId - NONEXIST_PERMANENT_GAP))
-          .order("competition_id", { ascending: false })
-          .limit(RECENT_NONEXIST_LIMIT),
-        hasNearToday
-          ? supabaseAdmin
-              .from("harvest_competitions")
-              .select("competition_id")
-              .eq("exists_in_source", false)
-              .gte("competition_id", nearTodayLo)
-              .lte("competition_id", nearTodayHi)
-              .order("last_scanned_at", { ascending: true })
-              .limit(NONEXIST_NEAR_TODAY_LIMIT)
-          : Promise.resolve({ data: [] as Array<{ competition_id: number }> }),
-      ]);
-      const existing = new Set(ids);
-      const revisitRows = [
-        ...((freshRes.data ?? []) as Array<{ competition_id: number }>),
-        ...((staleRes.data ?? []) as Array<{ competition_id: number }>),
-        ...((recentNonexistRes.data ?? []) as Array<{ competition_id: number }>),
-        ...((nonexistRes.data ?? []) as Array<{ competition_id: number }>),
-        ...((nearTodayRes.data ?? []) as Array<{ competition_id: number }>),
-      ];
-      for (const r of revisitRows) {
-        if (!existing.has(r.competition_id)) {
-          existing.add(r.competition_id);
-          ids.push(r.competition_id);
-        }
-      }
-
-      // Totuuslähde: tuloslistan oma kilpailulista. Poimitaan aina ID:t,
-      // joiden Date osuu välille [tänään - 3 vrk, tänään + 1 vrk], jotta
-      // yksittäinen hetkellinen probe-virhe ei jätä tämän päivän kisaa
-      // pysyvästi harvestin ulkopuolelle.
-      const FRESH_LIST_LOOKBACK_DAYS = 3;
-      const FRESH_LIST_LOOKAHEAD_DAYS = 1;
-      const FRESH_LIST_MAX = 40;
-      if (Array.isArray(compList)) {
-        const nowMs = Date.now();
-        const lo = nowMs - FRESH_LIST_LOOKBACK_DAYS * 86_400_000;
-        const hi = nowMs + (FRESH_LIST_LOOKAHEAD_DAYS + 1) * 86_400_000;
-        const fresh = compList
-          .filter((c) => typeof c.Id === "number" && !!c.Date)
-          .filter((c) => {
-            const t = Date.parse(c.Date!);
-            return Number.isFinite(t) && t >= lo && t < hi;
-          })
-          .map((c) => c.Id as number)
-          .sort((a, b) => b - a)
-          .slice(0, FRESH_LIST_MAX);
-        for (const cid of fresh) {
-          if (!existing.has(cid)) {
-            existing.add(cid);
-            ids.push(cid);
-          }
-        }
-      }
+        .eq("done", true)
+        .in("competition_id", slice);
+      for (const r of data ?? []) doneSet.add(r.competition_id);
     }
 
-    const result = await harvestRange(ids, latestId);
+    const pending = listed.filter((e) => !doneSet.has(e.id));
+    const batch = pending.slice(0, BATCH_SIZE);
 
-    // Advance cursor only as far as we actually attempted (so a rate-limit
-    // bailout retries the unprocessed IDs on the next run).
-    const advancedTo = result.lastScannedId;
-    if (mode === "backfill" && advancedTo >= nextId) {
-      nextId = advancedTo + 1;
-      if (result.existed > 0) latestId = Math.max(latestId, advancedTo);
-    } else if (mode === "tail") {
-      if (result.existed > 0) {
-        latestId = Math.max(latestId, advancedTo);
-        nextId = Math.max(nextId, latestId + 1);
-      }
+    if (batch.length === 0) {
+      await supabaseAdmin
+        .from("harvest_state")
+        .update({
+          last_run_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", "singleton");
+      return Response.json({
+        ok: true,
+        mode: "idle",
+        listed: listed.length,
+        pending: 0,
+      });
     }
 
+    const result = await harvestIds(batch);
+
+    const latestId = listed.length > 0 ? listed[0].id : null;
     await supabaseAdmin
       .from("harvest_state")
       .update({
-        next_id: nextId,
         latest_id: latestId,
         last_run_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -859,16 +674,12 @@ async function run(request: Request): Promise<Response> {
 
     return Response.json({
       ok: true,
-      mode,
+      mode: "list",
+      listed: listed.length,
+      pending: pending.length,
       scanned: result.scanned,
       existed: result.existed,
-      revisited: result.revisited,
       rateLimited,
-      fromId: ids[0] ?? null,
-      toId: ids[ids.length - 1] ?? null,
-      advancedTo,
-      nextId,
-      latestId,
     });
   } finally {
     await persistApiMessageIfAny();
