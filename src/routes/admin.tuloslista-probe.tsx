@@ -133,11 +133,18 @@ function Page() {
   const snapshotFn = useServerFn(getMonitorSnapshot);
   const monitorRunFn = useServerFn(runMonitorNow);
   const setBlockedFn = useServerFn(setHarvesterBlocked);
+  const originStatsFn = useServerFn(getOriginCallStats);
 
   const snapshotQ = useQuery({
     queryKey: ["tuloslista-monitor-snapshot"],
     queryFn: () => snapshotFn(),
     refetchInterval: 30_000,
+  });
+
+  const statsQ = useQuery({
+    queryKey: ["tuloslista-origin-call-stats"],
+    queryFn: () => originStatsFn(),
+    refetchInterval: 60_000,
   });
 
   const runMonitorM = useMutation({
