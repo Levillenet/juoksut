@@ -574,6 +574,21 @@ async function run(request: Request): Promise<Response> {
     }
     let nextId = stateRow?.next_id ?? FLOOR_ID;
     let latestId = stateRow?.latest_id ?? FLOOR_ID;
+    const compList = await fetchJson<Array<{ Id?: number; Date?: string }>>(
+      `${API}/competition`,
+    );
+    const sourceMaxId = Array.isArray(compList)
+      ? Math.max(
+          FLOOR_ID,
+          ...compList
+            .map((c) => c.Id)
+            .filter((id): id is number => typeof id === "number"),
+        )
+      : null;
+    if (sourceMaxId != null && latestId > sourceMaxId) {
+      latestId = sourceMaxId;
+      nextId = Math.min(nextId, sourceMaxId + 1);
+    }
 
     let ids: number[];
     let mode: "manual" | "backfill" | "tail";
@@ -703,9 +718,6 @@ async function run(request: Request): Promise<Response> {
       const FRESH_LIST_LOOKBACK_DAYS = 3;
       const FRESH_LIST_LOOKAHEAD_DAYS = 1;
       const FRESH_LIST_MAX = 40;
-      const compList = await fetchJson<Array<{ Id?: number; Date?: string }>>(
-        `${API}/competition`,
-      );
       if (Array.isArray(compList)) {
         const nowMs = Date.now();
         const lo = nowMs - FRESH_LIST_LOOKBACK_DAYS * 86_400_000;
