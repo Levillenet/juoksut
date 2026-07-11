@@ -789,6 +789,33 @@ export type Database = {
         }
         Relationships: []
       }
+      origin_call_daily: {
+        Row: {
+          count: number
+          day: string
+          path_kind: string
+          source: string
+          status_bucket: string
+          updated_at: string
+        }
+        Insert: {
+          count?: number
+          day: string
+          path_kind: string
+          source: string
+          status_bucket: string
+          updated_at?: string
+        }
+        Update: {
+          count?: number
+          day?: string
+          path_kind?: string
+          source?: string
+          status_bucket?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       plan_conflict_groups: {
         Row: {
           created_at: string
@@ -1540,6 +1567,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bump_origin_call: {
+        Args: {
+          _delta?: number
+          _path_kind: string
+          _source: string
+          _status_bucket: string
+        }
+        Returns: undefined
+      }
       check_district_record: { Args: { _result_id: string }; Returns: boolean }
       district_age_class_equivalent: { Args: { _ac: string }; Returns: string }
       district_event_match_key: {
