@@ -195,23 +195,18 @@ export async function fetchTodayStats(): Promise<TodayStats> {
         .map((r) => r.event_name),
     ),
   );
-  const athleteKeyList = Array.from(
-    new Set(Array.from(todayAthleteBest.values()).map((b) => b.athleteKey)),
-  );
 
-  // PBs lasketaan client-puolella koko historiasta (was_pb voi olla viiveellä).
-  const priorAllTime = await fetchAllTimePriorBests(rawEventNames, athleteKeyList);
-
-  let pbs = 0;
-  for (const [key, t] of todayAthleteBest) {
-    const prior = priorAllTime.get(key);
-    const lower = isLowerBetter(t.eventCategory, t.subCategory);
-    if (prior == null) {
-      pbs++;
-      continue;
-    }
-    if (lower ? t.numeric < prior : t.numeric > prior) pbs++;
+  // PB-lippu tulee suoraan riviltä (palvelinpuolen laskenta upsertin
+  // yhteydessä). Yhteen (urheilija, laji) -pariin lasketaan enintään yksi PB.
+  const pbSeen = new Set<string>();
+  for (const r of today) {
+    if (!r.was_pb) continue;
+    if (!r.athlete_key) continue;
+    const key = `${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`;
+    pbSeen.add(key);
   }
+  const pbs = pbSeen.size;
+
 
   // Season tops: per (normalized event, age_class), tämän päivän paras vs kauden aiempi.
   const todayBest = new Map<
