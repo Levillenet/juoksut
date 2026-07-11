@@ -158,6 +158,35 @@ export async function fetchPublicVideos(opts?: {
     }
   }
 
+  // Fallback competition-name lookup: some videos may target events with no
+  // athlete_results row in the batch above. Ensure competition_name/date are
+  // populated per competition_id so cards always show the competition.
+  const compMeta = new Map<number, { name: string | null; date: string | null }>();
+  for (const r of typedResults) {
+    if (!compMeta.has(r.competition_id) && (r.competition_name || r.competition_date)) {
+      compMeta.set(r.competition_id, {
+        name: r.competition_name ?? null,
+        date: r.competition_date ?? null,
+      });
+    }
+  }
+  const missingCompIds = competitionIds.filter((id) => !compMeta.has(id));
+  if (missingCompIds.length > 0) {
+    const { data: compRows } = await supabase
+      .from("athlete_results")
+      .select("competition_id, competition_name, competition_date")
+      .in("competition_id", missingCompIds)
+      .limit(500);
+    for (const r of compRows ?? []) {
+      if (!compMeta.has(r.competition_id) && (r.competition_name || r.competition_date)) {
+        compMeta.set(r.competition_id, {
+          name: r.competition_name ?? null,
+          date: r.competition_date ?? null,
+        });
+      }
+    }
+  }
+
   return unique.map((v) => {
     const isHeat = v.athlete_key.startsWith("heat:");
     const k = `${v.athlete_key}|${v.competition_id}|${v.event_name}|${v.sub_category ?? ""}`;
@@ -180,6 +209,7 @@ export async function fetchPublicVideos(opts?: {
         }
       }
     }
+    const meta = compMeta.get(v.competition_id);
     return {
       id: v.id,
       youtube_video_id: v.youtube_video_id,
@@ -195,8 +225,8 @@ export async function fetchPublicVideos(opts?: {
       sub_category: v.sub_category ?? null,
       result_text: isHeat ? null : r?.result_text ?? null,
       result_rank: isHeat ? null : r?.result_rank ?? null,
-      competition_name: r?.competition_name ?? null,
-      competition_date: r?.competition_date ?? null,
+      competition_name: r?.competition_name ?? meta?.name ?? null,
+      competition_date: r?.competition_date ?? meta?.date ?? null,
       competition_id: v.competition_id,
       heat_results: (v.heat_results as HeatResultSnapshot[] | null) ?? null,
       stored_heat_results: isHeat ? buildStoredHeatSnapshot(v, typedResults) : null,

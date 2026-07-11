@@ -280,8 +280,10 @@ function VideotPage() {
                       )}
                     </p>
                     {v.competition_name && (
-                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                        {v.competition_date ? `${v.competition_date} · ` : ""}
+                      <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                        {v.competition_date
+                          ? `${new Date(v.competition_date).toLocaleDateString("fi-FI")} · `
+                          : ""}
                         {v.competition_name}
                       </p>
                     )}
