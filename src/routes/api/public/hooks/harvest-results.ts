@@ -579,8 +579,23 @@ async function harvestRange(ids: number[], latestIdHint: number) {
   return { scanned, existed, revisited, lastScannedId };
 }
 
+async function persistApiMessageIfAny(): Promise<void> {
+  if (!lastApiMessage) return;
+  await supabaseAdmin
+    .from("harvest_state")
+    .update({
+      last_api_message: lastApiMessage,
+      last_api_message_at: new Date().toISOString(),
+      last_api_message_source: "harvester",
+      last_api_message_endpoint: null,
+    })
+    .eq("id", "singleton");
+}
+
 async function run(request: Request): Promise<Response> {
   rateLimited = false;
+  lastApiMessage = null;
+
   const url = new URL(request.url);
 
   // Hotlist-tila: 15 s välein pyörivä nopea sykli, joka käsittelee vain
