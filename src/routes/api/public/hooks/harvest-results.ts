@@ -21,6 +21,9 @@ const BATCH_SIZE = 20;      // uusia kisoja per taustatyön ajo (worker-budjetti
 const CONCURRENCY = 2;      // rinnakkaiset kisat per chunk
 const HOT_BATCH_SIZE = 8;
 const BACKGROUND_LOOKBACK_DAYS = 14;
+const HOT_EVENT_PAST_WINDOW_MS = 4 * 60 * 60 * 1000;
+const HOT_EVENT_FUTURE_WINDOW_MS = 20 * 60 * 1000;
+const HOT_MAX_EVENTS_PER_COMPETITION = 30;
 
 type RunState = {
   source: CounterSource;
@@ -111,7 +114,12 @@ interface EventShape {
 }
 
 interface RoundsByDateShape {
-  [date: string]: { EventId: number; GroupName?: string }[];
+  [date: string]: {
+    EventId: number;
+    GroupName?: string;
+    BeginDateTimeWithTZ?: string;
+    Status?: string;
+  }[];
 }
 
 interface CompetitionListEntry {
@@ -202,6 +210,37 @@ function isRecentCompetitionDate(value: string | null | undefined): boolean {
   return parsed >= start && parsed <= end;
 }
 
+function roundTimeMs(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function selectHotEventIds(rounds: RoundsByDateShape[string]): Set<number> {
+  const now = Date.now();
+  const selected = rounds
+    .filter((r) => {
+      const status = r.Status ?? "";
+      if (status === "Progress") return true;
+      const startsAt = roundTimeMs(r.BeginDateTimeWithTZ);
+      if (startsAt == null) return status === "Allocated";
+      if (startsAt > now + HOT_EVENT_FUTURE_WINDOW_MS) return false;
+      if (status === "Official") return startsAt >= now - 90 * 60 * 1000;
+      return startsAt >= now - HOT_EVENT_PAST_WINDOW_MS;
+    })
+    .sort((a, b) => {
+      const aProgress = a.Status === "Progress" ? 0 : 1;
+      const bProgress = b.Status === "Progress" ? 0 : 1;
+      if (aProgress !== bProgress) return aProgress - bProgress;
+      const at = roundTimeMs(a.BeginDateTimeWithTZ) ?? 0;
+      const bt = roundTimeMs(b.BeginDateTimeWithTZ) ?? 0;
+      return Math.abs(at - now) - Math.abs(bt - now);
+    })
+    .map((r) => r.EventId);
+
+  return new Set(Array.from(new Set(selected)).slice(0, HOT_MAX_EVENTS_PER_COMPETITION));
+}
+
 type Row = {
   athlete_key: string;
   surname: string;
@@ -230,6 +269,7 @@ async function processCompetition(
   pendingLegs: RelayLegRow[],
   competitionDateHint: string | null,
   state: RunState,
+  options: { hotEventsOnly?: boolean } = {},
 ): Promise<{ existed: boolean; rowsAdded: number; competitionDate: string | null }> {
   const props = await fetchJson<PropertiesShape>(
     `${API}/competition/${id}/properties`,
@@ -239,13 +279,18 @@ async function processCompetition(
   const competitionDate = props.Competition?.BeginDate ?? competitionDateHint;
   const byDate = await fetchJson<RoundsByDateShape>(`${API}/competition/${id}`, state);
   if (!byDate) return { existed: true, rowsAdded: 0, competitionDate };
+  const scheduleRounds = Object.values(byDate).flat();
   const ageByEvent = new Map<number, string>();
-  for (const list of Object.values(byDate)) {
-    for (const r of list) {
+  for (const r of scheduleRounds) {
       if (!ageByEvent.has(r.EventId)) ageByEvent.set(r.EventId, r.GroupName ?? "");
-    }
   }
-  const eventIds = Array.from(ageByEvent.keys());
+  const hotEventIds = options.hotEventsOnly ? selectHotEventIds(scheduleRounds) : null;
+  const eventIds = Array.from(ageByEvent.keys()).filter((eventId) =>
+    hotEventIds ? hotEventIds.has(eventId) : true,
+  );
+  if (options.hotEventsOnly && eventIds.length === 0) {
+    return { existed: true, rowsAdded: 0, competitionDate };
+  }
   let rowsAdded = 0;
   for (const eid of eventIds) {
     const ev = await fetchJson<EventShape>(`${API}/results/${id}/${eid}`, state);
@@ -625,7 +670,9 @@ async function run(request: Request): Promise<Response> {
       const results = await Promise.allSettled(
         chunk.map(async (id) => {
           await jitter();
-          return processCompetition(id, pending, pendingLegs, null, state);
+          return processCompetition(id, pending, pendingLegs, null, state, {
+            hotEventsOnly: true,
+          });
         }),
       );
       for (let j = 0; j < results.length; j++) {

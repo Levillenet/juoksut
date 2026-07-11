@@ -7,10 +7,11 @@ export const Route = createFileRoute(
 )({
   server: {
     handlers: {
-      GET: async ({ params }) => {
+      GET: async ({ params, request }) => {
         return proxyTuloslista(
           `/live/v1/competition/${params.id}/properties`,
           propertiesTtl,
+          request,
         );
       },
     },
