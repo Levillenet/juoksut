@@ -202,6 +202,27 @@ export async function fetchPublicVideos(opts?: {
     );
   }
 
+  // Enrich missing dates from harvest_competitions (has competition_date for every scanned kisa)
+  const needDateIds = competitionIds.filter((id) => {
+    const m = compMeta.get(id);
+    return !m || !m.date;
+  });
+  if (needDateIds.length > 0) {
+    const { data: hcRows } = await supabase
+      .from("harvest_competitions")
+      .select("competition_id, competition_date")
+      .in("competition_id", needDateIds);
+    for (const r of hcRows ?? []) {
+      if (!r.competition_date) continue;
+      const existing = compMeta.get(r.competition_id);
+      compMeta.set(r.competition_id, {
+        name: existing?.name ?? null,
+        date: r.competition_date,
+      });
+    }
+  }
+
+
   return unique.map((v) => {
     const isHeat = v.athlete_key.startsWith("heat:");
     const k = `${v.athlete_key}|${v.competition_id}|${v.event_name}|${v.sub_category ?? ""}`;
