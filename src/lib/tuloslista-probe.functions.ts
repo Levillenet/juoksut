@@ -195,7 +195,12 @@ export const getMonitorSnapshot = createServerFn({ method: "GET" })
         typeof state?.consecutive_result_failures === "number"
           ? state.consecutive_result_failures
           : 0,
+      lastApiMessage: (state as { last_api_message?: string | null } | null)?.last_api_message ?? null,
+      lastApiMessageAt: (state as { last_api_message_at?: string | null } | null)?.last_api_message_at ?? null,
+      lastApiMessageSource: (state as { last_api_message_source?: string | null } | null)?.last_api_message_source ?? null,
+      lastApiMessageEndpoint: (state as { last_api_message_endpoint?: string | null } | null)?.last_api_message_endpoint ?? null,
       list: toStatus(latestList as never),
+
       results: toStatus(latestResults as never),
       recent: (log ?? []).map((r) => ({
         id: r.id as number,
