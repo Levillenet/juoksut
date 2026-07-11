@@ -532,6 +532,10 @@ async function run(request: Request): Promise<Response> {
 
   const url = new URL(request.url);
 
+  const idsParam = url.searchParams.get("ids");
+  if (idsParam) {
+    currentSource = "hot_cycle";
+
   // Hotlist-tila: käynnissä olevien kisojen 15 s sykli. Ei kosketa
   // harvest_competitions.done-merkintää, jotta hot cycle voi käydä
   // samassa kisassa monta kertaa päivän aikana.
