@@ -157,36 +157,8 @@ export async function fetchTodayStats(): Promise<TodayStats> {
   }
   const athletesCount = Math.max(athletes.size, enrolledSum);
 
-  // Per (athlete, normalized event) tämän päivän paras tulos.
-  type Best = {
-    numeric: number;
-    eventCategory: string;
-    subCategory: string;
-    eventName: string;
-    ageClass: string;
-    athleteKey: string;
-  };
-  const todayAthleteBest = new Map<string, Best>();
-  for (const r of today) {
-    if (r.result_numeric == null) continue;
-    if (!r.athlete_key) continue;
-    const key = `${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`;
-    const lower = isLowerBetter(r.event_category, r.sub_category);
-    const cur = todayAthleteBest.get(key);
-    if (
-      !cur ||
-      (lower ? r.result_numeric < cur.numeric : r.result_numeric > cur.numeric)
-    ) {
-      todayAthleteBest.set(key, {
-        numeric: r.result_numeric,
-        eventCategory: r.event_category,
-        subCategory: r.sub_category,
-        eventName: r.event_name,
-        ageClass: r.age_class,
-        athleteKey: r.athlete_key,
-      });
-    }
-  }
+
+
 
   const rawEventNames = Array.from(
     new Set(
