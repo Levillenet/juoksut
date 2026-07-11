@@ -43,25 +43,72 @@ interface CachedEnvelope {
   cachedAt: number;
 }
 
+// Isolate-scope memory cache — halvin ja luotettavin tier ennen Cloudflare
+// Cache API:a. Ei jaeta isolatien välillä, mutta lämmin isolate ehtii
+// palvella useita samaan URLiin osuvia pyyntöjä yhdellä origin-käynnillä.
+// Rajattu koko + LRU-tyyppinen karsinta, ettei muisti kasva rajattomasti.
+const MEMORY_MAX_ENTRIES = 500;
+const memoryCache = new Map<string, CachedEnvelope>();
+
+function memoryGet(path: string): CachedEnvelope | undefined {
+  const env = memoryCache.get(path);
+  if (!env) return undefined;
+  // touch for LRU
+  memoryCache.delete(path);
+  memoryCache.set(path, env);
+  return env;
+}
+function memoryPut(path: string, env: CachedEnvelope) {
+  memoryCache.set(path, env);
+  if (memoryCache.size > MEMORY_MAX_ENTRIES) {
+    const oldest = memoryCache.keys().next().value;
+    if (oldest !== undefined) memoryCache.delete(oldest);
+  }
+}
+
+
 export async function proxyTuloslista(
   path: string,
   ttlOf: (body: string) => TtlConfig,
 ): Promise<Response> {
   const originUrl = `${ORIGIN}${path}`;
-  // Cache API vaatii Request-objektin avaimeksi. Käytetään stabiilia
-  // synteettistä URL:ää, joka on uniikki per origin-path.
-  const cacheKey = new Request(`https://tl-proxy.local${path}`, { method: "GET" });
+  // Cloudflare Cache API vaatii, että avaimen host on samalla zonella kuin
+  // Worker itse — mielivaltainen `https://tl-proxy.local` hyväksytään put:ssa
+  // hiljaisesti mutta match ei koskaan löydä sitä. Käytetään omaa domainia
+  // synteettisellä polulla, jotta sekä custom domain että lovable.app
+  // -deploymentit saavat cache-osumia.
+  const cacheKey = new Request(`https://tulokset.online/__tl-proxy${path}`, { method: "GET" });
   const cache =
     typeof caches !== "undefined" && "default" in caches
       ? (caches as unknown as { default: Cache }).default
       : null;
 
-  // 1) Cache-osuma?
+
+  // 1a) Isolate-muistista?
+  const mem = memoryGet(path);
+  if (mem) {
+    const ttl = ttlOf(mem.body);
+    const ageSec = (Date.now() - mem.cachedAt) / 1000;
+    if (ageSec < ttl.edgeTtl) {
+      bumpOriginCall("proxy_cache", path, "hit");
+      return jsonResponse(mem.body, "hit", ageSec);
+    }
+    if (ageSec < ttl.edgeTtl + ttl.swrWindow) {
+      bumpOriginCall("proxy_cache", path, "stale");
+      if (cache) kickRefresh(originUrl, cacheKey, cache, ttlOf, path);
+      else void getOrFetch(originUrl, cacheKey, cache, ttlOf, path);
+      return jsonResponse(mem.body, "stale", ageSec);
+    }
+
+  }
+
+  // 1b) Cloudflare Cache API osuma?
   if (cache) {
     const hit = await cache.match(cacheKey).catch(() => undefined);
     if (hit) {
       const env = await readEnvelope(hit);
       if (env) {
+        memoryPut(path, env);
         const ttl = ttlOf(env.body);
         const ageSec = (Date.now() - env.cachedAt) / 1000;
         if (ageSec < ttl.edgeTtl) {
@@ -80,18 +127,26 @@ export async function proxyTuloslista(
     }
   }
 
-  // 2) Circuit auki? -> yritä antaa viimeisin stale
+  // 2) Circuit auki? -> yritä antaa viimeisin stale muistista tai cachesta
   const openUntil = circuitOpenUntil.get(path);
-  if (openUntil && Date.now() < openUntil && cache) {
-    const hit = await cache.match(cacheKey).catch(() => undefined);
-    if (hit) {
-      const env = await readEnvelope(hit);
-      if (env) {
-        bumpOriginCall("proxy_cache", path, "circuit");
-        return jsonResponse(env.body, "circuit", (Date.now() - env.cachedAt) / 1000);
+  if (openUntil && Date.now() < openUntil) {
+    if (mem) {
+      bumpOriginCall("proxy_cache", path, "circuit");
+      return jsonResponse(mem.body, "circuit", (Date.now() - mem.cachedAt) / 1000);
+    }
+    if (cache) {
+      const hit = await cache.match(cacheKey).catch(() => undefined);
+      if (hit) {
+        const env = await readEnvelope(hit);
+        if (env) {
+          memoryPut(path, env);
+          bumpOriginCall("proxy_cache", path, "circuit");
+          return jsonResponse(env.body, "circuit", (Date.now() - env.cachedAt) / 1000);
+        }
       }
     }
   }
+
 
   // 3) Single-flight upstream-fetch
   const body = await getOrFetch(originUrl, cacheKey, cache, ttlOf, path);
@@ -168,6 +223,10 @@ async function fetchFromOrigin(
     // Circuit voi sulkeutua jos onnistunut vastaus saadaan.
     circuitOpenUntil.delete(path);
 
+    // Isolate-muisti aina: takaa cache-osumat vaikka Cache API ei olisi
+    // käytettävissä tai epäonnistuisi hiljaa.
+    memoryPut(path, { body, cachedAt: Date.now() });
+
     if (cache) {
       const ttl = ttlOf(body);
       const totalTtl = ttl.edgeTtl + ttl.swrWindow;
@@ -184,6 +243,7 @@ async function fetchFromOrigin(
         console.warn(`[tl-proxy] cache.put failed ${path}`, e);
       });
     }
+
     return body;
   } catch (e) {
     const aborted =
