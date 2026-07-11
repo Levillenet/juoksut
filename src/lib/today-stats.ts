@@ -110,57 +110,10 @@ async function fetchSeasonPriorBests(
   return best;
 }
 
-/** Fetch all-time best (before today) for given (athlete_key, event_name) candidates. */
-async function fetchAllTimePriorBests(
-  eventNames: string[],
-  athleteKeys: string[],
-): Promise<Map<string, number>> {
-  const best = new Map<string, number>();
-  if (eventNames.length === 0 || athleteKeys.length === 0) return best;
-  const { startISO } = helsinkiDayBounds(new Date());
+// Aiemmin haettiin koko historian PB:t asiakaspuolella (raskas ja hidas isoilla
+// kilpailupäivillä, aiheutti kymmeniä tuhansia rivejä hakevia sivutuksia).
+// Käytetään nyt palvelinpuolella laskettua `was_pb`-lippua suoraan.
 
-  const KEY_CHUNK = 200;
-  for (let i = 0; i < athleteKeys.length; i += KEY_CHUNK) {
-    const keysSlice = athleteKeys.slice(i, i + KEY_CHUNK);
-    let offset = 0;
-    const HARD_CAP = 60_000;
-    while (true) {
-      const { data, error } = await supabase
-        .from("athlete_results")
-        .select(
-          "athlete_key, event_name, event_category, sub_category, age_class, result_numeric",
-        )
-        .in("athlete_key", keysSlice)
-        .in("event_name", eventNames)
-        .lt("competition_date", startISO)
-        .not("result_numeric", "is", null)
-        .range(offset, offset + PAGE - 1);
-      if (error) throw error;
-      const rows = (data ?? []) as Array<{
-        athlete_key: string;
-        event_name: string;
-        event_category: string;
-        sub_category: string;
-        age_class: string | null;
-        result_numeric: number | null;
-      }>;
-      const filtered = rows.filter((r) => !isRoadOrCrossCountry(r));
-      for (const r of filtered) {
-        if (r.result_numeric == null) continue;
-        const key = `${r.athlete_key}|${pbEventKey({ event_name: r.event_name, age_class: r.age_class })}`;
-        const lower = isLowerBetter(r.event_category, r.sub_category);
-        const cur = best.get(key);
-        if (cur == null || (lower ? r.result_numeric < cur : r.result_numeric > cur)) {
-          best.set(key, r.result_numeric);
-        }
-      }
-      if (rows.length < PAGE) break;
-      offset += PAGE;
-      if (offset >= HARD_CAP) break;
-    }
-  }
-  return best;
-}
 
 export async function fetchTodayStats(): Promise<TodayStats> {
   const [today, compList] = await Promise.all([
