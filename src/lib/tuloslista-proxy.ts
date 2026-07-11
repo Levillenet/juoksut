@@ -222,6 +222,10 @@ async function fetchFromOrigin(
     // Circuit voi sulkeutua jos onnistunut vastaus saadaan.
     circuitOpenUntil.delete(path);
 
+    // Isolate-muisti aina: takaa cache-osumat vaikka Cache API ei olisi
+    // käytettävissä tai epäonnistuisi hiljaa.
+    memoryPut(path, { body, cachedAt: Date.now() });
+
     if (cache) {
       const ttl = ttlOf(body);
       const totalTtl = ttl.edgeTtl + ttl.swrWindow;
@@ -238,6 +242,7 @@ async function fetchFromOrigin(
         console.warn(`[tl-proxy] cache.put failed ${path}`, e);
       });
     }
+
     return body;
   } catch (e) {
     const aborted =
