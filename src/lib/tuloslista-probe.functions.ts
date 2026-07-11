@@ -103,6 +103,10 @@ export interface MonitorSnapshot {
   blockSince: string | null;
   lastHarvestRunAt: string | null;
   consecutiveResultFailures: number;
+  lastApiMessage: string | null;
+  lastApiMessageAt: string | null;
+  lastApiMessageSource: string | null;
+  lastApiMessageEndpoint: string | null;
   list: EndpointStatus | null;
   results: EndpointStatus | null;
   recent: Array<{
@@ -118,6 +122,7 @@ export interface MonitorSnapshot {
   }>;
 }
 
+
 export const getMonitorSnapshot = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<MonitorSnapshot> => {
@@ -129,8 +134,9 @@ export const getMonitorSnapshot = createServerFn({ method: "GET" })
         supabaseAdmin
           .from("harvest_state")
           .select(
-            "blocked, block_reason, block_checked_at, block_since, last_run_at, consecutive_result_failures",
+            "blocked, block_reason, block_checked_at, block_since, last_run_at, consecutive_result_failures, last_api_message, last_api_message_at, last_api_message_source, last_api_message_endpoint",
           )
+
           .eq("id", "singleton")
           .maybeSingle(),
         supabaseAdmin
@@ -189,7 +195,12 @@ export const getMonitorSnapshot = createServerFn({ method: "GET" })
         typeof state?.consecutive_result_failures === "number"
           ? state.consecutive_result_failures
           : 0,
+      lastApiMessage: (state as { last_api_message?: string | null } | null)?.last_api_message ?? null,
+      lastApiMessageAt: (state as { last_api_message_at?: string | null } | null)?.last_api_message_at ?? null,
+      lastApiMessageSource: (state as { last_api_message_source?: string | null } | null)?.last_api_message_source ?? null,
+      lastApiMessageEndpoint: (state as { last_api_message_endpoint?: string | null } | null)?.last_api_message_endpoint ?? null,
       list: toStatus(latestList as never),
+
       results: toStatus(latestResults as never),
       recent: (log ?? []).map((r) => ({
         id: r.id as number,

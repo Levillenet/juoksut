@@ -43,6 +43,39 @@ const FLOOR_ID = 16456;      // tuloslista API:n vanhin saatavilla oleva kisa (5
 // returning 429/503 we stop advancing so the cursor can retry these IDs
 // on a later run instead of skipping them.
 let rateLimited = false;
+// Viimeisin tuloslistan API-viesti tässä ajossa (tallennetaan harvest_stateen
+// ajon lopussa, jotta admin näkee viestin heti eikä vasta monitor-cronin
+// kautta).
+let lastApiMessage: string | null = null;
+
+const API_MESSAGE_PATTERNS: RegExp[] = [
+  /lähettää rajapintakutsuja aivan liikaa/i,
+  /rajapintakutsuja.*liikaa/i,
+  /ole yhteydessä/i,
+  /liikaa kutsuja/i,
+  /kohtuuton/i,
+  /please contact/i,
+  /rate.?limit/i,
+  /too many requests/i,
+];
+
+function detectApiMessage(body: string): string | null {
+  if (!body) return null;
+  for (const re of API_MESSAGE_PATTERNS) {
+    if (re.test(body)) {
+      const idx = body.search(re);
+      const start = Math.max(0, idx - 80);
+      const end = Math.min(body.length, idx + 220);
+      return body
+        .slice(start, end)
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+  }
+  return null;
+}
+
 
 interface RelayAthlete {
   Id?: number;
@@ -123,10 +156,9 @@ async function fetchJson<T>(url: string): Promise<T | null> {
     if (!r.ok) return null;
     const contentType = (r.headers.get("content-type") ?? "").toLowerCase();
     const text = await r.text();
-    if (
-      text.includes("lähettää rajapintakutsuja aivan liikaa") ||
-      text.includes("Ole yhteydessä")
-    ) {
+    const msg = detectApiMessage(text);
+    if (msg) {
+      lastApiMessage = msg;
       rateLimited = true;
       return null;
     }
@@ -138,6 +170,7 @@ async function fetchJson<T>(url: string): Promise<T | null> {
     return null;
   }
 }
+
 
 function jitter() {
   return new Promise((res) => setTimeout(res, 50 + Math.random() * 100));
@@ -546,8 +579,23 @@ async function harvestRange(ids: number[], latestIdHint: number) {
   return { scanned, existed, revisited, lastScannedId };
 }
 
+async function persistApiMessageIfAny(): Promise<void> {
+  if (!lastApiMessage) return;
+  await supabaseAdmin
+    .from("harvest_state")
+    .update({
+      last_api_message: lastApiMessage,
+      last_api_message_at: new Date().toISOString(),
+      last_api_message_source: "harvester",
+      last_api_message_endpoint: null,
+    })
+    .eq("id", "singleton");
+}
+
 async function run(request: Request): Promise<Response> {
   rateLimited = false;
+  lastApiMessage = null;
+
   const url = new URL(request.url);
 
   // Hotlist-tila: 15 s välein pyörivä nopea sykli, joka käsittelee vain
@@ -579,6 +627,7 @@ async function run(request: Request): Promise<Response> {
       });
     }
     const result = await harvestRange(hotIds, hotIds[hotIds.length - 1]);
+    await persistApiMessageIfAny();
     return Response.json({
       ok: true,
       mode: "hotlist",
@@ -586,9 +635,11 @@ async function run(request: Request): Promise<Response> {
       existed: result.existed,
       revisited: result.revisited,
       rateLimited,
+      apiMessage: lastApiMessage,
       ids: hotIds,
     });
   }
+
 
   // Acquire advisory lock so overlapping cron runs don't double-process.
   const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock");
@@ -820,9 +871,11 @@ async function run(request: Request): Promise<Response> {
       latestId,
     });
   } finally {
+    await persistApiMessageIfAny();
     await supabaseAdmin.rpc("harvest_unlock");
   }
 }
+
 
 export const Route = createFileRoute("/api/public/hooks/harvest-results")({
   server: {

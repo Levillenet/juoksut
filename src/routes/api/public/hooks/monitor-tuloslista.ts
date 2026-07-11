@@ -36,7 +36,50 @@ interface ProbeOutcome extends Verdict {
   bodyBytes: number;
   contentType: string | null;
   bodyPreview: string;
+  bodyFull: string;
   url: string;
+}
+
+
+// Fraaseja, joilla tuloslista.com kertoo palvelusta / rajoituksista.
+// Uusia lisätään heti kun huomataan.
+const API_MESSAGE_PATTERNS: RegExp[] = [
+  /lähettää rajapintakutsuja aivan liikaa/i,
+  /rajapintakutsuja.*liikaa/i,
+  /ole yhteydessä/i,
+  /liikaa kutsuja/i,
+  /kohtuuton/i,
+  /tuloslista\.com/i,
+  /please contact/i,
+  /rate.?limit/i,
+  /too many requests/i,
+  /forbidden/i,
+];
+
+export function detectApiMessage(body: string): string | null {
+  if (!body) return null;
+  // Jos vastaus on JSON-taulukko/objekti eikä ole yhtään avainsanaa, ohita.
+  const trimmed = body.trimStart();
+  const looksJson = trimmed.startsWith("[") || trimmed.startsWith("{");
+  for (const re of API_MESSAGE_PATTERNS) {
+    if (re.test(body)) {
+      // Poimi ympäröivä lause (max 300 merkkiä) luettavuutta varten.
+      const idx = body.search(re);
+      const start = Math.max(0, idx - 80);
+      const end = Math.min(body.length, idx + 220);
+      return body
+        .slice(start, end)
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+  }
+  // Jos ei ole JSON eikä patterneja, mutta on lyhyt selväteksti, tallenna se.
+  if (!looksJson && body.length > 0 && body.length < 400) {
+    const stripped = body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    if (stripped.length >= 10) return stripped;
+  }
+  return null;
 }
 
 function classify(
@@ -52,11 +95,9 @@ function classify(
   if (status === 404) return { ok: false, reason: "ei löydy (HTTP 404)" };
   if (status >= 500) return { ok: false, reason: `origin-virhe (HTTP ${status})` };
   if (status !== 200) return { ok: false, reason: `odottamaton status (HTTP ${status})` };
-  if (
-    body.includes("lähettää rajapintakutsuja aivan liikaa") ||
-    body.includes("Ole yhteydessä")
-  ) {
-    return { ok: false, reason: "tuloslista palautti estoviestin" };
+  const apiMessage = detectApiMessage(body);
+  if (apiMessage) {
+    return { ok: false, reason: `tuloslista viesti: ${apiMessage.slice(0, 120)}` };
   }
   const ct = (contentType ?? "").toLowerCase();
   if (!ct.includes("application/json") && !ct.includes("text/json"))
@@ -68,6 +109,7 @@ function classify(
     return { ok: false, reason: "vastaus ei näytä JSON-rakenteelta" };
   return { ok: true, reason: null };
 }
+
 
 async function runProbe(path: string, minBytes: number): Promise<ProbeOutcome> {
   const url = `${ORIGIN}${path}`;
@@ -104,9 +146,11 @@ async function runProbe(path: string, minBytes: number): Promise<ProbeOutcome> {
     bodyBytes: body.length,
     contentType,
     bodyPreview: body.slice(0, 400),
+    bodyFull: body,
     url,
   };
 }
+
 
 async function pickReferenceCompetitionId(): Promise<number> {
   const cutoff = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString();
@@ -167,6 +211,9 @@ export interface MonitorRunResult {
   };
   transition: "none" | "blocked" | "unblocked";
   consecutiveResultFailures: number;
+  apiMessage: string | null;
+  apiMessageEndpoint: "list" | "results" | null;
+
 }
 
 export async function runTuloslistaMonitor(): Promise<MonitorRunResult> {
@@ -204,21 +251,38 @@ export async function runTuloslistaMonitor(): Promise<MonitorRunResult> {
     ? `Tulos-rajapinta ei vastaa: ${resultsOutcome.reason ?? "tuntematon syy"}`
     : null;
 
+  // Etsi mahdollinen tuloslistan viesti kummastakin vastauksesta.
+  const listMsg = detectApiMessage(listOutcome.bodyFull);
+  const resMsg = detectApiMessage(resultsOutcome.bodyFull);
+  const apiMessage = resMsg ?? listMsg;
+  const apiMessageEndpoint = resMsg ? "results" : listMsg ? "list" : null;
+
+  const update = {
+    blocked: shouldBlock,
+    block_reason: blockReason,
+    block_checked_at: nowIso,
+    block_since: shouldBlock
+      ? wasBlocked && prevSince
+        ? prevSince
+        : nowIso
+      : null,
+    consecutive_result_failures: nextFailures,
+    updated_at: nowIso,
+    ...(apiMessage
+      ? {
+          last_api_message: apiMessage,
+          last_api_message_at: nowIso,
+          last_api_message_source: "monitor",
+          last_api_message_endpoint: apiMessageEndpoint,
+        }
+      : {}),
+  };
+
   await supabaseAdmin
     .from("harvest_state")
-    .update({
-      blocked: shouldBlock,
-      block_reason: blockReason,
-      block_checked_at: nowIso,
-      block_since: shouldBlock
-        ? wasBlocked && prevSince
-          ? prevSince
-          : nowIso
-        : null,
-      consecutive_result_failures: nextFailures,
-      updated_at: nowIso,
-    })
+    .update(update)
     .eq("id", "singleton");
+
 
   await trimLog();
 
@@ -243,8 +307,11 @@ export async function runTuloslistaMonitor(): Promise<MonitorRunResult> {
     },
     transition,
     consecutiveResultFailures: nextFailures,
+    apiMessage,
+    apiMessageEndpoint,
   };
 }
+
 
 export const Route = createFileRoute("/api/public/hooks/monitor-tuloslista")({
   server: {
