@@ -13,6 +13,7 @@ import {
   getMonitorSnapshot,
   runMonitorNow,
   setHarvesterBlocked,
+  getOriginCallStats,
   type ProbeResult,
 } from "@/lib/tuloslista-probe.functions";
 import { formatRelativeFi } from "@/lib/harvest-status";
@@ -103,6 +104,16 @@ function EndpointCard({
   );
 }
 
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded border bg-background p-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-lg font-semibold">{value}</div>
+      {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
+    </div>
+  );
+}
+
 const PRESETS = [
   { id: "harvester", label: "juoksut-harvester/1.0" },
   { id: "proxy", label: "juoksut-proxy/1.0" },
@@ -132,11 +143,18 @@ function Page() {
   const snapshotFn = useServerFn(getMonitorSnapshot);
   const monitorRunFn = useServerFn(runMonitorNow);
   const setBlockedFn = useServerFn(setHarvesterBlocked);
+  const originStatsFn = useServerFn(getOriginCallStats);
 
   const snapshotQ = useQuery({
     queryKey: ["tuloslista-monitor-snapshot"],
     queryFn: () => snapshotFn(),
     refetchInterval: 30_000,
+  });
+
+  const statsQ = useQuery({
+    queryKey: ["tuloslista-origin-call-stats"],
+    queryFn: () => originStatsFn(),
+    refetchInterval: 60_000,
   });
 
   const runMonitorM = useMutation({
@@ -284,6 +302,87 @@ function Page() {
           voi palauttaa 200 OK välimuistista silloinkin, kun tulokset eivät ole
           saatavilla.
         </p>
+
+        {statsQ.data && statsQ.data.length > 0 && (
+          <section className="rounded-lg border bg-card p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Kutsutilastot (30 pv)</h2>
+              <div className="text-xs text-muted-foreground">
+                Origin = tuloslista.com · Reuna = oma välimuisti
+              </div>
+            </div>
+            {(() => {
+              const total = statsQ.data.reduce(
+                (a, d) => {
+                  a.origin += d.originCalls;
+                  a.edge += d.servedFromEdge;
+                  a.err += d.errors;
+                  return a;
+                },
+                { origin: 0, edge: 0, err: 0 },
+              );
+              const served = total.origin + total.edge;
+              const savedPct = served > 0 ? Math.round((total.edge / served) * 100) : 0;
+              return (
+                <div className="mb-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                  <Stat label="Origin-kutsut" value={total.origin.toLocaleString("fi-FI")} />
+                  <Stat
+                    label="Reunavälimuistista"
+                    value={total.edge.toLocaleString("fi-FI")}
+                    hint={`${savedPct}% säästö`}
+                  />
+                  <Stat
+                    label="Virheet (4xx/5xx)"
+                    value={total.err.toLocaleString("fi-FI")}
+                  />
+                  <Stat label="Päiviä" value={String(statsQ.data.length)} />
+                </div>
+              );
+            })()}
+            <div className="max-h-80 overflow-auto">
+              <table className="w-full text-xs">
+                <thead className="text-left text-muted-foreground">
+                  <tr>
+                    <th className="py-1 pr-2">Päivä</th>
+                    <th className="py-1 pr-2">Origin</th>
+                    <th className="py-1 pr-2">Reuna</th>
+                    <th className="py-1 pr-2">Säästö</th>
+                    <th className="py-1 pr-2">Virheet</th>
+                    <th className="py-1">Lähteet</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {statsQ.data.map((d) => {
+                    const served = d.originCalls + d.servedFromEdge;
+                    const pct = served > 0 ? Math.round((d.servedFromEdge / served) * 100) : 0;
+                    const sources = Object.entries(d.bySource)
+                      .filter(([s]) => s !== "proxy_cache")
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([s, n]) => `${s}:${n}`)
+                      .join(" · ");
+                    return (
+                      <tr key={d.day} className="border-t">
+                        <td className="py-1 pr-2 whitespace-nowrap font-mono">{d.day}</td>
+                        <td className="py-1 pr-2">{d.originCalls.toLocaleString("fi-FI")}</td>
+                        <td className="py-1 pr-2">{d.servedFromEdge.toLocaleString("fi-FI")}</td>
+                        <td className="py-1 pr-2">{pct}%</td>
+                        <td className={`py-1 pr-2 ${d.errors > 0 ? "text-destructive" : ""}`}>
+                          {d.errors}
+                        </td>
+                        <td className="py-1 text-muted-foreground">{sources || "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Origin-kutsut = harvester, hot-cycle, monitor ja proxy-välimuistin
+              ohitukset (miss). Reuna = kutsut, jotka palveltiin omalta Cloudflare-reunalta
+              ilman origin-kutsua.
+            </p>
+          </section>
+        )}
 
         {snap && snap.recent.length > 0 && (
           <details className="rounded-lg border bg-card p-3 text-sm" open>

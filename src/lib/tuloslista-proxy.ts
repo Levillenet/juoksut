@@ -15,6 +15,8 @@
 // KV/Durable Objects ei käytössä v1:ssä — Cache API riittää.
 // Jos haluamme jakaa cachea edgejen välillä, lisätään KV myöhemmin.
 
+import { bumpOriginCall } from "@/lib/origin-call-counter";
+
 const ORIGIN = "https://cached-public-api.tuloslista.com";
 
 export interface TtlConfig {
@@ -63,10 +65,12 @@ export async function proxyTuloslista(
         const ttl = ttlOf(env.body);
         const ageSec = (Date.now() - env.cachedAt) / 1000;
         if (ageSec < ttl.edgeTtl) {
+          bumpOriginCall("proxy_cache", path, "hit");
           return jsonResponse(env.body, "hit", ageSec);
         }
         if (ageSec < ttl.edgeTtl + ttl.swrWindow) {
           // SWR: palauta stale heti, päivitä taustalla.
+          bumpOriginCall("proxy_cache", path, "stale");
           kickRefresh(originUrl, cacheKey, cache, ttlOf, path);
           return jsonResponse(env.body, "stale", ageSec);
         }
@@ -82,7 +86,10 @@ export async function proxyTuloslista(
     const hit = await cache.match(cacheKey).catch(() => undefined);
     if (hit) {
       const env = await readEnvelope(hit);
-      if (env) return jsonResponse(env.body, "circuit", (Date.now() - env.cachedAt) / 1000);
+      if (env) {
+        bumpOriginCall("proxy_cache", path, "circuit");
+        return jsonResponse(env.body, "circuit", (Date.now() - env.cachedAt) / 1000);
+      }
     }
   }
 
@@ -95,8 +102,10 @@ export async function proxyTuloslista(
     const hit = await cache.match(cacheKey).catch(() => undefined);
     if (hit) {
       const env = await readEnvelope(hit);
-      if (env)
+      if (env) {
+        bumpOriginCall("proxy_cache", path, "stale-error");
         return jsonResponse(env.body, "stale-error", (Date.now() - env.cachedAt) / 1000);
+      }
     }
   }
   return new Response(JSON.stringify({ error: "Upstream unavailable" }), {
@@ -145,6 +154,7 @@ async function fetchFromOrigin(
       },
       signal: controller.signal,
     });
+    bumpOriginCall("proxy_origin", path, res.status);
     if (res.status === 429 || res.status === 503) {
       console.warn(`[tl-proxy] origin ${res.status} ${path} — circuit open ${CIRCUIT_OPEN_MS}ms`);
       circuitOpenUntil.set(path, Date.now() + CIRCUIT_OPEN_MS);
@@ -186,6 +196,7 @@ async function fetchFromOrigin(
     } else {
       console.error(`[tl-proxy] fetch error ${path}`, e);
     }
+    bumpOriginCall("proxy_origin", path, 0);
     // Avaa breaker myös timeoutille ja verkkovirheille, jottei Worker jää
     // jumiin samaan hitaaseen upstreamiin.
     circuitOpenUntil.set(path, Date.now() + CIRCUIT_OPEN_MS);

@@ -11,6 +11,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { bumpOriginCall } from "@/lib/origin-call-counter";
 
 const ORIGIN = "https://cached-public-api.tuloslista.com";
 const LIST_PATH = "/live/v1/competition";
@@ -133,6 +134,8 @@ async function runProbe(path: string, minBytes: number): Promise<ProbeOutcome> {
   } catch (e) {
     fetchError = e instanceof Error ? e.message : String(e);
   }
+
+  bumpOriginCall("monitor", path, status);
 
   const duration = Date.now() - started;
   const verdict: Verdict = fetchError

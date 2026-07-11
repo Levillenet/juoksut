@@ -12,9 +12,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { parseResult } from "@/lib/result-parse";
+import { bumpOriginCall, type CounterSource } from "@/lib/origin-call-counter";
 
 const API = "https://cached-public-api.tuloslista.com/live/v1";
 const UA = "juoksut-harvester/1.1 (+https://tulokset.online)";
+
+// Ajon aikana asetettu source ("harvester" tai "hot_cycle") — käytetään
+// kirjattaessa jokainen tuloslistan origin-kutsu laskuriin.
+let currentSource: CounterSource = "harvester";
 const BATCH_SIZE = 60;      // uusia kisoja per taustatyön ajo (worker-budjetti)
 const CONCURRENCY = 5;      // rinnakkaiset kisat per chunk
 
@@ -126,10 +131,15 @@ function parseResultNumeric(
 }
 
 async function fetchJson<T>(url: string): Promise<T | null> {
+  // Erota tuloslistan polku URL:sta laskuria varten (`/live/v1/...`).
+  const pathForCounter = url.startsWith(API)
+    ? "/live/v1" + url.slice(API.length)
+    : url;
   try {
     const r = await fetch(url, {
       headers: { "User-Agent": UA, accept: "application/json" },
     });
+    bumpOriginCall(currentSource, pathForCounter, r.status);
     if (r.status === 429 || r.status === 503) {
       rateLimited = true;
       return null;
@@ -148,6 +158,7 @@ async function fetchJson<T>(url: string): Promise<T | null> {
     }
     return JSON.parse(text) as T;
   } catch {
+    bumpOriginCall(currentSource, pathForCounter, 0);
     return null;
   }
 }
@@ -526,6 +537,7 @@ async function run(request: Request): Promise<Response> {
   // samassa kisassa monta kertaa päivän aikana.
   const idsParam = url.searchParams.get("ids");
   if (idsParam) {
+    currentSource = "hot_cycle";
     const hotIds = Array.from(
       new Set(
         idsParam
@@ -592,6 +604,7 @@ async function run(request: Request): Promise<Response> {
   // Taustatyö: hae kisalista ja poimi uudet ID:t joita ei vielä ole
   // skannattu (done=false tai puuttuu kokonaan). Ei arvauksia, ei
   // revisit-kierroksia.
+  currentSource = "harvester";
   const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock");
   if (lockData !== true) {
     return Response.json({ ok: true, skipped: "locked" });

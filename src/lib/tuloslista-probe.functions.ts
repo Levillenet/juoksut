@@ -248,3 +248,65 @@ export const setHarvesterBlocked = createServerFn({ method: "POST" })
       .eq("id", "singleton");
     return { ok: true };
   });
+
+export interface OriginCallDayStats {
+  day: string; // YYYY-MM-DD (Europe/Helsinki)
+  originCalls: number; // harvester + hot_cycle + monitor + proxy_origin
+  servedFromEdge: number; // proxy_cache (hit + stale + circuit + stale-error)
+  bySource: Record<string, number>;
+  byPathKind: Record<string, number>;
+  errors: number; // origin calls with 4xx/5xx/0
+}
+
+export const getOriginCallStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<OriginCallDayStats[]> => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Viimeiset 30 päivää
+    const since = new Date();
+    since.setUTCDate(since.getUTCDate() - 30);
+    const sinceDay = since.toISOString().slice(0, 10);
+    const { data, error } = await supabaseAdmin
+      .from("origin_call_daily")
+      .select("day, source, path_kind, status_bucket, count")
+      .gte("day", sinceDay)
+      .order("day", { ascending: false });
+    if (error) throw new Error(error.message);
+
+    const byDay = new Map<string, OriginCallDayStats>();
+    const ORIGIN_SOURCES = new Set(["harvester", "hot_cycle", "monitor", "proxy_origin", "admin_probe"]);
+    for (const r of data ?? []) {
+      const day = String(r.day);
+      let entry = byDay.get(day);
+      if (!entry) {
+        entry = {
+          day,
+          originCalls: 0,
+          servedFromEdge: 0,
+          bySource: {},
+          byPathKind: {},
+          errors: 0,
+        };
+        byDay.set(day, entry);
+      }
+      const count = Number(r.count) || 0;
+      const source = String(r.source);
+      const bucket = String(r.status_bucket);
+      entry.bySource[source] = (entry.bySource[source] ?? 0) + count;
+      entry.byPathKind[String(r.path_kind)] = (entry.byPathKind[String(r.path_kind)] ?? 0) + count;
+      if (source === "proxy_cache") {
+        entry.servedFromEdge += count;
+      } else if (ORIGIN_SOURCES.has(source)) {
+        entry.originCalls += count;
+        // Bucket voi olla '2xx' | '3xx' | 'error' | 'hit' | 'stale' | tarkka HTTP-koodi
+        if (bucket === "error") entry.errors += count;
+        else {
+          const n = Number(bucket);
+          if (Number.isFinite(n) && n >= 400) entry.errors += count;
+        }
+      }
+    }
+    return Array.from(byDay.values()).sort((a, b) => b.day.localeCompare(a.day));
+  });
+
