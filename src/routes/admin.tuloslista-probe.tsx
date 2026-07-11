@@ -63,6 +63,30 @@ function Page() {
     onSuccess: (r) => setResult(r),
   });
 
+  const snapshotFn = useServerFn(getMonitorSnapshot);
+  const monitorRunFn = useServerFn(runMonitorNow);
+  const setBlockedFn = useServerFn(setHarvesterBlocked);
+
+  const snapshotQ = useQuery({
+    queryKey: ["tuloslista-monitor-snapshot"],
+    queryFn: () => snapshotFn(),
+    refetchInterval: 30_000,
+  });
+
+  const runMonitorM = useMutation({
+    mutationFn: async () => monitorRunFn(),
+    onSuccess: () => snapshotQ.refetch(),
+  });
+
+  const toggleBlockedM = useMutation({
+    mutationFn: async (blocked: boolean) =>
+      setBlockedFn({ data: { blocked, reason: blocked ? "manuaalisesti asetettu" : undefined } }),
+    onSuccess: () => snapshotQ.refetch(),
+  });
+
+  const snap = snapshotQ.data;
+  const now = new Date();
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 border-b bg-card">
@@ -78,11 +102,123 @@ function Page() {
       </header>
 
       <main className="mx-auto max-w-3xl space-y-5 px-4 py-6">
+        <section
+          className={`rounded-lg border p-4 ${
+            snap?.blocked
+              ? "border-destructive/40 bg-destructive/10"
+              : "border-green-600/40 bg-green-600/10"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            {snap?.blocked ? (
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+            ) : (
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
+            )}
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="text-sm font-semibold">
+                {snap
+                  ? snap.blocked
+                    ? "Harvesteri pysäytetty: rajapinta ei vastaa normaalisti"
+                    : "Rajapinta toimii, harvesteri käynnissä"
+                  : "Ladataan valvonnan tilaa…"}
+              </div>
+              {snap?.blocked && snap.blockReason && (
+                <div className="text-sm text-destructive">Syy: {snap.blockReason}</div>
+              )}
+              <div className="text-xs text-muted-foreground">
+                {snap?.blockCheckedAt
+                  ? `Tarkistettu ${formatRelativeFi(new Date(snap.blockCheckedAt), now)}`
+                  : "Ei tarkistuksia vielä"}
+                {snap?.blocked && snap.blockSince && (
+                  <> · esto alkoi {formatRelativeFi(new Date(snap.blockSince), now)}</>
+                )}
+                {snap?.lastHarvestRunAt && (
+                  <> · harvesteri viimeksi {formatRelativeFi(new Date(snap.lastHarvestRunAt), now)}</>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => runMonitorM.mutate()}
+              disabled={runMonitorM.isPending}
+            >
+              <RefreshCw
+                className={`mr-1 h-3 w-3 ${runMonitorM.isPending ? "animate-spin" : ""}`}
+              />
+              Tarkista nyt
+            </Button>
+            {snap?.blocked ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => toggleBlockedM.mutate(false)}
+                disabled={toggleBlockedM.isPending}
+              >
+                <Power className="mr-1 h-3 w-3" /> Pura esto käsin
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => toggleBlockedM.mutate(true)}
+                disabled={toggleBlockedM.isPending}
+              >
+                <Power className="mr-1 h-3 w-3" /> Pysäytä harvesteri
+              </Button>
+            )}
+          </div>
+        </section>
+
+        {snap && snap.recent.length > 0 && (
+          <details className="rounded-lg border bg-card p-3 text-sm" open>
+            <summary className="cursor-pointer font-semibold">
+              Valvontakyselyt (viimeiset {snap.recent.length})
+            </summary>
+            <div className="mt-2 max-h-72 overflow-auto">
+              <table className="w-full text-xs">
+                <thead className="text-left text-muted-foreground">
+                  <tr>
+                    <th className="py-1 pr-2">Aika</th>
+                    <th className="py-1 pr-2">Tila</th>
+                    <th className="py-1 pr-2">HTTP</th>
+                    <th className="py-1 pr-2">Kesto</th>
+                    <th className="py-1 pr-2">Tavut</th>
+                    <th className="py-1">Huomio</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {snap.recent.map((r) => (
+                    <tr key={r.id} className="border-t">
+                      <td className="py-1 pr-2 whitespace-nowrap">
+                        {formatRelativeFi(new Date(r.checkedAt), now)}
+                      </td>
+                      <td className="py-1 pr-2">
+                        {r.ok ? (
+                          <span className="text-green-600">OK</span>
+                        ) : (
+                          <span className="text-destructive">esto</span>
+                        )}
+                      </td>
+                      <td className="py-1 pr-2">{r.status}</td>
+                      <td className="py-1 pr-2">{r.durationMs} ms</td>
+                      <td className="py-1 pr-2">{r.bodyBytes}</td>
+                      <td className="py-1 text-muted-foreground">{r.reason ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        )}
+
         <p className="text-sm text-muted-foreground">
-          Yksi suora kutsu osoitteeseen{" "}
+          Manuaalinen testi: yksi suora kutsu osoitteeseen{" "}
           <code className="rounded bg-muted px-1">cached-public-api.tuloslista.com</code>,
-          ohittaa oman reunavälimuistin. Käytä tarkistamaan onko esto vielä
-          päällä.
+          ohittaa oman reunavälimuistin. Voit valita myös selain-User-Agentin.
         </p>
 
         <div className="space-y-2">
