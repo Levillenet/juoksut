@@ -70,14 +70,16 @@ function memoryPut(path: string, env: CachedEnvelope) {
 export async function proxyTuloslista(
   path: string,
   ttlOf: (body: string) => TtlConfig,
+  request?: Request,
 ): Promise<Response> {
   const originUrl = `${ORIGIN}${path}`;
   // Cloudflare Cache API vaatii, että avaimen host on samalla zonella kuin
   // Worker itse — mielivaltainen `https://tl-proxy.local` hyväksytään put:ssa
-  // hiljaisesti mutta match ei koskaan löydä sitä. Käytetään omaa domainia
-  // synteettisellä polulla, jotta sekä custom domain että lovable.app
-  // -deploymentit saavat cache-osumia.
-  const cacheKey = new Request(`https://tulokset.online/__tl-proxy${path}`, { method: "GET" });
+  // hiljaisesti mutta match ei koskaan löydä sitä. Käytetään pyynnön omaa
+  // hostia ja synteettistä polkua, jotta preview, custom domain ja julkaistu
+  // lovable.app saavat omat toimivat cache-avaimensa.
+  const cacheOrigin = request ? new URL(request.url).origin : "https://tulokset.online";
+  const cacheKey = new Request(`${cacheOrigin}/__tl-proxy${path}`, { method: "GET" });
   const cache =
     typeof caches !== "undefined" && "default" in caches
       ? (caches as unknown as { default: Cache }).default
