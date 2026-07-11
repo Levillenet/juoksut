@@ -131,10 +131,15 @@ function parseResultNumeric(
 }
 
 async function fetchJson<T>(url: string): Promise<T | null> {
+  // Erota tuloslistan polku URL:sta laskuria varten (`/live/v1/...`).
+  const pathForCounter = url.startsWith(API)
+    ? "/live/v1" + url.slice(API.length)
+    : url;
   try {
     const r = await fetch(url, {
       headers: { "User-Agent": UA, accept: "application/json" },
     });
+    bumpOriginCall(currentSource, pathForCounter, r.status);
     if (r.status === 429 || r.status === 503) {
       rateLimited = true;
       return null;
@@ -153,6 +158,7 @@ async function fetchJson<T>(url: string): Promise<T | null> {
     }
     return JSON.parse(text) as T;
   } catch {
+    bumpOriginCall(currentSource, pathForCounter, 0);
     return null;
   }
 }
