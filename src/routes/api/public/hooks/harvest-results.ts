@@ -604,6 +604,7 @@ async function run(request: Request): Promise<Response> {
   // Taustatyö: hae kisalista ja poimi uudet ID:t joita ei vielä ole
   // skannattu (done=false tai puuttuu kokonaan). Ei arvauksia, ei
   // revisit-kierroksia.
+  currentSource = "harvester";
   const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock");
   if (lockData !== true) {
     return Response.json({ ok: true, skipped: "locked" });
