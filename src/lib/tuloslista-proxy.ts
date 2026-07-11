@@ -49,6 +49,14 @@ interface CachedEnvelope {
 // Rajattu koko + LRU-tyyppinen karsinta, ettei muisti kasva rajattomasti.
 const MEMORY_MAX_ENTRIES = 500;
 const memoryCache = new Map<string, CachedEnvelope>();
+let edgeCacheDisabled = false;
+
+function getEdgeCache(): Cache | null {
+  if (edgeCacheDisabled) return null;
+  return typeof caches !== "undefined" && "default" in caches
+    ? (caches as unknown as { default: Cache }).default
+    : null;
+}
 
 function memoryGet(path: string): CachedEnvelope | undefined {
   const env = memoryCache.get(path);
@@ -66,6 +74,40 @@ function memoryPut(path: string, env: CachedEnvelope) {
   }
 }
 
+async function dbGet(path: string): Promise<CachedEnvelope | null> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin.rpc("get_tuloslista_proxy_cache", {
+      _path: path,
+    });
+    if (error) {
+      console.warn(`[tl-proxy] db cache read failed ${path}`, error.message);
+      return null;
+    }
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row?.body || !row.cached_at) return null;
+    const cachedAt = new Date(row.cached_at).getTime();
+    if (!Number.isFinite(cachedAt)) return null;
+    return { body: row.body, cachedAt };
+  } catch (e) {
+    console.warn(`[tl-proxy] db cache read failed ${path}`, e);
+    return null;
+  }
+}
+
+async function dbPut(path: string, body: string): Promise<void> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.rpc("set_tuloslista_proxy_cache", {
+      _path: path,
+      _body: body,
+    });
+    if (error) console.warn(`[tl-proxy] db cache write failed ${path}`, error.message);
+  } catch (e) {
+    console.warn(`[tl-proxy] db cache write failed ${path}`, e);
+  }
+}
+
 
 export async function proxyTuloslista(
   path: string,
@@ -80,10 +122,7 @@ export async function proxyTuloslista(
   // lovable.app saavat omat toimivat cache-avaimensa.
   const cacheOrigin = request ? new URL(request.url).origin : "https://tulokset.online";
   const cacheKey = new Request(`${cacheOrigin}/__tl-proxy${path}`, { method: "GET" });
-  const cache =
-    typeof caches !== "undefined" && "default" in caches
-      ? (caches as unknown as { default: Cache }).default
-      : null;
+  const cache = getEdgeCache();
 
 
   // 1a) Isolate-muistista?
@@ -129,6 +168,25 @@ export async function proxyTuloslista(
     }
   }
 
+  // 1c) Julkaistussa dynaamisessa workerissa Cache API voi olla poissa käytöstä.
+  // Tällöin Postgres-pohjainen palvelincache antaa saman koalisaation
+  // taustaharvesterille ja käyttäjien SSR-kutsuille.
+  const dbEnv = await dbGet(path);
+  if (dbEnv) {
+    memoryPut(path, dbEnv);
+    const ttl = ttlOf(dbEnv.body);
+    const ageSec = (Date.now() - dbEnv.cachedAt) / 1000;
+    if (ageSec < ttl.edgeTtl) {
+      bumpOriginCall("proxy_cache", path, "hit");
+      return jsonResponse(dbEnv.body, "hit", ageSec);
+    }
+    if (ageSec < ttl.edgeTtl + ttl.swrWindow) {
+      bumpOriginCall("proxy_cache", path, "stale");
+      void getOrFetch(originUrl, cacheKey, cache, ttlOf, path);
+      return jsonResponse(dbEnv.body, "stale", ageSec);
+    }
+  }
+
   // 2) Circuit auki? -> yritä antaa viimeisin stale muistista tai cachesta
   const openUntil = circuitOpenUntil.get(path);
   if (openUntil && Date.now() < openUntil) {
@@ -146,6 +204,10 @@ export async function proxyTuloslista(
           return jsonResponse(env.body, "circuit", (Date.now() - env.cachedAt) / 1000);
         }
       }
+    }
+    if (dbEnv) {
+      bumpOriginCall("proxy_cache", path, "circuit");
+      return jsonResponse(dbEnv.body, "circuit", (Date.now() - dbEnv.cachedAt) / 1000);
     }
   }
 
@@ -228,6 +290,7 @@ async function fetchFromOrigin(
     // Isolate-muisti aina: takaa cache-osumat vaikka Cache API ei olisi
     // käytettävissä tai epäonnistuisi hiljaa.
     memoryPut(path, { body, cachedAt: Date.now() });
+    void dbPut(path, body);
 
     if (cache) {
       const ttl = ttlOf(body);
@@ -242,6 +305,7 @@ async function fetchFromOrigin(
         },
       });
       await cache.put(cacheKey, envelope).catch((e) => {
+        edgeCacheDisabled = true;
         console.warn(`[tl-proxy] cache.put failed ${path}`, e);
       });
     }
