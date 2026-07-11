@@ -17,17 +17,16 @@ import { bumpOriginCall, type CounterSource } from "@/lib/origin-call-counter";
 const API = "https://cached-public-api.tuloslista.com/live/v1";
 const UA = "juoksut-harvester/1.1 (+https://tulokset.online)";
 
-// Ajon aikana asetettu source ("harvester" tai "hot_cycle") — käytetään
-// kirjattaessa jokainen tuloslistan origin-kutsu laskuriin.
-let currentSource: CounterSource = "harvester";
-const BATCH_SIZE = 60;      // uusia kisoja per taustatyön ajo (worker-budjetti)
-const CONCURRENCY = 5;      // rinnakkaiset kisat per chunk
+const BATCH_SIZE = 20;      // uusia kisoja per taustatyön ajo (worker-budjetti)
+const CONCURRENCY = 2;      // rinnakkaiset kisat per chunk
+const HOT_BATCH_SIZE = 8;
+const BACKGROUND_LOOKBACK_DAYS = 14;
 
-// Rate-limit-signaali jaetaan koko ajon kesken. Jos tuloslista alkaa
-// palauttaa 429/503 tai välittää viestin ("liikaa kutsuja"), pysäytämme
-// ajon ja jätämme loput ID:t seuraavaan ajoon.
-let rateLimited = false;
-let lastApiMessage: string | null = null;
+type RunState = {
+  source: CounterSource;
+  rateLimited: boolean;
+  lastApiMessage: string | null;
+};
 
 const API_MESSAGE_PATTERNS: RegExp[] = [
   /lähettää rajapintakutsuja aivan liikaa/i,
@@ -130,7 +129,7 @@ function parseResultNumeric(
   return parseResult(text, { category, subCategory, eventName });
 }
 
-async function fetchJson<T>(url: string): Promise<T | null> {
+async function fetchJson<T>(url: string, state: RunState): Promise<T | null> {
   // Erota tuloslistan polku URL:sta laskuria varten (`/live/v1/...`).
   const pathForCounter = url.startsWith(API)
     ? "/live/v1" + url.slice(API.length)
@@ -139,9 +138,9 @@ async function fetchJson<T>(url: string): Promise<T | null> {
     const r = await fetch(url, {
       headers: { "User-Agent": UA, accept: "application/json" },
     });
-    bumpOriginCall(currentSource, pathForCounter, r.status);
+    bumpOriginCall(state.source, pathForCounter, r.status);
     if (r.status === 429 || r.status === 503) {
-      rateLimited = true;
+      state.rateLimited = true;
       return null;
     }
     if (!r.ok) return null;
@@ -149,8 +148,8 @@ async function fetchJson<T>(url: string): Promise<T | null> {
     const text = await r.text();
     const msg = detectApiMessage(text);
     if (msg) {
-      lastApiMessage = msg;
-      rateLimited = true;
+      state.lastApiMessage = msg;
+      state.rateLimited = true;
       return null;
     }
     if (!contentType.includes("application/json") && !contentType.includes("text/json")) {
@@ -158,7 +157,7 @@ async function fetchJson<T>(url: string): Promise<T | null> {
     }
     return JSON.parse(text) as T;
   } catch {
-    bumpOriginCall(currentSource, pathForCounter, 0);
+    bumpOriginCall(state.source, pathForCounter, 0);
     return null;
   }
 }
@@ -170,6 +169,37 @@ function jitter() {
 
 function athleteKey(surname: string, firstname: string, orgId: number | null) {
   return `${surname}|${firstname}|${orgId ?? ""}`;
+}
+
+function parseCompetitionDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  const native = new Date(trimmed);
+  if (!Number.isNaN(native.getTime())) return native;
+
+  const finnish = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+  if (finnish) {
+    const day = Number(finnish[1]);
+    const month = Number(finnish[2]);
+    let year = Number(finnish[3]);
+    if (year < 100) year += 2000;
+    const parsed = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return null;
+}
+
+function isRecentCompetitionDate(value: string | null | undefined): boolean {
+  const parsed = parseCompetitionDate(value);
+  if (!parsed) return true;
+  const now = new Date();
+  const start = new Date(now);
+  start.setUTCDate(start.getUTCDate() - BACKGROUND_LOOKBACK_DAYS);
+  start.setUTCHours(0, 0, 0, 0);
+  const end = new Date(now);
+  end.setUTCDate(end.getUTCDate() + 2);
+  end.setUTCHours(23, 59, 59, 999);
+  return parsed >= start && parsed <= end;
 }
 
 type Row = {
@@ -199,13 +229,15 @@ async function processCompetition(
   pending: Row[],
   pendingLegs: RelayLegRow[],
   competitionDateHint: string | null,
+  state: RunState,
 ): Promise<{ existed: boolean; rowsAdded: number; competitionDate: string | null }> {
   const props = await fetchJson<PropertiesShape>(
     `${API}/competition/${id}/properties`,
+    state,
   );
   if (!props?.Competition?.Id) return { existed: false, rowsAdded: 0, competitionDate: competitionDateHint };
   const competitionDate = props.Competition?.BeginDate ?? competitionDateHint;
-  const byDate = await fetchJson<RoundsByDateShape>(`${API}/competition/${id}`);
+  const byDate = await fetchJson<RoundsByDateShape>(`${API}/competition/${id}`, state);
   if (!byDate) return { existed: true, rowsAdded: 0, competitionDate };
   const ageByEvent = new Map<number, string>();
   for (const list of Object.values(byDate)) {
@@ -216,7 +248,7 @@ async function processCompetition(
   const eventIds = Array.from(ageByEvent.keys());
   let rowsAdded = 0;
   for (const eid of eventIds) {
-    const ev = await fetchJson<EventShape>(`${API}/results/${id}/${eid}`);
+    const ev = await fetchJson<EventShape>(`${API}/results/${id}/${eid}`, state);
     if (!ev) continue;
     const category = ev.EventCategory ?? "";
     const subCategory = ev.EventSubCategory ?? "";
@@ -406,6 +438,7 @@ async function flushLegs(rows: RelayLegRow[]) {
 
 async function harvestIds(
   entries: Array<{ id: number; date: string | null }>,
+  state: RunState,
 ): Promise<{ scanned: number; existed: number; touchedCompIds: Set<number> }> {
   let scanned = 0;
   let existed = 0;
@@ -440,12 +473,12 @@ async function harvestIds(
   }
 
   for (let i = 0; i < entries.length; i += CONCURRENCY) {
-    if (rateLimited) break;
+    if (state.rateLimited) break;
     const chunk = entries.slice(i, i + CONCURRENCY);
     const results = await Promise.allSettled(
       chunk.map(async (e) => {
         await jitter();
-        return processCompetition(e.id, pending, pendingLegs, e.date);
+        return processCompetition(e.id, pending, pendingLegs, e.date, state);
       }),
     );
     const nowIso = new Date().toISOString();
@@ -513,23 +546,20 @@ async function harvestIds(
   return { scanned, existed, touchedCompIds };
 }
 
-async function persistApiMessageIfAny(): Promise<void> {
-  if (!lastApiMessage) return;
+async function persistApiMessageIfAny(state: RunState): Promise<void> {
+  if (!state.lastApiMessage) return;
   await supabaseAdmin
     .from("harvest_state")
     .update({
-      last_api_message: lastApiMessage,
+      last_api_message: state.lastApiMessage,
       last_api_message_at: new Date().toISOString(),
-      last_api_message_source: "harvester",
+      last_api_message_source: state.source,
       last_api_message_endpoint: null,
     })
     .eq("id", "singleton");
 }
 
 async function run(request: Request): Promise<Response> {
-  rateLimited = false;
-  lastApiMessage = null;
-
   const url = new URL(request.url);
 
   // Hotlist-tila: käynnissä olevien kisojen 15 s sykli. Ei kosketa
@@ -537,7 +567,7 @@ async function run(request: Request): Promise<Response> {
   // samassa kisassa monta kertaa päivän aikana.
   const idsParam = url.searchParams.get("ids");
   if (idsParam) {
-    currentSource = "hot_cycle";
+    const state: RunState = { source: "hot_cycle", rateLimited: false, lastApiMessage: null };
     const hotIds = Array.from(
       new Set(
         idsParam
@@ -545,10 +575,17 @@ async function run(request: Request): Promise<Response> {
           .map((s) => Number(s.trim()))
           .filter((n) => Number.isFinite(n) && n > 0),
       ),
-    );
+    ).slice(0, HOT_BATCH_SIZE);
     if (hotIds.length === 0) {
       return Response.json({ ok: true, skipped: "no-ids" });
     }
+
+    const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock");
+    if (lockData !== true) {
+      return Response.json({ ok: true, skipped: "locked", mode: "hotlist" });
+    }
+
+    try {
     const { data: stateRow } = await supabaseAdmin
       .from("harvest_state")
       .select("blocked, block_reason")
@@ -567,12 +604,12 @@ async function run(request: Request): Promise<Response> {
     let scanned = 0;
     let existed = 0;
     for (let i = 0; i < hotIds.length; i += CONCURRENCY) {
-      if (rateLimited) break;
+      if (state.rateLimited) break;
       const chunk = hotIds.slice(i, i + CONCURRENCY);
       const results = await Promise.allSettled(
         chunk.map(async (id) => {
           await jitter();
-          return processCompetition(id, pending, pendingLegs, null);
+          return processCompetition(id, pending, pendingLegs, null, state);
         }),
       );
       for (let j = 0; j < results.length; j++) {
@@ -589,22 +626,25 @@ async function run(request: Request): Promise<Response> {
     for (const cid of touched) {
       await supabaseAdmin.rpc("mark_pbs_for_competitions", { comp_ids: [cid] });
     }
-    await persistApiMessageIfAny();
+    await persistApiMessageIfAny(state);
     return Response.json({
       ok: true,
       mode: "hotlist",
       scanned,
       existed,
-      rateLimited,
-      apiMessage: lastApiMessage,
+      rateLimited: state.rateLimited,
+      apiMessage: state.lastApiMessage,
       ids: hotIds,
     });
+    } finally {
+      await supabaseAdmin.rpc("harvest_unlock");
+    }
   }
 
   // Taustatyö: hae kisalista ja poimi uudet ID:t joita ei vielä ole
   // skannattu (done=false tai puuttuu kokonaan). Ei arvauksia, ei
   // revisit-kierroksia.
-  currentSource = "harvester";
+  const state: RunState = { source: "harvester", rateLimited: false, lastApiMessage: null };
   const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock");
   if (lockData !== true) {
     return Response.json({ ok: true, skipped: "locked" });
@@ -624,13 +664,13 @@ async function run(request: Request): Promise<Response> {
       });
     }
 
-    const compList = await fetchJson<CompetitionListEntry[]>(`${API}/competition`);
+    const compList = await fetchJson<CompetitionListEntry[]>(`${API}/competition`, state);
     if (!Array.isArray(compList)) {
       return Response.json({
         ok: false,
         error: "competition-list-unavailable",
-        rateLimited,
-        apiMessage: lastApiMessage,
+        rateLimited: state.rateLimited,
+        apiMessage: state.lastApiMessage,
       });
     }
 
@@ -638,6 +678,7 @@ async function run(request: Request): Promise<Response> {
     const listed = compList
       .filter((c): c is { Id: number; Date?: string } => typeof c.Id === "number")
       .map((c) => ({ id: c.Id, date: c.Date ?? null }))
+      .filter((c) => isRecentCompetitionDate(c.date))
       .sort((a, b) => b.id - a.id);
 
     // Jo valmiiksi merkityt ID:t → jätetään pois.
@@ -673,7 +714,7 @@ async function run(request: Request): Promise<Response> {
       });
     }
 
-    const result = await harvestIds(batch);
+    const result = await harvestIds(batch, state);
 
     const latestId = listed.length > 0 ? listed[0].id : null;
     await supabaseAdmin
@@ -692,10 +733,10 @@ async function run(request: Request): Promise<Response> {
       pending: pending.length,
       scanned: result.scanned,
       existed: result.existed,
-      rateLimited,
+      rateLimited: state.rateLimited,
     });
   } finally {
-    await persistApiMessageIfAny();
+    await persistApiMessageIfAny(state);
     await supabaseAdmin.rpc("harvest_unlock");
   }
 }
