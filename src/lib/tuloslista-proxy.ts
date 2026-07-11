@@ -84,12 +84,30 @@ export async function proxyTuloslista(
       : null;
 
 
-  // 1) Cache-osuma?
+  // 1a) Isolate-muistista?
+  const mem = memoryGet(path);
+  if (mem) {
+    const ttl = ttlOf(mem.body);
+    const ageSec = (Date.now() - mem.cachedAt) / 1000;
+    if (ageSec < ttl.edgeTtl) {
+      bumpOriginCall("proxy_cache", path, "hit");
+      return jsonResponse(mem.body, "hit", ageSec);
+    }
+    if (ageSec < ttl.edgeTtl + ttl.swrWindow) {
+      bumpOriginCall("proxy_cache", path, "stale");
+      if (cache) kickRefresh(originUrl, cacheKey, cache, ttlOf, path);
+      else kickRefreshMemoryOnly(originUrl, ttlOf, path);
+      return jsonResponse(mem.body, "stale", ageSec);
+    }
+  }
+
+  // 1b) Cloudflare Cache API osuma?
   if (cache) {
     const hit = await cache.match(cacheKey).catch(() => undefined);
     if (hit) {
       const env = await readEnvelope(hit);
       if (env) {
+        memoryPut(path, env);
         const ttl = ttlOf(env.body);
         const ageSec = (Date.now() - env.cachedAt) / 1000;
         if (ageSec < ttl.edgeTtl) {
@@ -108,18 +126,26 @@ export async function proxyTuloslista(
     }
   }
 
-  // 2) Circuit auki? -> yritä antaa viimeisin stale
+  // 2) Circuit auki? -> yritä antaa viimeisin stale muistista tai cachesta
   const openUntil = circuitOpenUntil.get(path);
-  if (openUntil && Date.now() < openUntil && cache) {
-    const hit = await cache.match(cacheKey).catch(() => undefined);
-    if (hit) {
-      const env = await readEnvelope(hit);
-      if (env) {
-        bumpOriginCall("proxy_cache", path, "circuit");
-        return jsonResponse(env.body, "circuit", (Date.now() - env.cachedAt) / 1000);
+  if (openUntil && Date.now() < openUntil) {
+    if (mem) {
+      bumpOriginCall("proxy_cache", path, "circuit");
+      return jsonResponse(mem.body, "circuit", (Date.now() - mem.cachedAt) / 1000);
+    }
+    if (cache) {
+      const hit = await cache.match(cacheKey).catch(() => undefined);
+      if (hit) {
+        const env = await readEnvelope(hit);
+        if (env) {
+          memoryPut(path, env);
+          bumpOriginCall("proxy_cache", path, "circuit");
+          return jsonResponse(env.body, "circuit", (Date.now() - env.cachedAt) / 1000);
+        }
       }
     }
   }
+
 
   // 3) Single-flight upstream-fetch
   const body = await getOrFetch(originUrl, cacheKey, cache, ttlOf, path);
