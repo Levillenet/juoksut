@@ -1,40 +1,61 @@
-// Valvoo tuloslista.com -rajapintaa harvesterin User-Agentilla. Jos
-// vastaus näyttää estolta, asettaa harvest_state.blocked = true ja
-// tallentaa syyn. Kun rajapinta palaa normaaliksi, esto puretaan.
+// Valvoo tuloslista.com -rajapintaa harvesterin User-Agentilla. Tekee
+// kaksi kyselyä joka ajolla:
+//   1. lista-endpointti (kaikki kilpailut) — kertoo yleisen tavoitettavuuden
+//   2. tulos-endpointti (yhden kilpailun properties) — tämä on se, jota
+//      harvesteri tarvitsee. Auto-esto perustuu vain tämän tulokseen.
 //
-// Kutsutaan pg_cronin kautta 10 min välein. Voi kutsua myös käsin
-// admin-käyttöliittymästä.
+// Kun tulos-endpointti epäonnistuu 2 kertaa peräkkäin, harvest_state.blocked
+// menee tosi. Kun se onnistuu, laskuri nollataan ja esto puretaan.
+//
+// Kutsutaan pg_cronin kautta 10 min välein. Voi kutsua myös käsin admin-UI:sta.
 
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-const PROBE_URL =
-  "https://cached-public-api.tuloslista.com/live/v1/competition";
+const ORIGIN = "https://cached-public-api.tuloslista.com";
+const LIST_PATH = "/live/v1/competition";
+const RESULTS_PATH = (id: number) => `/live/v1/competition/${id}/properties`;
+const FALLBACK_COMPETITION_ID = 17661; // Tunnettu kilpailu, jolla oli tuloksia 9.7.2026
 const UA = "juoksut-harvester/1.0 (+https://tulokset.online)";
-const MIN_OK_BYTES = 1000;
+const LIST_MIN_OK_BYTES = 1000;
+const RESULTS_MIN_OK_BYTES = 50; // properties on pieni JSON-objekti
 const TIMEOUT_MS = 12_000;
 const KEEP_LOG_ROWS = 500;
+const FAILURE_THRESHOLD = 2; // peräkkäisten tulos-epäonnistumisten raja
+
+type Endpoint = "list" | "results";
 
 interface Verdict {
   ok: boolean;
   reason: string | null;
 }
 
+interface ProbeOutcome extends Verdict {
+  status: number;
+  durationMs: number;
+  bodyBytes: number;
+  contentType: string | null;
+  bodyPreview: string;
+  url: string;
+}
+
 function classify(
   status: number,
   contentType: string | null,
   body: string,
+  minBytes: number,
 ): Verdict {
   if (status === 0) return { ok: false, reason: "verkkovirhe (fetch epäonnistui)" };
   if (status === 403 || status === 401)
     return { ok: false, reason: `esto (HTTP ${status})` };
   if (status === 429) return { ok: false, reason: "rate-limit (HTTP 429)" };
+  if (status === 404) return { ok: false, reason: "ei löydy (HTTP 404)" };
   if (status >= 500) return { ok: false, reason: `origin-virhe (HTTP ${status})` };
   if (status !== 200) return { ok: false, reason: `odottamaton status (HTTP ${status})` };
   const ct = (contentType ?? "").toLowerCase();
   if (!ct.includes("application/json") && !ct.includes("text/json"))
     return { ok: false, reason: `ei-JSON-vastaus (${contentType ?? "?"})` };
-  if (body.length < MIN_OK_BYTES)
+  if (body.length < minBytes)
     return { ok: false, reason: `epäilyttävän lyhyt vastaus (${body.length} tavua)` };
   const trimmed = body.trimStart();
   if (!trimmed.startsWith("[") && !trimmed.startsWith("{"))
@@ -42,14 +63,8 @@ function classify(
   return { ok: true, reason: null };
 }
 
-export async function runTuloslistaMonitor(): Promise<{
-  ok: boolean;
-  reason: string | null;
-  status: number;
-  durationMs: number;
-  bodyBytes: number;
-  transition: "none" | "blocked" | "unblocked";
-}> {
+async function runProbe(path: string, minBytes: number): Promise<ProbeOutcome> {
+  const url = `${ORIGIN}${path}`;
   const started = Date.now();
   let status = 0;
   let contentType: string | null = null;
@@ -59,7 +74,7 @@ export async function runTuloslistaMonitor(): Promise<{
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    const res = await fetch(PROBE_URL, {
+    const res = await fetch(url, {
       headers: { "user-agent": UA, accept: "application/json" },
       signal: controller.signal,
     });
@@ -74,45 +89,46 @@ export async function runTuloslistaMonitor(): Promise<{
   const duration = Date.now() - started;
   const verdict: Verdict = fetchError
     ? { ok: false, reason: `verkkovirhe: ${fetchError}` }
-    : classify(status, contentType, body);
+    : classify(status, contentType, body, minBytes);
 
-  const { data: prev } = await supabaseAdmin
-    .from("harvest_state")
-    .select("blocked, block_since")
-    .eq("id", "singleton")
-    .maybeSingle();
-
-  const wasBlocked = prev?.blocked === true;
-  const prevSince = prev?.block_since ?? null;
-  const nowIso = new Date().toISOString();
-
-  await supabaseAdmin
-    .from("harvest_state")
-    .update({
-      blocked: !verdict.ok,
-      block_reason: verdict.ok ? null : verdict.reason,
-      block_checked_at: nowIso,
-      block_since: verdict.ok
-        ? null
-        : wasBlocked && prevSince
-          ? prevSince
-          : nowIso,
-      updated_at: nowIso,
-    })
-    .eq("id", "singleton");
-
-  await supabaseAdmin.from("tuloslista_probe_log").insert({
-    ok: verdict.ok,
+  return {
+    ...verdict,
     status,
-    duration_ms: duration,
-    content_type: contentType,
-    body_bytes: body.length,
-    body_preview: body.slice(0, 400),
-    reason: verdict.reason,
-    user_agent: UA,
-  });
+    durationMs: duration,
+    bodyBytes: body.length,
+    contentType,
+    bodyPreview: body.slice(0, 400),
+    url,
+  };
+}
 
-  // Karsi vanhat lokirivit: pidä uusimmat KEEP_LOG_ROWS.
+async function pickReferenceCompetitionId(): Promise<number> {
+  const cutoff = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString();
+  const { data } = await supabaseAdmin
+    .from("harvest_competitions")
+    .select("competition_id")
+    .eq("exists_in_source", true)
+    .gte("competition_date", cutoff)
+    .order("competition_date", { ascending: false })
+    .limit(1);
+  return data?.[0]?.competition_id ?? FALLBACK_COMPETITION_ID;
+}
+
+async function logProbe(endpoint: Endpoint, outcome: ProbeOutcome): Promise<void> {
+  await supabaseAdmin.from("tuloslista_probe_log").insert({
+    ok: outcome.ok,
+    status: outcome.status,
+    duration_ms: outcome.durationMs,
+    content_type: outcome.contentType,
+    body_bytes: outcome.bodyBytes,
+    body_preview: outcome.bodyPreview,
+    reason: outcome.reason,
+    user_agent: UA,
+    endpoint,
+  });
+}
+
+async function trimLog(): Promise<void> {
   const { data: cutoffRow } = await supabaseAdmin
     .from("tuloslista_probe_log")
     .select("id")
@@ -125,21 +141,102 @@ export async function runTuloslistaMonitor(): Promise<{
       .delete()
       .lte("id", cutoffRow.id);
   }
+}
+
+export interface MonitorRunResult {
+  list: {
+    ok: boolean;
+    reason: string | null;
+    status: number;
+    durationMs: number;
+    bodyBytes: number;
+  };
+  results: {
+    ok: boolean;
+    reason: string | null;
+    status: number;
+    durationMs: number;
+    bodyBytes: number;
+    competitionId: number;
+  };
+  transition: "none" | "blocked" | "unblocked";
+  consecutiveResultFailures: number;
+}
+
+export async function runTuloslistaMonitor(): Promise<MonitorRunResult> {
+  const [listOutcome, referenceId] = await Promise.all([
+    runProbe(LIST_PATH, LIST_MIN_OK_BYTES),
+    pickReferenceCompetitionId(),
+  ]);
+  const resultsOutcome = await runProbe(
+    RESULTS_PATH(referenceId),
+    RESULTS_MIN_OK_BYTES,
+  );
+
+  await logProbe("list", listOutcome);
+  await logProbe("results", resultsOutcome);
+
+  const { data: prev } = await supabaseAdmin
+    .from("harvest_state")
+    .select("blocked, block_since, consecutive_result_failures")
+    .eq("id", "singleton")
+    .maybeSingle();
+
+  const wasBlocked = prev?.blocked === true;
+  const prevSince = prev?.block_since ?? null;
+  const prevFailures =
+    typeof prev?.consecutive_result_failures === "number"
+      ? prev.consecutive_result_failures
+      : 0;
+
+  const nextFailures = resultsOutcome.ok ? 0 : prevFailures + 1;
+  const shouldBlock = nextFailures >= FAILURE_THRESHOLD;
+  const nowIso = new Date().toISOString();
+
+  // Yhdistetty syy: näytä ensisijaisesti tulos-endpointin ongelma.
+  const blockReason = shouldBlock
+    ? `Tulos-rajapinta ei vastaa: ${resultsOutcome.reason ?? "tuntematon syy"}`
+    : null;
+
+  await supabaseAdmin
+    .from("harvest_state")
+    .update({
+      blocked: shouldBlock,
+      block_reason: blockReason,
+      block_checked_at: nowIso,
+      block_since: shouldBlock
+        ? wasBlocked && prevSince
+          ? prevSince
+          : nowIso
+        : null,
+      consecutive_result_failures: nextFailures,
+      updated_at: nowIso,
+    })
+    .eq("id", "singleton");
+
+  await trimLog();
 
   const transition: "none" | "blocked" | "unblocked" =
-    wasBlocked === !verdict.ok
-      ? "none"
-      : verdict.ok
-        ? "unblocked"
-        : "blocked";
+    wasBlocked === shouldBlock ? "none" : shouldBlock ? "blocked" : "unblocked";
 
   return {
-    ok: verdict.ok,
-    reason: verdict.reason,
-    status,
-    durationMs: duration,
-    bodyBytes: body.length,
+    list: {
+      ok: listOutcome.ok,
+      reason: listOutcome.reason,
+      status: listOutcome.status,
+      durationMs: listOutcome.durationMs,
+      bodyBytes: listOutcome.bodyBytes,
+    },
+    results: {
+      ok: resultsOutcome.ok,
+      reason: resultsOutcome.reason,
+      status: resultsOutcome.status,
+      durationMs: resultsOutcome.durationMs,
+      bodyBytes: resultsOutcome.bodyBytes,
+      competitionId: referenceId,
+    },
     transition,
+    consecutiveResultFailures: nextFailures,
   };
 }
 

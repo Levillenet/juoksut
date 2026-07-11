@@ -654,6 +654,7 @@ export type Database = {
           block_reason: string | null
           block_since: string | null
           blocked: boolean
+          consecutive_result_failures: number
           id: string
           last_run_at: string | null
           latest_id: number
@@ -665,6 +666,7 @@ export type Database = {
           block_reason?: string | null
           block_since?: string | null
           blocked?: boolean
+          consecutive_result_failures?: number
           id?: string
           last_run_at?: string | null
           latest_id?: number
@@ -676,6 +678,7 @@ export type Database = {
           block_reason?: string | null
           block_since?: string | null
           blocked?: boolean
+          consecutive_result_failures?: number
           id?: string
           last_run_at?: string | null
           latest_id?: number
@@ -1374,6 +1377,7 @@ export type Database = {
           checked_at: string
           content_type: string | null
           duration_ms: number
+          endpoint: string
           id: number
           ok: boolean
           reason: string | null
@@ -1386,6 +1390,7 @@ export type Database = {
           checked_at?: string
           content_type?: string | null
           duration_ms: number
+          endpoint?: string
           id?: number
           ok: boolean
           reason?: string | null
@@ -1398,6 +1403,7 @@ export type Database = {
           checked_at?: string
           content_type?: string | null
           duration_ms?: number
+          endpoint?: string
           id?: number
           ok?: boolean
           reason?: string | null
