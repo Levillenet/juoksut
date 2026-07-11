@@ -156,10 +156,9 @@ async function fetchJson<T>(url: string): Promise<T | null> {
     if (!r.ok) return null;
     const contentType = (r.headers.get("content-type") ?? "").toLowerCase();
     const text = await r.text();
-    if (
-      text.includes("lähettää rajapintakutsuja aivan liikaa") ||
-      text.includes("Ole yhteydessä")
-    ) {
+    const msg = detectApiMessage(text);
+    if (msg) {
+      lastApiMessage = msg;
       rateLimited = true;
       return null;
     }
@@ -171,6 +170,7 @@ async function fetchJson<T>(url: string): Promise<T | null> {
     return null;
   }
 }
+
 
 function jitter() {
   return new Promise((res) => setTimeout(res, 50 + Math.random() * 100));
