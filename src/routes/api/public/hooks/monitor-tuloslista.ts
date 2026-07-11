@@ -257,7 +257,7 @@ export async function runTuloslistaMonitor(): Promise<MonitorRunResult> {
   const apiMessage = resMsg ?? listMsg;
   const apiMessageEndpoint = resMsg ? "results" : listMsg ? "list" : null;
 
-  const update: Record<string, unknown> = {
+  const update = {
     blocked: shouldBlock,
     block_reason: blockReason,
     block_checked_at: nowIso,
@@ -268,18 +268,21 @@ export async function runTuloslistaMonitor(): Promise<MonitorRunResult> {
       : null,
     consecutive_result_failures: nextFailures,
     updated_at: nowIso,
+    ...(apiMessage
+      ? {
+          last_api_message: apiMessage,
+          last_api_message_at: nowIso,
+          last_api_message_source: "monitor",
+          last_api_message_endpoint: apiMessageEndpoint,
+        }
+      : {}),
   };
-  if (apiMessage) {
-    update.last_api_message = apiMessage;
-    update.last_api_message_at = nowIso;
-    update.last_api_message_source = "monitor";
-    update.last_api_message_endpoint = apiMessageEndpoint;
-  }
 
   await supabaseAdmin
     .from("harvest_state")
     .update(update)
     .eq("id", "singleton");
+
 
   await trimLog();
 
