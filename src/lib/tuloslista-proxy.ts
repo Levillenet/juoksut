@@ -86,7 +86,10 @@ export async function proxyTuloslista(
     const hit = await cache.match(cacheKey).catch(() => undefined);
     if (hit) {
       const env = await readEnvelope(hit);
-      if (env) return jsonResponse(env.body, "circuit", (Date.now() - env.cachedAt) / 1000);
+      if (env) {
+        bumpOriginCall("proxy_cache", path, "circuit");
+        return jsonResponse(env.body, "circuit", (Date.now() - env.cachedAt) / 1000);
+      }
     }
   }
 
@@ -99,8 +102,10 @@ export async function proxyTuloslista(
     const hit = await cache.match(cacheKey).catch(() => undefined);
     if (hit) {
       const env = await readEnvelope(hit);
-      if (env)
+      if (env) {
+        bumpOriginCall("proxy_cache", path, "stale-error");
         return jsonResponse(env.body, "stale-error", (Date.now() - env.cachedAt) / 1000);
+      }
     }
   }
   return new Response(JSON.stringify({ error: "Upstream unavailable" }), {
