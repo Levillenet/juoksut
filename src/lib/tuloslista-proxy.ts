@@ -43,6 +43,30 @@ interface CachedEnvelope {
   cachedAt: number;
 }
 
+// Isolate-scope memory cache — halvin ja luotettavin tier ennen Cloudflare
+// Cache API:a. Ei jaeta isolatien välillä, mutta lämmin isolate ehtii
+// palvella useita samaan URLiin osuvia pyyntöjä yhdellä origin-käynnillä.
+// Rajattu koko + LRU-tyyppinen karsinta, ettei muisti kasva rajattomasti.
+const MEMORY_MAX_ENTRIES = 500;
+const memoryCache = new Map<string, CachedEnvelope>();
+
+function memoryGet(path: string): CachedEnvelope | undefined {
+  const env = memoryCache.get(path);
+  if (!env) return undefined;
+  // touch for LRU
+  memoryCache.delete(path);
+  memoryCache.set(path, env);
+  return env;
+}
+function memoryPut(path: string, env: CachedEnvelope) {
+  memoryCache.set(path, env);
+  if (memoryCache.size > MEMORY_MAX_ENTRIES) {
+    const oldest = memoryCache.keys().next().value;
+    if (oldest !== undefined) memoryCache.delete(oldest);
+  }
+}
+
+
 export async function proxyTuloslista(
   path: string,
   ttlOf: (body: string) => TtlConfig,
