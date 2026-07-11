@@ -871,9 +871,11 @@ async function run(request: Request): Promise<Response> {
       latestId,
     });
   } finally {
+    await persistApiMessageIfAny();
     await supabaseAdmin.rpc("harvest_unlock");
   }
 }
+
 
 export const Route = createFileRoute("/api/public/hooks/harvest-results")({
   server: {
