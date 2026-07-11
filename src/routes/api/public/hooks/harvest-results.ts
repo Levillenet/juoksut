@@ -666,7 +666,7 @@ async function run(request: Request): Promise<Response> {
     await supabaseAdmin
       .from("harvest_state")
       .update({
-        latest_id: latestId,
+        latest_id: latestId ?? undefined,
         last_run_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
