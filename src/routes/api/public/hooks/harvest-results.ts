@@ -12,9 +12,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { parseResult } from "@/lib/result-parse";
+import { bumpOriginCall, type CounterSource } from "@/lib/origin-call-counter";
 
 const API = "https://cached-public-api.tuloslista.com/live/v1";
 const UA = "juoksut-harvester/1.1 (+https://tulokset.online)";
+
+// Ajon aikana asetettu source ("harvester" tai "hot_cycle") — käytetään
+// kirjattaessa jokainen tuloslistan origin-kutsu laskuriin.
+let currentSource: CounterSource = "harvester";
 const BATCH_SIZE = 60;      // uusia kisoja per taustatyön ajo (worker-budjetti)
 const CONCURRENCY = 5;      // rinnakkaiset kisat per chunk
 
