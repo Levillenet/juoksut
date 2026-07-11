@@ -1451,6 +1451,27 @@ export type Database = {
         }
         Relationships: []
       }
+      tuloslista_proxy_cache: {
+        Row: {
+          body: string
+          cached_at: string
+          path: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          cached_at?: string
+          path: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          cached_at?: string
+          path?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1691,6 +1712,13 @@ export type Database = {
           sub_category: string
         }[]
       }
+      get_tuloslista_proxy_cache: {
+        Args: { _path: string }
+        Returns: {
+          body: string
+          cached_at: string
+        }[]
+      }
       get_user_id_by_email: { Args: { _email: string }; Returns: string }
       grant_role_by_email: {
         Args: { _email: string; _role: Database["public"]["Enums"]["app_role"] }
@@ -1762,6 +1790,7 @@ export type Database = {
         Returns: number
       }
       normalize_event_name: { Args: { name: string }; Returns: string }
+      prune_tuloslista_proxy_cache: { Args: never; Returns: undefined }
       revoke_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1772,6 +1801,10 @@ export type Database = {
       set_heat_results_if_null: {
         Args: { _snapshot: Json; _video_id: string }
         Returns: boolean
+      }
+      set_tuloslista_proxy_cache: {
+        Args: { _body: string; _path: string }
+        Returns: undefined
       }
       shared_note_owner_ids: { Args: { _user: string }; Returns: string[] }
       shared_team_user_ids: { Args: { _user: string }; Returns: string[] }
