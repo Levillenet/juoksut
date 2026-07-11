@@ -146,9 +146,11 @@ async function runProbe(path: string, minBytes: number): Promise<ProbeOutcome> {
     bodyBytes: body.length,
     contentType,
     bodyPreview: body.slice(0, 400),
+    bodyFull: body,
     url,
   };
 }
+
 
 async function pickReferenceCompetitionId(): Promise<number> {
   const cutoff = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString();
