@@ -37,6 +37,72 @@ function Gate() {
   return <Page />;
 }
 
+function EndpointCard({
+  title,
+  subtitle,
+  status,
+  now,
+}: {
+  title: string;
+  subtitle: string;
+  status: {
+    ok: boolean;
+    status: number;
+    durationMs: number;
+    bodyBytes: number;
+    contentType: string | null;
+    reason: string | null;
+    checkedAt: string | null;
+  } | null;
+  now: Date;
+}) {
+  const ok = status?.ok === true;
+  return (
+    <div
+      className={`rounded-lg border p-3 ${
+        !status
+          ? "border-border bg-card"
+          : ok
+            ? "border-green-600/40 bg-green-600/5"
+            : "border-destructive/40 bg-destructive/5"
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        {status ? (
+          ok ? (
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+          ) : (
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          )
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold">{title}</div>
+          <div className="text-[11px] text-muted-foreground">{subtitle}</div>
+          {status ? (
+            <div className="mt-1 space-y-0.5 text-xs">
+              <div>
+                <span className="text-muted-foreground">HTTP:</span> {status.status} ·{" "}
+                <span className="text-muted-foreground">Kesto:</span> {status.durationMs} ms ·{" "}
+                <span className="text-muted-foreground">Tavut:</span> {status.bodyBytes}
+              </div>
+              {status.reason && (
+                <div className="text-destructive">Syy: {status.reason}</div>
+              )}
+              {status.checkedAt && (
+                <div className="text-muted-foreground">
+                  Tarkistettu {formatRelativeFi(new Date(status.checkedAt), now)}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-1 text-xs text-muted-foreground">Ei tietoja vielä</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const PRESETS = [
   { id: "harvester", label: "juoksut-harvester/1.0" },
   { id: "proxy", label: "juoksut-proxy/1.0" },
