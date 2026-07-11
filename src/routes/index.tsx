@@ -22,6 +22,7 @@ import { useAuth, type Role } from "@/lib/auth";
 import { CompetitionSwitcher } from "@/components/CompetitionSwitcher";
 import { DailyBestSection } from "@/components/DailyBestSection";
 import { HarvestStatusBadge } from "@/components/HarvestStatusBadge";
+import { HarvestLight } from "@/components/HarvestLight";
 import { ClubTodaySection } from "@/components/ClubTodaySection";
 import { LiveCompetitionsSection } from "@/components/LiveCompetitionsSection";
 
@@ -424,6 +425,7 @@ function Index({ role, isAdmin = false, isPlanner = false }: { role: Role; isAdm
 
         {!isOfficial && (
           <>
+            <HarvestLight />
             <TodayStatsSection />
             <DailyBestSection />
             
