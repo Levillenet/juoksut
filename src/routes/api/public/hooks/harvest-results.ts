@@ -549,9 +549,16 @@ async function run(request: Request): Promise<Response> {
 
     const { data: stateRow } = await supabaseAdmin
       .from("harvest_state")
-      .select("next_id, latest_id")
+      .select("next_id, latest_id, blocked, block_reason")
       .eq("id", "singleton")
       .maybeSingle();
+    if (stateRow?.blocked === true) {
+      return Response.json({
+        ok: true,
+        skipped: "blocked",
+        reason: stateRow.block_reason ?? null,
+      });
+    }
     let nextId = stateRow?.next_id ?? FLOOR_ID;
     let latestId = stateRow?.latest_id ?? FLOOR_ID;
 
