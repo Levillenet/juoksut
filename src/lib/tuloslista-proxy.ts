@@ -96,9 +96,10 @@ export async function proxyTuloslista(
     if (ageSec < ttl.edgeTtl + ttl.swrWindow) {
       bumpOriginCall("proxy_cache", path, "stale");
       if (cache) kickRefresh(originUrl, cacheKey, cache, ttlOf, path);
-      else kickRefreshMemoryOnly(originUrl, ttlOf, path);
+      else void getOrFetch(originUrl, cacheKey, cache, ttlOf, path);
       return jsonResponse(mem.body, "stale", ageSec);
     }
+
   }
 
   // 1b) Cloudflare Cache API osuma?
