@@ -86,15 +86,29 @@ export const probeTuloslista = createServerFn({ method: "POST" })
     }
   });
 
+export interface EndpointStatus {
+  ok: boolean;
+  status: number;
+  durationMs: number;
+  bodyBytes: number;
+  contentType: string | null;
+  reason: string | null;
+  checkedAt: string | null;
+}
+
 export interface MonitorSnapshot {
   blocked: boolean;
   blockReason: string | null;
   blockCheckedAt: string | null;
   blockSince: string | null;
   lastHarvestRunAt: string | null;
+  consecutiveResultFailures: number;
+  list: EndpointStatus | null;
+  results: EndpointStatus | null;
   recent: Array<{
     id: number;
     checkedAt: string;
+    endpoint: "list" | "results";
     ok: boolean;
     status: number;
     durationMs: number;
@@ -110,18 +124,60 @@ export const getMonitorSnapshot = createServerFn({ method: "GET" })
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const [{ data: state }, { data: log }] = await Promise.all([
-      supabaseAdmin
-        .from("harvest_state")
-        .select("blocked, block_reason, block_checked_at, block_since, last_run_at")
-        .eq("id", "singleton")
-        .maybeSingle(),
-      supabaseAdmin
-        .from("tuloslista_probe_log")
-        .select("id, checked_at, ok, status, duration_ms, body_bytes, content_type, reason")
-        .order("id", { ascending: false })
-        .limit(30),
-    ]);
+    const [{ data: state }, { data: log }, { data: latestList }, { data: latestResults }] =
+      await Promise.all([
+        supabaseAdmin
+          .from("harvest_state")
+          .select(
+            "blocked, block_reason, block_checked_at, block_since, last_run_at, consecutive_result_failures",
+          )
+          .eq("id", "singleton")
+          .maybeSingle(),
+        supabaseAdmin
+          .from("tuloslista_probe_log")
+          .select("id, checked_at, endpoint, ok, status, duration_ms, body_bytes, content_type, reason")
+          .order("id", { ascending: false })
+          .limit(60),
+        supabaseAdmin
+          .from("tuloslista_probe_log")
+          .select("checked_at, ok, status, duration_ms, body_bytes, content_type, reason")
+          .eq("endpoint", "list")
+          .order("id", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("tuloslista_probe_log")
+          .select("checked_at, ok, status, duration_ms, body_bytes, content_type, reason")
+          .eq("endpoint", "results")
+          .order("id", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+    const toStatus = (
+      row:
+        | {
+            checked_at: string | null;
+            ok: boolean | null;
+            status: number | null;
+            duration_ms: number | null;
+            body_bytes: number | null;
+            content_type: string | null;
+            reason: string | null;
+          }
+        | null,
+    ): EndpointStatus | null =>
+      row
+        ? {
+            ok: row.ok === true,
+            status: row.status ?? 0,
+            durationMs: row.duration_ms ?? 0,
+            bodyBytes: row.body_bytes ?? 0,
+            contentType: row.content_type ?? null,
+            reason: row.reason ?? null,
+            checkedAt: row.checked_at ?? null,
+          }
+        : null;
 
     return {
       blocked: state?.blocked === true,
@@ -129,9 +185,18 @@ export const getMonitorSnapshot = createServerFn({ method: "GET" })
       blockCheckedAt: state?.block_checked_at ?? null,
       blockSince: state?.block_since ?? null,
       lastHarvestRunAt: state?.last_run_at ?? null,
+      consecutiveResultFailures:
+        typeof state?.consecutive_result_failures === "number"
+          ? state.consecutive_result_failures
+          : 0,
+      list: toStatus(latestList as never),
+      results: toStatus(latestResults as never),
       recent: (log ?? []).map((r) => ({
         id: r.id as number,
         checkedAt: r.checked_at as string,
+        endpoint: ((r as { endpoint?: string }).endpoint === "results"
+          ? "results"
+          : "list") as "list" | "results",
         ok: r.ok as boolean,
         status: r.status as number,
         durationMs: r.duration_ms as number,
@@ -151,6 +216,7 @@ export const runMonitorNow = createServerFn({ method: "POST" })
     );
     return runTuloslistaMonitor();
   });
+
 
 export const setHarvesterBlocked = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
