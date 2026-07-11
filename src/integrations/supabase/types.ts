@@ -650,6 +650,10 @@ export type Database = {
       }
       harvest_state: {
         Row: {
+          block_checked_at: string | null
+          block_reason: string | null
+          block_since: string | null
+          blocked: boolean
           id: string
           last_run_at: string | null
           latest_id: number
@@ -657,6 +661,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          block_checked_at?: string | null
+          block_reason?: string | null
+          block_since?: string | null
+          blocked?: boolean
           id?: string
           last_run_at?: string | null
           latest_id?: number
@@ -664,6 +672,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          block_checked_at?: string | null
+          block_reason?: string | null
+          block_since?: string | null
+          blocked?: boolean
           id?: string
           last_run_at?: string | null
           latest_id?: number
@@ -1352,6 +1364,45 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tuloslista_probe_log: {
+        Row: {
+          body_bytes: number
+          body_preview: string | null
+          checked_at: string
+          content_type: string | null
+          duration_ms: number
+          id: number
+          ok: boolean
+          reason: string | null
+          status: number
+          user_agent: string | null
+        }
+        Insert: {
+          body_bytes?: number
+          body_preview?: string | null
+          checked_at?: string
+          content_type?: string | null
+          duration_ms: number
+          id?: number
+          ok: boolean
+          reason?: string | null
+          status: number
+          user_agent?: string | null
+        }
+        Update: {
+          body_bytes?: number
+          body_preview?: string | null
+          checked_at?: string
+          content_type?: string | null
+          duration_ms?: number
+          id?: number
+          ok?: boolean
+          reason?: string | null
+          status?: number
+          user_agent?: string | null
         }
         Relationships: []
       }

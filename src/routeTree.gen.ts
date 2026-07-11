@@ -52,6 +52,7 @@ import { Route as AdminClubLocationsRouteImport } from './routes/admin.club-loca
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
 import { Route as PlannerPlanIdGanttRouteImport } from './routes/planner.$planId.gantt'
+import { Route as ApiPublicHooksMonitorTuloslistaRouteImport } from './routes/api/public/hooks/monitor-tuloslista'
 import { Route as ApiPublicHooksHarvestResultsRouteImport } from './routes/api/public/hooks/harvest-results'
 import { Route as ApiPublicHooksHarvestKilpailukalenteriRouteImport } from './routes/api/public/hooks/harvest-kilpailukalenteri'
 import { Route as ApiPublicTuloslistaLiveV1CompetitionIndexRouteImport } from './routes/api/public/tuloslista/live/v1/competition/index'
@@ -274,6 +275,12 @@ const PlannerPlanIdGanttRoute = PlannerPlanIdGanttRouteImport.update({
   path: '/gantt',
   getParentRoute: () => PlannerPlanIdRoute,
 } as any)
+const ApiPublicHooksMonitorTuloslistaRoute =
+  ApiPublicHooksMonitorTuloslistaRouteImport.update({
+    id: '/api/public/hooks/monitor-tuloslista',
+    path: '/api/public/hooks/monitor-tuloslista',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksHarvestResultsRoute =
   ApiPublicHooksHarvestResultsRouteImport.update({
     id: '/api/public/hooks/harvest-results',
@@ -357,6 +364,7 @@ export interface FileRoutesByFullPath {
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
+  '/api/public/hooks/monitor-tuloslista': typeof ApiPublicHooksMonitorTuloslistaRoute
   '/api/public/tuloslista/live/v1/competition/$id': typeof ApiPublicTuloslistaLiveV1CompetitionIdRouteWithChildren
   '/api/public/tuloslista/live/v1/competition/': typeof ApiPublicTuloslistaLiveV1CompetitionIndexRoute
   '/api/public/tuloslista/live/v1/competition/$id/properties': typeof ApiPublicTuloslistaLiveV1CompetitionIdPropertiesRoute
@@ -405,6 +413,7 @@ export interface FileRoutesByTo {
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
+  '/api/public/hooks/monitor-tuloslista': typeof ApiPublicHooksMonitorTuloslistaRoute
   '/api/public/tuloslista/live/v1/competition/$id': typeof ApiPublicTuloslistaLiveV1CompetitionIdRouteWithChildren
   '/api/public/tuloslista/live/v1/competition': typeof ApiPublicTuloslistaLiveV1CompetitionIndexRoute
   '/api/public/tuloslista/live/v1/competition/$id/properties': typeof ApiPublicTuloslistaLiveV1CompetitionIdPropertiesRoute
@@ -457,6 +466,7 @@ export interface FileRoutesById {
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
+  '/api/public/hooks/monitor-tuloslista': typeof ApiPublicHooksMonitorTuloslistaRoute
   '/api/public/tuloslista/live/v1/competition/$id': typeof ApiPublicTuloslistaLiveV1CompetitionIdRouteWithChildren
   '/api/public/tuloslista/live/v1/competition/': typeof ApiPublicTuloslistaLiveV1CompetitionIndexRoute
   '/api/public/tuloslista/live/v1/competition/$id/properties': typeof ApiPublicTuloslistaLiveV1CompetitionIdPropertiesRoute
@@ -510,6 +520,7 @@ export interface FileRouteTypes {
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
     | '/api/public/hooks/harvest-results'
+    | '/api/public/hooks/monitor-tuloslista'
     | '/api/public/tuloslista/live/v1/competition/$id'
     | '/api/public/tuloslista/live/v1/competition/'
     | '/api/public/tuloslista/live/v1/competition/$id/properties'
@@ -558,6 +569,7 @@ export interface FileRouteTypes {
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
     | '/api/public/hooks/harvest-results'
+    | '/api/public/hooks/monitor-tuloslista'
     | '/api/public/tuloslista/live/v1/competition/$id'
     | '/api/public/tuloslista/live/v1/competition'
     | '/api/public/tuloslista/live/v1/competition/$id/properties'
@@ -609,6 +621,7 @@ export interface FileRouteTypes {
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
     | '/api/public/hooks/harvest-results'
+    | '/api/public/hooks/monitor-tuloslista'
     | '/api/public/tuloslista/live/v1/competition/$id'
     | '/api/public/tuloslista/live/v1/competition/'
     | '/api/public/tuloslista/live/v1/competition/$id/properties'
@@ -646,6 +659,7 @@ export interface RootRouteChildren {
   RoundEventIdRoundIdRoute: typeof RoundEventIdRoundIdRoute
   ApiPublicHooksHarvestKilpailukalenteriRoute: typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   ApiPublicHooksHarvestResultsRoute: typeof ApiPublicHooksHarvestResultsRoute
+  ApiPublicHooksMonitorTuloslistaRoute: typeof ApiPublicHooksMonitorTuloslistaRoute
   ApiPublicTuloslistaLiveV1CompetitionIdRoute: typeof ApiPublicTuloslistaLiveV1CompetitionIdRouteWithChildren
   ApiPublicTuloslistaLiveV1CompetitionIndexRoute: typeof ApiPublicTuloslistaLiveV1CompetitionIndexRoute
   ApiPublicTuloslistaLiveV1ResultsIdEventIdRoute: typeof ApiPublicTuloslistaLiveV1ResultsIdEventIdRoute
@@ -954,6 +968,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlannerPlanIdGanttRouteImport
       parentRoute: typeof PlannerPlanIdRoute
     }
+    '/api/public/hooks/monitor-tuloslista': {
+      id: '/api/public/hooks/monitor-tuloslista'
+      path: '/api/public/hooks/monitor-tuloslista'
+      fullPath: '/api/public/hooks/monitor-tuloslista'
+      preLoaderRoute: typeof ApiPublicHooksMonitorTuloslistaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/harvest-results': {
       id: '/api/public/hooks/harvest-results'
       path: '/api/public/hooks/harvest-results'
@@ -1123,6 +1144,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksHarvestKilpailukalenteriRoute:
     ApiPublicHooksHarvestKilpailukalenteriRoute,
   ApiPublicHooksHarvestResultsRoute: ApiPublicHooksHarvestResultsRoute,
+  ApiPublicHooksMonitorTuloslistaRoute: ApiPublicHooksMonitorTuloslistaRoute,
   ApiPublicTuloslistaLiveV1CompetitionIdRoute:
     ApiPublicTuloslistaLiveV1CompetitionIdRouteWithChildren,
   ApiPublicTuloslistaLiveV1CompetitionIndexRoute:

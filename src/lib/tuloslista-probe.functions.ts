@@ -27,13 +27,17 @@ export interface ProbeResult {
   error?: string;
 }
 
+async function assertAdmin(context: { supabase: { auth: { getUser: () => Promise<{ data: { user: { email?: string | null } | null } }> } } }): Promise<void> {
+  const { data: userData } = await context.supabase.auth.getUser();
+  const email = (userData.user?.email ?? "").toLowerCase();
+  if (email !== ADMIN_EMAIL) throw new Error("Forbidden");
+}
+
 export const probeTuloslista = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { path: string; uaPreset?: string; customUa?: string }) => input)
   .handler(async ({ data, context }): Promise<ProbeResult> => {
-    const { data: userData } = await context.supabase.auth.getUser();
-    const email = (userData.user?.email ?? "").toLowerCase();
-    if (email !== ADMIN_EMAIL) throw new Error("Forbidden");
+    await assertAdmin(context);
 
     let path = data.path.trim();
     if (!path.startsWith("/")) path = "/" + path;
@@ -80,4 +84,90 @@ export const probeTuloslista = createServerFn({ method: "POST" })
         error: e instanceof Error ? e.message : String(e),
       };
     }
+  });
+
+export interface MonitorSnapshot {
+  blocked: boolean;
+  blockReason: string | null;
+  blockCheckedAt: string | null;
+  blockSince: string | null;
+  lastHarvestRunAt: string | null;
+  recent: Array<{
+    id: number;
+    checkedAt: string;
+    ok: boolean;
+    status: number;
+    durationMs: number;
+    bodyBytes: number;
+    contentType: string | null;
+    reason: string | null;
+  }>;
+}
+
+export const getMonitorSnapshot = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<MonitorSnapshot> => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const [{ data: state }, { data: log }] = await Promise.all([
+      supabaseAdmin
+        .from("harvest_state")
+        .select("blocked, block_reason, block_checked_at, block_since, last_run_at")
+        .eq("id", "singleton")
+        .maybeSingle(),
+      supabaseAdmin
+        .from("tuloslista_probe_log")
+        .select("id, checked_at, ok, status, duration_ms, body_bytes, content_type, reason")
+        .order("id", { ascending: false })
+        .limit(30),
+    ]);
+
+    return {
+      blocked: state?.blocked === true,
+      blockReason: state?.block_reason ?? null,
+      blockCheckedAt: state?.block_checked_at ?? null,
+      blockSince: state?.block_since ?? null,
+      lastHarvestRunAt: state?.last_run_at ?? null,
+      recent: (log ?? []).map((r) => ({
+        id: r.id as number,
+        checkedAt: r.checked_at as string,
+        ok: r.ok as boolean,
+        status: r.status as number,
+        durationMs: r.duration_ms as number,
+        bodyBytes: r.body_bytes as number,
+        contentType: (r.content_type as string | null) ?? null,
+        reason: (r.reason as string | null) ?? null,
+      })),
+    };
+  });
+
+export const runMonitorNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { runTuloslistaMonitor } = await import(
+      "@/routes/api/public/hooks/monitor-tuloslista"
+    );
+    return runTuloslistaMonitor();
+  });
+
+export const setHarvesterBlocked = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { blocked: boolean; reason?: string }) => input)
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const nowIso = new Date().toISOString();
+    await supabaseAdmin
+      .from("harvest_state")
+      .update({
+        blocked: data.blocked,
+        block_reason: data.blocked ? (data.reason ?? "manuaalisesti asetettu") : null,
+        block_checked_at: nowIso,
+        block_since: data.blocked ? nowIso : null,
+        updated_at: nowIso,
+      })
+      .eq("id", "singleton");
+    return { ok: true };
   });
