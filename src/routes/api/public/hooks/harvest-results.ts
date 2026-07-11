@@ -30,6 +30,7 @@ type RunState = {
   source: CounterSource;
   rateLimited: boolean;
   lastApiMessage: string | null;
+  proxyOrigin: string | null;
 };
 
 const API_MESSAGE_PATTERNS: RegExp[] = [
@@ -143,11 +144,14 @@ async function fetchJson<T>(url: string, state: RunState): Promise<T | null> {
   const pathForCounter = url.startsWith(API)
     ? "/live/v1" + url.slice(API.length)
     : url;
+  const requestUrl = state.proxyOrigin
+    ? `${state.proxyOrigin}/api/public/tuloslista${pathForCounter}`
+    : url;
   try {
-    const r = await fetch(url, {
+    const r = await fetch(requestUrl, {
       headers: { "User-Agent": UA, accept: "application/json" },
     });
-    bumpOriginCall(state.source, pathForCounter, r.status);
+    if (!state.proxyOrigin) bumpOriginCall(state.source, pathForCounter, r.status);
     if (r.status === 429 || r.status === 503) {
       state.rateLimited = true;
       return null;
@@ -166,7 +170,7 @@ async function fetchJson<T>(url: string, state: RunState): Promise<T | null> {
     }
     return JSON.parse(text) as T;
   } catch {
-    bumpOriginCall(state.source, pathForCounter, 0);
+    if (!state.proxyOrigin) bumpOriginCall(state.source, pathForCounter, 0);
     return null;
   }
 }
@@ -617,7 +621,12 @@ async function run(request: Request): Promise<Response> {
   const idsParam = url.searchParams.get("ids");
   const isHotMode = url.searchParams.get("mode") === "hot" || idsParam != null;
   if (isHotMode) {
-    const state: RunState = { source: "hot_cycle", rateLimited: false, lastApiMessage: null };
+    const state: RunState = {
+      source: "hot_cycle",
+      rateLimited: false,
+      lastApiMessage: null,
+      proxyOrigin: url.origin,
+    };
     let hotIds: number[] = [];
     if (idsParam) {
       hotIds = Array.from(
@@ -711,7 +720,12 @@ async function run(request: Request): Promise<Response> {
   // Taustatyö: hae kisalista ja poimi uudet ID:t joita ei vielä ole
   // skannattu (done=false tai puuttuu kokonaan). Ei arvauksia, ei
   // revisit-kierroksia.
-  const state: RunState = { source: "harvester", rateLimited: false, lastApiMessage: null };
+  const state: RunState = {
+    source: "harvester",
+    rateLimited: false,
+    lastApiMessage: null,
+    proxyOrigin: url.origin,
+  };
   const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock");
   if (lockData !== true) {
     return Response.json({ ok: true, skipped: "locked" });
