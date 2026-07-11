@@ -1,14 +1,21 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertTriangle, CheckCircle2, RefreshCw, Power } from "lucide-react";
 
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { probeTuloslista, type ProbeResult } from "@/lib/tuloslista-probe.functions";
+import {
+  probeTuloslista,
+  getMonitorSnapshot,
+  runMonitorNow,
+  setHarvesterBlocked,
+  type ProbeResult,
+} from "@/lib/tuloslista-probe.functions";
+import { formatRelativeFi } from "@/lib/harvest-status";
 
 const ADMIN_EMAIL = "samiaavikko@gmail.com";
 
