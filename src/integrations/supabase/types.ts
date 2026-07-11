@@ -1579,6 +1579,7 @@ export type Database = {
           sample_count: number
         }[]
       }
+      get_hot_competition_ids: { Args: { _window?: string }; Returns: number[] }
       get_shared_athlete: {
         Args: { p_token: string }
         Returns: {
