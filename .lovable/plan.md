@@ -1,59 +1,41 @@
-# Live-tulosten nopeuttaminen: hot-sykli 15 s välein
+Laadin vastausviestin tuloslista.comille, jossa kerrotaan tehdyistä muutoksista. Korostetaan palvelimen reunavälimuistia (proxy + tietokantatason cache) ja kuvataan nykyinen hakumalli.
 
-## Tavoite
+## Viestin runko (suomeksi, ei ajatusviivoja)
 
-Kilpailut jotka ovat parhaillaan käynnissä (uusia tuloksia tippuu mutta ei ole vielä valmiita) saadaan 15 sekunnin viiveellä. Muut kilpailut pysyvät nykyisellä hitaammalla syklillä. Tuloslista.comin kuormitus pysyy maltillisena.
+**Otsikko:** Päivitys: kutsujen määrä ja hakumallin muutokset
 
-## Miten "kuuma kilpailu" tunnistetaan
+**1. Yhteenveto muutoksista**
+- Poistettu kaikki "puimuripyynnöt", joissa arvattiin kilpailun ID:tä. Ainoa lähde uusille ID:ille on nyt `/live/v1/competition`.
+- Vakiona käytössä yksi standardi User-Agent, ei satunnaisia selainstringejä.
+- Rakennettu palvelimen reunavälimuisti (kuvattu alla), joka koalisoi rinnakkaiset pyynnöt ja palvelee useimmat lukijat ilman origin-käyntiä.
+- Yökatko: kaikki taustakutsut pysähtyvät klo 21:00 ja käynnistyvät klo 09:00 Helsingin aikaa (sekä koodissa että pg_cron-aikatauluissa).
+- Aktiiviseurannan ("hot cycle") ehto tiukennettu: aktivoituu vain, kun joku käyttäjä oikeasti seuraa kilpailua tai sen urheilijaa, ja vain 5 min ennen alkua kunnes 2 h alkamisen jälkeen tai kunnes päivitykset loppuvat.
 
-Rajapinnasta ei tule "valmis"-lippua, joten johdetaan se kahdesta signaalista tietokannasta:
+**2. Palvelimen reunavälimuisti (pääosa liikenteestä)**
+Kuvaus kolmen tason cachesta selaimen ja tuloslistan välillä:
+- Taso 1: isolate-muisti (LRU, 500 avainta), ~1 ms vasteaika lämpimissä isolaateissa.
+- Taso 2: Cloudflare Cache API per-URL, jaettu reunan sisällä (kun ajoympäristö tukee).
+- Taso 3: Postgres-pohjainen varavälimuisti (`tuloslista_proxy_cache`) niitä ajoympäristöjä varten, joissa Cache API ei ole käytettävissä. Varmistaa, että taustaharvesteri ja SSR-lukijat jakavat saman rungon.
+- Single-flight-koalisaatio: samanaikaiset osumat samaan URL:iin yhdistetään yhdeksi origin-pyynnöksi.
+- Stale-while-revalidate: hieman vanhentunut vastaus palautetaan välittömästi, tuore versio haetaan taustalla.
+- Circuit breaker: 429/503/timeout avaa katkaisijan 60 sekunniksi ja palauttaa viimeisen tunnetun tuloksen.
+- Per-endpoint TTL-strategiat: kilpailulista 60 s, kisan properties 300 s, aikataulu 30 s, tulokset johdetaan Rounds-statuksesta (Progress 8 s, Official 300 s).
 
-1. Kilpailu on tullut tuloslistaan (`harvest_competitions.exists_in_source = true`) eikä ole vielä merkitty valmiiksi käsitellyksi (`done = false`).
-2. Sinne on tullut uusi tai päivittynyt tulos viimeisen 30 minuutin sisällä (`athlete_results.captured_at` päivittyy joka upsertissa).
+**3. Nykyinen hakumalli**
+- **Käyttäjien pyynnöt** menevät oman domainin proxy-reitin kautta `/api/public/tuloslista/live/v1/...`, eivät suoraan tuloslistalle. Selain ei koskaan puhu suoraan originin kanssa.
+- **Taustaharvesteri** ajaa 5 min välein klo 09:00 - 21:00 ja hakee vain päivän kilpailulistan, sitten kunkin listalta löytyvän aktiivisen kilpailun aikataulun ja tulokset. Ei ID-arvausta, ei 404-koettelua.
+- **Hot cycle (15 s)** ajaa vain, kun päivän kilpailulla on aktiivinen seuraaja. Kilpailu tippuu automaattisesti pois heti kun tulokset loppuvat.
+- **Monitor-tehtävä** tunnistaa tuloslistan rajoitusviestit vastauksen rungosta ja tallentaa ne omalle admin-näkymälle, joten reagoimme heti eikä viiveellä.
+- **Lokitus:** jokainen origin-kutsu ja välimuistiosuma kirjataan `origin_call_daily`-tauluun (lähde, polkutyyppi, status). Näemme päivittäisen määrän jälkikäteen ja voimme raportoida.
 
-Kilpailu "jäähtyy" pois hot-listalta automaattisesti heti kun 30 minuuttiin ei ole tullut mitään uutta, jolloin se palaa normaalille tausta-syklille eikä kuormita turhaan.
+**4. Mitä tämä tarkoittaa käytännössä**
+- Käyttäjämäärän kasvaessa origin-kutsut eivät kasva lineaarisesti, koska proxy palvelee suurimman osan lukijoista välimuistista.
+- Yöaikaan (21 - 09) origin-kutsuja ei tule lainkaan.
+- Kaikki jäljellä olevat origin-kutsut ovat joko välimuistin virkistyksiä TTL:n mukaisesti tai päivän hot-kilpailun 15 s pollausta seurantakäyttäjille.
 
-## Toteutus
+**5. Yhteydenpito**
+Pyydetään ilmoittamaan, jos he näkevät edelleen epätoivottua kuormaa tai osoittamaan URL-polku, jonka he haluaisivat harvempaan tahtiin, niin säädämme TTL:n välittömästi.
 
-**1. Harvesteriin uusi "hotlist"-tila**
+## Toimitus
 
-`harvest-results.ts` osaa jo ottaa `fromId/toId`-parametrit yhtenäiselle ID-välille. Lisätään rinnalle `?ids=1,2,3` joka
-- käsittelee vain annetut ID:t
-- ohittaa raskaan revisit-logiikan
-- ei liikuta `harvest_state`-kursoria (tausta-sykli hoitaa sen)
-- kirjoittaa tulokset normaalisti `athlete_results`iin
-
-**2. Erillinen advisory-lukko hot-syklille**
-
-Nykyinen lukko `harvest-tuloslista` estää päällekkäiset ajot. Hot-syklille tehdään oma lukko `harvest-tuloslista-hot`, jotta se ja hidas tausta-sykli voivat pyöriä rinnakkain estämättä toisiaan.
-
-**3. Uusi pg_cron -jobi 15 s välein**
-
-Uusi tietokantafunktio joka
-- lukee hot-listan yllä olevalla kyselyllä
-- jos lista on tyhjä, ei tee mitään (ei turhaa kutsua)
-- jos harvester on estotilassa (`harvest_state.blocked = true`), ei tee mitään
-- muuten POSTaa `/api/public/hooks/harvest-results?ids=...`
-
-Ajastetaan pg_cronilla 15 s välein (sub-minute-syntaksi).
-
-**4. Indeksi kuumakyselyn nopeuttamiseen**
-
-```
-CREATE INDEX idx_athlete_results_comp_captured
-  ON athlete_results (competition_id, captured_at DESC);
-```
-
-**5. Killswitch koskee myös hot-sykliä**
-
-Sama `blocked`-lippu joka pysäyttää nykyisen harvesterin pysäyttää myös hot-syklin. Jos monitori havaitsee eston, hot-sykli lopettaa kutsut automaattisesti.
-
-## Mitä käyttäjä näkee
-
-- Kun kilpailun tuloksia aletaan syöttää tuloslistaan, viive `athlete_results`iin ja livenäytölle putoaa nykyisestä 2–5 minuutista noin 15–30 sekuntiin.
-- Kun kilpailu hiljenee (30 min ilman uutta tulosta), se putoaa automaattisesti tausta-syklille.
-- Estotilanteessa hot-sykli pysähtyy ensimmäisenä, joten emme jyskytä rajapintaa.
-
-## Rehellisyyden nimissä
-
-Meidän 15 s ei tarkoita 15 s viivettä käyttäjälle vaan sitä että emme ole itse pullonkaula. Tulos ilmestyy meille sen jälkeen kun toimitsija on syöttänyt sen ja tuloslista on julkaissut sen omassa rajapinnassaan. Kokonaisviive aktiiviselle kilpailulle on todennäköisesti 20–60 s, mikä riittää liveticker- ja kuuluttajakäyttöön mutta ei sekuntikellon korvaajaksi.
+Kirjoitan viestin plain-text muodossa chattiin (ei koodimuutoksia), josta voit kopioida sen sähköpostiin. En koske koodiin tässä tehtävässä.
