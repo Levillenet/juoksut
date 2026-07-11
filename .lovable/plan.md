@@ -1,52 +1,59 @@
-## Ongelma
+# Live-tulosten nopeuttaminen: hot-sykli 15 s välein
 
-Nykyinen valvonta ja `/admin/tuloslista-probe` testaavat vain kilpailulista-endpointtia (`cached-public-api.tuloslista.com/live/v1/competition`). Se palauttaa 200 OK jopa nyt, koska välimuisti (`x-cache-status: HIT`) tarjoilee vanhaa kopiota. **Data ei silti valu sisään** koska harvesteri kysyy toista endpointtia — yksittäisen kilpailun tulokset — ja siihen esto (tai muu vika) on edelleen päällä: viimeisin todellinen tulostallennus oli 2026-07-09 20:46 UTC, ja kaikki tämän jälkeiset skannaukset ovat palauttaneet tyhjän.
+## Tavoite
 
-Valvonta antaa siis väärän vihreän valon.
+Kilpailut jotka ovat parhaillaan käynnissä (uusia tuloksia tippuu mutta ei ole vielä valmiita) saadaan 15 sekunnin viiveellä. Muut kilpailut pysyvät nykyisellä hitaammalla syklillä. Tuloslista.comin kuormitus pysyy maltillisena.
 
-## Ratkaisu
+## Miten "kuuma kilpailu" tunnistetaan
 
-Laajenna valvontaa mittaamaan **molemmat endpointit**, ja käytä results-endpointin tulosta harvesterin auto-eston signaalina.
+Rajapinnasta ei tule "valmis"-lippua, joten johdetaan se kahdesta signaalista tietokannasta:
 
-### 1. Probe-funktio: kaksi tarkistusta
+1. Kilpailu on tullut tuloslistaan (`harvest_competitions.exists_in_source = true`) eikä ole vielä merkitty valmiiksi käsitellyksi (`done = false`).
+2. Sinne on tullut uusi tai päivittynyt tulos viimeisen 30 minuutin sisällä (`athlete_results.captured_at` päivittyy joka upsertissa).
 
-Kutakin monitor-ajoa kohti tehdään kaksi kyselyä samalla harvester-User-Agentilla:
+Kilpailu "jäähtyy" pois hot-listalta automaattisesti heti kun 30 minuuttiin ei ole tullut mitään uutta, jolloin se palaa normaalille tausta-syklille eikä kuormita turhaan.
 
-- **A. Lista** (nykyinen): `cached-public-api.tuloslista.com/live/v1/competition`. Kertoo onko listaväylä auki.
-- **B. Tulokset** (uusi): valitaan tietokannasta viimeisin `harvest_competitions`-rivi jolla `exists_in_source=true` ja tuoreehko `competition_date`, ja kysytään sen tuloksia samasta origin-hostista josta harvesteri niitä hakee. Onnistumiskriteeri: HTTP 200, JSON, kohtuullinen tavu- tai rivimäärä.
+## Toteutus
 
-Jos DB:ssä ei ole sopivaa viitekilpailua, käytetään yhtä kovakoodattua tunnettua kilpailu-ID:tä varaparina.
+**1. Harvesteriin uusi "hotlist"-tila**
 
-### 2. Loki: erottele endpointit
+`harvest-results.ts` osaa jo ottaa `fromId/toId`-parametrit yhtenäiselle ID-välille. Lisätään rinnalle `?ids=1,2,3` joka
+- käsittelee vain annetut ID:t
+- ohittaa raskaan revisit-logiikan
+- ei liikuta `harvest_state`-kursoria (tausta-sykli hoitaa sen)
+- kirjoittaa tulokset normaalisti `athlete_results`iin
 
-Lisätään `tuloslista_probe_log`-tauluun sarake `endpoint` (`list` / `results`) ja tallennetaan molemmat rivit joka ajolla. UI näyttää molemmat sarakkeet omissa taulukoissaan / erillisillä tilakorteilla.
+**2. Erillinen advisory-lukko hot-syklille**
 
-### 3. Auto-esto perustuu results-endpointtiin
+Nykyinen lukko `harvest-tuloslista` estää päällekkäiset ajot. Hot-syklille tehdään oma lukko `harvest-tuloslista-hot`, jotta se ja hidas tausta-sykli voivat pyöriä rinnakkain estämättä toisiaan.
 
-`harvest_state.blocked` päälle silloin kun **results-probe** epäonnistuu peräkkäin (esim. 2 kertaa peräkkäin ei-200 / tyhjä / verkkovirhe). Lista-proben epäonnistuminen näytetään UI:ssa, mutta se ei yksin katkaise harvesteria (koska välimuisti voi palauttaa vanhaa dataa tai lista voi olla kunnossa vaikka results olisi rikki).
+**3. Uusi pg_cron -jobi 15 s välein**
 
-Auto-purku kun results-probe onnistuu.
+Uusi tietokantafunktio joka
+- lukee hot-listan yllä olevalla kyselyllä
+- jos lista on tyhjä, ei tee mitään (ei turhaa kutsua)
+- jos harvester on estotilassa (`harvest_state.blocked = true`), ei tee mitään
+- muuten POSTaa `/api/public/hooks/harvest-results?ids=...`
 
-### 4. UI-muutokset `/admin/tuloslista-probe`
+Ajastetaan pg_cronilla 15 s välein (sub-minute-syntaksi).
 
-- Kaksi tilakorttia rinnakkain: "Kilpailulista" ja "Kilpailun tulokset" (kumpikin: vihreä/punainen, viimeisin status, kesto, tavut, `x-cache-status`).
-- "Tarkista nyt" ajaa molemmat.
-- Loki-taulukko sarakkeella `Endpoint`.
-- Selkeä huomautus: harvesterin auto-esto reagoi vain results-endpointtiin.
+**4. Indeksi kuumakyselyn nopeuttamiseen**
 
-### 5. Aja välittömästi käsin
+```
+CREATE INDEX idx_athlete_results_comp_captured
+  ON athlete_results (competition_id, captured_at DESC);
+```
 
-Ensimmäisen deployn jälkeen käynnistetään monitor-hook kerran käsin, jotta näet heti näkyykö results-endpointille vielä esto vai onko sekin auennut. Jos results toimii, harvesteri poimii datan seuraavassa cron-ajossa itsestään.
+**5. Killswitch koskee myös hot-sykliä**
 
-## Tekniset kohdat
+Sama `blocked`-lippu joka pysäyttää nykyisen harvesterin pysäyttää myös hot-syklin. Jos monitori havaitsee eston, hot-sykli lopettaa kutsut automaattisesti.
 
-- Uusi kolumni: `ALTER TABLE public.tuloslista_probe_log ADD COLUMN endpoint text NOT NULL DEFAULT 'list'`. Vanhat rivit merkitään `list`.
-- `src/routes/api/public/hooks/monitor-tuloslista.ts`: kaksi peräkkäistä fetchia, molemmat kirjataan omalla `endpoint`-arvolla.
-- Auto-eston laskuri: kirjataan `harvest_state.consecutive_result_failures` (uusi kolumni int) ja lauetaan `blocked=true` kun >= 2. Onnistunut results-probe nollaa laskurin ja purkaa eston.
-- `src/lib/tuloslista-probe.functions.ts`: palauta viimeisimmät rivit sekä `list`- että `results`-suodatuksella; laajenna manuaalitesti tekemään molemmat kyselyt.
-- `src/routes/admin.tuloslista-probe.tsx`: kaksi tilakorttia ja endpoint-sarake taulukkoon.
+## Mitä käyttäjä näkee
 
-## Mitä ei muuteta
+- Kun kilpailun tuloksia aletaan syöttää tuloslistaan, viive `athlete_results`iin ja livenäytölle putoaa nykyisestä 2–5 minuutista noin 15–30 sekuntiin.
+- Kun kilpailu hiljenee (30 min ilman uutta tulosta), se putoaa automaattisesti tausta-syklille.
+- Estotilanteessa hot-sykli pysähtyy ensimmäisenä, joten emme jyskytä rajapintaa.
 
-- Nykyisen harvesterin kyselyreittiä ei muuteta.
-- `harvest-results.ts`-eston tarkistuslogiikkaa ei muuteta (lukee edelleen `harvest_state.blocked`).
+## Rehellisyyden nimissä
+
+Meidän 15 s ei tarkoita 15 s viivettä käyttäjälle vaan sitä että emme ole itse pullonkaula. Tulos ilmestyy meille sen jälkeen kun toimitsija on syöttänyt sen ja tuloslista on julkaissut sen omassa rajapinnassaan. Kokonaisviive aktiiviselle kilpailulle on todennäköisesti 20–60 s, mikä riittää liveticker- ja kuuluttajakäyttöön mutta ei sekuntikellon korvaajaksi.
