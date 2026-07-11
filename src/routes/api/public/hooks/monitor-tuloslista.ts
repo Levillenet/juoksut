@@ -36,8 +36,10 @@ interface ProbeOutcome extends Verdict {
   bodyBytes: number;
   contentType: string | null;
   bodyPreview: string;
+  bodyFull: string;
   url: string;
 }
+
 
 // Fraaseja, joilla tuloslista.com kertoo palvelusta / rajoituksista.
 // Uusia lisätään heti kun huomataan.
