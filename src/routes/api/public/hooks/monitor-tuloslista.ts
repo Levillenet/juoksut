@@ -11,7 +11,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 const PROBE_URL =
   "https://cached-public-api.tuloslista.com/live/v1/competition";
 const UA = "juoksut-harvester/1.0 (+https://tulokset.online)";
-const MIN_OK_BYTES = 1000; // täysi lista on kymmeniä KB; estoviestit ovat pieniä
+const MIN_OK_BYTES = 1000;
 const TIMEOUT_MS = 12_000;
 const KEEP_LOG_ROWS = 500;
 
@@ -42,7 +42,14 @@ function classify(
   return { ok: true, reason: null };
 }
 
-async function run(): Promise<Response> {
+export async function runTuloslistaMonitor(): Promise<{
+  ok: boolean;
+  reason: string | null;
+  status: number;
+  durationMs: number;
+  bodyBytes: number;
+  transition: "none" | "blocked" | "unblocked";
+}> {
   const started = Date.now();
   let status = 0;
   let contentType: string | null = null;
@@ -65,11 +72,10 @@ async function run(): Promise<Response> {
   }
 
   const duration = Date.now() - started;
-  const verdict = fetchError
+  const verdict: Verdict = fetchError
     ? { ok: false, reason: `verkkovirhe: ${fetchError}` }
     : classify(status, contentType, body);
 
-  // Hae aiempi tila jotta tiedämme siirrymmekö block/unblock -tilaan
   const { data: prev } = await supabaseAdmin
     .from("harvest_state")
     .select("blocked, block_since")
@@ -77,6 +83,7 @@ async function run(): Promise<Response> {
     .maybeSingle();
 
   const wasBlocked = prev?.blocked === true;
+  const prevSince = prev?.block_since ?? null;
   const nowIso = new Date().toISOString();
 
   await supabaseAdmin
@@ -87,8 +94,8 @@ async function run(): Promise<Response> {
       block_checked_at: nowIso,
       block_since: verdict.ok
         ? null
-        : wasBlocked && prev?.block_since
-          ? prev.block_since
+        : wasBlocked && prevSince
+          ? prevSince
           : nowIso,
       updated_at: nowIso,
     })
@@ -105,8 +112,7 @@ async function run(): Promise<Response> {
     user_agent: UA,
   });
 
-  // Karsi vanhat lokirivit
-  await supabaseAdmin.rpc("noop_placeholder").catch(() => undefined);
+  // Karsi vanhat lokirivit: pidä uusimmat KEEP_LOG_ROWS.
   const { data: cutoffRow } = await supabaseAdmin
     .from("tuloslista_probe_log")
     .select("id")
@@ -120,21 +126,28 @@ async function run(): Promise<Response> {
       .lte("id", cutoffRow.id);
   }
 
-  return Response.json({
+  const transition: "none" | "blocked" | "unblocked" =
+    wasBlocked === !verdict.ok
+      ? "none"
+      : verdict.ok
+        ? "unblocked"
+        : "blocked";
+
+  return {
     ok: verdict.ok,
     reason: verdict.reason,
     status,
     durationMs: duration,
     bodyBytes: body.length,
-    transition: wasBlocked === !verdict.ok ? "none" : verdict.ok ? "unblocked" : "blocked",
-  });
+    transition,
+  };
 }
 
 export const Route = createFileRoute("/api/public/hooks/monitor-tuloslista")({
   server: {
     handlers: {
-      POST: async () => run(),
-      GET: async () => run(),
+      POST: async () => Response.json(await runTuloslistaMonitor()),
+      GET: async () => Response.json(await runTuloslistaMonitor()),
     },
   },
 });
