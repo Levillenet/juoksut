@@ -119,8 +119,8 @@ function Page() {
               <div className="text-sm font-semibold">
                 {snap
                   ? snap.blocked
-                    ? "Harvesteri pysäytetty: rajapinta ei vastaa normaalisti"
-                    : "Rajapinta toimii, harvesteri käynnissä"
+                    ? "Harvesteri pysäytetty: tulos-rajapinta ei vastaa"
+                    : "Harvesteri käynnissä"
                   : "Ladataan valvonnan tilaa…"}
               </div>
               {snap?.blocked && snap.blockReason && (
@@ -135,6 +135,9 @@ function Page() {
                 )}
                 {snap?.lastHarvestRunAt && (
                   <> · harvesteri viimeksi {formatRelativeFi(new Date(snap.lastHarvestRunAt), now)}</>
+                )}
+                {snap && snap.consecutiveResultFailures > 0 && (
+                  <> · peräkkäisiä tulos-epäonnistumisia: {snap.consecutiveResultFailures}</>
                 )}
               </div>
             </div>
@@ -173,6 +176,29 @@ function Page() {
           </div>
         </section>
 
+        {snap && (
+          <section className="grid gap-3 sm:grid-cols-2">
+            <EndpointCard
+              title="Kilpailulista"
+              subtitle="/live/v1/competition (välimuistin kautta)"
+              status={snap.list}
+              now={now}
+            />
+            <EndpointCard
+              title="Kilpailun tulokset"
+              subtitle="/live/v1/competition/{id}/properties (auto-eston signaali)"
+              status={snap.results}
+              now={now}
+            />
+          </section>
+        )}
+
+        <p className="text-xs text-muted-foreground">
+          Harvesterin auto-esto reagoi vain tulos-endpointtiin. Lista-endpoint
+          voi palauttaa 200 OK välimuistista silloinkin, kun tulokset eivät ole
+          saatavilla.
+        </p>
+
         {snap && snap.recent.length > 0 && (
           <details className="rounded-lg border bg-card p-3 text-sm" open>
             <summary className="cursor-pointer font-semibold">
@@ -183,6 +209,7 @@ function Page() {
                 <thead className="text-left text-muted-foreground">
                   <tr>
                     <th className="py-1 pr-2">Aika</th>
+                    <th className="py-1 pr-2">Endpoint</th>
                     <th className="py-1 pr-2">Tila</th>
                     <th className="py-1 pr-2">HTTP</th>
                     <th className="py-1 pr-2">Kesto</th>
@@ -195,6 +222,9 @@ function Page() {
                     <tr key={r.id} className="border-t">
                       <td className="py-1 pr-2 whitespace-nowrap">
                         {formatRelativeFi(new Date(r.checkedAt), now)}
+                      </td>
+                      <td className="py-1 pr-2">
+                        {r.endpoint === "results" ? "tulokset" : "lista"}
                       </td>
                       <td className="py-1 pr-2">
                         {r.ok ? (
@@ -214,6 +244,7 @@ function Page() {
             </div>
           </details>
         )}
+
 
         <p className="text-sm text-muted-foreground">
           Manuaalinen testi: yksi suora kutsu osoitteeseen{" "}
