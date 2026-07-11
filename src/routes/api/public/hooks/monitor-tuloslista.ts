@@ -211,6 +211,9 @@ export interface MonitorRunResult {
   };
   transition: "none" | "blocked" | "unblocked";
   consecutiveResultFailures: number;
+  apiMessage: string | null;
+  apiMessageEndpoint: "list" | "results" | null;
+
 }
 
 export async function runTuloslistaMonitor(): Promise<MonitorRunResult> {
