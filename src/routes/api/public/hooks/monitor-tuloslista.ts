@@ -135,6 +135,8 @@ async function runProbe(path: string, minBytes: number): Promise<ProbeOutcome> {
     fetchError = e instanceof Error ? e.message : String(e);
   }
 
+  bumpOriginCall("monitor", path, status);
+
   const duration = Date.now() - started;
   const verdict: Verdict = fetchError
     ? { ok: false, reason: `verkkovirhe: ${fetchError}` }
