@@ -15,6 +15,8 @@
 // KV/Durable Objects ei käytössä v1:ssä — Cache API riittää.
 // Jos haluamme jakaa cachea edgejen välillä, lisätään KV myöhemmin.
 
+import { bumpOriginCall } from "@/lib/origin-call-counter";
+
 const ORIGIN = "https://cached-public-api.tuloslista.com";
 
 export interface TtlConfig {
