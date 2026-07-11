@@ -8,10 +8,11 @@ export const Route = createFileRoute(
 )({
   server: {
     handlers: {
-      GET: async ({ params }) => {
+      GET: async ({ params, request }) => {
         return proxyTuloslista(
           `/live/v1/results/${params.id}/${params.eventId}`,
           resultsTtl,
+          request,
         );
       },
     },
