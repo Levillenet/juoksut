@@ -288,6 +288,12 @@ function Page() {
             >
               Aikataulun suunnittelija →
             </Link>
+            <Link
+              to="/admin/tuloslista-probe"
+              className="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-secondary"
+            >
+              Tuloslista-testi →
+            </Link>
           </div>
           <div className="flex shrink-0 gap-0.5 rounded-full border border-border bg-card p-0.5 text-[11px] font-medium">
             {(["analytics", "durations"] as const).map((t) => (
