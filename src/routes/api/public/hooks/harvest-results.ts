@@ -574,7 +574,9 @@ async function harvestIds(
           done: true,
           last_scanned_at: nowIso,
           first_scanned_at: firstSeenMap.get(e.id) ?? nowIso,
+          last_event_date: v.lastEventDate ?? null,
         });
+
       }
       if (r.status === "rejected") console.error("comp", e.id, r.reason);
     }
