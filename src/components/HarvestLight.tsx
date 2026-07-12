@@ -59,26 +59,24 @@ export function HarvestLight() {
   const lastCap = data.lastCapturedAt ? new Date(data.lastCapturedAt) : null;
   const runStale = !lastRun || now.getTime() - lastRun.getTime() > RUN_STALE_MS;
   const captureFresh = !!lastCap && now.getTime() - lastCap.getTime() < RUN_STALE_MS;
-  // API on ok jos ajastin on tuore TAI tuloksia on tullut hiljattain
-  // (käyttäjävetoinen hot-cycle voi tuottaa rivejä ilman että cron-ajo päivittää last_run_at).
-  const apiOk = !data.blocked && (!runStale || captureFresh);
 
   // Tila:
-  //  - red: API pois pelistä tai ajo pysähtynyt eikä tuloksiakaan tule
-  //  - yellow: API ok mutta aktiivinen kisa ei tuota tuloksia
-  //  - green: API ok, ei aktiivista kisaa TAI tuoreita tuloksia
+  //  - red: haku suljettu, tai kisa käynnissä eikä mitään tule
+  //  - yellow: kisa käynnissä, tuloksia odotellaan
+  //  - green: muutoin (esim. ei kisoja tänään, tai tuoreita tuloksia tulee)
   let status: "green" | "yellow" | "red" = "green";
   let label = "Tulokset päivittyvät normaalisti";
 
-  if (!apiOk) {
+  if (data.blocked) {
     status = "red";
-    label = data.blocked
-      ? "Tulosten haku on tilapäisesti suljettu"
-      : "Tulospalvelu ei ole vastannut hetkeen";
-
+    label = "Tulosten haku on tilapäisesti suljettu";
   } else if (data.anyCompetitionToday) {
+    const apiOk = !runStale || captureFresh;
     const resultStale = !lastCap || now.getTime() - lastCap.getTime() > RESULT_STALE_MS;
-    if (resultStale) {
+    if (!apiOk && resultStale) {
+      status = "red";
+      label = "Tulospalvelu ei ole vastannut hetkeen";
+    } else if (resultStale) {
       status = "yellow";
       label = "Kisa käynnissä, tuloksia odotellaan";
     } else {
@@ -87,7 +85,7 @@ export function HarvestLight() {
     }
   } else {
     status = "green";
-    label = "Tulokset päivittyvät normaalisti";
+    label = "Ei kisoja käynnissä";
   }
 
 
