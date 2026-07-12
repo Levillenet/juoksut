@@ -279,6 +279,68 @@ export async function fetchDailyBestForAthletes(
   return result;
 }
 
+export interface TodayOwnResultRow {
+  event_name: string;
+  age_class: string;
+  sub_category: string;
+  event_category: string;
+  result_text: string;
+  result_numeric: number | null;
+  result_rank: number | null;
+  was_pb: boolean | null;
+  was_district_record: boolean | null;
+  competition_id: number;
+  competition_name: string;
+  event_id: number;
+  result_round_name: string;
+  captured_at: string;
+}
+
+/**
+ * Today's own results per watched athlete, across ALL competitions.
+ * Returns map: athleteKey → rows sorted by captured_at asc.
+ */
+export async function fetchTodayOwnResultsForAthletes(
+  athleteKeys: string[],
+): Promise<Record<string, TodayOwnResultRow[]>> {
+  if (athleteKeys.length === 0) return {};
+  const { startISO, endISO } = helsinkiDayBounds(new Date());
+  const { data, error } = await supabase
+    .from("athlete_results")
+    .select(
+      "athlete_key, event_name, age_class, sub_category, event_category, result_text, result_numeric, result_rank, was_pb, was_district_record, competition_id, competition_name, event_id, result_round_name, captured_at",
+    )
+    .in("athlete_key", athleteKeys)
+    .gte("captured_at", startISO)
+    .lt("captured_at", endISO);
+  if (error) throw error;
+  const result: Record<string, TodayOwnResultRow[]> = {};
+  const rows = ((data ?? []) as (TodayOwnResultRow & { athlete_key: string })[])
+    .filter((r) => !isRoadOrCrossCountry(r));
+  for (const r of rows) {
+    (result[r.athlete_key] ??= []).push({
+      event_name: r.event_name,
+      age_class: r.age_class,
+      sub_category: r.sub_category,
+      event_category: r.event_category,
+      result_text: r.result_text,
+      result_numeric: r.result_numeric,
+      result_rank: r.result_rank,
+      was_pb: r.was_pb,
+      was_district_record: r.was_district_record,
+      competition_id: r.competition_id,
+      competition_name: r.competition_name,
+      event_id: r.event_id,
+      result_round_name: r.result_round_name,
+      captured_at: r.captured_at,
+    });
+  }
+  for (const k of Object.keys(result)) {
+    result[k].sort((a, b) => a.captured_at.localeCompare(b.captured_at));
+  }
+  return result;
+}
+
 function reduceBest(rows: DailyBestRow[]): DailyBestRow[] {
   // Step 1: per (competition, event, age) keep the official winner from
   // tuloslista — the row with the lowest result_rank. This avoids guessing
