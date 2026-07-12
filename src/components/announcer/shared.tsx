@@ -380,19 +380,15 @@ export function EventCard({
               const rank = a.ResultRank ?? (isTrack ? null : a.Position);
               const badgeValue = isTrack ? a.Position : rank;
               const change = rankChanges.get(a.AllocId);
-              const eff = a.Result
-                ? effectiveRecord(round.EventId, a, {
-                    competitionId,
-                    athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
-                    eventName: round.EventName,
-                    ageClass: round.GroupName,
-                    category: round.Category,
-                  })
-                : null;
+              const eff = effectiveRecord(round.EventId, a, {
+                competitionId,
+                athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
+                eventName: round.EventName,
+                ageClass: round.GroupName,
+                category: round.Category,
+              });
               const recordKind =
-                a.Result && eff
-                  ? detectRecord(round.Category, a.Result, eff.pb, eff.sb)
-                  : null;
+                a.Result ? detectRecord(round.Category, a.Result, eff.pb, eff.sb) : null;
               return (
                 <li
                   key={a.AllocId}
@@ -475,8 +471,8 @@ export function EventCard({
                       </>
                     ) : (
                       <span className="flex gap-2 text-xs text-muted-foreground">
-                        {a.SB && <span title="Kauden ennätys">SB {a.SB}</span>}
-                        {a.PB && <span title="Oma ennätys">PB {a.PB}</span>}
+                        {eff.pb && <span title="Oma ennätys">PB {eff.pb}</span>}
+                        {eff.sb && eff.sb !== eff.pb && <span title="Kauden ennätys">SB {eff.sb}</span>}
                       </span>
                     )}
                     {round.Category === "Field" && !a.NotInCompetition && (() => {
@@ -549,17 +545,15 @@ function AllocationRow({
         ? a.HeatRank
         : a.Position;
 
-  const eff = a.Result
-    ? effectiveRecord(round.EventId, a, {
-        competitionId,
-        athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
-        eventName: round.EventName,
-        ageClass: round.GroupName,
-        category: round.Category,
-      })
-    : null;
+  const eff = effectiveRecord(round.EventId, a, {
+    competitionId,
+    athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
+    eventName: round.EventName,
+    ageClass: round.GroupName,
+    category: round.Category,
+  });
   const recordKind =
-    a.Result && eff ? detectRecord(round.Category, a.Result, eff.pb, eff.sb) : null;
+    a.Result ? detectRecord(round.Category, a.Result, eff.pb, eff.sb) : null;
   return (
     <li
       className={`flex items-start gap-2 rounded px-2 py-1 text-sm ${
@@ -592,8 +586,8 @@ function AllocationRow({
             <span className="shrink-0 font-bold tabular-nums">{a.Result}</span>
           ) : (
             <span className="flex shrink-0 gap-2 text-xs text-muted-foreground">
-              {a.SB && <span title="Kauden ennätys">SB {a.SB}</span>}
-              {a.PB && <span title="Oma ennätys">PB {a.PB}</span>}
+              {eff.pb && <span title="Oma ennätys">PB {eff.pb}</span>}
+              {eff.sb && eff.sb !== eff.pb && <span title="Kauden ennätys">SB {eff.sb}</span>}
             </span>
           )}
         </div>

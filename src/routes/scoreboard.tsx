@@ -769,16 +769,16 @@ function ScoreRow({
           </span>
         ) : null}
         {row.Organization?.Name ?? row.Organization?.NameShort ?? ""}
-        {row.SB ? (
-          <span className="ml-2">
-            <span className="opacity-60">SB</span>{" "}
-            <span className="font-semibold tabular-nums">{row.SB}</span>
-          </span>
-        ) : null}
-        {row.PB ? (
+        {eff.pb ? (
           <span className="ml-2">
             <span className="opacity-60">PB</span>{" "}
-            <span className="font-semibold tabular-nums">{row.PB}</span>
+            <span className="font-semibold tabular-nums">{eff.pb}</span>
+          </span>
+        ) : null}
+        {eff.sb && eff.sb !== eff.pb ? (
+          <span className="ml-2">
+            <span className="opacity-60">SB</span>{" "}
+            <span className="font-semibold tabular-nums">{eff.sb}</span>
           </span>
         ) : null}
       </p>
