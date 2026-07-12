@@ -307,9 +307,15 @@ export function ClubTodaySection({
                           (lowerBetter
                             ? r.result_numeric < pb.numeric
                             : r.result_numeric > pb.numeric);
-                        const isPb = r.was_pb || beatsPrev;
+                        // Käytä ensisijaisesti was_pb-lippua joka on
+                        // laskettu kanonisesti DB:ssä (mark_pbs_for_competitions).
+                        // Näytä PB vain jos DB:n lippu on true JA tulos on
+                        // aidosti parempi kuin haettu paras. Näin vältetään
+                        // väärät PB-merkinnät kun asiakaspuolen PB-haku
+                        // löytää eri baselinen.
+                        const isPb = r.was_pb && (pb == null || beatsPrev);
                         const improvement =
-                          isPb && pb
+                          isPb && pb && beatsPrev
                             ? formatImprovement(r.event_category, r.result_text, pb.text)
                             : null;
                         const relayLegs =
@@ -319,6 +325,7 @@ export function ClubTodaySection({
                         const relayText = relayLegs
                           ? formatRelayLegsFromRows(relayLegs)
                           : null;
+
                         return (
                           <li
                             key={`${r.athlete_key}-${r.event_name}-${idx}`}
