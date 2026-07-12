@@ -471,8 +471,8 @@ export function EventCard({
                       </>
                     ) : (
                       <span className="flex gap-2 text-xs text-muted-foreground">
-                        {a.SB && <span title="Kauden ennätys">SB {a.SB}</span>}
-                        {a.PB && <span title="Oma ennätys">PB {a.PB}</span>}
+                        {eff.pb && <span title="Oma ennätys">PB {eff.pb}</span>}
+                        {eff.sb && eff.sb !== eff.pb && <span title="Kauden ennätys">SB {eff.sb}</span>}
                       </span>
                     )}
                     {round.Category === "Field" && !a.NotInCompetition && (() => {
