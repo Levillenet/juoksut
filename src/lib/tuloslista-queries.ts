@@ -285,8 +285,12 @@ export function eventDetailsQueryOptions(
       const allocs = ev.Rounds.flatMap((r) =>
         r.Heats.flatMap((h) => h.Allocations),
       );
-      await captureBaselines(competitionId, eventId, allocs);
-      await loadBaselines(competitionId, eventId);
+      // Fire-and-forget: nämä ovat Supabase-sivutulosteita, jotka rikastavat
+      // näyttöä myöhemmin. Emme saa jäädä odottamaan niitä — muuten hidas
+      // upsert isolla osallistujamäärällä jättää koko näytön Ladataan-tilaan.
+      void captureBaselines(competitionId, eventId, allocs).then(() =>
+        loadBaselines(competitionId, eventId),
+      );
       return ev;
     },
 
