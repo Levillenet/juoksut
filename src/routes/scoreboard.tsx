@@ -32,6 +32,7 @@ import { detectRecord, RecordStar } from "@/lib/records";
 import { WakeLockToggle } from "@/components/WakeLockToggle";
 import { ConfirmedDot } from "@/components/ConfirmedDot";
 import { getResultVisualState } from "@/lib/result-visualization";
+import { supabase } from "@/integrations/supabase/client";
 
 type TopSize = 10 | "all";
 
@@ -40,11 +41,17 @@ type HeatSel = "all" | number;
 type OrderMode = "result" | "start";
 
 interface SearchParams {
+  competitionId?: number;
   eventId?: number;
   roundId?: number;
   top: TopSize;
   heat: HeatSel;
   order: OrderMode;
+}
+
+function parseOptionalNumber(v: unknown): number | undefined {
+  const n = typeof v === "number" ? v : v ? Number(v) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
 function parseTop(v: unknown): TopSize {
@@ -79,8 +86,9 @@ export const Route = createFileRoute("/scoreboard")({
     ],
   }),
   validateSearch: (s: Record<string, unknown>): SearchParams => ({
-    eventId: typeof s.eventId === "number" ? s.eventId : s.eventId ? Number(s.eventId) : undefined,
-    roundId: typeof s.roundId === "number" ? s.roundId : s.roundId ? Number(s.roundId) : undefined,
+    competitionId: parseOptionalNumber(s.competitionId),
+    eventId: parseOptionalNumber(s.eventId),
+    roundId: parseOptionalNumber(s.roundId),
     top: parseTop(s.top),
     heat: parseHeat(s.heat),
     order: parseOrder(s.order),
@@ -100,10 +108,17 @@ function ScoreboardGate() {
 /* ---------------- Picker ---------------- */
 
 function ScoreboardPicker() {
-  const [competitionId] = useCompetitionId();
-  const { top, order } = Route.useSearch();
+  const [storedCompetitionId, setStoredCompetitionId] = useCompetitionId();
+  const { competitionId: competitionIdFromSearch, top, order } = Route.useSearch();
+  const competitionId = competitionIdFromSearch ?? storedCompetitionId;
   const navigate = useNavigate({ from: "/scoreboard" });
   const scheduleQ = useQuery(competitionScheduleQueryOptions(competitionId));
+
+  useEffect(() => {
+    if (competitionIdFromSearch && competitionIdFromSearch !== storedCompetitionId) {
+      setStoredCompetitionId(competitionIdFromSearch);
+    }
+  }, [competitionIdFromSearch, storedCompetitionId, setStoredCompetitionId]);
 
   const trackedRef = useRef<number | null>(null);
   useEffect(() => {
@@ -212,7 +227,7 @@ function ScoreboardPicker() {
                 <li key={r.Id}>
                   <Link
                     to="/scoreboard"
-                    search={{ eventId: r.EventId, roundId: r.Id, top, heat: "all", order }}
+                    search={{ competitionId, eventId: r.EventId, roundId: r.Id, top, heat: "all", order }}
                     className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm hover:bg-secondary"
                   >
                     <div className="w-16 shrink-0 text-lg font-bold tabular-nums">
@@ -256,9 +271,50 @@ interface RankedRow extends Allocation {
 }
 
 function ScoreboardLive() {
-  const { eventId, roundId, top, heat, order } = Route.useSearch();
-  const [competitionId] = useCompetitionId();
+  const { competitionId: competitionIdFromSearch, eventId, roundId, top, heat, order } = Route.useSearch();
+  const [storedCompetitionId, setStoredCompetitionId] = useCompetitionId();
   const navigate = useNavigate({ from: "/scoreboard" });
+
+  const resolvedCompetitionQ = useQuery({
+    queryKey: ["scoreboard-event-competition", eventId ?? 0],
+    queryFn: async (): Promise<number | null> => {
+      const { data, error } = await supabase
+        .from("athlete_results")
+        .select("competition_id")
+        .eq("event_id", eventId!)
+        .order("captured_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data?.competition_id ?? null;
+    },
+    enabled: !competitionIdFromSearch && !!eventId,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+    retry: 1,
+  });
+
+  const resolvingCompetition =
+    !competitionIdFromSearch && !!eventId && resolvedCompetitionQ.isLoading;
+  const competitionId =
+    competitionIdFromSearch ??
+    resolvedCompetitionQ.data ??
+    (resolvingCompetition ? 0 : storedCompetitionId);
+
+  useEffect(() => {
+    if (competitionId > 0 && competitionId !== storedCompetitionId) {
+      setStoredCompetitionId(competitionId);
+    }
+  }, [competitionId, storedCompetitionId, setStoredCompetitionId]);
+
+  useEffect(() => {
+    if (competitionIdFromSearch || competitionId <= 0) return;
+    navigate({
+      replace: true,
+      search: (prev: SearchParams) => ({ ...prev, competitionId }),
+    });
+  }, [competitionIdFromSearch, competitionId, navigate]);
+
   const detailQ = useQuery({
     ...eventDetailsQueryOptions(competitionId, eventId!),
     // Suorituspaikan livenäytöllä halutaan mahdollisimman pieni viive.
@@ -268,6 +324,8 @@ function ScoreboardLive() {
       const inProgress = data?.Rounds?.some((r) => r.Status === "Progress");
       return inProgress ? 5_000 : 15_000;
     },
+    enabled: competitionId > 0 && !!eventId,
+    retry: 2,
   });
   const ev = detailQ.data ?? null;
 
@@ -462,7 +520,7 @@ function ScoreboardLive() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate({ search: { eventId: undefined, roundId: undefined, top, heat: "all", order } })}
+          onClick={() => navigate({ search: { competitionId, eventId: undefined, roundId: undefined, top, heat: "all", order } })}
           aria-label="Takaisin"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -592,19 +650,37 @@ function ScoreboardLive() {
       </header>
 
       <main className={`flex flex-col p-2 sm:p-3 ${scrollMode ? "" : "min-h-0 flex-1 overflow-hidden"}`}>
-        {detailQ.isLoading && (
+        {(resolvingCompetition || detailQ.isLoading) && (
           <div className="flex flex-1 items-center justify-center text-2xl text-muted-foreground">
             Ladataan…
           </div>
         )}
 
-        {ev && rows.length === 0 && (
+        {detailQ.isError && (
+          <div className="mx-auto flex min-h-[45vh] max-w-xl flex-col items-center justify-center gap-4 text-center">
+            <div role="alert" className="rounded-xl border bg-card px-5 py-4 shadow-sm">
+              <h2 className="text-lg font-bold">Lajin tietojen haku ei onnistunut</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Tulospalvelu palautti tilapäisen virheen. Kokeile päivittää hetken päästä.
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Kisa #{competitionId}, laji #{eventId}
+              </p>
+            </div>
+            <Button onClick={() => detailQ.refetch()} disabled={detailQ.isFetching}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${detailQ.isFetching ? "animate-spin" : ""}`} />
+              Päivitä
+            </Button>
+          </div>
+        )}
+
+        {ev && rows.length === 0 && !detailQ.isError && (
           <div className="flex flex-1 items-center justify-center text-2xl text-muted-foreground">
             Ei vielä osallistujia.
           </div>
         )}
 
-        {visible.length > 0 && (
+        {visible.length > 0 && !detailQ.isError && (
           <ul className={`flex flex-col gap-1.5 ${scrollMode ? "" : "min-h-0 flex-1 overflow-hidden"}`}>
             {visible.map((row, idx) => (
               <ScoreRow

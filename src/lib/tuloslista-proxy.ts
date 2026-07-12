@@ -213,12 +213,14 @@ export async function proxyTuloslista(
     }
   }
 
+  const staleFallback = mem ?? dbEnv ?? null;
+
   // 2) Circuit auki? -> yritä antaa viimeisin stale muistista tai cachesta
   const openUntil = circuitOpenUntil.get(path);
   if (openUntil && Date.now() < openUntil) {
-    if (mem) {
+    if (staleFallback) {
       bumpOriginCall(cacheSource, path, "circuit");
-      return jsonResponse(mem.body, "circuit", (Date.now() - mem.cachedAt) / 1000);
+      return jsonResponse(staleFallback.body, "circuit", (Date.now() - staleFallback.cachedAt) / 1000);
     }
     if (cache) {
       const hit = await cache.match(cacheKey).catch(() => undefined);
@@ -231,16 +233,17 @@ export async function proxyTuloslista(
         }
       }
     }
-    if (dbEnv) {
-      bumpOriginCall(cacheSource, path, "circuit");
-      return jsonResponse(dbEnv.body, "circuit", (Date.now() - dbEnv.cachedAt) / 1000);
-    }
   }
 
 
   // 3) Single-flight upstream-fetch
   const body = await getOrFetch(originUrl, cacheKey, cache, ttlOf, path, originSource);
   if (body) return jsonResponse(body, "miss", 0);
+
+  if (staleFallback) {
+    bumpOriginCall(cacheSource, path, "stale-error");
+    return jsonResponse(staleFallback.body, "stale-error", (Date.now() - staleFallback.cachedAt) / 1000);
+  }
 
   // 4) Origin feilasi — viimeinen yritys: anna mikä tahansa cache-kopio
   if (cache) {
