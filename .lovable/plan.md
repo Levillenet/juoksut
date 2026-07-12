@@ -1,49 +1,33 @@
+## Diagnoosi
 
-## Sähköpostiluonnos tuloslista.com:lle
+Suorituspaikan livenäytön (`/scoreboard`) datapolku käynnissä olevalle lajille:
 
-Ei teknisiä linkkejä eikä sisäisiä nimiä, vain konkreettiset muutokset ja arvio vaikutuksesta.
+```
+selain → useQuery (refetchInterval 15 s) → proxy → Cloudflare-reunavälimuisti → tuloslista.com
+```
 
----
+Proxyn TTL käynnissä olevalle lajille (`resultsTtl`, kun jokin kierros on `Progress`): `edgeTtl: 8 s` + `swrWindow: 15 s`. Selain hakee joka 15 s. Nämä yhdessä tuottavat parhaimmillaan noin 15–20 s viiveen, mutta pahimmillaan lähelle 30 s. 7 minuutin viive on paljon suurempi kuin nämä lukemat, joten pelkkä TTL-viritys ei yksin riitä  ongelma on osin myös siinä että toistuvat kutsut osuvat vanhaan välimuistiin ja SWR-virkistys ei aja tarpeeksi tiheään.
 
-**Aihe:** Päivitys: pyyntömäärien vähentämiseksi tehdyt muutokset
+Lisäksi: hyppylajien kentän tapauksessa uusi tulos näkyy Attempts-taulukossa (esim. suoritusjärjestyksen seuraava yritys) ennen kuin lopullinen Result-kenttä päivittyy. Jos näytöllä katsotaan vain Result-saraketta, uusi hyppy ei tunnu näkyvän vaikka data on jo tullut.
 
-Hei,
+## Suunnitelma
 
-Kiitos aiemmasta palautteestanne. Olemme tehneet palveluumme useita muutoksia, joilla olemme merkittävästi vähentäneet teidän rajapintaanne kohdistuvaa kuormaa. Kaikki muutokset on toteutettu eilisen aikana, joten kuorma on todennäköisesti pudonnut dramaattisesti. Alla yhteenveto tehdyistä muutoksista ja alustavista tuloksista.
+1. **Tiukennetaan proxyn TTL käynnissä olevalle lajille** (`src/lib/tuloslista-proxy.ts`, `resultsTtl`):
+   - `Progress`-tapaus: `edgeTtl: 8 → 3 s`, `swrWindow: 15 → 7 s`.
+   - Muut tapaukset ennallaan (Official pysyy pitkänä, jotta origin-kuorma ei kasva).
 
-**Mitä olemme muuttaneet**
+2. **Nopeutetaan livenäytön clientin polling-taajuutta**  vain suorituspaikan livenäytössä, ei koko sovelluksessa (`src/routes/scoreboard.tsx`):
+   - Luodaan paikallinen versio kyselystä, joka periytyy `eventDetailsQueryOptions`-optioista mutta ylikirjoittaa `refetchInterval: 5000` kun aktiivisen lajin jokin kierros on `Progress`, muuten 15 s.
+   - Tämä ei kosketa `announcer`-näkymiä (joilla monta lajia auki  15 s on hyvä balanssi origin-kuorman kanssa).
 
-1. **Kilpailu-ID:t haetaan vain virallisesta kilpailulistasta.** Olemme poistaneet kokonaan aiemmat "puimuripyynnöt", joissa kilpailun ID:tä yritettiin arvata numerojärjestyksessä. Uusia kilpailuja etsitään ainoastaan kilpailulistarajapinnan kautta.
+3. **Varmistetaan että hyppylajien näytön viimeisin yritys näkyy heti**:
+   - Tarkistetaan että scoreboardin hyppylajien rivi näyttää viimeisimmän epätyhjän `Attempts[i]`-arvon eikä ainoastaan `Result`-kenttää. Jos näin ei ole, korjataan renderöinti käyttämään `getResultVisualState`-apuria (jota `useNewResultsQueue` jo hyödyntää).
 
-2. **Taustahaku rajattu kolmen päivän ikkunaan.** Taustatyö hakee tuloksia vain viimeisen kolmen päivän kilpailuille, ei koko historialle. Monipäiväiset kilpailut tunnistetaan ja niitä seurataan koko keston ajan.
+## Kuormavaikutus
 
-3. **Aktiivinen tulosseuranta (15 sekunnin sykli) käynnistyy vain, kun jollain käyttäjällä on kilpailu aktiivisesti seurannassa.** Jos yksikään käyttäjä ei seuraa kisaa, sitä ei pollata tiheästi. Samanaikaisesti aktiivisia kilpailuja on korkeintaan kahdeksan.
+Käynnissä olevan lajin origin-osumat lisääntyvät noin 15 s → 10 s välein (SWR-virkistys). Yhtä katsojaa kohti se on ~6 kutsua/min per laji. Koska proxy koalisoi rinnakkaiset pyynnöt yhdeksi origin-kutsuksi, yleisömäärän kasvu ei kerrannaista tätä. Vaikutus on maltillinen ja rajoittuu vain aktiivisiin lajeihin.
 
-4. **Tiheä seuranta on aikaikkunoitu.** Yksittäistä lajia seurataan tiheästi vain 5 minuuttia ennen alkua ja korkeintaan 2 tuntia sen jälkeen. Monipäiväisissä kilpailuissa ikkuna kattaa kilpailupäivän.
+## Ei muutoksia
 
-5. **Haku on rajattu kello 09–21 (Helsinki).** Yöllä ei tehdä lainkaan taustapyyntöjä.
-
-6. **Reunavälimuisti kaikkien pyyntöjen edessä.** Sekä käyttäjien selainpyynnöt että omat taustatyömme kulkevat välipalvelimen kautta, joka välimuistittaa vastaukset. TTL on porrastettu vastauksen sisällön mukaan: käynnissä olevat kierrokset lyhyellä TTL:llä, virallistuneet tulokset pitkällä, kilpailulista ja kilpailun ominaisuudet keskipitkällä TTL:llä. Rinnakkaiset samaan URL:iin osuvat pyynnöt yhdistetään yhdeksi lähtevään pyyntöön.
-
-7. **Circuit breaker.** Jos rajapinta vastaa 429 tai 503, keskeytämme uudet pyynnöt kyseiselle polulle 60 sekunniksi ja tarjoamme käyttäjille välimuistin viimeisimmän kopion.
-
-8. **User-Agent tunnistettavissa.** Kaikki lähtevät pyynnöt käyttävät tunnistettavaa User-Agent-otsaketta.
-
-**Havaittu vaikutus**
-
-Muutosten jälkeen 404-virheitä ei ole enää tullut, koska olemme lakanneet arvaamatta olemattomia kilpailu-ID:tä.
-
-Mittaamme itse päivittäin, kuinka moni käyttäjän tai taustatyön käynnistämä pyyntö palvellaan omalta reunavälimuistiltamme ja kuinka moni menee teidän rajapintaanne asti.
-
-Nykyinen jakauma osoittaa, että noin **70 % kaikista pyynnöistä palvellaan reunavälimuistista** eikä osu teidän palvelimillenne. Aiempaan tilanteeseen (arvaava puimuri + tiheä pollaus + ei välimuistia) verrattuna arvioimme kokonaispyyntömäärän laskeneen **noin 90 %**. Suurin osa jäljelle jäävistä pyynnöistä on välimuistin virkistyksiä käynnissä olevien kilpailujen aikana.
-
-Jos näette omista lokeistanne yhä poikkeavan korkeita määriä joltakin poluilta, kertokaa: voimme säätää TTL:iä tai supistaa ikkunoita edelleen.
-
-Ystävällisin terveisin,
-[Nimi]
-
----
-
-## Muutokset koodiin
-
-Ei muutoksia. Kyseessä on ainoastaan viestin luonnos.
+- Ei muutoksia harvesteriin tai `athlete_results`-tauluun.
+- Ei muutoksia muihin näkymiin (announcer, watch, round).

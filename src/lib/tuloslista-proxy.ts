@@ -424,8 +424,10 @@ export function resultsTtl(body: string): TtlConfig {
     const parsed = JSON.parse(body) as EventBody;
     const statuses = (parsed.Rounds ?? []).map((r) => r.Status ?? "");
     if (statuses.includes("Progress")) {
-      // Käynnissä — alkuperäinen on yleisin polling-kohde
-      return { edgeTtl: 8, swrWindow: 15 };
+      // Käynnissä — alkuperäinen on yleisin polling-kohde, mutta suorituspaikan
+      // livenäytön viive halutaan pieneksi. Proxy koalisoi rinnakkaiset kutsut,
+      // joten yleisömäärän kasvu ei kerrannaista origin-kuormaa.
+      return { edgeTtl: 3, swrWindow: 7 };
     }
     if (statuses.length > 0 && statuses.every((s) => s === "Official")) {
       // Virallistunut, ei muutu enää
