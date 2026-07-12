@@ -1237,6 +1237,8 @@ function TodayCompetitionsForWatched({
     enabled: watchedKeys.length > 0,
     staleTime: 30_000,
     refetchInterval: 60_000,
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
   });
   const list = query.data ?? [];
   if (list.length === 0) return null;

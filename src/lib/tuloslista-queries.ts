@@ -215,7 +215,8 @@ export function competitionIndexQueryOptions(
     staleTime: 10_000,
     gcTime: 10 * 60_000,
     refetchInterval: 60_000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
   });
 }
 
@@ -236,7 +237,8 @@ export function competitionScheduleQueryOptions(competitionId: number) {
     gcTime: 10 * 60_000,
     refetchInterval: 15_000,
     refetchIntervalInBackground: true,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
   });
 }
 
@@ -292,7 +294,8 @@ export function eventDetailsQueryOptions(
     gcTime: 10 * 60_000,
     refetchInterval: 15_000,
     refetchIntervalInBackground: true,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
     enabled: Number.isFinite(eventId) && eventId > 0,
   });
 }

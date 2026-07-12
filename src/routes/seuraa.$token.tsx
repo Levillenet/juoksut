@@ -64,6 +64,8 @@ function SharedWatchPage() {
     queryFn: () => loadSharedWatch(token),
     staleTime: 30_000,
     refetchInterval: 60_000,
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
   });
 
   const competitionId = shareQuery.data?.competitionId ?? null;
