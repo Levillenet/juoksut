@@ -586,8 +586,8 @@ function AllocationRow({
             <span className="shrink-0 font-bold tabular-nums">{a.Result}</span>
           ) : (
             <span className="flex shrink-0 gap-2 text-xs text-muted-foreground">
-              {a.SB && <span title="Kauden ennätys">SB {a.SB}</span>}
-              {a.PB && <span title="Oma ennätys">PB {a.PB}</span>}
+              {eff.pb && <span title="Oma ennätys">PB {eff.pb}</span>}
+              {eff.sb && eff.sb !== eff.pb && <span title="Kauden ennätys">SB {eff.sb}</span>}
             </span>
           )}
         </div>
