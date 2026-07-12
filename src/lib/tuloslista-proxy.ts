@@ -15,7 +15,31 @@
 // KV/Durable Objects ei käytössä v1:ssä — Cache API riittää.
 // Jos haluamme jakaa cachea edgejen välillä, lisätään KV myöhemmin.
 
-import { bumpOriginCall } from "@/lib/origin-call-counter";
+import { bumpOriginCall, type CounterSource } from "@/lib/origin-call-counter";
+
+const ALLOWED_SOURCES: CounterSource[] = [
+  "harvester",
+  "hot_cycle",
+  "monitor",
+  "proxy_origin",
+  "proxy_cache",
+  "admin_probe",
+];
+
+function resolveSources(request?: Request): {
+  originSource: CounterSource;
+  cacheSource: CounterSource;
+} {
+  const raw = request?.headers.get("x-origin-source")?.toLowerCase() ?? null;
+  if (raw && (ALLOWED_SOURCES as string[]).includes(raw)) {
+    const s = raw as CounterSource;
+    // Sisäiset taustatyöt kirjautuvat omalla lähteellään sekä miss- että
+    // hit-tapauksessa, jotta admin näkee harvesterin ja hot_cyclen työn
+    // erillään loppukäyttäjien selainpyynnöistä.
+    return { originSource: s, cacheSource: s };
+  }
+  return { originSource: "proxy_origin", cacheSource: "proxy_cache" };
+}
 
 const ORIGIN = "https://cached-public-api.tuloslista.com";
 
