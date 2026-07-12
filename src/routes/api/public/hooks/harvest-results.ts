@@ -463,7 +463,7 @@ async function processCompetition(
       }
     }
   }
-  return { existed: true, rowsAdded, competitionDate };
+  return { existed: true, rowsAdded, competitionDate, lastEventDate };
 }
 
 function parseWind(w: unknown): number | null {
