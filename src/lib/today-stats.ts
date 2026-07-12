@@ -121,8 +121,11 @@ export async function fetchTodayStats(): Promise<TodayStats> {
     fetchCompetitionList().catch(() => [] as Awaited<ReturnType<typeof fetchCompetitionList>>),
   ]);
 
-  // Kisat: elävältä kisalistalta (mukana myös ne joista ei vielä tuloksia).
-  const todayComps = filterToday(compList);
+  // Kisat: elävältä kisalistalta, mukana myös monipäiväisten kisojen
+  // jatkopäivät (esim. Jymy Games 11.–12.7.).
+  const todayComps = await filterRunningToday(compList).catch(
+    () => [] as Awaited<ReturnType<typeof filterRunningToday>>,
+  );
   const liveTodayCount = todayComps.length;
 
   // Hae kierrokset jokaiselle tänään pidettävälle kisalle (rinnakkain).
@@ -134,6 +137,7 @@ export async function fetchTodayStats(): Promise<TodayStats> {
         .catch(() => ({ id: c.Id, rounds: [] as Awaited<ReturnType<typeof fetchRounds>>[string] })),
     ),
   );
+
 
   const events = new Set<string>();
   const athletes = new Set<string>();
