@@ -228,6 +228,14 @@ function WatchPage() {
     staleTime: 60_000,
   });
 
+  // Today's own results across ALL competitions for each watched athlete
+  const todayOwnQuery = useQuery({
+    queryKey: ["today-own-for-athletes", watchedKeysList.slice().sort().join(",")],
+    queryFn: () => fetchTodayOwnResultsForAthletes(watchedKeysList),
+    enabled: watchedKeysList.length > 0,
+    staleTime: 30_000,
+  });
+
   // Fetch all videos for each watched athlete (own + public from others).
   const videosQueries = useQueries({
     queries: watched.map((w) => ({
