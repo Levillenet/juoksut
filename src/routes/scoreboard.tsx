@@ -307,6 +307,14 @@ function ScoreboardLive() {
     }
   }, [competitionId, storedCompetitionId, setStoredCompetitionId]);
 
+  useEffect(() => {
+    if (competitionIdFromSearch || competitionId <= 0) return;
+    navigate({
+      replace: true,
+      search: (prev: SearchParams) => ({ ...prev, competitionId }),
+    });
+  }, [competitionIdFromSearch, competitionId, navigate]);
+
   const detailQ = useQuery({
     ...eventDetailsQueryOptions(competitionId, eventId!),
     // Suorituspaikan livenäytöllä halutaan mahdollisimman pieni viive.
