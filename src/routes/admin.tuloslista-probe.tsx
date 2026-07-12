@@ -127,6 +127,33 @@ const EXAMPLES = [
   "/live/v1/results/12345/67890",
 ];
 
+const SOURCE_LABELS: Record<string, string> = {
+  harvester: "harvester",
+  hot_cycle: "hot cycle",
+  monitor: "valvonta",
+  proxy_origin: "käyttäjäpyynnöt originille",
+  proxy_cache: "reunavälimuisti",
+  admin_probe: "admin-testi",
+};
+
+function formatSourceList(bySource: Record<string, number>) {
+  return Object.entries(bySource)
+    .sort((a, b) => b[1] - a[1])
+    .map(([source, count]) => `${SOURCE_LABELS[source] ?? source}:${count.toLocaleString("fi-FI")}`)
+    .join(" · ");
+}
+
+function helsinkiDay(date: Date) {
+  const parts = new Intl.DateTimeFormat("fi-FI", {
+    timeZone: "Europe/Helsinki",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
 function Page() {
   const [path, setPath] = useState("/live/v1/competition");
   const [uaPreset, setUaPreset] = useState("harvester");
@@ -325,17 +352,20 @@ function Page() {
               const savedPct = served > 0 ? Math.round((total.edge / served) * 100) : 0;
               return (
                 <div className="mb-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-                  <Stat label="Origin-kutsut" value={total.origin.toLocaleString("fi-FI")} />
                   <Stat
-                    label="Reunavälimuistista"
+                    label="Origin-kutsut tuloslistalle"
+                    value={total.origin.toLocaleString("fi-FI")}
+                  />
+                  <Stat
+                    label="Reunasta palvellut"
                     value={total.edge.toLocaleString("fi-FI")}
                     hint={`${savedPct}% säästö`}
                   />
+                  <Stat label="Yhteensä käsitellyt" value={served.toLocaleString("fi-FI")} />
                   <Stat
                     label="Virheet (4xx/5xx)"
                     value={total.err.toLocaleString("fi-FI")}
                   />
-                  <Stat label="Päiviä" value={String(statsQ.data.length)} />
                 </div>
               );
             })()}
@@ -346,8 +376,10 @@ function Page() {
                     <th className="py-1 pr-2">Päivä</th>
                     <th className="py-1 pr-2">Origin</th>
                     <th className="py-1 pr-2">Reuna</th>
+                    <th className="py-1 pr-2">Yhteensä</th>
                     <th className="py-1 pr-2">Säästö</th>
                     <th className="py-1 pr-2">Virheet</th>
+                    <th className="py-1 pr-2">Päivitetty</th>
                     <th className="py-1">Lähteet</th>
                   </tr>
                 </thead>
@@ -355,21 +387,34 @@ function Page() {
                   {statsQ.data.map((d) => {
                     const served = d.originCalls + d.servedFromEdge;
                     const pct = served > 0 ? Math.round((d.servedFromEdge / served) * 100) : 0;
-                    const sources = Object.entries(d.bySource)
-                      .filter(([s]) => s !== "proxy_cache")
-                      .sort((a, b) => b[1] - a[1])
-                      .map(([s, n]) => `${s}:${n}`)
-                      .join(" · ");
+                    const sources = formatSourceList(d.bySource);
+                    const likelyProxyLabeledBackgroundWork =
+                      d.day === helsinkiDay(now) &&
+                      (d.bySource.harvester ?? 0) === 0 &&
+                      ((d.bySource.proxy_origin ?? 0) > 0 || (d.bySource.proxy_cache ?? 0) > 0);
                     return (
                       <tr key={d.day} className="border-t">
                         <td className="py-1 pr-2 whitespace-nowrap font-mono">{d.day}</td>
                         <td className="py-1 pr-2">{d.originCalls.toLocaleString("fi-FI")}</td>
                         <td className="py-1 pr-2">{d.servedFromEdge.toLocaleString("fi-FI")}</td>
+                        <td className="py-1 pr-2">{served.toLocaleString("fi-FI")}</td>
                         <td className="py-1 pr-2">{pct}%</td>
                         <td className={`py-1 pr-2 ${d.errors > 0 ? "text-destructive" : ""}`}>
                           {d.errors}
                         </td>
-                        <td className="py-1 text-muted-foreground">{sources || "—"}</td>
+                        <td className="py-1 pr-2 whitespace-nowrap text-muted-foreground">
+                          {d.lastUpdatedAt
+                            ? formatRelativeFi(new Date(d.lastUpdatedAt), now)
+                            : "ei tietoa"}
+                        </td>
+                        <td className="py-1 text-muted-foreground">
+                          <div>{sources || "ei lähteitä"}</div>
+                          {likelyProxyLabeledBackgroundWork && (
+                            <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
+                              Huom: osa taustatyön pyynnöistä voi vielä näkyä proxy-lähteissä.
+                            </div>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
@@ -377,8 +422,8 @@ function Page() {
               </table>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Origin-kutsut = harvester, hot-cycle, monitor ja proxy-välimuistin
-              ohitukset (miss). Reuna = kutsut, jotka palveltiin omalta Cloudflare-reunalta
+              Origin-kutsut = harvester, hot cycle, valvonta ja välimuistin
+              ohitukset. Reuna = kutsut, jotka palveltiin omalta reunalta
               ilman origin-kutsua.
             </p>
             <ul className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
@@ -386,7 +431,7 @@ function Page() {
               <li><b>hot_cycle</b>: 15 s pollaus seuratuille käynnissä oleville kilpailuille</li>
               <li><b>monitor</b>: 10 min terveystarkkailu</li>
               <li><b>proxy_origin</b>: käyttäjän selainpyyntö reunavälimuistin ohitse (miss)</li>
-              <li><b>proxy_cache</b>: käyttäjän selainpyyntö palveltu reunavälimuistista (hit)</li>
+              <li><b>proxy_cache</b>: käyttäjän selainpyyntö palveltu reunavälimuistista (hit tai stale)</li>
               <li><b>admin_probe</b>: admin-UI:sta käynnistetty käsintestaus</li>
             </ul>
           </section>
