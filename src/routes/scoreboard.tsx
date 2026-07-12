@@ -259,7 +259,16 @@ function ScoreboardLive() {
   const { eventId, roundId, top, heat, order } = Route.useSearch();
   const [competitionId] = useCompetitionId();
   const navigate = useNavigate({ from: "/scoreboard" });
-  const detailQ = useQuery(eventDetailsQueryOptions(competitionId, eventId!));
+  const detailQ = useQuery({
+    ...eventDetailsQueryOptions(competitionId, eventId!),
+    // Suorituspaikan livenäytöllä halutaan mahdollisimman pieni viive.
+    // Kun jokin kierros on käynnissä, pollataan 5 s välein; muuten 15 s.
+    refetchInterval: (query) => {
+      const data = query.state.data as { Rounds?: { Status?: string }[] } | undefined;
+      const inProgress = data?.Rounds?.some((r) => r.Status === "Progress");
+      return inProgress ? 5_000 : 15_000;
+    },
+  });
   const ev = detailQ.data ?? null;
 
   const { dataUpdatedAt: baselineUpdatedAt } = useHistoryBaseline(competitionId);
