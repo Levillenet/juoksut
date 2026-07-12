@@ -562,6 +562,7 @@ async function harvestIds(
       }),
     );
     const nowIso = new Date().toISOString();
+    const hkiToday = helsinkiDateISO(nowIso);
     for (let j = 0; j < results.length; j++) {
       const r = results[j];
       const e = chunk[j];
@@ -572,14 +573,20 @@ async function harvestIds(
           existed++;
           if (v.rowsAdded > 0) touchedCompIds.add(e.id);
         }
-        // Merkitään aina done=true — ei revisit-kierroksia. Käynnissä olevat
-        // kisat päivittyvät hot cyclen (?ids=…) kautta, ei tätä reittiä.
+        // Monipäiväiset kisat: älä merkitse done=true niin kauan kuin
+        // viimeinen tapahtumapäivä on tänään tai tulevaisuudessa Helsinki-
+        // ajassa. Muuten myöhemmin päivän aikana ajetut lajit (esim. 800m,
+        // finaalit) eivät koskaan päivity, koska done=true suodattaa kisan
+        // ulos rescan-listalta.
+        const lastEv = v.lastEventDate ?? e.date ?? null;
+        const stillOngoing =
+          hkiToday != null && lastEv != null && lastEv >= hkiToday;
         scanRecords.push({
           competition_id: e.id,
           competition_date: v.competitionDate ?? e.date ?? null,
           row_count: v.rowsAdded,
           exists_in_source: v.existed,
-          done: true,
+          done: !stillOngoing,
           last_scanned_at: nowIso,
           first_scanned_at: firstSeenMap.get(e.id) ?? nowIso,
           last_event_date: v.lastEventDate ?? null,
@@ -588,6 +595,7 @@ async function harvestIds(
       }
       if (r.status === "rejected") console.error("comp", e.id, r.reason);
     }
+
     if (pending.length >= 400) await flush(pending.splice(0));
     if (pendingLegs.length >= 400) await flushLegs(pendingLegs.splice(0));
   }
