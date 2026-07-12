@@ -1,40 +1,31 @@
-Kaksi virhettä etusivun "Seuran urheilijat tänään" -listalla Jymy Games -kilpailussa: Siirin 150m näyttää virheellisen PB-merkin ja Ennin 800m jää lukemaan "DNS" vaikka juoksu ajettiin.
+## Ongelma
 
-## Havaitut juurisyyt
+Etusivun tilavalo näyttää punaista ja tekstiä "Tulospalvelu ei ole vastannut hetkeen", vaikka tuloksia todella tulee järjestelmään. Tarkistuksen mukaan:
 
-**1) Väärä PB Siirillä (T11 150m 22,11)**
-- DB:ssä Siirin 150m tulokset: 21,49 (12.6.), 21,55 (25.6.), 22,67, 23,24, 23,11. Todellinen PB on 21,49.
-- `athlete_results.was_pb=false` tälle riville, joten SQL-puoli on oikein.
-- Silti UI näyttää "PB −1,13 s" = 23,24 − 22,11. Eli `ClubTodaySection` löytää `pb.numeric=23,24` vaikka DB:ssä on parempi 21,49.
-- Syy: `fetchClubPreviousPbs` hakee vain `.in("athlete_key", athleteKeys)`-rivit ilman event-suodatinta ja ilman kilpailuvuosi- tai päivämääräjärjestystä. Rivejä voi olla paljon (kaikki seuran urheilijoiden kaikki lajit), ja PostgREST-oletusraja 1000 leikkaa vanhimmat pois — mutta koodissa on `.limit(10000)` joka _lisätään_ headeriin. Todennäköinen ongelma on että 23,24 pääsee mukaan mutta 21,49 ei, koska Supabase Data API rajoittaa tulosjoukon eri tavalla riippuen `range`-headerista. Vaihtoehtoisesti `pbEventKey` normalisoi eri tavalla samalle riville (ei tässä tapauksessa, koska 150m ei ole spec-sensitive), tai `beatsPrev`-logiikka käyttää `was_pb`-lipun sijaan raakaa parhaan-arvon hakua joka jää epätäydelliseksi.
-- Aidosti oikea vertailulähde on jo olemassa: `mark_pbs_for_competitions` merkitsee `was_pb`-lipun oikein, ja DB:ssä paras aiempi 150m löytyy suoraan yhdellä kyselyllä per urheilija/laji.
+- `harvest_state.last_run_at` = 11:20 UTC (n. 100 min sitten)
+- Uusin tulos `athlete_results.captured_at` = 11:50 UTC (n. 30 min sitten, 275 riviä)
 
-**2) Enni 800m jäänyt DNS-tilaan**
-- Rivi kaapattu 12.7. klo 10:30 UTC arvolla "DNS".
-- `harvest_competitions` competition_id=19992 (Jymy Games): `done=true`, `last_scanned_at=2026-07-12 08:07 UTC`, `last_event_date=2026-07-12`.
-- Kilpailu on merkitty valmiiksi vaikka `last_event_date` on tänään — harvesteri ei enää skannaa sitä, joten DNS ei päivity oikeaan tulokseen kun 800m myöhemmin juostiin.
+`HarvestLight` päättelee terveyden pelkästään `last_run_at`-kentästä (yli 30 min = punainen). Tuloksia kuitenkin virtaa käyttäjävetoisen hot-cyclen (proxy) kautta, joka tallentaa rivit mutta ei päivitä `last_run_at`-kenttää. Signaali on siis väärä: cron-harvester ei ole ajanut hetkeen, mutta itse tulospalvelu ja järjestelmä toimivat.
 
-## Muutokset
+## Ratkaisu
 
-**A. `src/routes/api/public/hooks/harvest-results.ts`** — älä merkitse kilpailua `done=true` jos `last_event_date >= tänään` (Helsinki). Multi-day-tapauksissa `done` saa asettua vasta kun tapahtumapäivä on menneisyydessä. Nykyinen `done`-logiikka (todennäköisesti nojaa siihen että kaikilla lajeilla on `Result` per allocation) ohittaa alkuerä-jälkeisen loppueräpäivityksen; korjataan päivämääräehdolla.
+Muutetaan `HarvestLight`-komponentin päättelyä niin, että tuoreet tulokset (`last_captured_at`) riittävät terveeksi tilaksi, vaikka `last_run_at` olisi vanhentunut.
 
-**B. Kertakorjaus DB:hen** — nollataan `done=false` niille kilpailuille joilla `last_event_date >= current_date` Helsinki-aikaan, jotta harvesteri palaa niihin heti seuraavassa ajossa. Tämä ajetaan omana migraationa tai kertaluontoisena päivityksenä.
+### Uusi logiikka
 
-**C. `src/lib/club-today.ts`** — vaihda `fetchClubPreviousPbs` käyttämään suoraan `was_pb`-lippua ja urheilijakohtaista aiempaa parasta:
-- Hae vain `athlete_key + normalized_event_name` -pareja jotka ovat tänään listalla, ei koko urheilijan koko historiaa.
-- Käytä RPC:tä tai selkeästi rajattua SELECT-kyselyä joka palauttaa per (athlete_key, pb_key) parhaan `result_numeric` -arvon ennen valittua päivää. Näin PB-vertailu ei enää nojaa mahdollisesti leikattuun asiakassivuun.
-- `isPb`-päätös: pidetään `was_pb`-lippu ensisijaisena (koska `mark_pbs_for_competitions` laskee sen kanonisesti), ja `beatsPrev` vain fallbackina jos was_pb ei vielä ehtinyt päivittyä.
+- **Punainen**: `blocked=true`, TAI sekä `last_run_at` että `last_captured_at` yli 30 min vanhoja.
+- **Keltainen**: aktiivinen kisa käynnissä, mutta viimeisin tulos yli 45 min vanha (ennallaan).
+- **Vihreä**: muutoin.
 
-**D. `ClubTodaySection.tsx`** — käytä uutta yksinkertaisempaa `pb`-lookupia; poista fallback-map jos ei enää tarvita. Näytä improvement vain jos `was_pb=true` (tai `beatsPrev` on aidosti parempi kuin haettu paras).
+Tooltip-detaljit säilyvät ennallaan (näyttävät sekä viimeisen ajon että viimeisen tuloksen).
 
-## Verifiointi
+## Toteutus
 
-1. Ajetaan kertakorjaus → `harvest_competitions.done=false` kilpailulle 19992.
-2. Odotetaan seuraava harvest-ajo tai laukaistaan käsin → tarkistetaan että Ennin T9 800m saa oikean tuloksen.
-3. Etusivulla Siirille T11 150m 22,11: ei enää PB-merkkiä (koska aiempi 21,49 on parempi).
-4. Enni T9 150m 25,83: PB-merkki säilyy jos oikeasti PB.
+Muokataan `src/components/HarvestLight.tsx`:
+- Lasketaan `captureFresh = lastCap && (now - lastCap) < RUN_STALE_MS`.
+- `apiOk = !blocked && (!runStale || captureFresh)`.
+- Kun `runStale` mutta `captureFresh`, teksti pysyy vihreänä "Tulokset päivittyvät normaalisti".
 
-## Ei-tavoitteet
+## Erikseen huomioitavaa (ei tässä planissa)
 
-- Ei muuteta muiden osioiden (DailyBest, RecordsBanner) PB-logiikkaa tässä.
-- Ei muuteta tuloslistan proxy-välimuistia.
+Cron-harvesterin `last_run_at` ei ole päivittynyt tuntiin: erillinen selvitys siitä miksi ajastin ei laukea (voi olla Cloudflare-cron tai `harvest_state` update failaa erä-ajossa). Merkitään seuraavaksi tehtäväksi, jos punainen valo palaa uudella logiikallakin.

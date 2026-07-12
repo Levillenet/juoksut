@@ -58,10 +58,13 @@ export function HarvestLight() {
   const lastRun = data.lastRunAt ? new Date(data.lastRunAt) : null;
   const lastCap = data.lastCapturedAt ? new Date(data.lastCapturedAt) : null;
   const runStale = !lastRun || now.getTime() - lastRun.getTime() > RUN_STALE_MS;
-  const apiOk = !data.blocked && !runStale;
+  const captureFresh = !!lastCap && now.getTime() - lastCap.getTime() < RUN_STALE_MS;
+  // API on ok jos ajastin on tuore TAI tuloksia on tullut hiljattain
+  // (käyttäjävetoinen hot-cycle voi tuottaa rivejä ilman että cron-ajo päivittää last_run_at).
+  const apiOk = !data.blocked && (!runStale || captureFresh);
 
   // Tila:
-  //  - red: API pois pelistä tai ajo pysähtynyt
+  //  - red: API pois pelistä tai ajo pysähtynyt eikä tuloksiakaan tule
   //  - yellow: API ok mutta aktiivinen kisa ei tuota tuloksia
   //  - green: API ok, ei aktiivista kisaa TAI tuoreita tuloksia
   let status: "green" | "yellow" | "red" = "green";
@@ -72,6 +75,7 @@ export function HarvestLight() {
     label = data.blocked
       ? "Tulosten haku on tilapäisesti suljettu"
       : "Tulospalvelu ei ole vastannut hetkeen";
+
   } else if (data.anyCompetitionToday) {
     const resultStale = !lastCap || now.getTime() - lastCap.getTime() > RESULT_STALE_MS;
     if (resultStale) {
