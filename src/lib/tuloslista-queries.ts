@@ -294,7 +294,8 @@ export function eventDetailsQueryOptions(
     gcTime: 10 * 60_000,
     refetchInterval: 15_000,
     refetchIntervalInBackground: true,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
     enabled: Number.isFinite(eventId) && eventId > 0,
   });
 }
