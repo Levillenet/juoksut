@@ -1,33 +1,29 @@
-## Diagnoosi
+## Ongelma
 
-Suorituspaikan livenäytön (`/scoreboard`) datapolku käynnissä olevalle lajille:
+Mobiilissa tulokset päivittyvät vasta kun käyttäjä tekee selaimen refreshin. Vaikka pollaus (5–15 s) on käytössä, mobiiliselaimet pysäyttävät tai kuristavat taustavälilehden JS-ajastimet. Kun käyttäjä palaa sovellukseen, näkymä jää vanhaksi koska kaikissa live-kyselyissä on `refetchOnWindowFocus: false`.
 
-```
-selain → useQuery (refetchInterval 15 s) → proxy → Cloudflare-reunavälimuisti → tuloslista.com
-```
+## Korjaus
 
-Proxyn TTL käynnissä olevalle lajille (`resultsTtl`, kun jokin kierros on `Progress`): `edgeTtl: 8 s` + `swrWindow: 15 s`. Selain hakee joka 15 s. Nämä yhdessä tuottavat parhaimmillaan noin 15–20 s viiveen, mutta pahimmillaan lähelle 30 s. 7 minuutin viive on paljon suurempi kuin nämä lukemat, joten pelkkä TTL-viritys ei yksin riitä  ongelma on osin myös siinä että toistuvat kutsut osuvat vanhaan välimuistiin ja SWR-virkistys ei aja tarpeeksi tiheään.
+Vaihdetaan live-datan React Query -asetukset päivittymään automaattisesti, kun sovellus palaa etualalle tai verkko palautuu.
 
-Lisäksi: hyppylajien kentän tapauksessa uusi tulos näkyy Attempts-taulukossa (esim. suoritusjärjestyksen seuraava yritys) ennen kuin lopullinen Result-kenttä päivittyy. Jos näytöllä katsotaan vain Result-saraketta, uusi hyppy ei tunnu näkyvän vaikka data on jo tullut.
+### Muutokset `src/lib/tuloslista-queries.ts`
 
-## Suunnitelma
+1. `eventDetailsQueryOptions` (rivit 291-295):
+   - `refetchOnWindowFocus: "always"` (myös kun data on tuore, koska mobiilin taustapollaus ei ehtinyt ajaa)
+   - `refetchOnReconnect: "always"`
+2. `competitionScheduleQueryOptions` (rivit 235-239): sama muutos.
+3. `competitionResultsQueryOptions` (rivit 215-219): sama muutos, jotta seurattavien kilpailun tulokset päivittyvät myös.
 
-1. **Tiukennetaan proxyn TTL käynnissä olevalle lajille** (`src/lib/tuloslista-proxy.ts`, `resultsTtl`):
-   - `Progress`-tapaus: `edgeTtl: 8 → 3 s`, `swrWindow: 15 → 7 s`.
-   - Muut tapaukset ennallaan (Official pysyy pitkänä, jotta origin-kuorma ei kasva).
+### Muutos `src/routes/watch.tsx` (rivi ~1239)
 
-2. **Nopeutetaan livenäytön clientin polling-taajuutta**  vain suorituspaikan livenäytössä, ei koko sovelluksessa (`src/routes/scoreboard.tsx`):
-   - Luodaan paikallinen versio kyselystä, joka periytyy `eventDetailsQueryOptions`-optioista mutta ylikirjoittaa `refetchInterval: 5000` kun aktiivisen lajin jokin kierros on `Progress`, muuten 15 s.
-   - Tämä ei kosketa `announcer`-näkymiä (joilla monta lajia auki  15 s on hyvä balanssi origin-kuorman kanssa).
+Lisätään `refetchOnWindowFocus: "always"` ja `refetchOnReconnect: "always"` päivän tulokset -kyselyyn.
 
-3. **Varmistetaan että hyppylajien näytön viimeisin yritys näkyy heti**:
-   - Tarkistetaan että scoreboardin hyppylajien rivi näyttää viimeisimmän epätyhjän `Attempts[i]`-arvon eikä ainoastaan `Result`-kenttää. Jos näin ei ole, korjataan renderöinti käyttämään `getResultVisualState`-apuria (jota `useNewResultsQueue` jo hyödyntää).
+### Muutos `src/routes/seuraa.$token.tsx` (rivi ~66)
 
-## Kuormavaikutus
+Sama lisäys jaetulle seurantalinkille.
 
-Käynnissä olevan lajin origin-osumat lisääntyvät noin 15 s → 10 s välein (SWR-virkistys). Yhtä katsojaa kohti se on ~6 kutsua/min per laji. Koska proxy koalisoi rinnakkaiset pyynnöt yhdeksi origin-kutsuksi, yleisömäärän kasvu ei kerrannaista tätä. Vaikutus on maltillinen ja rajoittuu vain aktiivisiin lajeihin.
+## Tekniset huomiot
 
-## Ei muutoksia
-
-- Ei muutoksia harvesteriin tai `athlete_results`-tauluun.
-- Ei muutoksia muihin näkymiin (announcer, watch, round).
+- `"always"` (eikä pelkkä `true`) pakottaa refetchin myös kun `staleTime` ei ole täynnä. Tarvitaan koska mobiilin backgrounded-tabin pollaus ei tuo dataa uunista.
+- `refetchIntervalInBackground: true` pysyy — se auttaa desktopissa ja PWA-tilassa, mutta ei riitä yksin mobiiliselaimessa.
+- Ei uusia realtime-subscriptioita: data tulee ulkoisesta API:sta proxyn kautta, ei Supabase-taulusta, joten postgres_changes ei sovi. Focus-refetch on kevyempi ja hyödyntää olemassa olevaa reunavälimuistia (3 s TTL).

@@ -215,7 +215,8 @@ export function competitionIndexQueryOptions(
     staleTime: 10_000,
     gcTime: 10 * 60_000,
     refetchInterval: 60_000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
   });
 }
 
