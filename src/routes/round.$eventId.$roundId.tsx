@@ -346,8 +346,11 @@ function RoundView() {
                         });
                         return (
                           <>
-                            {eff.sb && <div>SB {eff.sb}</div>}
-                            {eff.pb && <div>PB {eff.pb}</div>}
+                            {eff.pb ? (
+                              <div>PB {eff.pb}</div>
+                            ) : (
+                              eff.sb && <div>SB {eff.sb}</div>
+                            )}
                           </>
                         );
                       })()}
@@ -523,8 +526,11 @@ function RoundView() {
                                 );
                                 return (
                                   <>
-                                    {eff.sb && <div>SB {eff.sb}</div>}
-                                    {!eff.sb && eff.pb && <div>PB {eff.pb}</div>}
+                                    {eff.pb ? (
+                                      <div>PB {eff.pb}</div>
+                                    ) : (
+                                      eff.sb && <div>SB {eff.sb}</div>
+                                    )}
                                   </>
                                 );
                               })()}
