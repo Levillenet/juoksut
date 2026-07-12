@@ -1,12 +1,49 @@
-## Ongelma
 
-Livenäytöllä (scoreboard) esimerkiksi Enni Aavikon pituushypyn PB näkyy virheellisenä (2,82) vaikka historiadatassa on jo Kouvola Junior Gamesin 3,09. Sama ongelma toistuu selostajanäkymän listoissa.
+## Sähköpostiluonnos tuloslista.com:lle
 
-Syy: `src/routes/scoreboard.tsx` laskee jo `eff = effectiveRecord(...)`, joka yhdistää tuloslistan alloc.PB:n omaan `athlete_results`-historiaamme, mutta näytöllä käytetään silti raakoja `row.SB` / `row.PB` -arvoja suoraan Tuloslistalta. Historiadatassa oleva parempi PB ei siis koskaan näy. Sama toistuu `src/components/announcer/shared.tsx`-tiedoston kahdessa lohkossa (rivit 478–479 ja 595–596), joissa käytetään `a.SB` / `a.PB` `eff`:n sijaan.
+Ei teknisiä linkkejä eikä sisäisiä nimiä, vain konkreettiset muutokset ja arvio vaikutuksesta.
 
-## Muutokset
+---
 
-1. `src/routes/scoreboard.tsx` rivit 772–783: vaihda `row.SB` → `eff.sb` ja `row.PB` → `eff.pb`. Näytetään PB ensin ja SB vain jos se on eri kuin PB (aiemman "SB priorisoinnin" korjauksen mukaisesti).
-2. `src/components/announcer/shared.tsx` rivit 478–479 ja 595–596: käytä `eff.sb` / `eff.pb` `a.SB` / `a.PB` sijaan, sama PB-ensin logiikka. Varmista että `eff` on jo käytettävissä molemmissa lohkoissa (tarvittaessa lasketaan komponentin alussa).
+**Aihe:** Päivitys: pyyntömäärien vähentämiseksi tehdyt muutokset
 
-Ei muita muutoksia. Historian latausketju (`useHistoryBaseline` + `record-baseline`) toimii oikein, kunhan sen tulos päätyy näytölle.
+Hei,
+
+Kiitos aiemmasta palautteestanne. Olemme tehneet palveluumme useita muutoksia, joilla olemme merkittävästi vähentäneet teidän rajapintaanne kohdistuvaa kuormaa. Kaikki muutokset on toteutettu eilisen aikana, joten kuorma on todennäköisesti pudonnut dramaattisesti. Alla yhteenveto tehdyistä muutoksista ja alustavista tuloksista.
+
+**Mitä olemme muuttaneet**
+
+1. **Kilpailu-ID:t haetaan vain virallisesta kilpailulistasta.** Olemme poistaneet kokonaan aiemmat "puimuripyynnöt", joissa kilpailun ID:tä yritettiin arvata numerojärjestyksessä. Uusia kilpailuja etsitään ainoastaan kilpailulistarajapinnan kautta.
+
+2. **Taustahaku rajattu kolmen päivän ikkunaan.** Taustatyö hakee tuloksia vain viimeisen kolmen päivän kilpailuille, ei koko historialle. Monipäiväiset kilpailut tunnistetaan ja niitä seurataan koko keston ajan.
+
+3. **Aktiivinen tulosseuranta (15 sekunnin sykli) käynnistyy vain, kun jollain käyttäjällä on kilpailu aktiivisesti seurannassa.** Jos yksikään käyttäjä ei seuraa kisaa, sitä ei pollata tiheästi. Samanaikaisesti aktiivisia kilpailuja on korkeintaan kahdeksan.
+
+4. **Tiheä seuranta on aikaikkunoitu.** Yksittäistä lajia seurataan tiheästi vain 5 minuuttia ennen alkua ja korkeintaan 2 tuntia sen jälkeen. Monipäiväisissä kilpailuissa ikkuna kattaa kilpailupäivän.
+
+5. **Haku on rajattu kello 09–21 (Helsinki).** Yöllä ei tehdä lainkaan taustapyyntöjä.
+
+6. **Reunavälimuisti kaikkien pyyntöjen edessä.** Sekä käyttäjien selainpyynnöt että omat taustatyömme kulkevat välipalvelimen kautta, joka välimuistittaa vastaukset. TTL on porrastettu vastauksen sisällön mukaan: käynnissä olevat kierrokset lyhyellä TTL:llä, virallistuneet tulokset pitkällä, kilpailulista ja kilpailun ominaisuudet keskipitkällä TTL:llä. Rinnakkaiset samaan URL:iin osuvat pyynnöt yhdistetään yhdeksi lähtevään pyyntöön.
+
+7. **Circuit breaker.** Jos rajapinta vastaa 429 tai 503, keskeytämme uudet pyynnöt kyseiselle polulle 60 sekunniksi ja tarjoamme käyttäjille välimuistin viimeisimmän kopion.
+
+8. **User-Agent tunnistettavissa.** Kaikki lähtevät pyynnöt käyttävät tunnistettavaa User-Agent-otsaketta.
+
+**Havaittu vaikutus**
+
+Muutosten jälkeen 404-virheitä ei ole enää tullut, koska olemme lakanneet arvaamatta olemattomia kilpailu-ID:tä.
+
+Mittaamme itse päivittäin, kuinka moni käyttäjän tai taustatyön käynnistämä pyyntö palvellaan omalta reunavälimuistiltamme ja kuinka moni menee teidän rajapintaanne asti.
+
+Nykyinen jakauma osoittaa, että noin **70 % kaikista pyynnöistä palvellaan reunavälimuistista** eikä osu teidän palvelimillenne. Aiempaan tilanteeseen (arvaava puimuri + tiheä pollaus + ei välimuistia) verrattuna arvioimme kokonaispyyntömäärän laskeneen **noin 90 %**. Suurin osa jäljelle jäävistä pyynnöistä on välimuistin virkistyksiä käynnissä olevien kilpailujen aikana.
+
+Jos näette omista lokeistanne yhä poikkeavan korkeita määriä joltakin poluilta, kertokaa: voimme säätää TTL:iä tai supistaa ikkunoita edelleen.
+
+Ystävällisin terveisin,
+[Nimi]
+
+---
+
+## Muutokset koodiin
+
+Ei muutoksia. Kyseessä on ainoastaan viestin luonnos.
