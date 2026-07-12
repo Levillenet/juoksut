@@ -148,9 +148,17 @@ async function fetchJson<T>(url: string, state: RunState): Promise<T | null> {
     ? `${state.proxyOrigin}/api/public/tuloslista${pathForCounter}`
     : url;
   try {
-    const r = await fetch(requestUrl, {
-      headers: { "User-Agent": UA, accept: "application/json" },
-    });
+    const headers: Record<string, string> = {
+      "User-Agent": UA,
+      accept: "application/json",
+    };
+    // Kun kutsu menee sisäisen proxyn läpi, kerro proxylle todellinen lähde
+    // jotta origin_call_daily-taulussa harvester ja hot_cycle näkyvät
+    // omilla lähteillään eivätkä sekoitu käyttäjien selainpyyntöihin.
+    if (state.proxyOrigin) {
+      headers["x-origin-source"] = state.source;
+    }
+    const r = await fetch(requestUrl, { headers });
     if (!state.proxyOrigin) bumpOriginCall(state.source, pathForCounter, r.status);
     if (r.status === 429 || r.status === 503) {
       state.rateLimited = true;

@@ -381,6 +381,14 @@ function Page() {
               ohitukset (miss). Reuna = kutsut, jotka palveltiin omalta Cloudflare-reunalta
               ilman origin-kutsua.
             </p>
+            <ul className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
+              <li><b>harvester</b>: taustaharvesteri (5 min välein)</li>
+              <li><b>hot_cycle</b>: 15 s pollaus seuratuille käynnissä oleville kilpailuille</li>
+              <li><b>monitor</b>: 10 min terveystarkkailu</li>
+              <li><b>proxy_origin</b>: käyttäjän selainpyyntö reunavälimuistin ohitse (miss)</li>
+              <li><b>proxy_cache</b>: käyttäjän selainpyyntö palveltu reunavälimuistista (hit)</li>
+              <li><b>admin_probe</b>: admin-UI:sta käynnistetty käsintestaus</li>
+            </ul>
           </section>
         )}
 
