@@ -1,43 +1,26 @@
-# Ongelma
+Havainto datasta:
+- Tänään `harvester` näkyy nollana, koska tämänpäiväiset harvesterin ja hot-cyclen pyynnöt ovat kirjautuneet vielä `proxy_origin` ja `proxy_cache` -lähteisiin. Tämä johtuu siitä, että lähdeotsakkeen korjaus vaikuttaa vasta uusiin ajoihin, eikä takautuvasti muuta jo kirjattuja rivejä.
+- Tänään laskurissa on tällä hetkellä noin 832 origin-kutsua ja 577 reunavälimuistista palveltua vastausta. Kokonaispalvellut pyynnöt ovat siis noin 1 409, jos origin ja reuna lasketaan yhteen.
+- Eilen `harvester` näkyy oikein suurena lukuna, koska silloin kutsut kirjautuivat suoraan harvester-lähteelle ennen proxy-reitityksen muutosta.
 
-Kun harvester ja hot cycle siirrettiin kulkemaan sisäisen proxyn (`/api/public/tuloslista/...`) kautta reunavälimuistin hyödyntämiseksi, niiden kutsut kirjautuvat `origin_call_daily`-taulussa lähteillä `proxy_origin` (miss) ja `proxy_cache` (hit) sen sijaan että näkyisivät omilla lähteillään `harvester` / `hot_cycle`. Admin-dashboardilla tämä näyttää harhaanjohtavasti siltä että "harvester ei ole hakenut mitään tänään", vaikka se toimii normaalisti.
+Suunnitelma:
+1. Päivitän adminin kutsutilastokortin niin, että se näyttää erikseen:
+   - `Origin-kutsut tuloslistalle`
+   - `Reunasta palvellut`
+   - `Yhteensä käsitellyt pyynnöt`
+   Tämä poistaa epäselvyyden siitä, miksi 832 ei ole sama kuin kaikki pyynnöt.
 
-Todiste: 12.7. `proxy_origin` sisältää 604 schedule- ja 127 results-kutsua, jotka ovat käytännössä harvesterin/hot cyclen työtä.
+2. Lisään saman päivän riville huomautuksen, jos `harvester` on 0 mutta `proxy_origin` tai `proxy_cache` kasvaa:
+   - “Taustatyön pyynnöt voivat näkyä proxy-lähteissä ennen lähdeotsakkeen käyttöönottoa.”
+   Näin käyttäjä näkee heti, ettei nolla välttämättä tarkoita, ettei ajo olisi käynnissä.
 
-# Ratkaisu
+3. Korjaan lähteiden listauksen selkeämmäksi:
+   - näytetään myös `proxy_cache`, koska se selittää reunavälimuistin määrän
+   - nimetään lähteet käyttäjäystävällisesti, esimerkiksi `harvester`, `hot cycle`, `käyttäjäpyynnöt originille`, `reunavälimuisti`
 
-Välitetään todellinen alkuperäinen lähde proxylle otsakkeessa `x-origin-source` ja luetaan se `bumpOriginCall`-kutsussa proxyn sisällä. Näin admin-taulukossa näkyy taas erikseen:
+4. Lisään tarvittaessa pienen “viimeksi päivitetty” tai `updated_at`-tiedon riville, jotta nähdään onko tämän päivän laskuri elävä eikä vanhentunut.
 
-- `harvester` = taustaharvesterin ajot (miss + hit)
-- `hot_cycle` = 15 s pollaus
-- `proxy_origin` / `proxy_cache` = pelkästään loppukäyttäjien selainpyynnöt
-
-## Muutokset
-
-1. **`src/lib/tuloslista-proxy.ts`**
-   - Lue pyynnöstä `x-origin-source`-otsake (arvo yksi `CounterSource`-tyypeistä: `harvester` | `hot_cycle` | `monitor` | `admin_probe`).
-   - Jos otsake on annettu:
-     - Miss → `bumpOriginCall(source, path, status)` (ei `proxy_origin`).
-     - Cache hit → `bumpOriginCall(source, path, "hit")` + `bumpOriginCall("proxy_cache", path, "hit")` (säilytetään reunavälimuistin säästö-tilasto ennallaan, mutta lasketaan myös alkuperäiselle lähteelle jotta kokonaismäärä täsmää).
-     - Vaihtoehto: pelkkä alkuperäinen lähde, ilman `proxy_cache`-riviä. Suositellaan tätä, koska admin-UI:n Säästö-sarake lasketaan `proxy_cache / (proxy_cache + proxy_origin)` — jätetään `proxy_cache` mittaamaan vain aitoja selainpyyntöjä.
-   - Jos otsaketta ei ole → nykyinen käyttäytyminen (`proxy_origin` / `proxy_cache`).
-
-2. **`src/routes/api/public/hooks/harvest-results.ts`**
-   - Kaikkiin `fetch`-kutsuihin sisäiseen proxyyn lisää `headers: { "x-origin-source": "harvester" }` (tai `"hot_cycle"` hot-syklin funktioissa).
-
-3. **Poista päällekkäinen instrumentointi**
-   - Harvesterissä on jo `bumpOriginCall("harvester", ...)`-kutsuja upstream-vastauksen jälkeen. Kun proxy kirjaa saman kutsun `x-origin-source`-otsakkeen perusteella, tuloksena syntyy tuplakirjauksia. Poista harvesterin sisäiset `bumpOriginCall`-kutsut niiltä poluilta jotka kulkevat proxyn kautta, jätä vain suorille upstream-kutsuille (jos jäljellä yhtään).
-
-4. **Admin-dashboardin selite**
-   - `/admin/tuloslista-probe`-sivulle pieni legenda tai tooltip lähteille: `harvester` = taustaharvesteri, `hot_cycle` = 15 s pollaus seuratuille kilpailuille, `monitor` = 10 min terveystarkkailu, `proxy_origin` = käyttäjän selainpyyntö reunavälimuistin ohitse, `proxy_cache` = käyttäjän selainpyyntö palveltu reunavälimuistista, `admin_probe` = admin-UI:n käsintestaus.
-
-## Tarkennus: mitä sivutuotteita korjaus tuo
-
-- 12.7. luvut näyttävät jatkossa jotain kuten `harvester: ~700, hot_cycle: ~50, proxy_origin: ~30, proxy_cache: ~100` sen sijaan että kaikki on `proxy_origin`.
-- Säästö-% pysyy relevanttina (mittaa vain käyttäjäliikennettä).
-- Historia 12.7. asti (ennen deploytä) jää edelleen näkymään `proxy_origin`-lähteellä, mikä on ok.
-
-# Ei muutoksia
-
-- Ei muutoksia harvesterin logiikkaan, ajastuksiin, hot-syklin sääntöihin eikä välimuistin toimintaan.
-- Ei muutoksia tietokantaskeemaan (`origin_call_daily` säilyy ennallaan).
+Tekninen toteutus:
+- Muutos tehdään `src/routes/admin.tuloslista-probe.tsx` -näkymään.
+- Tarvittaessa laajennan `getOriginCallStats`-palautetta niin, että se palauttaa myös päivän viimeisimmän laskuripäivityksen.
+- Tietokantaan ei tarvitse tehdä muutosta, ellei haluta myöhemmin takautuvasti uudelleenluokitella tämän päivän proxy-rivejä harvesteriksi, mitä en suosittele ilman varmaa erottelua.

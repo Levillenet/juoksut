@@ -256,6 +256,7 @@ export interface OriginCallDayStats {
   bySource: Record<string, number>;
   byPathKind: Record<string, number>;
   errors: number; // origin calls with 4xx/5xx/0
+  lastUpdatedAt: string | null;
 }
 
 export const getOriginCallStats = createServerFn({ method: "GET" })
@@ -269,7 +270,7 @@ export const getOriginCallStats = createServerFn({ method: "GET" })
     const sinceDay = since.toISOString().slice(0, 10);
     const { data, error } = await supabaseAdmin
       .from("origin_call_daily")
-      .select("day, source, path_kind, status_bucket, count")
+      .select("day, source, path_kind, status_bucket, count, updated_at")
       .gte("day", sinceDay)
       .order("day", { ascending: false });
     if (error) throw new Error(error.message);
@@ -287,6 +288,7 @@ export const getOriginCallStats = createServerFn({ method: "GET" })
           bySource: {},
           byPathKind: {},
           errors: 0,
+          lastUpdatedAt: null,
         };
         byDay.set(day, entry);
       }
@@ -295,6 +297,10 @@ export const getOriginCallStats = createServerFn({ method: "GET" })
       const bucket = String(r.status_bucket);
       entry.bySource[source] = (entry.bySource[source] ?? 0) + count;
       entry.byPathKind[String(r.path_kind)] = (entry.byPathKind[String(r.path_kind)] ?? 0) + count;
+      const updatedAt = typeof r.updated_at === "string" ? r.updated_at : null;
+      if (updatedAt && (!entry.lastUpdatedAt || updatedAt > entry.lastUpdatedAt)) {
+        entry.lastUpdatedAt = updatedAt;
+      }
       if (source === "proxy_cache") {
         entry.servedFromEdge += count;
       } else if (ORIGIN_SOURCES.has(source)) {
