@@ -9,7 +9,7 @@ import { normalizeEventName } from "./season-leaders";
 import { pbEventKey } from "./pb-key";
 import { seasonRange } from "./season-stats";
 import { isRoadOrCrossCountry, isRoadOrCrossCountryRound } from "./event-filters";
-import { fetchCompetitionList, filterToday } from "./competition-list";
+import { fetchCompetitionList, filterRunningToday } from "./competition-list";
 import { fetchRounds, helsinkiDateKey } from "./tuloslista";
 
 export interface TodayStats {
