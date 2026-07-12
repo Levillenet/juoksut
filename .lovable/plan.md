@@ -1,31 +1,26 @@
 ## Ongelma
 
-Etusivun tilavalo näyttää punaista ja tekstiä "Tulospalvelu ei ole vastannut hetkeen", vaikka tuloksia todella tulee järjestelmään. Tarkistuksen mukaan:
+Etusivun valo on jälleen punainen. Tarkistuksen mukaan:
+- Viimeisin cron-ajo 36 min sitten (yli 30 min raja)
+- Viimeisin tulos 67 min sitten (yli 30 min raja)
+- Ei aktiivista kisaa tänään (stats-kortit tyhjiä)
 
-- `harvest_state.last_run_at` = 11:20 UTC (n. 100 min sitten)
-- Uusin tulos `athlete_results.captured_at` = 11:50 UTC (n. 30 min sitten, 275 riviä)
-
-`HarvestLight` päättelee terveyden pelkästään `last_run_at`-kentästä (yli 30 min = punainen). Tuloksia kuitenkin virtaa käyttäjävetoisen hot-cyclen (proxy) kautta, joka tallentaa rivit mutta ei päivitä `last_run_at`-kenttää. Signaali on siis väärä: cron-harvester ei ole ajanut hetkeen, mutta itse tulospalvelu ja järjestelmä toimivat.
+Nykyinen logiikka merkitsee tilan punaiseksi aina kun sekä ajo että kaappaus ovat vanhentuneet, vaikka mikään kisa ei olisi käynnissä. Hiljaisena iltana (kisat päättyneet) tämä on väärä hälytys: mitään ei ole tarkoituskaan tulla, joten "tulospalvelu ei ole vastannut" viesti johtaa harhaan.
 
 ## Ratkaisu
 
-Muutetaan `HarvestLight`-komponentin päättelyä niin, että tuoreet tulokset (`last_captured_at`) riittävät terveeksi tilaksi, vaikka `last_run_at` olisi vanhentunut.
+Kytketään hälytysraja siihen, onko kisoja käynnissä:
 
-### Uusi logiikka
+- **Punainen**: `blocked=true`, TAI aktiivinen kisa käynnissä JA sekä ajo että viimeisin tulos yli 30 min vanhoja.
+- **Keltainen**: aktiivinen kisa käynnissä, ajo tuore mutta tuloksia ei yli 45 min (ennallaan).
+- **Vihreä**: ei aktiivista kisaa, TAI tuoreita tuloksia tulee normaalisti.
 
-- **Punainen**: `blocked=true`, TAI sekä `last_run_at` että `last_captured_at` yli 30 min vanhoja.
-- **Keltainen**: aktiivinen kisa käynnissä, mutta viimeisin tulos yli 45 min vanha (ennallaan).
-- **Vihreä**: muutoin.
-
-Tooltip-detaljit säilyvät ennallaan (näyttävät sekä viimeisen ajon että viimeisen tuloksen).
+Kun kisapäivä on ohi, valo pysyy vihreänä eikä käyttäjää säikäytellä yöllä tai aamulla ennen ensimmäistä kisaa.
 
 ## Toteutus
 
-Muokataan `src/components/HarvestLight.tsx`:
-- Lasketaan `captureFresh = lastCap && (now - lastCap) < RUN_STALE_MS`.
-- `apiOk = !blocked && (!runStale || captureFresh)`.
-- Kun `runStale` mutta `captureFresh`, teksti pysyy vihreänä "Tulokset päivittyvät normaalisti".
+`src/components/HarvestLight.tsx`: siirretään `runStale`/`captureFresh` tarkistus `anyCompetitionToday`-haaraan. Kun kisoja ei ole, palautetaan aina vihreä (ellei `blocked`). Tooltip säilyttää tarkat aikaleimat.
 
-## Erikseen huomioitavaa (ei tässä planissa)
+## Erikseen (ei tässä planissa)
 
-Cron-harvesterin `last_run_at` ei ole päivittynyt tuntiin: erillinen selvitys siitä miksi ajastin ei laukea (voi olla Cloudflare-cron tai `harvest_state` update failaa erä-ajossa). Merkitään seuraavaksi tehtäväksi, jos punainen valo palaa uudella logiikallakin.
+Cron-ajastin on hitaanpuoleinen (36 min väli). Tämä on erillinen selvitys jos halutaan tiheämpi tausta-ajo; nyt käyttäjävetoinen hot-cycle hoitaa live-päivitykset.
