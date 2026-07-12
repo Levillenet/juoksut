@@ -786,7 +786,13 @@ async function run(request: Request): Promise<Response> {
       .filter((c) => isRecentCompetitionDate(c.date))
       .sort((a, b) => b.id - a.id);
 
-    // Jo valmiiksi merkityt ID:t → jätetään pois.
+    // Jo valmiiksi merkityt ID:t → jätetään pois. Poikkeus: viimeisen
+    // kolmen päivän kisat rescanataan aina, jotta monipäiväiset kisat
+    // päivittyvät (uusi last_event_date + uudet tulokset saadaan mukaan).
+    const hkiTodayIso = helsinkiDateISO(new Date().toISOString());
+    const rescanCutoff = hkiTodayIso
+      ? new Date(new Date(hkiTodayIso).getTime() - 2 * 86400_000).toISOString().slice(0, 10)
+      : null;
     const listedIds = listed.map((e) => e.id);
     const doneSet = new Set<number>();
     const CHUNK = 500;
@@ -800,7 +806,13 @@ async function run(request: Request): Promise<Response> {
       for (const r of data ?? []) doneSet.add(r.competition_id);
     }
 
-    const pending = listed.filter((e) => !doneSet.has(e.id));
+    const pending = listed.filter((e) => {
+      if (!doneSet.has(e.id)) return true;
+      // Rescanataan viimeisen 3 päivän listalla olevat kisat.
+      if (rescanCutoff && e.date && e.date >= rescanCutoff) return true;
+      return false;
+    });
+
     const batch = pending.slice(0, BATCH_SIZE);
 
     if (batch.length === 0) {
