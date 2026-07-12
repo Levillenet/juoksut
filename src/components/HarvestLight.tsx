@@ -83,8 +83,9 @@ export function HarvestLight() {
     }
   } else {
     status = "green";
-    label = "Ei kilpailuja tänään, palvelu toiminnassa";
+    label = "Tulokset päivittyvät normaalisti";
   }
+
 
   const detailParts: string[] = [];
   if (lastRun) detailParts.push(`Viimeisin ajo ${formatRelativeFi(lastRun, now)}.`);
