@@ -523,7 +523,9 @@ async function harvestIds(
     done: boolean;
     last_scanned_at: string;
     first_scanned_at: string;
+    last_event_date?: string | null;
   }> = [];
+
 
   // Lataa aiemmat first_scanned_at -arvot upsertia varten.
   const firstSeenMap = new Map<number, string>();
