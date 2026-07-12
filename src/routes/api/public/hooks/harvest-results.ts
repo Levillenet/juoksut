@@ -268,6 +268,19 @@ type Row = {
   result_round_name: string;
 };
 
+function helsinkiDateISO(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const t = new Date(value);
+  if (Number.isNaN(t.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Helsinki",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(t);
+  return parts; // YYYY-MM-DD
+}
+
 async function processCompetition(
   id: number,
   pending: Row[],
@@ -275,16 +288,22 @@ async function processCompetition(
   competitionDateHint: string | null,
   state: RunState,
   options: { hotEventsOnly?: boolean } = {},
-): Promise<{ existed: boolean; rowsAdded: number; competitionDate: string | null }> {
+): Promise<{ existed: boolean; rowsAdded: number; competitionDate: string | null; lastEventDate: string | null }> {
   const props = await fetchJson<PropertiesShape>(
     `${API}/competition/${id}/properties`,
     state,
   );
-  if (!props?.Competition?.Id) return { existed: false, rowsAdded: 0, competitionDate: competitionDateHint };
+  if (!props?.Competition?.Id) return { existed: false, rowsAdded: 0, competitionDate: competitionDateHint, lastEventDate: null };
   const competitionDate = props.Competition?.BeginDate ?? competitionDateHint;
   const byDate = await fetchJson<RoundsByDateShape>(`${API}/competition/${id}`, state);
-  if (!byDate) return { existed: true, rowsAdded: 0, competitionDate };
+  if (!byDate) return { existed: true, rowsAdded: 0, competitionDate, lastEventDate: null };
   const scheduleRounds = Object.values(byDate).flat();
+  // Viimeisen erän Helsinki-päivä — monipäiväisten kisojen tunnistus.
+  let lastEventDate: string | null = null;
+  for (const r of scheduleRounds) {
+    const d = helsinkiDateISO(r.BeginDateTimeWithTZ);
+    if (d && (!lastEventDate || d > lastEventDate)) lastEventDate = d;
+  }
   const ageByEvent = new Map<number, string>();
   for (const r of scheduleRounds) {
       if (!ageByEvent.has(r.EventId)) ageByEvent.set(r.EventId, r.GroupName ?? "");
@@ -294,8 +313,9 @@ async function processCompetition(
     hotEventIds ? hotEventIds.has(eventId) : true,
   );
   if (options.hotEventsOnly && eventIds.length === 0) {
-    return { existed: true, rowsAdded: 0, competitionDate };
+    return { existed: true, rowsAdded: 0, competitionDate, lastEventDate };
   }
+
   let rowsAdded = 0;
   for (const eid of eventIds) {
     const ev = await fetchJson<EventShape>(`${API}/results/${id}/${eid}`, state);
@@ -443,7 +463,7 @@ async function processCompetition(
       }
     }
   }
-  return { existed: true, rowsAdded, competitionDate };
+  return { existed: true, rowsAdded, competitionDate, lastEventDate };
 }
 
 function parseWind(w: unknown): number | null {
@@ -503,7 +523,9 @@ async function harvestIds(
     done: boolean;
     last_scanned_at: string;
     first_scanned_at: string;
+    last_event_date?: string | null;
   }> = [];
+
 
   // Lataa aiemmat first_scanned_at -arvot upsertia varten.
   const firstSeenMap = new Map<number, string>();
@@ -552,7 +574,9 @@ async function harvestIds(
           done: true,
           last_scanned_at: nowIso,
           first_scanned_at: firstSeenMap.get(e.id) ?? nowIso,
+          last_event_date: v.lastEventDate ?? null,
         });
+
       }
       if (r.status === "rejected") console.error("comp", e.id, r.reason);
     }

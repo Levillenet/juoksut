@@ -1,41 +1,46 @@
-Laadin vastausviestin tuloslista.comille, jossa kerrotaan tehdyistä muutoksista. Korostetaan palvelimen reunavälimuistia (proxy + tietokantatason cache) ja kuvataan nykyinen hakumalli.
+## Tilanne
 
-## Viestin runko (suomeksi, ei ajatusviivoja)
+Etusivun valo katsoo nyt vain "milloin viimeinen tulos tallennettiin". Jos päivällä ei ole yhtään uutta tulosta (esim. hiljainen aamu tai kilpailut alkavat vasta iltapäivällä), valo menee turhaan punaiseksi vaikka haku toimii täysin normaalisti.
 
-**Otsikko:** Päivitys: kutsujen määrä ja hakumallin muutokset
+Toinen ongelma: kaksi- ja monipäiväisiä kilpailuja (esim. Jymy Games 11.–12.7.) ei tunnisteta jatkuvina. Kilpailu on tietokannassa vain aloituspäivällä 11.7., joten palvelu ajattelee, ettei "tänään" ole kilpailuja vaikka kilpailua ajetaan koko päivän.
 
-**1. Yhteenveto muutoksista**
-- Poistettu kaikki "puimuripyynnöt", joissa arvattiin kilpailun ID:tä. Ainoa lähde uusille ID:ille on nyt `/live/v1/competition`.
-- Vakiona käytössä yksi standardi User-Agent, ei satunnaisia selainstringejä.
-- Rakennettu palvelimen reunavälimuisti (kuvattu alla), joka koalisoi rinnakkaiset pyynnöt ja palvelee useimmat lukijat ilman origin-käyntiä.
-- Yökatko: kaikki taustakutsut pysähtyvät klo 21:00 ja käynnistyvät klo 09:00 Helsingin aikaa (sekä koodissa että pg_cron-aikatauluissa).
-- Aktiiviseurannan ("hot cycle") ehto tiukennettu: aktivoituu vain, kun joku käyttäjä oikeasti seuraa kilpailua tai sen urheilijaa, ja vain 5 min ennen alkua kunnes 2 h alkamisen jälkeen tai kunnes päivitykset loppuvat.
+## Mitä tehdään
 
-**2. Palvelimen reunavälimuisti (pääosa liikenteestä)**
-Kuvaus kolmen tason cachesta selaimen ja tuloslistan välillä:
-- Taso 1: isolate-muisti (LRU, 500 avainta), ~1 ms vasteaika lämpimissä isolaateissa.
-- Taso 2: Cloudflare Cache API per-URL, jaettu reunan sisällä (kun ajoympäristö tukee).
-- Taso 3: Postgres-pohjainen varavälimuisti (`tuloslista_proxy_cache`) niitä ajoympäristöjä varten, joissa Cache API ei ole käytettävissä. Varmistaa, että taustaharvesteri ja SSR-lukijat jakavat saman rungon.
-- Single-flight-koalisaatio: samanaikaiset osumat samaan URL:iin yhdistetään yhdeksi origin-pyynnöksi.
-- Stale-while-revalidate: hieman vanhentunut vastaus palautetaan välittömästi, tuore versio haetaan taustalla.
-- Circuit breaker: 429/503/timeout avaa katkaisijan 60 sekunniksi ja palauttaa viimeisen tunnetun tuloksen.
-- Per-endpoint TTL-strategiat: kilpailulista 60 s, kisan properties 300 s, aikataulu 30 s, tulokset johdetaan Rounds-statuksesta (Progress 8 s, Official 300 s).
+### 1. Kilpailun kesto tunnistetaan aikataulusta
 
-**3. Nykyinen hakumalli**
-- **Käyttäjien pyynnöt** menevät oman domainin proxy-reitin kautta `/api/public/tuloslista/live/v1/...`, eivät suoraan tuloslistalle. Selain ei koskaan puhu suoraan originin kanssa.
-- **Taustaharvesteri** ajaa 5 min välein klo 09:00 - 21:00 ja hakee vain päivän kilpailulistan, sitten kunkin listalta löytyvän aktiivisen kilpailun aikataulun ja tulokset. Ei ID-arvausta, ei 404-koettelua.
-- **Hot cycle (15 s)** ajaa vain, kun päivän kilpailulla on aktiivinen seuraaja. Kilpailu tippuu automaattisesti pois heti kun tulokset loppuvat.
-- **Monitor-tehtävä** tunnistaa tuloslistan rajoitusviestit vastauksen rungosta ja tallentaa ne omalle admin-näkymälle, joten reagoimme heti eikä viiveellä.
-- **Lokitus:** jokainen origin-kutsu ja välimuistiosuma kirjataan `origin_call_daily`-tauluun (lähde, polkutyyppi, status). Näemme päivittäisen määrän jälkikäteen ja voimme raportoida.
+Kun haku käy kilpailun aikataulun läpi, tallennetaan `harvest_competitions`-tauluun myös **viimeisen erän päivämäärä** (Helsingin aikaa). Näin kilpailu tunnetaan sen todellisella keston pituudella eikä vain aloituspäivällä. Kun tänään on tuon välin sisällä, kilpailu tunnistetaan käynnissä olevaksi.
 
-**4. Mitä tämä tarkoittaa käytännössä**
-- Käyttäjämäärän kasvaessa origin-kutsut eivät kasva lineaarisesti, koska proxy palvelee suurimman osan lukijoista välimuistista.
-- Yöaikaan (21 - 09) origin-kutsuja ei tule lainkaan.
-- Kaikki jäljellä olevat origin-kutsut ovat joko välimuistin virkistyksiä TTL:n mukaisesti tai päivän hot-kilpailun 15 s pollausta seurantakäyttäjille.
+Sama tieto käytetään "hot cycle" -listauksessa ja "tänään ei kilpailuja" -tunnistuksessa, joten kaikki näkymät alkavat kohdella monipäiväisiä oikein.
 
-**5. Yhteydenpito**
-Pyydetään ilmoittamaan, jos he näkevät edelleen epätoivottua kuormaa tai osoittamaan URL-polku, jonka he haluaisivat harvempaan tahtiin, niin säädämme TTL:n välittömästi.
+### 2. Valon logiikka: "toimiiko haku?"
 
-## Toimitus
+Valo katsoo jatkossa kolmea signaalia:
 
-Kirjoitan viestin plain-text muodossa chattiin (ei koodimuutoksia), josta voit kopioida sen sähköpostiin. En koske koodiin tässä tehtävässä.
+- **Ei estoa** (`harvest_state.blocked = false`).
+- **Haku on käynyt lähiaikoina** (`last_run_at` alle 15 minuuttia sitten kello 09–21 Helsinki, muulloin viimeisen 12 tunnin sisällä; yöllä hakua ei kuulukaan pyöriä).
+- **Kun kilpailuja on käynnissä**, viimeisin tallennettu tulos on korkeintaan noin 30 minuuttia vanha. Jos taas mitään kilpailua ei ole käynnissä, tuoreiden tulosten puuttuminen ei enää värjää valoa punaiseksi.
+
+Käytännössä:
+
+```text
+blocked                          → punainen ("haku suljettu, syy X")
+haku ei ole käynyt aikaikkunassa → punainen ("haku ei ole käynnistynyt")
+kilpailu käynnissä, tulokset vanhoja → keltainen ("tulokset päivittyvät hitaasti")
+muuten                            → vihreä
+```
+
+Valo saa myös lyhyen selittävän tekstin: "Tänään ei ole kilpailuja", "Kilpailu käynnissä, viimeisin tulos X min sitten", tai "Haku toimii, seuraava kilpailu XX.X.".
+
+### 3. Etusivun "päivän lajit ja kilpailut" -kortti
+
+Sama korjaus: kortti näyttää selkeän tekstin "Tänään ei kilpailuja tuloslistassa" nollien sijaan, jos päivälle ei ole yhtään aktiivista kilpailua. Monipäiväisen kilpailun tapauksessa kortti näyttää oikean määrän, koska kilpailu tunnistetaan käynnissä olevaksi.
+
+## Tekninen puoli
+
+- **Migraatio:** lisätään `harvest_competitions.last_event_date DATE` (Helsinki-päivämäärä). Täytetään taustalla harvesterin seuraavalla ajolla; alustava täyttö olemassaoleville riveille kopioi `competition_date`:n (turvallinen oletus, päivittyy oikein kun aikataulu haetaan uudestaan).
+- **Harvester** (`src/routes/api/public/hooks/harvest-results.ts`): kun aikataulu on käyty, lasketaan `max(BeginDateTimeWithTZ)` Helsingin päivämääränä ja kirjoitetaan `last_event_date`.
+- **`get_hot_competition_ids`**: ehto muutetaan muotoon `today BETWEEN start_date AND coalesce(last_event_date, start_date)`.
+- **Uusi apufunktio** `is_any_competition_active_today()`: palauttaa boolean; käytetään sekä valossa että etusivun kortissa.
+- **`src/components/HarvestLight.tsx`**: uusi kolmiportainen tila (vihreä/keltainen/punainen), hakee myös `last_run_at`, `active_today` -tiedot, ja rakentaa selittävän tekstin.
+- **`TodayStatsSection`** / etusivun kortti: näyttää "ei kilpailuja tänään" -tilan kun `active_today = false`, käyttäen `last_event_date`-korjattua joukkoa.
+- Ei muutoksia ajastuksiin, proxyyn, välimuistiin eikä yöikkunaan.
