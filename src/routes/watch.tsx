@@ -26,6 +26,7 @@ import { useHistoryBaseline } from "@/lib/history-baseline";
 import {
   competitionIndexQueryOptions,
   competitionIndexKey,
+  competitionScheduleQueryOptions,
   type IndexedEntry,
 } from "@/lib/tuloslista-queries";
 import { Button } from "@/components/ui/button";
