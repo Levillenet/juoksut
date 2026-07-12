@@ -625,6 +625,7 @@ export type Database = {
           done: boolean
           exists_in_source: boolean
           first_scanned_at: string | null
+          last_event_date: string | null
           last_scanned_at: string
           row_count: number
         }
@@ -634,6 +635,7 @@ export type Database = {
           done?: boolean
           exists_in_source?: boolean
           first_scanned_at?: string | null
+          last_event_date?: string | null
           last_scanned_at?: string
           row_count?: number
         }
@@ -643,6 +645,7 @@ export type Database = {
           done?: boolean
           exists_in_source?: boolean
           first_scanned_at?: string | null
+          last_event_date?: string | null
           last_scanned_at?: string
           row_count?: number
         }
@@ -1734,6 +1737,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin_user: { Args: never; Returns: boolean }
+      is_any_competition_active_today: { Args: never; Returns: boolean }
       is_better_result: {
         Args: { event_category: string; new_val: number; old_val: number }
         Returns: boolean
