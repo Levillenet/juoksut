@@ -380,19 +380,15 @@ export function EventCard({
               const rank = a.ResultRank ?? (isTrack ? null : a.Position);
               const badgeValue = isTrack ? a.Position : rank;
               const change = rankChanges.get(a.AllocId);
-              const eff = a.Result
-                ? effectiveRecord(round.EventId, a, {
-                    competitionId,
-                    athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
-                    eventName: round.EventName,
-                    ageClass: round.GroupName,
-                    category: round.Category,
-                  })
-                : null;
+              const eff = effectiveRecord(round.EventId, a, {
+                competitionId,
+                athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
+                eventName: round.EventName,
+                ageClass: round.GroupName,
+                category: round.Category,
+              });
               const recordKind =
-                a.Result && eff
-                  ? detectRecord(round.Category, a.Result, eff.pb, eff.sb)
-                  : null;
+                a.Result ? detectRecord(round.Category, a.Result, eff.pb, eff.sb) : null;
               return (
                 <li
                   key={a.AllocId}
