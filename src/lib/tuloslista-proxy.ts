@@ -138,6 +138,8 @@ export async function proxyTuloslista(
   ttlOf: (body: string) => TtlConfig,
   request?: Request,
 ): Promise<Response> {
+  const { originSource, cacheSource } = resolveSources(request);
+
   const originUrl = `${ORIGIN}${path}`;
   // Cloudflare Cache API vaatii, että avaimen host on samalla zonella kuin
   // Worker itse — mielivaltainen `https://tl-proxy.local` hyväksytään put:ssa
@@ -155,13 +157,13 @@ export async function proxyTuloslista(
     const ttl = ttlOf(mem.body);
     const ageSec = (Date.now() - mem.cachedAt) / 1000;
     if (ageSec < ttl.edgeTtl) {
-      bumpOriginCall("proxy_cache", path, "hit");
+      bumpOriginCall(cacheSource, path, "hit");
       return jsonResponse(mem.body, "hit", ageSec);
     }
     if (ageSec < ttl.edgeTtl + ttl.swrWindow) {
-      bumpOriginCall("proxy_cache", path, "stale");
-      if (cache) kickRefresh(originUrl, cacheKey, cache, ttlOf, path);
-      else void getOrFetch(originUrl, cacheKey, cache, ttlOf, path);
+      bumpOriginCall(cacheSource, path, "stale");
+      if (cache) kickRefresh(originUrl, cacheKey, cache, ttlOf, path, originSource);
+      else void getOrFetch(originUrl, cacheKey, cache, ttlOf, path, originSource);
       return jsonResponse(mem.body, "stale", ageSec);
     }
 
@@ -177,13 +179,13 @@ export async function proxyTuloslista(
         const ttl = ttlOf(env.body);
         const ageSec = (Date.now() - env.cachedAt) / 1000;
         if (ageSec < ttl.edgeTtl) {
-          bumpOriginCall("proxy_cache", path, "hit");
+          bumpOriginCall(cacheSource, path, "hit");
           return jsonResponse(env.body, "hit", ageSec);
         }
         if (ageSec < ttl.edgeTtl + ttl.swrWindow) {
           // SWR: palauta stale heti, päivitä taustalla.
-          bumpOriginCall("proxy_cache", path, "stale");
-          kickRefresh(originUrl, cacheKey, cache, ttlOf, path);
+          bumpOriginCall(cacheSource, path, "stale");
+          kickRefresh(originUrl, cacheKey, cache, ttlOf, path, originSource);
           return jsonResponse(env.body, "stale", ageSec);
         }
         // Liian vanha — käsitellään cache-missinä mutta pidetään stale
@@ -201,12 +203,12 @@ export async function proxyTuloslista(
     const ttl = ttlOf(dbEnv.body);
     const ageSec = (Date.now() - dbEnv.cachedAt) / 1000;
     if (ageSec < ttl.edgeTtl) {
-      bumpOriginCall("proxy_cache", path, "hit");
+      bumpOriginCall(cacheSource, path, "hit");
       return jsonResponse(dbEnv.body, "hit", ageSec);
     }
     if (ageSec < ttl.edgeTtl + ttl.swrWindow) {
-      bumpOriginCall("proxy_cache", path, "stale");
-      void getOrFetch(originUrl, cacheKey, cache, ttlOf, path);
+      bumpOriginCall(cacheSource, path, "stale");
+      void getOrFetch(originUrl, cacheKey, cache, ttlOf, path, originSource);
       return jsonResponse(dbEnv.body, "stale", ageSec);
     }
   }
@@ -215,7 +217,7 @@ export async function proxyTuloslista(
   const openUntil = circuitOpenUntil.get(path);
   if (openUntil && Date.now() < openUntil) {
     if (mem) {
-      bumpOriginCall("proxy_cache", path, "circuit");
+      bumpOriginCall(cacheSource, path, "circuit");
       return jsonResponse(mem.body, "circuit", (Date.now() - mem.cachedAt) / 1000);
     }
     if (cache) {
@@ -224,20 +226,20 @@ export async function proxyTuloslista(
         const env = await readEnvelope(hit);
         if (env) {
           memoryPut(path, env);
-          bumpOriginCall("proxy_cache", path, "circuit");
+          bumpOriginCall(cacheSource, path, "circuit");
           return jsonResponse(env.body, "circuit", (Date.now() - env.cachedAt) / 1000);
         }
       }
     }
     if (dbEnv) {
-      bumpOriginCall("proxy_cache", path, "circuit");
+      bumpOriginCall(cacheSource, path, "circuit");
       return jsonResponse(dbEnv.body, "circuit", (Date.now() - dbEnv.cachedAt) / 1000);
     }
   }
 
 
   // 3) Single-flight upstream-fetch
-  const body = await getOrFetch(originUrl, cacheKey, cache, ttlOf, path);
+  const body = await getOrFetch(originUrl, cacheKey, cache, ttlOf, path, originSource);
   if (body) return jsonResponse(body, "miss", 0);
 
   // 4) Origin feilasi — viimeinen yritys: anna mikä tahansa cache-kopio
@@ -246,7 +248,7 @@ export async function proxyTuloslista(
     if (hit) {
       const env = await readEnvelope(hit);
       if (env) {
-        bumpOriginCall("proxy_cache", path, "stale-error");
+        bumpOriginCall(cacheSource, path, "stale-error");
         return jsonResponse(env.body, "stale-error", (Date.now() - env.cachedAt) / 1000);
       }
     }
@@ -266,10 +268,11 @@ async function getOrFetch(
   cache: Cache | null,
   ttlOf: (body: string) => TtlConfig,
   path: string,
+  originSource: CounterSource,
 ): Promise<string | null> {
   let p = inflight.get(path);
   if (!p) {
-    p = fetchFromOrigin(originUrl, cacheKey, cache, ttlOf, path);
+    p = fetchFromOrigin(originUrl, cacheKey, cache, ttlOf, path, originSource);
     inflight.set(path, p);
     p.finally(() => {
       // Pidetään promise hetki memorymapissa että uusi pyyntö ei riko
