@@ -65,6 +65,37 @@ const STATUS_STYLE: Record<"Unallocated" | "Allocated" | "Progress" | "Official"
 function WatchPage() {
   const [competitionId, setCompetitionId] = useCompetitionId();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [resolvingRound, setResolvingRound] = useState<string | null>(null);
+
+  const openResultRound = async (compId: number, eventId: number) => {
+    const key = `${compId}:${eventId}`;
+    setResolvingRound(key);
+    try {
+      const schedule = await queryClient.fetchQuery(
+        competitionScheduleQueryOptions(compId),
+      );
+      const allRounds = Object.values(schedule.rounds).flat();
+      const eventRounds = allRounds
+        .filter((r) => r.EventId === eventId)
+        .sort((a, b) => (a.Id ?? 0) - (b.Id ?? 0));
+      const roundId = eventRounds[0]?.Id;
+      if (!roundId) {
+        toast.error("Erän tietoja ei löytynyt");
+        return;
+      }
+      setCompetitionId(compId);
+      navigate({
+        to: "/round/$eventId/$roundId",
+        params: { eventId: String(eventId), roundId: String(roundId) },
+      });
+    } catch (err) {
+      console.error("openResultRound failed", err);
+      toast.error("Erän avaus epäonnistui");
+    } finally {
+      setResolvingRound(null);
+    }
+  };
   const { list: watched, add, remove } = useWatchedAthletes();
   const [query, setQuery] = useState<string>("");
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
