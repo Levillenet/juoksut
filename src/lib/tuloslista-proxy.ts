@@ -289,6 +289,7 @@ async function fetchFromOrigin(
   cache: Cache | null,
   ttlOf: (body: string) => TtlConfig,
   path: string,
+  originSource: CounterSource,
 ): Promise<string | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
@@ -300,7 +301,7 @@ async function fetchFromOrigin(
       },
       signal: controller.signal,
     });
-    bumpOriginCall("proxy_origin", path, res.status);
+    bumpOriginCall(originSource, path, res.status);
     if (res.status === 429 || res.status === 503) {
       console.warn(`[tl-proxy] origin ${res.status} ${path} — circuit open ${CIRCUIT_OPEN_MS}ms`);
       circuitOpenUntil.set(path, Date.now() + CIRCUIT_OPEN_MS);
@@ -349,7 +350,7 @@ async function fetchFromOrigin(
     } else {
       console.error(`[tl-proxy] fetch error ${path}`, e);
     }
-    bumpOriginCall("proxy_origin", path, 0);
+    bumpOriginCall(originSource, path, 0);
     // Avaa breaker myös timeoutille ja verkkovirheille, jottei Worker jää
     // jumiin samaan hitaaseen upstreamiin.
     circuitOpenUntil.set(path, Date.now() + CIRCUIT_OPEN_MS);
@@ -365,11 +366,12 @@ function kickRefresh(
   cache: Cache,
   ttlOf: (body: string) => TtlConfig,
   path: string,
+  originSource: CounterSource,
 ) {
   if (inflight.has(path)) return;
   // Fire-and-forget. Worker-runtime usein pitää isolaatin elossa muiden
   // pyyntöjen ansiosta, ja seuraava lukija saa freshin vastauksen.
-  const p = fetchFromOrigin(originUrl, cacheKey, cache, ttlOf, path);
+  const p = fetchFromOrigin(originUrl, cacheKey, cache, ttlOf, path, originSource);
   inflight.set(path, p);
   p.finally(() => inflight.delete(path));
 }
