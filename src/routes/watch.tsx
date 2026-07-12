@@ -805,36 +805,48 @@ function WatchPage() {
                               hour: "2-digit",
                               minute: "2-digit",
                             });
+                            const rowKey = `${r.competition_id}:${r.event_id}`;
+                            const isResolving = resolvingRound === rowKey;
                             return (
                               <li
                                 key={`${r.competition_id}-${r.event_id}-${r.event_name}-${i}`}
-                                className="flex items-baseline gap-2 text-[11px]"
                               >
-                                <span className="tabular-nums text-muted-foreground">{hhmm}</span>
-                                <span className="font-semibold">
-                                  {r.event_name} {r.age_class}:
-                                </span>
-                                <span className="font-bold tabular-nums">
-                                  {r.result_text}
-                                  {r.result_rank != null && (
-                                    <span className="ml-1 font-normal text-muted-foreground">
-                                      ({r.result_rank}.)
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    openResultRound(r.competition_id, r.event_id)
+                                  }
+                                  disabled={isResolving}
+                                  title="Avaa erän tulokset"
+                                  className="flex w-full items-baseline gap-2 rounded px-1 py-0.5 text-left text-[11px] hover:bg-amber-100/60 dark:hover:bg-amber-900/20 disabled:opacity-60"
+                                >
+                                  <span className="tabular-nums text-muted-foreground">{hhmm}</span>
+                                  <span className="font-semibold underline-offset-2 hover:underline">
+                                    {r.event_name} {r.age_class}:
+                                  </span>
+                                  <span className="font-bold tabular-nums">
+                                    {r.result_text}
+                                    {r.result_rank != null && (
+                                      <span className="ml-1 font-normal text-muted-foreground">
+                                        ({r.result_rank}.)
+                                      </span>
+                                    )}
+                                  </span>
+                                  {r.was_pb && (
+                                    <span className="rounded bg-primary/15 px-1 text-[9px] font-bold uppercase text-primary">
+                                      PB
                                     </span>
                                   )}
-                                </span>
-                                {r.was_pb && (
-                                  <span className="rounded bg-primary/15 px-1 text-[9px] font-bold uppercase text-primary">
-                                    PB
+                                  {r.was_district_record && (
+                                    <span className="rounded bg-green-600/15 px-1 text-[9px] font-bold uppercase text-green-700 dark:text-green-400">
+                                      PE
+                                    </span>
+                                  )}
+                                  <span className="min-w-0 truncate text-muted-foreground">
+                                    · {r.competition_name}
+                                    {isResolving ? " (avataan…)" : ""}
                                   </span>
-                                )}
-                                {r.was_district_record && (
-                                  <span className="rounded bg-green-600/15 px-1 text-[9px] font-bold uppercase text-green-700 dark:text-green-400">
-                                    PE
-                                  </span>
-                                )}
-                                <span className="min-w-0 truncate text-muted-foreground">
-                                  · {r.competition_name}
-                                </span>
+                                </button>
                               </li>
                             );
                           })}
