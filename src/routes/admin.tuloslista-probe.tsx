@@ -474,7 +474,7 @@ function Page() {
                       <td className="py-1 pr-2">{r.status}</td>
                       <td className="py-1 pr-2">{r.durationMs} ms</td>
                       <td className="py-1 pr-2">{r.bodyBytes}</td>
-                      <td className="py-1 text-muted-foreground">{r.reason ?? "—"}</td>
+                      <td className="py-1 text-muted-foreground">{r.reason ?? "ei huomiota"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -575,7 +575,7 @@ function Page() {
               </div>
               <div>
                 <span className="text-muted-foreground">Content-Type:</span>{" "}
-                {result.contentType ?? "—"}
+                {result.contentType ?? "ei tietoa"}
               </div>
               <div>
                 <span className="text-muted-foreground">Vastauksen koko:</span>{" "}
