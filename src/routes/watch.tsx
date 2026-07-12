@@ -755,6 +755,62 @@ function WatchPage() {
                     );
                   })()}
 
+
+                  {(() => {
+                    const own = (todayOwnQuery.data?.[athlete.key] ?? []).filter(
+                      (r) => r.competition_id !== competitionId,
+                    );
+                    if (own.length === 0) return null;
+                    return (
+                      <div className="mb-3 rounded-md border border-amber-300/60 bg-amber-50/40 dark:bg-amber-900/10 px-2 py-2">
+                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Päivän omat tulokset (muut kisat)
+                        </p>
+                        <ul className="space-y-1">
+                          {own.map((r, i) => {
+                            const hhmm = new Date(r.captured_at).toLocaleTimeString("fi-FI", {
+                              timeZone: "Europe/Helsinki",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            });
+                            return (
+                              <li
+                                key={`${r.competition_id}-${r.event_id}-${r.event_name}-${i}`}
+                                className="flex items-baseline gap-2 text-[11px]"
+                              >
+                                <span className="tabular-nums text-muted-foreground">{hhmm}</span>
+                                <span className="font-semibold">
+                                  {r.event_name} {r.age_class}:
+                                </span>
+                                <span className="font-bold tabular-nums">
+                                  {r.result_text}
+                                  {r.result_rank != null && (
+                                    <span className="ml-1 font-normal text-muted-foreground">
+                                      ({r.result_rank}.)
+                                    </span>
+                                  )}
+                                </span>
+                                {r.was_pb && (
+                                  <span className="rounded bg-primary/15 px-1 text-[9px] font-bold uppercase text-primary">
+                                    PB
+                                  </span>
+                                )}
+                                {r.was_district_record && (
+                                  <span className="rounded bg-green-600/15 px-1 text-[9px] font-bold uppercase text-green-700 dark:text-green-400">
+                                    PE
+                                  </span>
+                                )}
+                                <span className="min-w-0 truncate text-muted-foreground">
+                                  · {r.competition_name}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    );
+                  })()}
+
                   {entries.length === 0 ? (
                     <p className="text-xs text-muted-foreground">
                       Ei lajeja tässä kisassa.
