@@ -545,17 +545,15 @@ function AllocationRow({
         ? a.HeatRank
         : a.Position;
 
-  const eff = a.Result
-    ? effectiveRecord(round.EventId, a, {
-        competitionId,
-        athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
-        eventName: round.EventName,
-        ageClass: round.GroupName,
-        category: round.Category,
-      })
-    : null;
+  const eff = effectiveRecord(round.EventId, a, {
+    competitionId,
+    athleteKey: athleteKey(a.Surname, a.Firstname, a.Organization?.Id ?? null),
+    eventName: round.EventName,
+    ageClass: round.GroupName,
+    category: round.Category,
+  });
   const recordKind =
-    a.Result && eff ? detectRecord(round.Category, a.Result, eff.pb, eff.sb) : null;
+    a.Result ? detectRecord(round.Category, a.Result, eff.pb, eff.sb) : null;
   return (
     <li
       className={`flex items-start gap-2 rounded px-2 py-1 text-sm ${
