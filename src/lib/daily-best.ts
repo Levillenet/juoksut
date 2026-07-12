@@ -292,7 +292,7 @@ export interface TodayOwnResultRow {
   competition_id: number;
   competition_name: string;
   event_id: number;
-  round_id: number | null;
+  result_round_name: string;
   captured_at: string;
 }
 
@@ -308,7 +308,7 @@ export async function fetchTodayOwnResultsForAthletes(
   const { data, error } = await supabase
     .from("athlete_results")
     .select(
-      "athlete_key, event_name, age_class, sub_category, event_category, result_text, result_numeric, result_rank, was_pb, was_district_record, competition_id, competition_name, event_id, round_id, captured_at",
+      "athlete_key, event_name, age_class, sub_category, event_category, result_text, result_numeric, result_rank, was_pb, was_district_record, competition_id, competition_name, event_id, result_round_name, captured_at",
     )
     .in("athlete_key", athleteKeys)
     .gte("captured_at", startISO)
@@ -331,7 +331,7 @@ export async function fetchTodayOwnResultsForAthletes(
       competition_id: r.competition_id,
       competition_name: r.competition_name,
       event_id: r.event_id,
-      round_id: r.round_id,
+      result_round_name: r.result_round_name,
       captured_at: r.captured_at,
     });
   }
