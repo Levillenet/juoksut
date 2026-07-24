@@ -45,7 +45,7 @@ interface AuthUserRow {
 function Page() {
   const qc = useQueryClient();
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"planner" | "admin">("planner");
+  const [role, setRole] = useState<AppRole>("planner");
   const [error, setError] = useState<string | null>(null);
 
   const listQ = useQuery({
