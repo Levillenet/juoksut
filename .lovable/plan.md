@@ -1,24 +1,32 @@
-## Ongelma
+## Oire
 
-Amanda Gustafssonin tulos kisassa 20102 (Kymenlaakson PM-huipentumat, 23.7.) ei näy, koska kyseistä kisaa ei ole skannattu tuloslistalta sitten 22.7. Kisan rivi taustatyön taulussa on `done=false`, `row_count=0`, mutta se ei koskaan pääse skannauserään.
+Käyttäjä yrittää kirjautua osoitteessa `https://tulokset.online` Google-tilillä. Selain ohjautuu `oauth.lovable.app/callback` -osoitteeseen, joka näyttää "Authorization failed — State verification failed — Error code: invalid_request".
 
-## Juurisyy
+Auth-lokeissa näkyy silti onnistunut Google-login (`samiaavikko@gmail.com`, 16:59:30) sekä useita `refresh_token_not_found` -virheitä. Ensimmäinen URL sisältää täyden `#access_token=...` -hashin `tulokset.online`-domainissa, mikä viittaa siihen että alkuperäinen kirjautuminen onnistui, mutta perässä tullut toinen OAuth-kierros (`prompt=none`, hiljainen istunnon uusinta) epäonnistuu state-tarkistuksessa.
 
-Taustatyö (`harvest-results.ts`, run() alaosa) käy yhdellä ajolla `BATCH_SIZE=20` kisaa. Rescan-sääntö on liian löysä: `done=true` -kisat rescanataan aina, jos niiden `Date` on kolmen päivän sisällä. Tänään (24.7.) tuloslistan listalla on vähintään 22 kisaa, joiden ID on korkeampi kuin 20102 ja jotka mahtuvat rescan-ikkunaan tai eivät ole valmiita — sortti on `id DESC`, joten 20102 (indeksi 22) jää joka kerran ulos.
+## Todennäköinen syy (vahvistettava)
 
-Todiste tietokannasta: `done=false` -jonossa on 472 vanhaa nollarivistä kisaa, ja tämän hetken API-listalta (251 kisaa, 120 "recent") 20102 on sijalla 23. Batchi 20 loppuu ennen kuin siihen päästään.
+- `redirect_uri` on `window.location.origin` eli `https://tulokset.online`, mutta Lovablen hallitseman OAuth-brokerin (`oauth.lovable.app`) state-eväste on asetettu eri originille kuin mistä callback luetaan. Kun useita välilehtiä / silent-refreshejä on käynnissä, state-arvot menevät ristiin ja callback hylkää pyynnön.
+- Toisin sanoen: käytännössä ongelma tulee Lovablen managed OAuth -infrastruktuurin ja custom-domainin (`tulokset.online`) yhteispelistä, ei sovelluskoodin oletusarvoista.
 
-## Korjaus
+Tämä on suunnitelma joka nimenomaan selvittää sen ennen koodin muutoksia.
 
-Kaksi minimaalista muutosta `src/routes/api/public/hooks/harvest-results.ts`:n taustatyön skedulointiin:
+## Suunnitelma
 
-1. Rescan-sääntö tiukemmaksi: `done=true` -kisa rescanataan vain, jos sen tallennettu `last_event_date` on tänään tai tulevaisuudessa (aidosti monipäiväinen ja vielä käynnissä). Eiliset ja vanhemmat kisat pysyvät ohitettuina — ne ovat vakiintuneet.
-2. Priorisoi backlog: sortti `pending`-lista `last_scanned_at ASC NULLS FIRST` sen sijaan että `id DESC`. Näin pisimpään ilman skannausta olleet (kuten 20102, joka on odottanut kaksi vuorokautta) menevät jonon alkuun eivätkä jää tuoreempien alle.
+1. **Tarkasta OAuth-konfiguraatio** työkalulla `supabase--debug_oauth_server` ja varmista että:
+   - Site URL / sallitut redirect URL:t sisältävät sekä `https://tulokset.online`, `https://www.tulokset.online`, että `https://juoksut.lovable.app`.
+   - Managed Google-provider on aktivoitu (`supabase--configure_social_auth`, providers: `["google"]`) ilman uusia providereita.
 
-Tekninen toteutus: `run()`:n taustatyö-haarassa haetaan `harvest_competitions`-taulusta jokaista listattua ID:tä varten `done`, `last_event_date` ja `last_scanned_at`, ja `pending`-listan filtteri + sortti käyttää niitä. Ei muutoksia hot cycleen, tuloslistalle lähetettävien kutsujen määrään eikä muuhun logiikkaan — vain jonon järjestys ja rescan-ehto.
+2. **Selvitä eroaako login-lähtöpaikka**: pyydä käyttäjää testaamaan kirjautuminen inkognito-ikkunassa suoraan `https://tulokset.online/login` -osoitteesta ja katso konsoli-/verkkoloki. Jos onnistuu, vika on vanhoissa evästeissä; jos ei, vika on redirect-allow-listassa tai brokerin state-cookiessa.
 
-## Vaikutus
+3. **Muutokset koodiin (vasta jos yllä vahvistuu tarve):**
+   - `src/routes/login.tsx`: käytä `redirect_uri`-arvona vakioitua callback-polkua (`${window.location.origin}/`) ja varmista että se on juuri se URL joka on lisätty allow-listalle.
+   - Tarvittaessa lisää lyhyt info kirjautumissivulle: jos "State verification failed" toistuu, tyhjennä `oauth.lovable.app` -evästeet ja yritä uudelleen.
 
-- 20102 (ja muut vastaavat pitkään odottaneet ID:t) tulevat mukaan seuraavaan taustatyön ajoon.
-- Yhtään ylimääräistä origin-kutsua tuloslistalle ei synny — päinvastoin, "eiliset" kisat lakkaavat rescanautumasta turhaan.
-- Batch-koko pysyy samana (20/ajo).
+4. **Verifiointi:**
+   - Aja `supabase--debug_oauth_server` uudelleen.
+   - Pyydä käyttäjää kokeilemaan sekä `tulokset.online`, `www.tulokset.online` että `juoksut.lovable.app` -osoitteista.
+
+## Odotettu lopputulos
+
+Google-kirjautuminen tuotanto-domainista `tulokset.online` toimii ilman "State verification failed" -virhettä, ja hiljaiset istunnon uusinnat eivät enää heitä `invalid_request`-virhettä callback-sivulle.
