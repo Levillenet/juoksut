@@ -806,30 +806,50 @@ async function run(request: Request): Promise<Response> {
     // kolmen päivän kisat rescanataan aina, jotta monipäiväiset kisat
     // päivittyvät (uusi last_event_date + uudet tulokset saadaan mukaan).
     const hkiTodayIso = helsinkiDateISO(new Date().toISOString());
-    const rescanCutoff = hkiTodayIso
-      ? new Date(new Date(hkiTodayIso).getTime() - 2 * 86400_000).toISOString().slice(0, 10)
-      : null;
     const listedIds = listed.map((e) => e.id);
-    const doneSet = new Set<number>();
+    type HcRow = {
+      competition_id: number;
+      done: boolean | null;
+      last_event_date: string | null;
+      last_scanned_at: string | null;
+    };
+    const hcMap = new Map<number, HcRow>();
     const CHUNK = 500;
     for (let i = 0; i < listedIds.length; i += CHUNK) {
       const slice = listedIds.slice(i, i + CHUNK);
       const { data } = await supabaseAdmin
         .from("harvest_competitions")
-        .select("competition_id")
-        .eq("done", true)
+        .select("competition_id, done, last_event_date, last_scanned_at")
         .in("competition_id", slice);
-      for (const r of data ?? []) doneSet.add(r.competition_id);
+      for (const r of (data ?? []) as HcRow[]) hcMap.set(r.competition_id, r);
     }
 
     const pending = listed.filter((e) => {
-      if (!doneSet.has(e.id)) return true;
-      // Rescanataan viimeisen 3 päivän listalla olevat kisat.
-      if (rescanCutoff && e.date && e.date >= rescanCutoff) return true;
+      const hc = hcMap.get(e.id);
+      // Ei koskaan skannattu → aina pending.
+      if (!hc) return true;
+      if (!hc.done) return true;
+      // Done: rescanataan vain jos viimeinen tapahtumapäivä on tänään tai
+      // tulevaisuudessa (monipäiväiset kisat vielä käynnissä). Eiliset ja
+      // vanhemmat kisat ovat vakiintuneet — ei tarvitse käydä uudestaan.
+      if (!hkiTodayIso) return false;
+      if (hc.last_event_date && hc.last_event_date >= hkiTodayIso) return true;
       return false;
     });
 
+    // Priorisoi backlog: kauimmin sitten (tai ei koskaan) skannatut ensin,
+    // jotta pienemmät ID:t eivät jää ikuisesti isompien alle.
+    pending.sort((a, b) => {
+      const ha = hcMap.get(a.id)?.last_scanned_at ?? null;
+      const hb = hcMap.get(b.id)?.last_scanned_at ?? null;
+      if (!ha && !hb) return b.id - a.id;
+      if (!ha) return -1;
+      if (!hb) return 1;
+      return ha.localeCompare(hb);
+    });
+
     const batch = pending.slice(0, BATCH_SIZE);
+
 
     if (batch.length === 0) {
       await supabaseAdmin

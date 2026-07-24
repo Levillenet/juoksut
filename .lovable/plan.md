@@ -1,26 +1,24 @@
 ## Ongelma
 
-Etusivun valo on jälleen punainen. Tarkistuksen mukaan:
-- Viimeisin cron-ajo 36 min sitten (yli 30 min raja)
-- Viimeisin tulos 67 min sitten (yli 30 min raja)
-- Ei aktiivista kisaa tänään (stats-kortit tyhjiä)
+Amanda Gustafssonin tulos kisassa 20102 (Kymenlaakson PM-huipentumat, 23.7.) ei näy, koska kyseistä kisaa ei ole skannattu tuloslistalta sitten 22.7. Kisan rivi taustatyön taulussa on `done=false`, `row_count=0`, mutta se ei koskaan pääse skannauserään.
 
-Nykyinen logiikka merkitsee tilan punaiseksi aina kun sekä ajo että kaappaus ovat vanhentuneet, vaikka mikään kisa ei olisi käynnissä. Hiljaisena iltana (kisat päättyneet) tämä on väärä hälytys: mitään ei ole tarkoituskaan tulla, joten "tulospalvelu ei ole vastannut" viesti johtaa harhaan.
+## Juurisyy
 
-## Ratkaisu
+Taustatyö (`harvest-results.ts`, run() alaosa) käy yhdellä ajolla `BATCH_SIZE=20` kisaa. Rescan-sääntö on liian löysä: `done=true` -kisat rescanataan aina, jos niiden `Date` on kolmen päivän sisällä. Tänään (24.7.) tuloslistan listalla on vähintään 22 kisaa, joiden ID on korkeampi kuin 20102 ja jotka mahtuvat rescan-ikkunaan tai eivät ole valmiita — sortti on `id DESC`, joten 20102 (indeksi 22) jää joka kerran ulos.
 
-Kytketään hälytysraja siihen, onko kisoja käynnissä:
+Todiste tietokannasta: `done=false` -jonossa on 472 vanhaa nollarivistä kisaa, ja tämän hetken API-listalta (251 kisaa, 120 "recent") 20102 on sijalla 23. Batchi 20 loppuu ennen kuin siihen päästään.
 
-- **Punainen**: `blocked=true`, TAI aktiivinen kisa käynnissä JA sekä ajo että viimeisin tulos yli 30 min vanhoja.
-- **Keltainen**: aktiivinen kisa käynnissä, ajo tuore mutta tuloksia ei yli 45 min (ennallaan).
-- **Vihreä**: ei aktiivista kisaa, TAI tuoreita tuloksia tulee normaalisti.
+## Korjaus
 
-Kun kisapäivä on ohi, valo pysyy vihreänä eikä käyttäjää säikäytellä yöllä tai aamulla ennen ensimmäistä kisaa.
+Kaksi minimaalista muutosta `src/routes/api/public/hooks/harvest-results.ts`:n taustatyön skedulointiin:
 
-## Toteutus
+1. Rescan-sääntö tiukemmaksi: `done=true` -kisa rescanataan vain, jos sen tallennettu `last_event_date` on tänään tai tulevaisuudessa (aidosti monipäiväinen ja vielä käynnissä). Eiliset ja vanhemmat kisat pysyvät ohitettuina — ne ovat vakiintuneet.
+2. Priorisoi backlog: sortti `pending`-lista `last_scanned_at ASC NULLS FIRST` sen sijaan että `id DESC`. Näin pisimpään ilman skannausta olleet (kuten 20102, joka on odottanut kaksi vuorokautta) menevät jonon alkuun eivätkä jää tuoreempien alle.
 
-`src/components/HarvestLight.tsx`: siirretään `runStale`/`captureFresh` tarkistus `anyCompetitionToday`-haaraan. Kun kisoja ei ole, palautetaan aina vihreä (ellei `blocked`). Tooltip säilyttää tarkat aikaleimat.
+Tekninen toteutus: `run()`:n taustatyö-haarassa haetaan `harvest_competitions`-taulusta jokaista listattua ID:tä varten `done`, `last_event_date` ja `last_scanned_at`, ja `pending`-listan filtteri + sortti käyttää niitä. Ei muutoksia hot cycleen, tuloslistalle lähetettävien kutsujen määrään eikä muuhun logiikkaan — vain jonon järjestys ja rescan-ehto.
 
-## Erikseen (ei tässä planissa)
+## Vaikutus
 
-Cron-ajastin on hitaanpuoleinen (36 min väli). Tämä on erillinen selvitys jos halutaan tiheämpi tausta-ajo; nyt käyttäjävetoinen hot-cycle hoitaa live-päivitykset.
+- 20102 (ja muut vastaavat pitkään odottaneet ID:t) tulevat mukaan seuraavaan taustatyön ajoon.
+- Yhtään ylimääräistä origin-kutsua tuloslistalle ei synny — päinvastoin, "eiliset" kisat lakkaavat rescanautumasta turhaan.
+- Batch-koko pysyy samana (20/ajo).
