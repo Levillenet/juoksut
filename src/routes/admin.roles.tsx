@@ -13,10 +13,12 @@ export const Route = createFileRoute("/admin/roles")({
   component: Gate,
 });
 
+type AppRole = "admin" | "planner" | "official";
+
 interface RoleRow {
   user_id: string;
   email: string;
-  role: "admin" | "planner";
+  role: AppRole;
   created_at: string;
 }
 
@@ -43,7 +45,7 @@ interface AuthUserRow {
 function Page() {
   const qc = useQueryClient();
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"planner" | "admin">("planner");
+  const [role, setRole] = useState<AppRole>("planner");
   const [error, setError] = useState<string | null>(null);
 
   const listQ = useQuery({
@@ -131,11 +133,12 @@ function Page() {
             </select>
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value as "planner" | "admin")}
+              onChange={(e) => setRole(e.target.value as AppRole)}
               className="rounded-md border bg-background px-3 py-2 text-sm"
             >
               <option value="planner">planner</option>
               <option value="admin">admin</option>
+              <option value="official">toimitsija</option>
             </select>
             <Button
               onClick={() => grant.mutate()}

@@ -106,7 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
-  const role: Role = user ? "user" : isOfficial ? "official" : null;
+  const hasOfficialRole = roles.includes("official") || roles.includes("admin");
+  const effectiveOfficial = isOfficial || hasOfficialRole;
+  const role: Role = user ? "user" : effectiveOfficial ? "official" : null;
   const isAdmin = roles.includes("admin");
   const isPlanner = roles.includes("planner") || isAdmin;
 
@@ -115,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         session,
-        isOfficial,
+        isOfficial: effectiveOfficial,
         role,
         isAdmin,
         isPlanner,

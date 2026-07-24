@@ -1,32 +1,34 @@
-## Oire
+## Nykytila
 
-Käyttäjä yrittää kirjautua osoitteessa `https://tulokset.online` Google-tilillä. Selain ohjautuu `oauth.lovable.app/callback` -osoitteeseen, joka näyttää "Authorization failed — State verification failed — Error code: invalid_request".
+- `admin` ja `planner` ovat oikeita tietokantarooleja (`public.user_roles` + `app_role`-enum), joita hallitaan sivulla `/admin/roles`.
+- **Toimitsija ("official") EI ole tietokannassa** — se on pelkkä selaimen `localStorage`-lippu, jonka saa syöttämällä yhteisen salasanan `ahkera2026` (`src/lib/auth.tsx`, `OFFICIAL_PASSWORD`). Sama salasana kaikille, ei per-käyttäjä-myöntöä, ei peruutusta.
 
-Auth-lokeissa näkyy silti onnistunut Google-login (`samiaavikko@gmail.com`, 16:59:30) sekä useita `refresh_token_not_found` -virheitä. Ensimmäinen URL sisältää täyden `#access_token=...` -hashin `tulokset.online`-domainissa, mikä viittaa siihen että alkuperäinen kirjautuminen onnistui, mutta perässä tullut toinen OAuth-kierros (`prompt=none`, hiljainen istunnon uusinta) epäonnistuu state-tarkistuksessa.
-
-## Todennäköinen syy (vahvistettava)
-
-- `redirect_uri` on `window.location.origin` eli `https://tulokset.online`, mutta Lovablen hallitseman OAuth-brokerin (`oauth.lovable.app`) state-eväste on asetettu eri originille kuin mistä callback luetaan. Kun useita välilehtiä / silent-refreshejä on käynnissä, state-arvot menevät ristiin ja callback hylkää pyynnön.
-- Toisin sanoen: käytännössä ongelma tulee Lovablen managed OAuth -infrastruktuurin ja custom-domainin (`tulokset.online`) yhteispelistä, ei sovelluskoodin oletusarvoista.
-
-Tämä on suunnitelma joka nimenomaan selvittää sen ennen koodin muutoksia.
+Siksi et voi tällä hetkellä myöntää toimitsijaoikeuksia yksittäiselle käyttäjälle samasta paikasta kuin plannerin/adminin.
 
 ## Suunnitelma
 
-1. **Tarkasta OAuth-konfiguraatio** työkalulla `supabase--debug_oauth_server` ja varmista että:
-   - Site URL / sallitut redirect URL:t sisältävät sekä `https://tulokset.online`, `https://www.tulokset.online`, että `https://juoksut.lovable.app`.
-   - Managed Google-provider on aktivoitu (`supabase--configure_social_auth`, providers: `["google"]`) ilman uusia providereita.
+Tehdään toimitsijasta oikea tietokantarooli plannerin tapaan, ja jätetään vanha salasana toistaiseksi rinnalle taaksepäin yhteensopivuuden vuoksi (poistetaan halutessasi myöhemmin).
 
-2. **Selvitä eroaako login-lähtöpaikka**: pyydä käyttäjää testaamaan kirjautuminen inkognito-ikkunassa suoraan `https://tulokset.online/login` -osoitteesta ja katso konsoli-/verkkoloki. Jos onnistuu, vika on vanhoissa evästeissä; jos ei, vika on redirect-allow-listassa tai brokerin state-cookiessa.
+1. **Migraatio** — lisää `official` `app_role`-enumiin:
+   ```sql
+   ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'official';
+   ```
 
-3. **Muutokset koodiin (vasta jos yllä vahvistuu tarve):**
-   - `src/routes/login.tsx`: käytä `redirect_uri`-arvona vakioitua callback-polkua (`${window.location.origin}/`) ja varmista että se on juuri se URL joka on lisätty allow-listalle.
-   - Tarvittaessa lisää lyhyt info kirjautumissivulle: jos "State verification failed" toistuu, tyhjennä `oauth.lovable.app` -evästeet ja yritä uudelleen.
+2. **`src/routes/admin.roles.tsx`**
+   - Laajenna rooli-tyyppi ja UI-dropdown arvoihin `planner | admin | official`.
+   - `grant_role_by_email` ja `revoke_role` toimivat sellaisenaan, koska ne ottavat `app_role`-parametrin.
+   - Näytä toimitsijat listassa muiden roolien seassa.
 
-4. **Verifiointi:**
-   - Aja `supabase--debug_oauth_server` uudelleen.
-   - Pyydä käyttäjää kokeilemaan sekä `tulokset.online`, `www.tulokset.online` että `juoksut.lovable.app` -osoitteista.
+3. **`src/lib/auth.tsx`**
+   - `isOfficial` = `localStorage`-lippu **TAI** `roles.includes("official")`.
+   - Näin salasanalla kirjautuneet toimitsijat toimivat entiseen tapaan, mutta admin voi myös myöntää oikeuden suoraan sähköpostilla ilman että käyttäjän tarvitsee tietää yhteistä salasanaa.
 
-## Odotettu lopputulos
+4. **Verifiointi**
+   - Aja migraatio, tarkista että `/admin/roles` näyttää uuden vaihtoehdon.
+   - Myönnä testikäyttäjälle "official"-rooli sähköpostilla, kirjaudu tuolla käyttäjällä, tarkista että etusivulla näkyy toimitsijan valikot (Kuuluttaja, Juoksulajien operointi) ilman salasanan syöttöä.
+   - Poista rooli, tarkista että valikot katoavat.
 
-Google-kirjautuminen tuotanto-domainista `tulokset.online` toimii ilman "State verification failed" -virhettä, ja hiljaiset istunnon uusinnat eivät enää heitä `invalid_request`-virhettä callback-sivulle.
+## Ei muutosta tässä
+
+- Salasanaa `ahkera2026` ei poisteta. Jos haluat, poistan sen erillisenä pyyntönä sen jälkeen kun kaikki nykyiset toimitsijat on siirretty rooliin.
+- Reittien pääsyoikeussääntöjä (`RequireRole`, `/running-ops` jne.) ei muuteta, koska ne katsovat jo `isOfficial`-lippua joka päivittyy automaattisesti.
