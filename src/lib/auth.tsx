@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasOfficialRole = roles.includes("official") || roles.includes("admin");
   const effectiveOfficial = isOfficial || hasOfficialRole;
-  const role: Role = user ? "user" : effectiveOfficial ? "official" : null;
+  const role: Role = effectiveOfficial ? "official" : user ? "user" : null;
   const isAdmin = roles.includes("admin");
   const isPlanner = roles.includes("planner") || isAdmin;
 
