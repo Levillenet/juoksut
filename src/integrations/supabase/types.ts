@@ -1814,7 +1814,7 @@ export type Database = {
       shared_team_user_ids: { Args: { _user: string }; Returns: string[] }
     }
     Enums: {
-      app_role: "admin" | "planner"
+      app_role: "admin" | "planner" | "official"
       note_link_invite_status: "pending" | "accepted" | "declined" | "revoked"
       team_invite_status: "pending" | "accepted" | "declined" | "revoked"
       team_role: "owner" | "coach" | "member"
@@ -1945,7 +1945,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "planner"],
+      app_role: ["admin", "planner", "official"],
       note_link_invite_status: ["pending", "accepted", "declined", "revoked"],
       team_invite_status: ["pending", "accepted", "declined", "revoked"],
       team_role: ["owner", "coach", "member"],
