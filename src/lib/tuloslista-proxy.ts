@@ -34,6 +34,12 @@ const ALLOWED_SOURCES: CounterSource[] = [
   "admin_probe",
 ];
 
+export interface ProxyOptions {
+  /** Pakota kutsu originille ohittaen kaikki välimuistit. Käytä vain
+   *  health-check-tyyppisissä taustatarkistuksissa. */
+  forceOrigin?: boolean;
+}
+
 function resolveSources(request?: Request): {
   originSource: CounterSource;
   cacheSource: CounterSource;
@@ -47,6 +53,10 @@ function resolveSources(request?: Request): {
     return { originSource: s, cacheSource: s };
   }
   return { originSource: "proxy_origin", cacheSource: "proxy_cache" };
+}
+
+function isForceOrigin(request?: Request): boolean {
+  return request?.headers.get("x-force-origin") === "true";
 }
 
 const ORIGIN = "https://cached-public-api.tuloslista.com";
