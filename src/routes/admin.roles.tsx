@@ -13,10 +13,12 @@ export const Route = createFileRoute("/admin/roles")({
   component: Gate,
 });
 
+type AppRole = "admin" | "planner" | "official";
+
 interface RoleRow {
   user_id: string;
   email: string;
-  role: "admin" | "planner";
+  role: AppRole;
   created_at: string;
 }
 
