@@ -277,6 +277,9 @@ export const getOriginCallStats = createServerFn({ method: "GET" })
 
     const byDay = new Map<string, OriginCallDayStats>();
     const ORIGIN_SOURCES = new Set(["harvester", "hot_cycle", "monitor", "proxy_origin", "admin_probe"]);
+    // Nämä bucketit tarkoittavat, että pyyntöä ei lähetetty originille
+    // vaan palveltiin välimuistista (memory/DB/CF).
+    const CACHE_BUCKETS = new Set(["hit", "stale", "circuit", "stale-error"]);
     for (const r of data ?? []) {
       const day = String(r.day);
       let entry = byDay.get(day);
@@ -301,11 +304,10 @@ export const getOriginCallStats = createServerFn({ method: "GET" })
       if (updatedAt && (!entry.lastUpdatedAt || updatedAt > entry.lastUpdatedAt)) {
         entry.lastUpdatedAt = updatedAt;
       }
-      if (source === "proxy_cache") {
+      if (source === "proxy_cache" || CACHE_BUCKETS.has(bucket)) {
         entry.servedFromEdge += count;
       } else if (ORIGIN_SOURCES.has(source)) {
         entry.originCalls += count;
-        // Bucket voi olla '2xx' | '3xx' | 'error' | 'hit' | 'stale' | tarkka HTTP-koodi
         if (bucket === "error") entry.errors += count;
         else {
           const n = Number(bucket);
