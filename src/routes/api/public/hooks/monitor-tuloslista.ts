@@ -1,8 +1,11 @@
-// Valvoo tuloslista.com -rajapintaa harvesterin User-Agentilla. Tekee
-// kaksi kyselyä joka ajolla:
+// Valvoo tuloslista.com -rajapintaa. Tekee kaksi kyselyä joka ajolla:
 //   1. lista-endpointti (kaikki kilpailut) — kertoo yleisen tavoitettavuuden
 //   2. tulos-endpointti (yhden kilpailun properties) — tämä on se, jota
 //      harvesteri tarvitsee. Auto-esto perustuu vain tämän tulokseen.
+//
+// Kutsut kulkevat nyt sisäisen /api/public/tuloslista -proxyn läpi
+// x-force-origin: true -otsikolla, jotta monitori näkee todellisen origin-
+// tilanteen, mutta samalla tulos tallentuu jaettuun välimuistiin.
 //
 // Kun tulos-endpointti epäonnistuu 2 kertaa peräkkäin, harvest_state.blocked
 // menee tosi. Kun se onnistuu, laskuri nollataan ja esto puretaan.
@@ -11,14 +14,16 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { bumpOriginCall } from "@/lib/origin-call-counter";
 import { isTuloslistaPollingWindow } from "@/lib/helsinki-time";
+import {
+  competitionListTtl,
+  propertiesTtl,
+  proxyTuloslista,
+} from "@/lib/tuloslista-proxy";
 
-const ORIGIN = "https://cached-public-api.tuloslista.com";
 const LIST_PATH = "/live/v1/competition";
 const RESULTS_PATH = (id: number) => `/live/v1/competition/${id}/properties`;
 const FALLBACK_COMPETITION_ID = 17661; // Tunnettu kilpailu, jolla oli tuloksia 9.7.2026
-const UA = "juoksut-harvester/1.0 (+https://tulokset.online)";
 const LIST_MIN_OK_BYTES = 1000;
 const RESULTS_MIN_OK_BYTES = 50; // properties on pieni JSON-objekti
 const TIMEOUT_MS = 12_000;
