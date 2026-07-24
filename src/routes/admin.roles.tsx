@@ -133,11 +133,12 @@ function Page() {
             </select>
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value as "planner" | "admin")}
+              onChange={(e) => setRole(e.target.value as AppRole)}
               className="rounded-md border bg-background px-3 py-2 text-sm"
             >
               <option value="planner">planner</option>
               <option value="admin">admin</option>
+              <option value="official">toimitsija</option>
             </select>
             <Button
               onClick={() => grant.mutate()}
