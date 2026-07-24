@@ -1,8 +1,11 @@
-// Valvoo tuloslista.com -rajapintaa harvesterin User-Agentilla. Tekee
-// kaksi kyselyä joka ajolla:
+// Valvoo tuloslista.com -rajapintaa. Tekee kaksi kyselyä joka ajolla:
 //   1. lista-endpointti (kaikki kilpailut) — kertoo yleisen tavoitettavuuden
 //   2. tulos-endpointti (yhden kilpailun properties) — tämä on se, jota
 //      harvesteri tarvitsee. Auto-esto perustuu vain tämän tulokseen.
+//
+// Kutsut kulkevat nyt sisäisen /api/public/tuloslista -proxyn läpi
+// x-force-origin: true -otsikolla, jotta monitori näkee todellisen origin-
+// tilanteen, mutta samalla tulos tallentuu jaettuun välimuistiin.
 //
 // Kun tulos-endpointti epäonnistuu 2 kertaa peräkkäin, harvest_state.blocked
 // menee tosi. Kun se onnistuu, laskuri nollataan ja esto puretaan.
@@ -11,14 +14,16 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { bumpOriginCall } from "@/lib/origin-call-counter";
 import { isTuloslistaPollingWindow } from "@/lib/helsinki-time";
+import {
+  competitionListTtl,
+  propertiesTtl,
+  proxyTuloslista,
+} from "@/lib/tuloslista-proxy";
 
-const ORIGIN = "https://cached-public-api.tuloslista.com";
 const LIST_PATH = "/live/v1/competition";
 const RESULTS_PATH = (id: number) => `/live/v1/competition/${id}/properties`;
 const FALLBACK_COMPETITION_ID = 17661; // Tunnettu kilpailu, jolla oli tuloksia 9.7.2026
-const UA = "juoksut-harvester/1.0 (+https://tulokset.online)";
 const LIST_MIN_OK_BYTES = 1000;
 const RESULTS_MIN_OK_BYTES = 50; // properties on pieni JSON-objekti
 const TIMEOUT_MS = 12_000;
@@ -113,21 +118,33 @@ function classify(
 }
 
 
-async function runProbe(path: string, minBytes: number): Promise<ProbeOutcome> {
-  const url = `${ORIGIN}${path}`;
+async function runProbe(
+  path: string,
+  ttlOf: (body: string) => { edgeTtl: number; swrWindow: number },
+  minBytes: number,
+): Promise<ProbeOutcome> {
+  const url = `https://tulokset.online/api/public/tuloslista${path}`;
   const started = Date.now();
   let status = 0;
   let contentType: string | null = null;
   let body = "";
   let fetchError: string | null = null;
 
+  // Pakotettu origin-kutsu proxyn läpi: monitori haluaa todellisen
+  // upstream-vasteen, mutta samalla tulos kirjoittuu jaettuun cacheen.
+  const req = new Request(url, {
+    method: "GET",
+    headers: {
+      "x-origin-source": "monitor",
+      "x-force-origin": "true",
+      accept: "application/json",
+    },
+  });
+
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    const res = await fetch(url, {
-      headers: { "user-agent": UA, accept: "application/json" },
-      signal: controller.signal,
-    });
+    const res = await proxyTuloslista(path, ttlOf, req);
     clearTimeout(timer);
     status = res.status;
     contentType = res.headers.get("content-type");
@@ -135,8 +152,6 @@ async function runProbe(path: string, minBytes: number): Promise<ProbeOutcome> {
   } catch (e) {
     fetchError = e instanceof Error ? e.message : String(e);
   }
-
-  bumpOriginCall("monitor", path, status);
 
   const duration = Date.now() - started;
   const verdict: Verdict = fetchError
@@ -177,7 +192,7 @@ async function logProbe(endpoint: Endpoint, outcome: ProbeOutcome): Promise<void
     body_bytes: outcome.bodyBytes,
     body_preview: outcome.bodyPreview,
     reason: outcome.reason,
-    user_agent: UA,
+    user_agent: "juoksut-monitor/1.1 (+https://tulokset.online)",
     endpoint,
   });
 }
@@ -252,11 +267,12 @@ export async function runTuloslistaMonitor(): Promise<MonitorRunResult> {
   }
 
   const [listOutcome, referenceId] = await Promise.all([
-    runProbe(LIST_PATH, LIST_MIN_OK_BYTES),
+    runProbe(LIST_PATH, competitionListTtl, LIST_MIN_OK_BYTES),
     pickReferenceCompetitionId(),
   ]);
   const resultsOutcome = await runProbe(
     RESULTS_PATH(referenceId),
+    propertiesTtl,
     RESULTS_MIN_OK_BYTES,
   );
 

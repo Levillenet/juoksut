@@ -4,16 +4,24 @@
 // Tavoite: pitää origin-pyyntöjen määrä alhaisena vaikka katsojia olisi
 // satoja yhtäaikaa, ja antaa vakaita vasteaikoja kun cache on lämmin.
 //
-// Kerrokset:
-//  1) Cloudflare Cache API   — per-URL reverse-proxy, ~5-20 ms vasteaika
-//  2) In-memory single-flight — koalisoi rinnakkaiset cache-miss-pyynnöt
-//  3) Stale-while-revalidate  — palautetaan hieman vanhentunut data heti,
-//                                taustalla pyyntö freshille versiolle
-//  4) Circuit breaker         — kun origin antaa 429/503, palautetaan stale
-//                                eikä yritetä originia 60 sekuntiin
+// Periaate: jokainen tulos haetaan originilta vain kerran (single-flight)
+// ja jaetaan kaikille käyttäjille sekä Worker-isolaateille tietokanta-
+// välimuistin kautta. Kuuluttajanäkymän hakema tulos on siis sama, jonka
+// muut käyttäjät näkevät.
 //
-// KV/Durable Objects ei käytössä v1:ssä — Cache API riittää.
-// Jos haluamme jakaa cachea edgejen välillä, lisätään KV myöhemmin.
+// Kerrokset:
+//  1) In-memory single-flight — koalisoi rinnakkaiset cache-miss-pyynnöt
+//     saman isolaatin sisällä heti.
+//  2) Postgres DB cache — jaettu kaikkien isolaattien, domainien ja
+//     taustatyöjen kesken. Tämä on ensisijainen yhteinen totuus.
+//  3) Cloudflare Cache API — per-URL reverse-proxy, ~5-20 ms vasteaika
+//     (varatier, domainkohtainen avain).
+//  4) Stale-while-revalidate — palautetaan hieman vanhentunut data heti,
+//     taustalla pyyntö freshille versiolle.
+//  5) Circuit breaker — kun origin antaa 429/503, palautetaan stale
+//     eikä yritetä originia 60 sekuntiin.
+//  6) Cross-isolate single-flight — DB-pohjainen lukko estää useita
+//     isolaatteja tekemästä samaa origin-kutsua yhtä aikaa.
 
 import { bumpOriginCall, type CounterSource } from "@/lib/origin-call-counter";
 
@@ -25,6 +33,12 @@ const ALLOWED_SOURCES: CounterSource[] = [
   "proxy_cache",
   "admin_probe",
 ];
+
+export interface ProxyOptions {
+  /** Pakota kutsu originille ohittaen kaikki välimuistit. Käytä vain
+   *  health-check-tyyppisissä taustatarkistuksissa. */
+  forceOrigin?: boolean;
+}
 
 function resolveSources(request?: Request): {
   originSource: CounterSource;
@@ -39,6 +53,10 @@ function resolveSources(request?: Request): {
     return { originSource: s, cacheSource: s };
   }
   return { originSource: "proxy_origin", cacheSource: "proxy_cache" };
+}
+
+function isForceOrigin(request?: Request): boolean {
+  return request?.headers.get("x-force-origin") === "true";
 }
 
 const ORIGIN = "https://cached-public-api.tuloslista.com";
@@ -61,6 +79,11 @@ const CIRCUIT_OPEN_MS = 60_000;
 // Upstream-fetchin aikakatkaisu. Pidetään selvästi alle Cloudflare Workersin
 // hang-detectionin (~30 s), jotta CF ei tapa pyyntöä 502:lla.
 const UPSTREAM_TIMEOUT_MS = 8_000;
+
+// Kuinka kauan odotamme, että toinen isolaatti täyttää DB-cachen, kun emme
+// itse saaneet lukkoa.
+const LOCK_WAIT_MAX_MS = 10_000;
+const LOCK_POLL_MS = 50;
 
 interface CachedEnvelope {
   body: string;
@@ -132,6 +155,78 @@ async function dbPut(path: string, body: string): Promise<void> {
   }
 }
 
+async function dbTryLock(path: string, ttlSeconds: number): Promise<boolean> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin.rpc("try_tuloslista_proxy_lock", {
+      _path: path,
+      _ttl_seconds: ttlSeconds,
+    });
+    if (error) {
+      console.warn(`[tl-proxy] db lock try failed ${path}`, error.message);
+      return false;
+    }
+    return data === true;
+  } catch (e) {
+    console.warn(`[tl-proxy] db lock try failed ${path}`, e);
+    return false;
+  }
+}
+
+async function dbReleaseLock(path: string, body: string): Promise<void> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.rpc("release_tuloslista_proxy_lock", {
+      _path: path,
+      _body: body,
+    });
+    if (error) console.warn(`[tl-proxy] db lock release failed ${path}`, error.message);
+  } catch (e) {
+    console.warn(`[tl-proxy] db lock release failed ${path}`, e);
+  }
+}
+
+async function dbReleaseLockEmpty(path: string): Promise<void> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.rpc("release_tuloslista_proxy_lock_empty", {
+      _path: path,
+    });
+    if (error) console.warn(`[tl-proxy] db lock empty release failed ${path}`, error.message);
+  } catch (e) {
+    console.warn(`[tl-proxy] db lock empty release failed ${path}`, e);
+  }
+}
+
+async function dbLockHeld(path: string): Promise<boolean> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("tuloslista_proxy_fetch_locks")
+      .select("path")
+      .eq("path", path)
+      .maybeSingle();
+    if (error) {
+      console.warn(`[tl-proxy] db lock check failed ${path}`, error.message);
+      return false;
+    }
+    return data != null;
+  } catch (e) {
+    console.warn(`[tl-proxy] db lock check failed ${path}`, e);
+    return false;
+  }
+}
+
+function envelopeFreshness(
+  env: CachedEnvelope,
+  ttlOf: (body: string) => TtlConfig,
+): "fresh" | "stale" | "expired" {
+  const ttl = ttlOf(env.body);
+  const ageSec = (Date.now() - env.cachedAt) / 1000;
+  if (ageSec < ttl.edgeTtl) return "fresh";
+  if (ageSec < ttl.edgeTtl + ttl.swrWindow) return "stale";
+  return "expired";
+}
 
 export async function proxyTuloslista(
   path: string,
@@ -139,83 +234,85 @@ export async function proxyTuloslista(
   request?: Request,
 ): Promise<Response> {
   const { originSource, cacheSource } = resolveSources(request);
+  const forceOrigin = isForceOrigin(request);
 
   const originUrl = `${ORIGIN}${path}`;
-  // Cloudflare Cache API vaatii, että avaimen host on samalla zonella kuin
-  // Worker itse — mielivaltainen `https://tl-proxy.local` hyväksytään put:ssa
-  // hiljaisesti mutta match ei koskaan löydä sitä. Käytetään pyynnön omaa
-  // hostia ja synteettistä polkua, jotta preview, custom domain ja julkaistu
-  // lovable.app saavat omat toimivat cache-avaimensa.
-  const cacheOrigin = request ? new URL(request.url).origin : "https://tulokset.online";
+  // Käytetään aina kanonista cache-avainta riippumatta pyynnön origin-domainista.
+  // Näin preview-, dev- ja tuotantopyynnöt jakavat saman Cloudflare-cachen.
+  const cacheOrigin = "https://tulokset.online";
   const cacheKey = new Request(`${cacheOrigin}/__tl-proxy${path}`, { method: "GET" });
   const cache = getEdgeCache();
 
+  // Pakotettu origin-kutsu: health-check (monitor) haluaa todellisen
+  // origin-vasteen. Ohitetaan kaikki välimuistit, mutta kirjoitetaan
+  // tulos takaisin cacheen muiden käyttäjien hyödyksi.
+  if (forceOrigin) {
+    const body = await getOrFetch(originUrl, cacheKey, cache, ttlOf, path, originSource);
+    if (body) return jsonResponse(body, "force-origin", 0);
+    return new Response(JSON.stringify({ error: "Upstream unavailable" }), {
+      status: 503,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
 
-  // 1a) Isolate-muistista?
+  // 1) Isolaatin muisti — nopein polku.
   const mem = memoryGet(path);
   if (mem) {
-    const ttl = ttlOf(mem.body);
-    const ageSec = (Date.now() - mem.cachedAt) / 1000;
-    if (ageSec < ttl.edgeTtl) {
+    const fresh = envelopeFreshness(mem, ttlOf);
+    if (fresh === "fresh") {
       bumpOriginCall(cacheSource, path, "hit");
-      return jsonResponse(mem.body, "hit", ageSec);
+      return jsonResponse(mem.body, "hit", (Date.now() - mem.cachedAt) / 1000);
     }
-    if (ageSec < ttl.edgeTtl + ttl.swrWindow) {
+    if (fresh === "stale") {
       bumpOriginCall(cacheSource, path, "stale");
       if (cache) kickRefresh(originUrl, cacheKey, cache, ttlOf, path, originSource);
       else void getOrFetch(originUrl, cacheKey, cache, ttlOf, path, originSource);
-      return jsonResponse(mem.body, "stale", ageSec);
+      return jsonResponse(mem.body, "stale", (Date.now() - mem.cachedAt) / 1000);
     }
-
   }
 
-  // 1b) Cloudflare Cache API osuma?
+  // 2) Postgres DB cache — jaettu totuus kaikkien isolaattien ja domainien kesken.
+  const dbEnv = await dbGet(path);
+  if (dbEnv) {
+    memoryPut(path, dbEnv);
+    const fresh = envelopeFreshness(dbEnv, ttlOf);
+    if (fresh === "fresh") {
+      bumpOriginCall(cacheSource, path, "hit");
+      return jsonResponse(dbEnv.body, "hit", (Date.now() - dbEnv.cachedAt) / 1000);
+    }
+    if (fresh === "stale") {
+      // Stale-vastaus palautetaan heti; taustalla yritetään päivittää.
+      bumpOriginCall(cacheSource, path, "stale");
+      if (cache) kickRefresh(originUrl, cacheKey, cache, ttlOf, path, originSource);
+      else void getOrFetch(originUrl, cacheKey, cache, ttlOf, path, originSource);
+      return jsonResponse(dbEnv.body, "stale", (Date.now() - dbEnv.cachedAt) / 1000);
+    }
+  }
+
+  // 3) Cloudflare Cache API — varatier, domainkohtainen avain.
   if (cache) {
     const hit = await cache.match(cacheKey).catch(() => undefined);
     if (hit) {
       const env = await readEnvelope(hit);
       if (env) {
         memoryPut(path, env);
-        const ttl = ttlOf(env.body);
-        const ageSec = (Date.now() - env.cachedAt) / 1000;
-        if (ageSec < ttl.edgeTtl) {
+        const fresh = envelopeFreshness(env, ttlOf);
+        if (fresh === "fresh") {
           bumpOriginCall(cacheSource, path, "hit");
-          return jsonResponse(env.body, "hit", ageSec);
+          return jsonResponse(env.body, "hit", (Date.now() - env.cachedAt) / 1000);
         }
-        if (ageSec < ttl.edgeTtl + ttl.swrWindow) {
-          // SWR: palauta stale heti, päivitä taustalla.
+        if (fresh === "stale") {
           bumpOriginCall(cacheSource, path, "stale");
           kickRefresh(originUrl, cacheKey, cache, ttlOf, path, originSource);
-          return jsonResponse(env.body, "stale", ageSec);
+          return jsonResponse(env.body, "stale", (Date.now() - env.cachedAt) / 1000);
         }
-        // Liian vanha — käsitellään cache-missinä mutta pidetään stale
-        // varakopiona jos origin feilaa.
       }
-    }
-  }
-
-  // 1c) Julkaistussa dynaamisessa workerissa Cache API voi olla poissa käytöstä.
-  // Tällöin Postgres-pohjainen palvelincache antaa saman koalisaation
-  // taustaharvesterille ja käyttäjien SSR-kutsuille.
-  const dbEnv = await dbGet(path);
-  if (dbEnv) {
-    memoryPut(path, dbEnv);
-    const ttl = ttlOf(dbEnv.body);
-    const ageSec = (Date.now() - dbEnv.cachedAt) / 1000;
-    if (ageSec < ttl.edgeTtl) {
-      bumpOriginCall(cacheSource, path, "hit");
-      return jsonResponse(dbEnv.body, "hit", ageSec);
-    }
-    if (ageSec < ttl.edgeTtl + ttl.swrWindow) {
-      bumpOriginCall(cacheSource, path, "stale");
-      void getOrFetch(originUrl, cacheKey, cache, ttlOf, path, originSource);
-      return jsonResponse(dbEnv.body, "stale", ageSec);
     }
   }
 
   const staleFallback = mem ?? dbEnv ?? null;
 
-  // 2) Circuit auki? -> yritä antaa viimeisin stale muistista tai cachesta
+  // 4) Circuit auki? -> yritä antaa viimeisin stale muistista tai cachesta
   const openUntil = circuitOpenUntil.get(path);
   if (openUntil && Date.now() < openUntil) {
     if (staleFallback) {
@@ -235,22 +332,78 @@ export async function proxyTuloslista(
     }
   }
 
+  // 5) Cross-isolate single-flight: yritä ottaa DB-lukko.
+  //    Jos saamme lukon, teemme origin-kutsun ja kirjoitamme tuloksen DB:hen.
+  //    Jos emme, odotamme että toinen isolaatti täyttää cachen ja palautamme sen.
+  const locked = await dbTryLock(path, 10);
+  if (locked) {
+    try {
+      // Varmistetaan vielä, ettei joku muu täyttänyt cachea juuri ennen lukkoa.
+      const reCheck = await dbGet(path);
+      if (reCheck && envelopeFreshness(reCheck, ttlOf) !== "expired") {
+        memoryPut(path, reCheck);
+        bumpOriginCall(cacheSource, path, "hit");
+        return jsonResponse(reCheck.body, "hit", (Date.now() - reCheck.cachedAt) / 1000);
+      }
 
-  // 3) Single-flight upstream-fetch
-  const body = await getOrFetch(originUrl, cacheKey, cache, ttlOf, path, originSource);
-  if (body) return jsonResponse(body, "miss", 0);
+      const body = await getOrFetch(originUrl, cacheKey, cache, ttlOf, path, originSource);
+      if (body) {
+        await dbReleaseLock(path, body);
+        return jsonResponse(body, "miss", 0);
+      }
+      await dbReleaseLockEmpty(path);
+    } catch (e) {
+      await dbReleaseLockEmpty(path);
+      throw e;
+    }
+  } else {
+    // Odotetaan, että lukko vapautuu ja toinen isolaatti on kirjoittanut cachen.
+    const started = Date.now();
+    while (Date.now() - started < LOCK_WAIT_MAX_MS) {
+      await new Promise((res) => setTimeout(res, LOCK_POLL_MS));
+      const waitedEnv = await dbGet(path);
+      if (waitedEnv) {
+        memoryPut(path, waitedEnv);
+        const fresh = envelopeFreshness(waitedEnv, ttlOf);
+        bumpOriginCall(cacheSource, path, fresh === "fresh" ? "hit" : "stale");
+        return jsonResponse(
+          waitedEnv.body,
+          fresh === "fresh" ? "hit" : "stale",
+          (Date.now() - waitedEnv.cachedAt) / 1000,
+        );
+      }
+      const stillLocked = await dbLockHeld(path);
+      if (!stillLocked) break; // Lukko poistui, mutta dataa ei tullut -> yritä itse
+    }
+    // Jos odotuksen jälkeenkään ei dataa, yritetään ottaa lukko uudelleen.
+    const retried = await dbTryLock(path, 10);
+    if (retried) {
+      try {
+        const body = await getOrFetch(originUrl, cacheKey, cache, ttlOf, path, originSource);
+        if (body) {
+          await dbReleaseLock(path, body);
+          return jsonResponse(body, "miss", 0);
+        }
+        await dbReleaseLockEmpty(path);
+      } catch (e) {
+        await dbReleaseLockEmpty(path);
+        throw e;
+      }
+    }
+  }
 
   if (staleFallback) {
     bumpOriginCall(cacheSource, path, "stale-error");
     return jsonResponse(staleFallback.body, "stale-error", (Date.now() - staleFallback.cachedAt) / 1000);
   }
 
-  // 4) Origin feilasi — viimeinen yritys: anna mikä tahansa cache-kopio
+  // 6) Origin feilasi — viimeinen yritys: anna mikä tahansa cache-kopio
   if (cache) {
     const hit = await cache.match(cacheKey).catch(() => undefined);
     if (hit) {
       const env = await readEnvelope(hit);
       if (env) {
+        memoryPut(path, env);
         bumpOriginCall(cacheSource, path, "stale-error");
         return jsonResponse(env.body, "stale-error", (Date.now() - env.cachedAt) / 1000);
       }
@@ -318,9 +471,13 @@ async function fetchFromOrigin(
     // Circuit voi sulkeutua jos onnistunut vastaus saadaan.
     circuitOpenUntil.delete(path);
 
+    const now = Date.now();
     // Isolate-muisti aina: takaa cache-osumat vaikka Cache API ei olisi
     // käytettävissä tai epäonnistuisi hiljaa.
-    memoryPut(path, { body, cachedAt: Date.now() });
+    memoryPut(path, { body, cachedAt: now });
+    // DB-kirjoitus tehdään lukon vapautuksen yhteydessä pääpolussa.
+    // Kirjoitetaan myös täällä varmuuden vuoksi, jos tätä kutsutaan
+    // kickRefreshin kautta ilman erillistä lukkoa.
     void dbPut(path, body);
 
     if (cache) {
@@ -330,7 +487,7 @@ async function fetchFromOrigin(
         status: 200,
         headers: {
           "content-type": "application/json; charset=utf-8",
-          "x-tl-cached-at": String(Date.now()),
+          "x-tl-cached-at": String(now),
           // Cache APIn omat säännöt: pidä kopio totalTtl ajan.
           "cache-control": `public, max-age=${totalTtl}`,
         },

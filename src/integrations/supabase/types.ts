@@ -1475,6 +1475,24 @@ export type Database = {
         }
         Relationships: []
       }
+      tuloslista_proxy_fetch_locks: {
+        Row: {
+          expires_at: string
+          locked_at: string
+          path: string
+        }
+        Insert: {
+          expires_at: string
+          locked_at?: string
+          path: string
+        }
+        Update: {
+          expires_at?: string
+          locked_at?: string
+          path?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1795,6 +1813,15 @@ export type Database = {
       }
       normalize_event_name: { Args: { name: string }; Returns: string }
       prune_tuloslista_proxy_cache: { Args: never; Returns: undefined }
+      prune_tuloslista_proxy_fetch_locks: { Args: never; Returns: undefined }
+      release_tuloslista_proxy_lock: {
+        Args: { _body: string; _path: string }
+        Returns: undefined
+      }
+      release_tuloslista_proxy_lock_empty: {
+        Args: { _path: string }
+        Returns: undefined
+      }
       revoke_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1812,6 +1839,10 @@ export type Database = {
       }
       shared_note_owner_ids: { Args: { _user: string }; Returns: string[] }
       shared_team_user_ids: { Args: { _user: string }; Returns: string[] }
+      try_tuloslista_proxy_lock: {
+        Args: { _path: string; _ttl_seconds?: number }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "planner" | "official"
