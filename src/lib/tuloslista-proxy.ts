@@ -234,6 +234,7 @@ export async function proxyTuloslista(
   request?: Request,
 ): Promise<Response> {
   const { originSource, cacheSource } = resolveSources(request);
+  const forceOrigin = isForceOrigin(request);
 
   const originUrl = `${ORIGIN}${path}`;
   // Käytetään aina kanonista cache-avainta riippumatta pyynnön origin-domainista.
@@ -241,6 +242,18 @@ export async function proxyTuloslista(
   const cacheOrigin = "https://tulokset.online";
   const cacheKey = new Request(`${cacheOrigin}/__tl-proxy${path}`, { method: "GET" });
   const cache = getEdgeCache();
+
+  // Pakotettu origin-kutsu: health-check (monitor) haluaa todellisen
+  // origin-vasteen. Ohitetaan kaikki välimuistit, mutta kirjoitetaan
+  // tulos takaisin cacheen muiden käyttäjien hyödyksi.
+  if (forceOrigin) {
+    const body = await getOrFetch(originUrl, cacheKey, cache, ttlOf, path, originSource);
+    if (body) return jsonResponse(body, "force-origin", 0);
+    return new Response(JSON.stringify({ error: "Upstream unavailable" }), {
+      status: 503,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
 
   // 1) Isolaatin muisti — nopein polku.
   const mem = memoryGet(path);
