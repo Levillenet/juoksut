@@ -118,21 +118,33 @@ function classify(
 }
 
 
-async function runProbe(path: string, minBytes: number): Promise<ProbeOutcome> {
-  const url = `${ORIGIN}${path}`;
+async function runProbe(
+  path: string,
+  ttlOf: (body: string) => { edgeTtl: number; swrWindow: number },
+  minBytes: number,
+): Promise<ProbeOutcome> {
+  const url = `https://tulokset.online/api/public/tuloslista${path}`;
   const started = Date.now();
   let status = 0;
   let contentType: string | null = null;
   let body = "";
   let fetchError: string | null = null;
 
+  // Pakotettu origin-kutsu proxyn läpi: monitori haluaa todellisen
+  // upstream-vasteen, mutta samalla tulos kirjoittuu jaettuun cacheen.
+  const req = new Request(url, {
+    method: "GET",
+    headers: {
+      "x-origin-source": "monitor",
+      "x-force-origin": "true",
+      accept: "application/json",
+    },
+  });
+
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    const res = await fetch(url, {
-      headers: { "user-agent": UA, accept: "application/json" },
-      signal: controller.signal,
-    });
+    const res = await proxyTuloslista(path, ttlOf, req);
     clearTimeout(timer);
     status = res.status;
     contentType = res.headers.get("content-type");
@@ -140,8 +152,6 @@ async function runProbe(path: string, minBytes: number): Promise<ProbeOutcome> {
   } catch (e) {
     fetchError = e instanceof Error ? e.message : String(e);
   }
-
-  bumpOriginCall("monitor", path, status);
 
   const duration = Date.now() - started;
   const verdict: Verdict = fetchError
@@ -182,7 +192,7 @@ async function logProbe(endpoint: Endpoint, outcome: ProbeOutcome): Promise<void
     body_bytes: outcome.bodyBytes,
     body_preview: outcome.bodyPreview,
     reason: outcome.reason,
-    user_agent: UA,
+    user_agent: "juoksut-monitor/1.1 (+https://tulokset.online)",
     endpoint,
   });
 }
@@ -257,11 +267,12 @@ export async function runTuloslistaMonitor(): Promise<MonitorRunResult> {
   }
 
   const [listOutcome, referenceId] = await Promise.all([
-    runProbe(LIST_PATH, LIST_MIN_OK_BYTES),
+    runProbe(LIST_PATH, competitionListTtl, LIST_MIN_OK_BYTES),
     pickReferenceCompetitionId(),
   ]);
   const resultsOutcome = await runProbe(
     RESULTS_PATH(referenceId),
+    propertiesTtl,
     RESULTS_MIN_OK_BYTES,
   );
 
