@@ -1,49 +1,26 @@
-## Mitä mittaukset kertovat
+## Mistä on kyse
 
-Tarkistin `origin_call_daily`-taulun ja välimuistitaulut. Rajapinta itse toimii (kisalista vastaa nyt paikallisesti `x-tl-cache: hit`), mutta kutsujakauma on pahasti vinossa:
+Lohja Junior Games (kisa-ID 20126) on tietokannassa merkitty tilaan "ei löydy lähteestä", vaikka kilpailu on edelleen olemassa tuloslistalla ja siitä on jo 961 tulosriviä. Tarkistetut faktat:
 
-| Päivä | proxy_origin (käyttäjät) | harvester | proxy_cache (osumat) |
-|---|---|---|---|
-| 25.7. | 5 213 tulokset + 2 084 aikataulut | 4 663 | ~55 |
-| 24.7. | 457 + 1 012 | 177 | ~45 |
+- `harvest_competitions`-rivi 20126: `exists_in_source = false`, `last_event_date = null`, `row_count = 0`, `done = true`, viimeisin skannaus 25.7. klo 14:32.
+- Tuloslistan rajapinta palauttaa nyt kilpailun normaalisti (nimi ja alkupäivä löytyvät), eli kyse oli hetkellisestä häiriöstä.
+- Viimeisin tulosrivi koko järjestelmässä on 25.7. klo 14:10, eli kisaa ei ole sen jälkeen käyty kertaakaan läpi.
 
-Eli kutsut menevät lähes aina originille, ei siksi että välimuisti olisi rikki, vaan koska **jokainen kysely osuu välimuistiin vasta sen umpeuduttua**. Kolme vahvistettua syytä:
+Syy: kun kilpailun perustietojen haku epäonnistuu hetkellisesti, tulostenhaku kirjoittaa riville "ei löydy lähteestä", tyhjentää viimeisen kilpailupäivän ja merkitsee kisan valmiiksi. Tämän jälkeen kisa suodattuu pysyvästi pois sekä uudelleenskannauksesta että etusivun "käynnissä tänään" -logiikasta, joten seuran urheilijat eivät näy.
 
-1. **Aikataulukyselyiden ryöppy kisavalinnassa.** `filterRunningToday` (src/lib/competition-list.ts) hakee jokaiselle viimeisen 6 päivän kilpailulle erikseen `/live/v1/competition/{id}` -aikataulun selaimesta. Näin tekee sekä etusivun `TodayStatsSection` (uudelleen 60 s välein) että `LiveCompetitionsSection`. Kymmeniä rinnakkaisia kutsuja per kävijä. Lukkotaulussa oli tarkastushetkellä juuri 10 samanaikaista aikataulukutsun lukkoa.
-2. **Kisavalinta jumittuu tämän takia.** Proxyn cross-isolate-lukko odottaa jopa 10 sekuntia (`LOCK_WAIT_MAX_MS`) per polku, kun toinen isolaatti hakee samaa. Kun avattavan valikon lista odottaa kymmeniä tällaisia kutsuja, valikko ei ehdi täyttyä, eikä avaudu.
-3. **TTL on lyhyempi kuin pollausväli.** Käynnissä olevan lajin TTL on 3 s fresh + 7 s stale = 10 s, mutta kuuluttaja- ja livenäyttö pollaavat 15 s välein → joka pollaus on origin-kutsu. Lisäksi `refetchIntervalInBackground: true` pitää auki jääneet välilehdet pollaamassa vuorokauden ympäri (4 kutsua/min = ~5 700 kutsua/vrk per unohtunut välilehti). Tämä selittää eilisen piikin.
+## Mitä korjataan
 
-## Korjaukset
-
-**1. Kisavalinta ja "käynnissä tänään" DB:stä, ei originilta**
-
-`harvest_competitions`-taulussa on jo `competition_date` ja `last_event_date`. Tehdään server function, joka palauttaa yhdellä DB-kyselyllä tänään käynnissä olevien kilpailujen id:t, ja `filterRunningToday` käyttää sitä. Aikataulun per-kilpailu-haku selaimesta poistuu kokonaan. Vain jos DB:stä ei löydy tietoa (uusi kisa), sallitaan enintään 3 aikataulukutsua.
-
-**2. Kisalista react-queryn taakse**
-
-`fetchCompetitionList` ja kisavalinta siirretään `queryOptions`-pohjaiseksi (`staleTime` 5 min, `gcTime` 30 min), jotta lista jaetaan komponenttien välillä eikä haeta uudelleen joka mountilla. Valikko avautuu heti myös silloin kun taustahaku on kesken (näytetään viimeksi tunnettu lista).
-
-**3. TTL:t vastaamaan pollausväliä**
-
-`src/lib/tuloslista-proxy.ts`:
-- Käynnissä oleva laji: fresh 3 s → **12 s**, stale-ikkuna 7 s → **20 s** (15 s pollaus osuu aina välimuistiin; viive kasvaa enintään ~10 s, mikä on livenäytölle yhä riittävä)
-- Aikataulu: 30/30 → **60/120**
-- Virallistunut laji ja properties: ennallaan
-
-**4. Turhan taustapollauksen lopetus**
-
-`refetchIntervalInBackground: true` pois aikataulu- ja lajikyselyistä (`src/lib/tuloslista-queries.ts`). Tilalle `refetchOnWindowFocus: "always"`, joka on jo käytössä: piiloutunut välilehti lakkaa pollaamasta ja päivittyy heti kun se palaa esiin. Lisäksi pollaus pysäytetään, kun kilpailun kaikki kierrokset ovat `Official`-tilassa.
-
-**5. Lukko-odotus ei saa jumittaa käyttäjän pyyntöä**
-
-Proxyssä `LOCK_WAIT_MAX_MS` 10 s → 2,5 s, ja jos odotus ei tuota dataa, palautetaan heti vanhentunut välimuistikopio (jos on) sen sijaan että jatkettaisiin uuteen origin-yritykseen. Näin yksikään käyttäjän pyyntö ei jää roikkumaan.
+1. **Hetkellinen häiriö ei saa tuhota tietoa.** Kun perustietojen tai aikataulun haku epäonnistuu, riville ei kirjoiteta `exists_in_source = false` eikä nollata `last_event_date` / `row_count`, vaan aiemmat arvot säilytetään ja vain `last_scanned_at` päivittyy.
+2. **Kisaa ei merkitä valmiiksi epävarmalla tiedolla.** `done = true` asetetaan vain, kun aikataulu on saatu luettua ja viimeinen kilpailupäivä on menneisyydessä.
+3. **Itsekorjautuvuus.** Uudelleenskannauslistalle otetaan mukaan myös kisat, joiden `exists_in_source = false` mutta joiden alkupäivä on viimeisen 3 vuorokauden sisällä, jotta väärä merkintä korjaantuu automaattisesti seuraavalla ajolla.
+4. **Nykyisen tilanteen palautus.** Nollataan virheelliset merkinnät niiltä viime päivien kisoilta, joilla on tuloksia tietokannassa mutta `exists_in_source = false` tai `last_event_date` puuttuu, jotta Lohja Junior Games ja vastaavat tulevat heti takaisin näkyviin.
 
 ## Tekniset yksityiskohdat
 
-- Uusi server function `src/lib/competition-days.functions.ts`: `SELECT competition_id FROM harvest_competitions WHERE exists_in_source AND today BETWEEN competition_date::date AND coalesce(last_event_date, competition_date::date)`, palautetaan id-lista. Autentikointia ei tarvita (julkinen tieto), joten ei `requireSupabaseAuth`.
-- Muutettavat tiedostot: `src/lib/competition-list.ts`, `src/lib/tuloslista-proxy.ts`, `src/lib/tuloslista-queries.ts`, `src/components/CompetitionSwitcher.tsx`, `src/lib/today-stats.ts`, uusi functions-tiedosto. Ei migraatiota.
-- Varmistus jälkikäteen: kisavalinta avautuu paikallisesti Playwrightilla, ja `origin_call_daily`-jakauman seuranta seuraavana kisapäivänä (odotus: aikataulukutsut lähelle nollaa, tuloskutsut noin puoleen, cache-osumien osuus selvästi nousuun).
-
-## Odotettu lopputulos
-
-Aikataulukutsut originille käytännössä katoavat (2 000 → kymmeniä), tuloskutsut putoavat noin puoleen ja välimuistiosumien osuus nousee sitä mukaa kun katsojia on samalla lajilla. Kisavalinta avautuu välittömästi.
+- `src/routes/api/public/hooks/harvest-results.ts`
+  - `processCompetition` erottaa "kisaa ei ole olemassa" (rajapinta vastasi, mutta kilpailua ei löydy) ja "haku epäonnistui" (verkkovirhe, 5xx, rate limit) toisistaan omalla paluuarvolla.
+  - `harvestIds` kirjoittaa `scanRecords`-riville vain turvalliset kentät epäonnistuneessa tapauksessa; `last_event_date` ja `row_count` säilytetään aiemmasta rivistä (ladataan samaan aikaan kuin `first_scanned_at`).
+  - `last_event_date` fallbackina käytetään aiempaa arvoa tai `competition_date`-päivää, ei koskaan `null`ia jos vanha arvo oli olemassa.
+  - Pending-listan suodatin ottaa mukaan `exists_in_source = false` -rivit, joiden `competition_date >= tänään - 3 vrk`.
+- Datan korjaus tehdään päivityskyselynä `harvest_competitions`-tauluun (ei skeemamuutosta): kisoille, joilla on rivejä `athlete_results`-taulussa viimeisen 5 vrk ajalta, asetetaan `exists_in_source = true`, `done = false` ja `last_event_date` tulosten perusteella.
+- Frontendiin ei tarvita muutoksia: `src/lib/competition-list.ts` toimii oikein heti kun tietokannan rivit ovat kunnossa.

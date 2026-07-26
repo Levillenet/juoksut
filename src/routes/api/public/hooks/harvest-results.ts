@@ -140,6 +140,19 @@ function parseResultNumeric(
 }
 
 async function fetchJson<T>(url: string, state: RunState): Promise<T | null> {
+  return (await fetchJsonEx<T>(url, state)).data;
+}
+
+/**
+ * Kuten `fetchJson`, mutta erottelee kaksi tapausta:
+ *  - `notFound`: rajapinta vastasi, mutta kohdetta ei ole (404).
+ *  - `failed`: haku epäonnistui (verkkovirhe, 5xx, rate limit, roskavastaus).
+ * Tämä on tärkeää, jottei hetkellinen häiriö merkitse kisaa poistetuksi.
+ */
+async function fetchJsonEx<T>(
+  url: string,
+  state: RunState,
+): Promise<{ data: T | null; notFound: boolean; failed: boolean }> {
   // Erota tuloslistan polku URL:sta laskuria varten (`/live/v1/...`).
   const pathForCounter = url.startsWith(API)
     ? "/live/v1" + url.slice(API.length)
@@ -162,24 +175,29 @@ async function fetchJson<T>(url: string, state: RunState): Promise<T | null> {
     if (!state.proxyOrigin) bumpOriginCall(state.source, pathForCounter, r.status);
     if (r.status === 429 || r.status === 503) {
       state.rateLimited = true;
-      return null;
+      return { data: null, notFound: false, failed: true };
     }
-    if (!r.ok) return null;
+    if (r.status === 404) return { data: null, notFound: true, failed: false };
+    if (!r.ok) return { data: null, notFound: false, failed: true };
     const contentType = (r.headers.get("content-type") ?? "").toLowerCase();
     const text = await r.text();
     const msg = detectApiMessage(text);
     if (msg) {
       state.lastApiMessage = msg;
       state.rateLimited = true;
-      return null;
+      return { data: null, notFound: false, failed: true };
     }
     if (!contentType.includes("application/json") && !contentType.includes("text/json")) {
-      return null;
+      return { data: null, notFound: false, failed: true };
     }
-    return JSON.parse(text) as T;
+    try {
+      return { data: JSON.parse(text) as T, notFound: false, failed: false };
+    } catch {
+      return { data: null, notFound: false, failed: true };
+    }
   } catch {
     if (!state.proxyOrigin) bumpOriginCall(state.source, pathForCounter, 0);
-    return null;
+    return { data: null, notFound: false, failed: true };
   }
 }
 
@@ -296,15 +314,41 @@ async function processCompetition(
   competitionDateHint: string | null,
   state: RunState,
   options: { hotEventsOnly?: boolean } = {},
-): Promise<{ existed: boolean; rowsAdded: number; competitionDate: string | null; lastEventDate: string | null }> {
-  const props = await fetchJson<PropertiesShape>(
+): Promise<{
+  existed: boolean;
+  fetchFailed: boolean;
+  rowsAdded: number;
+  competitionDate: string | null;
+  lastEventDate: string | null;
+}> {
+  const propsRes = await fetchJsonEx<PropertiesShape>(
     `${API}/competition/${id}/properties`,
     state,
   );
-  if (!props?.Competition?.Id) return { existed: false, rowsAdded: 0, competitionDate: competitionDateHint, lastEventDate: null };
+  const props = propsRes.data;
+  if (!props?.Competition?.Id) {
+    // Vain aito 404 (tai tyhjä vastaus onnistuneesta hausta) tarkoittaa
+    // ettei kisaa ole. Hetkellinen häiriö ei saa tuhota tunnettua tilaa.
+    return {
+      existed: false,
+      fetchFailed: propsRes.failed,
+      rowsAdded: 0,
+      competitionDate: competitionDateHint,
+      lastEventDate: null,
+    };
+  }
   const competitionDate = props.Competition?.BeginDate ?? competitionDateHint;
-  const byDate = await fetchJson<RoundsByDateShape>(`${API}/competition/${id}`, state);
-  if (!byDate) return { existed: true, rowsAdded: 0, competitionDate, lastEventDate: null };
+  const scheduleRes = await fetchJsonEx<RoundsByDateShape>(`${API}/competition/${id}`, state);
+  const byDate = scheduleRes.data;
+  if (!byDate) {
+    return {
+      existed: true,
+      fetchFailed: true,
+      rowsAdded: 0,
+      competitionDate,
+      lastEventDate: null,
+    };
+  }
   const scheduleRounds = Object.values(byDate).flat();
   // Viimeisen erän Helsinki-päivä — monipäiväisten kisojen tunnistus.
   let lastEventDate: string | null = null;
@@ -321,7 +365,7 @@ async function processCompetition(
     hotEventIds ? hotEventIds.has(eventId) : true,
   );
   if (options.hotEventsOnly && eventIds.length === 0) {
-    return { existed: true, rowsAdded: 0, competitionDate, lastEventDate };
+    return { existed: true, fetchFailed: false, rowsAdded: 0, competitionDate, lastEventDate };
   }
 
   let rowsAdded = 0;
@@ -471,7 +515,7 @@ async function processCompetition(
       }
     }
   }
-  return { existed: true, rowsAdded, competitionDate, lastEventDate };
+  return { existed: true, fetchFailed: false, rowsAdded, competitionDate, lastEventDate };
 }
 
 function parseWind(w: unknown): number | null {
@@ -535,8 +579,16 @@ async function harvestIds(
   }> = [];
 
 
-  // Lataa aiemmat first_scanned_at -arvot upsertia varten.
-  const firstSeenMap = new Map<number, string>();
+  // Lataa aiemmat rivit upsertia varten, jotta hetkellinen häiriö ei tuhoa
+  // jo tunnettua tilaa (viimeinen kilpailupäivä, rivimäärä, olemassaolo).
+  type PrevRow = {
+    first_scanned_at: string | null;
+    last_event_date: string | null;
+    row_count: number | null;
+    exists_in_source: boolean | null;
+    competition_date: string | null;
+  };
+  const prevMap = new Map<number, PrevRow>();
   if (entries.length > 0) {
     const ids = entries.map((e) => e.id);
     const CHUNK = 500;
@@ -544,10 +596,18 @@ async function harvestIds(
       const slice = ids.slice(i, i + CHUNK);
       const { data } = await supabaseAdmin
         .from("harvest_competitions")
-        .select("competition_id, first_scanned_at")
+        .select(
+          "competition_id, first_scanned_at, last_event_date, row_count, exists_in_source, competition_date",
+        )
         .in("competition_id", slice);
       for (const r of data ?? []) {
-        if (r.first_scanned_at) firstSeenMap.set(r.competition_id, r.first_scanned_at);
+        prevMap.set(r.competition_id, {
+          first_scanned_at: r.first_scanned_at,
+          last_event_date: r.last_event_date,
+          row_count: r.row_count,
+          exists_in_source: r.exists_in_source,
+          competition_date: r.competition_date,
+        });
       }
     }
   }
@@ -569,6 +629,7 @@ async function harvestIds(
       scanned++;
       if (r.status === "fulfilled") {
         const v = r.value;
+        const prev = prevMap.get(e.id);
         if (v.existed) {
           existed++;
           if (v.rowsAdded > 0) touchedCompIds.add(e.id);
@@ -578,18 +639,26 @@ async function harvestIds(
         // ajassa. Muuten myöhemmin päivän aikana ajetut lajit (esim. 800m,
         // finaalit) eivät koskaan päivity, koska done=true suodattaa kisan
         // ulos rescan-listalta.
-        const lastEv = v.lastEventDate ?? e.date ?? null;
+        const lastEventDate =
+          v.lastEventDate ?? prev?.last_event_date ?? null;
+        const lastEv = lastEventDate ?? e.date ?? prev?.competition_date ?? null;
         const stillOngoing =
           hkiToday != null && lastEv != null && lastEv >= hkiToday;
+        // Epäonnistunut haku: säilytä aiemmat arvot, päivitä vain aikaleima.
+        // Kisaa ei myöskään merkitä valmiiksi epävarman tiedon perusteella.
+        const existsInSource = v.fetchFailed
+          ? (prev?.exists_in_source ?? true)
+          : v.existed;
         scanRecords.push({
           competition_id: e.id,
-          competition_date: v.competitionDate ?? e.date ?? null,
-          row_count: v.rowsAdded,
-          exists_in_source: v.existed,
-          done: !stillOngoing,
+          competition_date:
+            v.competitionDate ?? e.date ?? prev?.competition_date ?? null,
+          row_count: v.fetchFailed ? (prev?.row_count ?? 0) : v.rowsAdded,
+          exists_in_source: existsInSource,
+          done: v.fetchFailed ? false : !stillOngoing,
           last_scanned_at: nowIso,
-          first_scanned_at: firstSeenMap.get(e.id) ?? nowIso,
-          last_event_date: v.lastEventDate ?? null,
+          first_scanned_at: prev?.first_scanned_at ?? nowIso,
+          last_event_date: lastEventDate,
         });
 
       }
@@ -812,6 +881,8 @@ async function run(request: Request): Promise<Response> {
       done: boolean | null;
       last_event_date: string | null;
       last_scanned_at: string | null;
+      exists_in_source: boolean | null;
+      competition_date: string | null;
     };
     const hcMap = new Map<number, HcRow>();
     const CHUNK = 500;
@@ -819,21 +890,42 @@ async function run(request: Request): Promise<Response> {
       const slice = listedIds.slice(i, i + CHUNK);
       const { data } = await supabaseAdmin
         .from("harvest_competitions")
-        .select("competition_id, done, last_event_date, last_scanned_at")
+        .select(
+          "competition_id, done, last_event_date, last_scanned_at, exists_in_source, competition_date",
+        )
         .in("competition_id", slice);
       for (const r of (data ?? []) as HcRow[]) hcMap.set(r.competition_id, r);
     }
+
+    // Kisat, joiden alkupäivä on viimeisen kolmen vuorokauden sisällä.
+    const recentCutoff = hkiTodayIso
+      ? new Date(new Date(`${hkiTodayIso}T00:00:00Z`).getTime() - 3 * 86400_000)
+          .toISOString()
+          .slice(0, 10)
+      : null;
+    const isRecent = (e: { id: number; date: string | null }) => {
+      if (!recentCutoff) return false;
+      const hc = hcMap.get(e.id);
+      const start = (e.date ?? hc?.competition_date ?? "").slice(0, 10);
+      return start !== "" && start >= recentCutoff;
+    };
 
     const pending = listed.filter((e) => {
       const hc = hcMap.get(e.id);
       // Ei koskaan skannattu → aina pending.
       if (!hc) return true;
+      // Aiemmin "ei löydy lähteestä" -merkityt tuoreet kisat käydään
+      // uudestaan: merkintä voi johtua hetkellisestä häiriöstä.
+      if (hc.exists_in_source === false) return isRecent(e);
       if (!hc.done) return true;
       // Done: rescanataan vain jos viimeinen tapahtumapäivä on tänään tai
       // tulevaisuudessa (monipäiväiset kisat vielä käynnissä). Eiliset ja
       // vanhemmat kisat ovat vakiintuneet — ei tarvitse käydä uudestaan.
       if (!hkiTodayIso) return false;
       if (hc.last_event_date && hc.last_event_date >= hkiTodayIso) return true;
+      // Monipäiväinen kisa ilman tunnettua viimeistä päivää: varmistetaan
+      // tuoreiden kisojen osalta vielä kerran.
+      if (!hc.last_event_date) return isRecent(e);
       return false;
     });
 
