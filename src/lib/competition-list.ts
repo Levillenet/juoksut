@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchRounds, helsinkiDateKey } from "./tuloslista";
+import { helsinkiDateKey } from "./tuloslista";
 
 // Käytetään sisäistä proxya, jotta selain ei törmää CORS/verkko-ongelmiin
 // suoraan upstream-osoitteeseen. Muut tuloslistan endpointit menevät jo
@@ -14,10 +14,32 @@ export interface CompetitionListItem {
   Location: string;
 }
 
+// Moduulitason välimuisti: kaikki komponentit jakavat saman kisalistan,
+// eikä listaa haeta uudelleen joka mountilla.
+let listCache: { list: CompetitionListItem[]; fetchedAt: number } | null = null;
+let listInflight: Promise<CompetitionListItem[]> | null = null;
+const LIST_TTL_MS = 5 * 60 * 1000;
+
 export async function fetchCompetitionList(): Promise<CompetitionListItem[]> {
-  const res = await fetch(LIST_URL);
-  if (!res.ok) throw new Error(`Kisalistan haku epäonnistui (${res.status})`);
-  return res.json();
+  if (listCache && Date.now() - listCache.fetchedAt < LIST_TTL_MS) return listCache.list;
+  if (listInflight) return listInflight;
+  listInflight = (async () => {
+    const res = await fetch(LIST_URL);
+    if (!res.ok) throw new Error(`Kisalistan haku epäonnistui (${res.status})`);
+    const json = (await res.json()) as CompetitionListItem[];
+    listCache = { list: json, fetchedAt: Date.now() };
+    return json;
+  })();
+  try {
+    return await listInflight;
+  } catch (e) {
+    // Virhetilanteessa palautetaan viimeksi tunnettu lista jos sellainen on,
+    // jotta kisavalinta avautuu aina.
+    if (listCache) return listCache.list;
+    throw e;
+  } finally {
+    listInflight = null;
+  }
 }
 
 /** Return competitions whose date matches today (Helsinki). */
