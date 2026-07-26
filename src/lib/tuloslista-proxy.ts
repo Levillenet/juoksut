@@ -375,8 +375,10 @@ export async function proxyTuloslista(
       const stillLocked = await dbLockHeld(path);
       if (!stillLocked) break; // Lukko poistui, mutta dataa ei tullut -> yritä itse
     }
-    // Jos odotuksen jälkeenkään ei dataa, yritetään ottaa lukko uudelleen.
-    const retried = await dbTryLock(path, 10);
+    // Jos odotuksen jälkeenkään ei dataa, yritetään ottaa lukko uudelleen —
+    // mutta vain jos meillä ei ole yhtään vanhentunutta kopiota tarjottavaksi.
+    // Näin käyttäjän pyyntö ei jää koskaan roikkumaan origin-kutsun taakse.
+    const retried = staleFallback ? false : await dbTryLock(path, 10);
     if (retried) {
       try {
         const body = await getOrFetch(originUrl, cacheKey, cache, ttlOf, path, originSource);
