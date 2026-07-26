@@ -140,6 +140,19 @@ function parseResultNumeric(
 }
 
 async function fetchJson<T>(url: string, state: RunState): Promise<T | null> {
+  return (await fetchJsonEx<T>(url, state)).data;
+}
+
+/**
+ * Kuten `fetchJson`, mutta erottelee kaksi tapausta:
+ *  - `notFound`: rajapinta vastasi, mutta kohdetta ei ole (404).
+ *  - `failed`: haku epäonnistui (verkkovirhe, 5xx, rate limit, roskavastaus).
+ * Tämä on tärkeää, jottei hetkellinen häiriö merkitse kisaa poistetuksi.
+ */
+async function fetchJsonEx<T>(
+  url: string,
+  state: RunState,
+): Promise<{ data: T | null; notFound: boolean; failed: boolean }> {
   // Erota tuloslistan polku URL:sta laskuria varten (`/live/v1/...`).
   const pathForCounter = url.startsWith(API)
     ? "/live/v1" + url.slice(API.length)
