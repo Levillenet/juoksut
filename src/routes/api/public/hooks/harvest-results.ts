@@ -881,6 +881,8 @@ async function run(request: Request): Promise<Response> {
       done: boolean | null;
       last_event_date: string | null;
       last_scanned_at: string | null;
+      exists_in_source: boolean | null;
+      competition_date: string | null;
     };
     const hcMap = new Map<number, HcRow>();
     const CHUNK = 500;
@@ -888,21 +890,42 @@ async function run(request: Request): Promise<Response> {
       const slice = listedIds.slice(i, i + CHUNK);
       const { data } = await supabaseAdmin
         .from("harvest_competitions")
-        .select("competition_id, done, last_event_date, last_scanned_at")
+        .select(
+          "competition_id, done, last_event_date, last_scanned_at, exists_in_source, competition_date",
+        )
         .in("competition_id", slice);
       for (const r of (data ?? []) as HcRow[]) hcMap.set(r.competition_id, r);
     }
+
+    // Kisat, joiden alkupäivä on viimeisen kolmen vuorokauden sisällä.
+    const recentCutoff = hkiTodayIso
+      ? new Date(new Date(`${hkiTodayIso}T00:00:00Z`).getTime() - 3 * 86400_000)
+          .toISOString()
+          .slice(0, 10)
+      : null;
+    const isRecent = (e: { id: number; date: string | null }) => {
+      if (!recentCutoff) return false;
+      const hc = hcMap.get(e.id);
+      const start = (e.date ?? hc?.competition_date ?? "").slice(0, 10);
+      return start !== "" && start >= recentCutoff;
+    };
 
     const pending = listed.filter((e) => {
       const hc = hcMap.get(e.id);
       // Ei koskaan skannattu → aina pending.
       if (!hc) return true;
+      // Aiemmin "ei löydy lähteestä" -merkityt tuoreet kisat käydään
+      // uudestaan: merkintä voi johtua hetkellisestä häiriöstä.
+      if (hc.exists_in_source === false) return isRecent(e);
       if (!hc.done) return true;
       // Done: rescanataan vain jos viimeinen tapahtumapäivä on tänään tai
       // tulevaisuudessa (monipäiväiset kisat vielä käynnissä). Eiliset ja
       // vanhemmat kisat ovat vakiintuneet — ei tarvitse käydä uudestaan.
       if (!hkiTodayIso) return false;
       if (hc.last_event_date && hc.last_event_date >= hkiTodayIso) return true;
+      // Monipäiväinen kisa ilman tunnettua viimeistä päivää: varmistetaan
+      // tuoreiden kisojen osalta vielä kerran.
+      if (!hc.last_event_date) return isRecent(e);
       return false;
     });
 
