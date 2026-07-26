@@ -365,7 +365,7 @@ async function processCompetition(
     hotEventIds ? hotEventIds.has(eventId) : true,
   );
   if (options.hotEventsOnly && eventIds.length === 0) {
-    return { existed: true, rowsAdded: 0, competitionDate, lastEventDate };
+    return { existed: true, fetchFailed: false, rowsAdded: 0, competitionDate, lastEventDate };
   }
 
   let rowsAdded = 0;
@@ -515,7 +515,7 @@ async function processCompetition(
       }
     }
   }
-  return { existed: true, rowsAdded, competitionDate, lastEventDate };
+  return { existed: true, fetchFailed: false, rowsAdded, competitionDate, lastEventDate };
 }
 
 function parseWind(w: unknown): number | null {
