@@ -82,7 +82,7 @@ const UPSTREAM_TIMEOUT_MS = 8_000;
 
 // Kuinka kauan odotamme, että toinen isolaatti täyttää DB-cachen, kun emme
 // itse saaneet lukkoa.
-const LOCK_WAIT_MAX_MS = 10_000;
+const LOCK_WAIT_MAX_MS = 2_500;
 const LOCK_POLL_MS = 50;
 
 interface CachedEnvelope {
@@ -563,7 +563,7 @@ function jsonResponse(body: string, cacheStatus: string, ageSec: number): Respon
 // --- TTL-strategiat per endpoint-tyyppi ---
 
 /** Aikataulu (`/competition/{id}`) — muuttuu hitaasti. */
-export const scheduleTtl = (): TtlConfig => ({ edgeTtl: 30, swrWindow: 30 });
+export const scheduleTtl = (): TtlConfig => ({ edgeTtl: 60, swrWindow: 120 });
 
 /** Kisan properties — muuttuu erittäin harvoin. */
 export const propertiesTtl = (): TtlConfig => ({ edgeTtl: 300, swrWindow: 600 });
@@ -587,7 +587,7 @@ export function resultsTtl(body: string): TtlConfig {
       // Käynnissä — alkuperäinen on yleisin polling-kohde, mutta suorituspaikan
       // livenäytön viive halutaan pieneksi. Proxy koalisoi rinnakkaiset kutsut,
       // joten yleisömäärän kasvu ei kerrannaista origin-kuormaa.
-      return { edgeTtl: 3, swrWindow: 7 };
+      return { edgeTtl: 12, swrWindow: 20 };
     }
     if (statuses.length > 0 && statuses.every((s) => s === "Official")) {
       // Virallistunut, ei muutu enää
