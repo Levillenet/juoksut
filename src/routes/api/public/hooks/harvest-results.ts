@@ -579,8 +579,16 @@ async function harvestIds(
   }> = [];
 
 
-  // Lataa aiemmat first_scanned_at -arvot upsertia varten.
-  const firstSeenMap = new Map<number, string>();
+  // Lataa aiemmat rivit upsertia varten, jotta hetkellinen häiriö ei tuhoa
+  // jo tunnettua tilaa (viimeinen kilpailupäivä, rivimäärä, olemassaolo).
+  type PrevRow = {
+    first_scanned_at: string | null;
+    last_event_date: string | null;
+    row_count: number | null;
+    exists_in_source: boolean | null;
+    competition_date: string | null;
+  };
+  const prevMap = new Map<number, PrevRow>();
   if (entries.length > 0) {
     const ids = entries.map((e) => e.id);
     const CHUNK = 500;
@@ -588,10 +596,18 @@ async function harvestIds(
       const slice = ids.slice(i, i + CHUNK);
       const { data } = await supabaseAdmin
         .from("harvest_competitions")
-        .select("competition_id, first_scanned_at")
+        .select(
+          "competition_id, first_scanned_at, last_event_date, row_count, exists_in_source, competition_date",
+        )
         .in("competition_id", slice);
       for (const r of data ?? []) {
-        if (r.first_scanned_at) firstSeenMap.set(r.competition_id, r.first_scanned_at);
+        prevMap.set(r.competition_id, {
+          first_scanned_at: r.first_scanned_at,
+          last_event_date: r.last_event_date,
+          row_count: r.row_count,
+          exists_in_source: r.exists_in_source,
+          competition_date: r.competition_date,
+        });
       }
     }
   }
@@ -613,6 +629,7 @@ async function harvestIds(
       scanned++;
       if (r.status === "fulfilled") {
         const v = r.value;
+        const prev = prevMap.get(e.id);
         if (v.existed) {
           existed++;
           if (v.rowsAdded > 0) touchedCompIds.add(e.id);
@@ -622,18 +639,26 @@ async function harvestIds(
         // ajassa. Muuten myöhemmin päivän aikana ajetut lajit (esim. 800m,
         // finaalit) eivät koskaan päivity, koska done=true suodattaa kisan
         // ulos rescan-listalta.
-        const lastEv = v.lastEventDate ?? e.date ?? null;
+        const lastEventDate =
+          v.lastEventDate ?? prev?.last_event_date ?? null;
+        const lastEv = lastEventDate ?? e.date ?? prev?.competition_date ?? null;
         const stillOngoing =
           hkiToday != null && lastEv != null && lastEv >= hkiToday;
+        // Epäonnistunut haku: säilytä aiemmat arvot, päivitä vain aikaleima.
+        // Kisaa ei myöskään merkitä valmiiksi epävarman tiedon perusteella.
+        const existsInSource = v.fetchFailed
+          ? (prev?.exists_in_source ?? true)
+          : v.existed;
         scanRecords.push({
           competition_id: e.id,
-          competition_date: v.competitionDate ?? e.date ?? null,
-          row_count: v.rowsAdded,
-          exists_in_source: v.existed,
-          done: !stillOngoing,
+          competition_date:
+            v.competitionDate ?? e.date ?? prev?.competition_date ?? null,
+          row_count: v.fetchFailed ? (prev?.row_count ?? 0) : v.rowsAdded,
+          exists_in_source: existsInSource,
+          done: v.fetchFailed ? false : !stillOngoing,
           last_scanned_at: nowIso,
-          first_scanned_at: firstSeenMap.get(e.id) ?? nowIso,
-          last_event_date: v.lastEventDate ?? null,
+          first_scanned_at: prev?.first_scanned_at ?? nowIso,
+          last_event_date: lastEventDate,
         });
 
       }
