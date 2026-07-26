@@ -824,7 +824,7 @@ async function run(request: Request): Promise<Response> {
     await flush(pending);
     await flushLegs(pendingLegs);
     for (const cid of touched) {
-      await supabaseAdmin.rpc("mark_pbs_for_competitions", { comp_ids: [cid] });
+      await markPbsWithRetry(cid);
     }
     await persistApiMessageIfAny(state);
     return Response.json({
