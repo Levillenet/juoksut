@@ -558,6 +558,20 @@ async function flushLegs(rows: RelayLegRow[]) {
   }
 }
 
+/** Laske kisan ennätysmerkinnät; yksi uudelleenyritys jos kysely epäonnistuu. */
+async function markPbsWithRetry(cid: number): Promise<boolean> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { error } = await supabaseAdmin.rpc("mark_pbs_for_competitions", {
+      comp_ids: [cid],
+    });
+    if (!error) return true;
+    console.error(
+      `mark_pbs error comp=${cid} attempt=${attempt + 1}: ${error.message}`,
+    );
+  }
+  return false;
+}
+
 async function harvestIds(
   entries: Array<{ id: number; date: string | null }>,
   state: RunState,
