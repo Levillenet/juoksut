@@ -1807,6 +1807,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      mark_pbs_for_athletes: {
+        Args: { athlete_keys: string[] }
+        Returns: number
+      }
       mark_pbs_for_competitions: {
         Args: { comp_ids: number[] }
         Returns: number
