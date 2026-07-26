@@ -175,24 +175,29 @@ async function fetchJsonEx<T>(
     if (!state.proxyOrigin) bumpOriginCall(state.source, pathForCounter, r.status);
     if (r.status === 429 || r.status === 503) {
       state.rateLimited = true;
-      return null;
+      return { data: null, notFound: false, failed: true };
     }
-    if (!r.ok) return null;
+    if (r.status === 404) return { data: null, notFound: true, failed: false };
+    if (!r.ok) return { data: null, notFound: false, failed: true };
     const contentType = (r.headers.get("content-type") ?? "").toLowerCase();
     const text = await r.text();
     const msg = detectApiMessage(text);
     if (msg) {
       state.lastApiMessage = msg;
       state.rateLimited = true;
-      return null;
+      return { data: null, notFound: false, failed: true };
     }
     if (!contentType.includes("application/json") && !contentType.includes("text/json")) {
-      return null;
+      return { data: null, notFound: false, failed: true };
     }
-    return JSON.parse(text) as T;
+    try {
+      return { data: JSON.parse(text) as T, notFound: false, failed: false };
+    } catch {
+      return { data: null, notFound: false, failed: true };
+    }
   } catch {
     if (!state.proxyOrigin) bumpOriginCall(state.source, pathForCounter, 0);
-    return null;
+    return { data: null, notFound: false, failed: true };
   }
 }
 
