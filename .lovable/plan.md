@@ -1,26 +1,25 @@
 ## Mistä on kyse
 
-Lohja Junior Games (kisa-ID 20126) on tietokannassa merkitty tilaan "ei löydy lähteestä", vaikka kilpailu on edelleen olemassa tuloslistalla ja siitä on jo 961 tulosriviä. Tarkistetut faktat:
+Amanda Gustafssonin tämän päivän korkeus 110 (aiempi paras 97) on tietokannassa merkitty `was_pb = false`, joten etusivun listalla ei näy PB-merkkiä eikä parannusta. Varmistetut faktat:
 
-- `harvest_competitions`-rivi 20126: `exists_in_source = false`, `last_event_date = null`, `row_count = 0`, `done = true`, viimeisin skannaus 25.7. klo 14:32.
-- Tuloslistan rajapinta palauttaa nyt kilpailun normaalisti (nimi ja alkupäivä löytyvät), eli kyse oli hetkellisestä häiriöstä.
-- Viimeisin tulosrivi koko järjestelmässä on 25.7. klo 14:10, eli kisaa ei ole sen jälkeen käyty kertaakaan läpi.
+- Lohja Junior Games (kisa 20126): 456 tämän päivän riviä, joista **0** on merkitty ennätykseksi. Eilisen ajossa merkinnät syntyivät normaalisti (mm. pituus 3,31 = PB).
+- Muut tänään haetut kisat (20128, 20145, 19136 jne.) saivat PB-merkinnät normaalisti.
+- Tietokannan lokissa on kaksi virhettä "canceling statement due to statement timeout" 26.7. klo 11:25:05 ja 11:25:13, eli heti kisan 20126 haun (klo 11:24:56) jälkeen.
+- Ennätyslaskenta `mark_pbs_for_competitions` vertaa jokaista riviä kaikkiin saman urheilijan riveihin erillisellä alikyselyllä. Kisassa on 598 urheilijaa ja 1417 riviä, joten kysely kasvaa neliöllisesti ja ylittää aikarajan.
+- Haussa laskennan virhe vain kirjataan konsoliin, joten epäonnistuminen jää huomaamatta eikä sitä yritetä uudelleen.
 
-Syy: kun kilpailun perustietojen haku epäonnistuu hetkellisesti, tulostenhaku kirjoittaa riville "ei löydy lähteestä", tyhjentää viimeisen kilpailupäivän ja merkitsee kisan valmiiksi. Tämän jälkeen kisa suodattuu pysyvästi pois sekä uudelleenskannauksesta että etusivun "käynnissä tänään" -logiikasta, joten seuran urheilijat eivät näy.
+Käyttöliittymä toimii oikein: PB-merkki ja parannus näytetään heti kun tietokannan lippu on kunnossa. Sama vika selittää myös yksittäisiä vääriä merkintöjä vanhemmissa riveissä (esim. korkeus 96 merkitty PB:ksi vaikka aiempi 97 oli parempi), koska osa ajoista on jäänyt kesken.
 
 ## Mitä korjataan
 
-1. **Hetkellinen häiriö ei saa tuhota tietoa.** Kun perustietojen tai aikataulun haku epäonnistuu, riville ei kirjoiteta `exists_in_source = false` eikä nollata `last_event_date` / `row_count`, vaan aiemmat arvot säilytetään ja vain `last_scanned_at` päivittyy.
-2. **Kisaa ei merkitä valmiiksi epävarmalla tiedolla.** `done = true` asetetaan vain, kun aikataulu on saatu luettua ja viimeinen kilpailupäivä on menneisyydessä.
-3. **Itsekorjautuvuus.** Uudelleenskannauslistalle otetaan mukaan myös kisat, joiden `exists_in_source = false` mutta joiden alkupäivä on viimeisen 3 vuorokauden sisällä, jotta väärä merkintä korjaantuu automaattisesti seuraavalla ajolla.
-4. **Nykyisen tilanteen palautus.** Nollataan virheelliset merkinnät niiltä viime päivien kisoilta, joilla on tuloksia tietokannassa mutta `exists_in_source = false` tai `last_event_date` puuttuu, jotta Lohja Junior Games ja vastaavat tulevat heti takaisin näkyviin.
+1. **Laskenta kevyemmäksi.** Ennätyslaskenta kirjoitetaan uudelleen ikkunafunktioilla (juokseva paras aiempi tulos aikajärjestyksessä) neliöllisen alikyselyn sijaan. Sama tulos, murto-osa ajasta.
+2. **Palastelu.** Laskenta ajetaan urheilijaryhmissä (esim. 100 urheilijaa kerrallaan), jotta yksikään kysely ei pääse lähelle aikarajaa isoissakaan kisoissa.
+3. **Virheiden huomaaminen ja uudelleenyritys.** Jos laskenta epäonnistuu, se yritetään uudelleen ja epäonnistuneet kisat merkitään uudelleenlaskettaviksi seuraavalla ajolla sen sijaan, että virhe hukkuisi lokiin.
+4. **Nykytilanteen korjaus.** Kisan 20126 ennätysliput lasketaan kerran uudelleen palastellusti, jolloin Amandan korkeus 110 ja muut päivän ennätykset tulevat heti näkyviin oikein.
 
 ## Tekniset yksityiskohdat
 
-- `src/routes/api/public/hooks/harvest-results.ts`
-  - `processCompetition` erottaa "kisaa ei ole olemassa" (rajapinta vastasi, mutta kilpailua ei löydy) ja "haku epäonnistui" (verkkovirhe, 5xx, rate limit) toisistaan omalla paluuarvolla.
-  - `harvestIds` kirjoittaa `scanRecords`-riville vain turvalliset kentät epäonnistuneessa tapauksessa; `last_event_date` ja `row_count` säilytetään aiemmasta rivistä (ladataan samaan aikaan kuin `first_scanned_at`).
-  - `last_event_date` fallbackina käytetään aiempaa arvoa tai `competition_date`-päivää, ei koskaan `null`ia jos vanha arvo oli olemassa.
-  - Pending-listan suodatin ottaa mukaan `exists_in_source = false` -rivit, joiden `competition_date >= tänään - 3 vrk`.
-- Datan korjaus tehdään päivityskyselynä `harvest_competitions`-tauluun (ei skeemamuutosta): kisoille, joilla on rivejä `athlete_results`-taulussa viimeisen 5 vrk ajalta, asetetaan `exists_in_source = true`, `done = false` ja `last_event_date` tulosten perusteella.
-- Frontendiin ei tarvita muutoksia: `src/lib/competition-list.ts` toimii oikein heti kun tietokannan rivit ovat kunnossa.
+- Migraatio: `public.mark_pbs_for_competitions(int[])` uudelleen ikkunafunktiolla; lisäksi uusi `public.mark_pbs_for_athletes(text[])` jota haku kutsuu erissä. Hyödynnetään olemassa olevaa indeksiä `idx_ar_pbkey_result`.
+- Järjestyssääntö säilyy ennallaan: `competition_date`, sitten `captured_at`, sitten `id`; `Track` = pienempi parempi, muut = suurempi parempi; ryhmittely `event_pb_key(event_name, age_class)`.
+- `src/routes/api/public/hooks/harvest-results.ts`: `mark_pbs`-kutsu muutetaan urheilijaeräkohtaiseksi, lisätään yksi uudelleenyritys ja epäonnistuneen kisan merkintä uudelleenlaskentaan (`harvest_competitions.done = false`).
+- Frontendiin ei muutoksia.
