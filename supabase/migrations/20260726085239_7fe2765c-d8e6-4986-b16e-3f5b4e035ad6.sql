@@ -1,0 +1,1 @@
+CREATE POLICY "Anyone can read harvest competitions" ON public.harvest_competitions FOR SELECT TO anon USING (true);

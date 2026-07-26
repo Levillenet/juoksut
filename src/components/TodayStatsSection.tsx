@@ -56,8 +56,11 @@ export function TodayStatsSection() {
   const q = useQuery({
     queryKey: ["today-stats"],
     queryFn: fetchTodayStats,
-    staleTime: 60_000,
-    refetchInterval: 60_000,
+    staleTime: 5 * 60_000,
+    // Päivän yhteenveto ei tarvitse sekuntitason tuoreutta. Harvempi
+    // päivitysväli vähentää aikataulukutsuja tuloslistalle merkittävästi.
+    refetchInterval: 5 * 60_000,
+    refetchIntervalInBackground: false,
   });
 
   const data = q.data;

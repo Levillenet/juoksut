@@ -236,7 +236,7 @@ export function competitionScheduleQueryOptions(competitionId: number) {
     staleTime: 0,
     gcTime: 10 * 60_000,
     refetchInterval: 15_000,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: "always",
     refetchOnReconnect: "always",
   });
@@ -297,7 +297,7 @@ export function eventDetailsQueryOptions(
     staleTime: 0,
     gcTime: 10 * 60_000,
     refetchInterval: 15_000,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: "always",
     refetchOnReconnect: "always",
     enabled: Number.isFinite(eventId) && eventId > 0,
