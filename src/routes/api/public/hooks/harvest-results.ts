@@ -314,15 +314,41 @@ async function processCompetition(
   competitionDateHint: string | null,
   state: RunState,
   options: { hotEventsOnly?: boolean } = {},
-): Promise<{ existed: boolean; rowsAdded: number; competitionDate: string | null; lastEventDate: string | null }> {
-  const props = await fetchJson<PropertiesShape>(
+): Promise<{
+  existed: boolean;
+  fetchFailed: boolean;
+  rowsAdded: number;
+  competitionDate: string | null;
+  lastEventDate: string | null;
+}> {
+  const propsRes = await fetchJsonEx<PropertiesShape>(
     `${API}/competition/${id}/properties`,
     state,
   );
-  if (!props?.Competition?.Id) return { existed: false, rowsAdded: 0, competitionDate: competitionDateHint, lastEventDate: null };
+  const props = propsRes.data;
+  if (!props?.Competition?.Id) {
+    // Vain aito 404 (tai tyhjä vastaus onnistuneesta hausta) tarkoittaa
+    // ettei kisaa ole. Hetkellinen häiriö ei saa tuhota tunnettua tilaa.
+    return {
+      existed: false,
+      fetchFailed: propsRes.failed,
+      rowsAdded: 0,
+      competitionDate: competitionDateHint,
+      lastEventDate: null,
+    };
+  }
   const competitionDate = props.Competition?.BeginDate ?? competitionDateHint;
-  const byDate = await fetchJson<RoundsByDateShape>(`${API}/competition/${id}`, state);
-  if (!byDate) return { existed: true, rowsAdded: 0, competitionDate, lastEventDate: null };
+  const scheduleRes = await fetchJsonEx<RoundsByDateShape>(`${API}/competition/${id}`, state);
+  const byDate = scheduleRes.data;
+  if (!byDate) {
+    return {
+      existed: true,
+      fetchFailed: true,
+      rowsAdded: 0,
+      competitionDate,
+      lastEventDate: null,
+    };
+  }
   const scheduleRounds = Object.values(byDate).flat();
   // Viimeisen erän Helsinki-päivä — monipäiväisten kisojen tunnistus.
   let lastEventDate: string | null = null;
