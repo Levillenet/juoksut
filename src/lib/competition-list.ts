@@ -41,31 +41,50 @@ export function filterWindow(
   });
 }
 
-// Module-level cache of competition schedule dates (DD.MM.YYYY keys from RoundsByDate)
-const scheduleCache = new Map<number, { dates: Set<string>; fetchedAt: number }>();
-const SCHEDULE_TTL_MS = 10 * 60 * 1000;
+// Monipäiväisten kisojen jatkopäivät luetaan omasta tietokannasta
+// (`harvest_competitions.last_event_date`), ei enää hakemalla jokaisen
+// kilpailun aikataulua erikseen tuloslistalta. Aiemmin tämä tuotti kymmeniä
+// rinnakkaisia origin-kutsuja jokaista kävijää kohti.
+let runningIdsCache: { ids: Set<number>; fetchedAt: number } | null = null;
+const RUNNING_IDS_TTL_MS = 5 * 60 * 1000;
 
-async function getScheduleDates(competitionId: number): Promise<Set<string> | null> {
-  const cached = scheduleCache.get(competitionId);
-  if (cached && Date.now() - cached.fetchedAt < SCHEDULE_TTL_MS) {
-    return cached.dates;
+async function fetchRunningTodayIds(): Promise<Set<number>> {
+  if (runningIdsCache && Date.now() - runningIdsCache.fetchedAt < RUNNING_IDS_TTL_MS) {
+    return runningIdsCache.ids;
   }
+  const ids = new Set<number>();
   try {
-    const rounds = await fetchRounds(competitionId);
-    const dates = new Set<string>(Object.keys(rounds ?? {}));
-    scheduleCache.set(competitionId, { dates, fetchedAt: Date.now() });
-    return dates;
+    const { supabase } = await import("@/integrations/supabase/client");
+    const now = new Date();
+    const fromIso = new Date(now.getTime() - 14 * 86_400_000).toISOString();
+    const { data } = await supabase
+      .from("harvest_competitions")
+      .select("competition_id, competition_date, last_event_date, exists_in_source")
+      .gte("competition_date", fromIso)
+      .limit(500);
+    const todayKey = helsinkiDateKey(now.toISOString());
+    const [d, m, y] = todayKey.split(".").map(Number);
+    const todayIsoKey = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    for (const row of data ?? []) {
+      if (row.exists_in_source === false) continue;
+      const startKey = row.competition_date
+        ? new Date(row.competition_date).toISOString().slice(0, 10)
+        : null;
+      const endKey = row.last_event_date ?? startKey;
+      if (!startKey || !endKey) continue;
+      if (startKey <= todayIsoKey && todayIsoKey <= endKey) ids.add(row.competition_id);
+    }
+    runningIdsCache = { ids, fetchedAt: Date.now() };
   } catch {
-    return null;
+    /* tietokanta ei käytettävissä — palautetaan tyhjä joukko */
   }
+  return ids;
 }
 
 /**
  * Return competitions that are currently running today, including multi-day
- * competitions whose listed start Date is on a previous day. For competitions
- * whose start date is within the past `pastDaysLookback` days, fetch the
- * schedule and include those where today's Helsinki date appears in the
- * schedule's date keys.
+ * competitions whose listed start Date is on a previous day. Jatkopäivät
+ * tunnistetaan tietokannan `last_event_date`-kentästä.
  */
 export async function filterRunningToday(
   list: CompetitionListItem[],
@@ -91,14 +110,10 @@ export async function filterRunningToday(
     }
   }
 
-  const checked = await Promise.all(
-    needSchedule.map(async (c) => {
-      const dates = await getScheduleDates(c.Id);
-      return dates && dates.has(todayKey) ? c : null;
-    }),
-  );
+  if (needSchedule.length === 0) return todayMatches;
 
-  return [...todayMatches, ...checked.filter((c): c is CompetitionListItem => c !== null)];
+  const runningIds = await fetchRunningTodayIds();
+  return [...todayMatches, ...needSchedule.filter((c) => runningIds.has(c.Id))];
 }
 
 export function useTodayCompetitions() {
