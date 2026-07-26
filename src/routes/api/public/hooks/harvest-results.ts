@@ -685,20 +685,21 @@ async function harvestIds(
   if (touchedCompIds.size > 0) {
     const ids = Array.from(touchedCompIds);
     let ok = 0;
-    let failed = 0;
+    const failedIds: number[] = [];
     for (const cid of ids) {
-      const { error } = await supabaseAdmin.rpc("mark_pbs_for_competitions", {
-        comp_ids: [cid],
-      });
-      if (error) {
-        failed++;
-        console.error(`mark_pbs error comp=${cid}: ${error.message}`);
-      } else {
-        ok++;
-      }
+      if (await markPbsWithRetry(cid)) ok++;
+      else failedIds.push(cid);
     }
-    if (failed > 0) {
-      console.error(`mark_pbs summary: ok=${ok} failed=${failed} of ${ids.length}`);
+    if (failedIds.length > 0) {
+      console.error(
+        `mark_pbs summary: ok=${ok} failed=${failedIds.length} of ${ids.length}`,
+      );
+      // Merkitse epäonnistuneet kisat uudelleenhaettaviksi, jotta
+      // ennätysmerkinnät lasketaan seuraavalla ajolla uudelleen.
+      await supabaseAdmin
+        .from("harvest_competitions")
+        .update({ done: false })
+        .in("competition_id", failedIds);
     }
   }
 
