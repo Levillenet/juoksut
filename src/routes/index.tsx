@@ -138,17 +138,16 @@ function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; is
           </div>
         </Link>
       )}
-      {role === "user" && (
-        <Link
-          to="/watch"
-          className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
-        >
-          <div className="text-sm font-semibold leading-tight">Kilpailijaseuranta</div>
-          <div className="mt-0.5 text-[11px] text-muted-foreground">
-            Lisää haluamiasi urheilijoita helppoon tulosseurantaan
-          </div>
-        </Link>
-      )}
+      <Link
+        to="/watch"
+        className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
+      >
+        <div className="text-sm font-semibold leading-tight">Kilpailijaseuranta</div>
+        <div className="mt-0.5 text-[11px] text-muted-foreground">
+          Lisää haluamiasi urheilijoita helppoon tulosseurantaan
+        </div>
+      </Link>
+
       {!isOfficial && (
         <div
           className="cursor-not-allowed rounded-xl border-2 border-dashed border-muted bg-muted/30 px-4 py-2.5 text-center opacity-70"
