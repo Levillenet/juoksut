@@ -136,10 +136,26 @@ const SOURCE_LABELS: Record<string, string> = {
   admin_probe: "admin-testi",
 };
 
+const BUCKET_LABELS: Record<string, string> = {
+  hit: "tuore cache",
+  stale: "stale-cache",
+  circuit: "circuit-cache",
+  "stale-error": "varacache",
+  "2xx": "origin OK",
+  error: "verkkovirhe",
+};
+
 function formatSourceList(bySource: Record<string, number>) {
   return Object.entries(bySource)
     .sort((a, b) => b[1] - a[1])
     .map(([source, count]) => `${SOURCE_LABELS[source] ?? source}:${count.toLocaleString("fi-FI")}`)
+    .join(" · ");
+}
+
+function formatBucketList(byBucket: Record<string, number>) {
+  return Object.entries(byBucket)
+    .sort((a, b) => b[1] - a[1])
+    .map(([bucket, count]) => `${BUCKET_LABELS[bucket] ?? bucket}:${count.toLocaleString("fi-FI")}`)
     .join(" · ");
 }
 
@@ -335,7 +351,7 @@ function Page() {
             <div className="mb-2 flex items-center justify-between">
               <h2 className="text-sm font-semibold">Kutsutilastot (30 pv)</h2>
               <div className="text-xs text-muted-foreground">
-                Origin = tuloslista.com · Reuna = oma välimuisti
+                Origin = tuloslista.com · Cache = oma välimuisti
               </div>
             </div>
             {(() => {
@@ -375,12 +391,12 @@ function Page() {
                   <tr>
                     <th className="py-1 pr-2">Päivä</th>
                     <th className="py-1 pr-2">Origin</th>
-                    <th className="py-1 pr-2">Reuna</th>
+                    <th className="py-1 pr-2">Cache</th>
                     <th className="py-1 pr-2">Yhteensä</th>
                     <th className="py-1 pr-2">Säästö</th>
                     <th className="py-1 pr-2">Virheet</th>
                     <th className="py-1 pr-2">Päivitetty</th>
-                    <th className="py-1">Lähteet</th>
+                    <th className="py-1">Selite</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -388,6 +404,7 @@ function Page() {
                     const served = d.originCalls + d.servedFromEdge;
                     const pct = served > 0 ? Math.round((d.servedFromEdge / served) * 100) : 0;
                     const sources = formatSourceList(d.bySource);
+                    const buckets = formatBucketList(d.byBucket ?? {});
                     const likelyProxyLabeledBackgroundWork =
                       d.day === helsinkiDay(now) &&
                       (d.bySource.harvester ?? 0) === 0 &&
@@ -409,6 +426,21 @@ function Page() {
                         </td>
                         <td className="py-1 text-muted-foreground">
                           <div>{sources || "ei lähteitä"}</div>
+                          {buckets && <div className="mt-1">{buckets}</div>}
+                          {d.topPaths.length > 0 && (
+                            <details className="mt-1">
+                              <summary className="cursor-pointer text-foreground">Top-polut</summary>
+                              <ul className="mt-1 space-y-0.5">
+                                {d.topPaths.map((p) => (
+                                  <li key={`${p.source}-${p.path}-${p.statusBucket}`}>
+                                    <span className="font-mono">{p.path}</span>{" "}
+                                    ({SOURCE_LABELS[p.source] ?? p.source}, {p.statusBucket}):{" "}
+                                    {p.count.toLocaleString("fi-FI")}
+                                  </li>
+                                ))}
+                              </ul>
+                            </details>
+                          )}
                           {likelyProxyLabeledBackgroundWork && (
                             <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
                               Huom: osa taustatyön pyynnöistä voi vielä näkyä proxy-lähteissä.
@@ -423,8 +455,8 @@ function Page() {
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
               Origin-kutsut = harvester, hot cycle, valvonta ja välimuistin
-              ohitukset. Reuna = kutsut, jotka palveltiin omalta reunalta
-              ilman origin-kutsua.
+              ohitukset. Cache = kutsut, jotka palveltiin muistista, tietokanta-
+              cachesta tai reunavälimuistista ilman origin-kutsua.
             </p>
             <ul className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
               <li><b>harvester</b>: taustaharvesteri (5 min välein)</li>

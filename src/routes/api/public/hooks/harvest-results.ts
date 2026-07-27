@@ -18,13 +18,16 @@ import { isTuloslistaPollingWindow } from "@/lib/helsinki-time";
 const API = "https://cached-public-api.tuloslista.com/live/v1";
 const UA = "juoksut-harvester/1.1 (+https://tulokset.online)";
 
-const BATCH_SIZE = 20;      // uusia kisoja per taustatyön ajo (worker-budjetti)
+const BATCH_SIZE = 8;       // uusia tai oikeasti erääntyneitä kisoja per ajo
 const CONCURRENCY = 2;      // rinnakkaiset kisat per chunk
-const HOT_BATCH_SIZE = 8;
-const BACKGROUND_LOOKBACK_DAYS = 14;
-const HOT_EVENT_PAST_WINDOW_MS = 4 * 60 * 60 * 1000;
-const HOT_EVENT_FUTURE_WINDOW_MS = 20 * 60 * 1000;
-const HOT_MAX_EVENTS_PER_COMPETITION = 30;
+const HOT_BATCH_SIZE = 4;
+const BACKGROUND_LOOKBACK_DAYS = 7;
+const HOT_EVENT_PAST_WINDOW_MS = 60 * 60 * 1000;
+const HOT_EVENT_FUTURE_WINDOW_MS = 10 * 60 * 1000;
+const HOT_MAX_EVENTS_PER_COMPETITION = 10;
+const EMPTY_TODAY_RESCAN_MS = 2 * 60 * 60 * 1000;
+const ACTIVE_BACKGROUND_RESCAN_MS = 45 * 60 * 1000;
+const FUTURE_RESCAN_MS = 6 * 60 * 60 * 1000;
 
 type RunState = {
   source: CounterSource;
@@ -249,14 +252,16 @@ function roundTimeMs(value: string | null | undefined): number | null {
 
 function selectHotEventIds(rounds: RoundsByDateShape[string]): Set<number> {
   const now = Date.now();
+  const hasProgress = rounds.some((r) => r.Status === "Progress");
   const selected = rounds
     .filter((r) => {
       const status = r.Status ?? "";
       if (status === "Progress") return true;
       const startsAt = roundTimeMs(r.BeginDateTimeWithTZ);
-      if (startsAt == null) return status === "Allocated";
+      if (startsAt == null) return status === "Allocated" && !hasProgress;
       if (startsAt > now + HOT_EVENT_FUTURE_WINDOW_MS) return false;
-      if (status === "Official") return startsAt >= now - 90 * 60 * 1000;
+      if (status === "Official") return startsAt >= now - 20 * 60 * 1000;
+      if (hasProgress) return false;
       return startsAt >= now - HOT_EVENT_PAST_WINDOW_MS;
     })
     .sort((a, b) => {
@@ -270,6 +275,36 @@ function selectHotEventIds(rounds: RoundsByDateShape[string]): Set<number> {
     .map((r) => r.EventId);
 
   return new Set(Array.from(new Set(selected)).slice(0, HOT_MAX_EVENTS_PER_COMPETITION));
+}
+
+function datePart(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const parsed = helsinkiDateISO(value);
+  return parsed ?? value.slice(0, 10) ?? null;
+}
+
+function shouldScanKnownPending(
+  entry: { date: string | null },
+  row: {
+    done: boolean | null;
+    last_event_date: string | null;
+    last_scanned_at: string | null;
+    row_count?: number | null;
+    competition_date: string | null;
+  },
+  hkiTodayIso: string | null,
+): boolean {
+  if (!hkiTodayIso) return false;
+  if (row.done) return false;
+  const lastScan = row.last_scanned_at ? new Date(row.last_scanned_at).getTime() : 0;
+  if (!Number.isFinite(lastScan) || lastScan <= 0) return true;
+  const start = datePart(entry.date ?? row.competition_date);
+  const end = row.last_event_date ?? start;
+  const ageMs = Date.now() - lastScan;
+  if (start && start > hkiTodayIso) return ageMs >= FUTURE_RESCAN_MS;
+  if (end && end < hkiTodayIso) return false;
+  if ((row.row_count ?? 0) <= 0) return ageMs >= EMPTY_TODAY_RESCAN_MS;
+  return ageMs >= ACTIVE_BACKGROUND_RESCAN_MS;
 }
 
 type Row = {
@@ -896,6 +931,7 @@ async function run(request: Request): Promise<Response> {
       done: boolean | null;
       last_event_date: string | null;
       last_scanned_at: string | null;
+      row_count: number | null;
       exists_in_source: boolean | null;
       competition_date: string | null;
     };
@@ -906,7 +942,7 @@ async function run(request: Request): Promise<Response> {
       const { data } = await supabaseAdmin
         .from("harvest_competitions")
         .select(
-          "competition_id, done, last_event_date, last_scanned_at, exists_in_source, competition_date",
+          "competition_id, done, last_event_date, last_scanned_at, row_count, exists_in_source, competition_date",
         )
         .in("competition_id", slice);
       for (const r of (data ?? []) as HcRow[]) hcMap.set(r.competition_id, r);
@@ -932,7 +968,7 @@ async function run(request: Request): Promise<Response> {
       // Aiemmin "ei löydy lähteestä" -merkityt tuoreet kisat käydään
       // uudestaan: merkintä voi johtua hetkellisestä häiriöstä.
       if (hc.exists_in_source === false) return isRecent(e);
-      if (!hc.done) return true;
+      if (!hc.done) return shouldScanKnownPending(e, hc, hkiTodayIso);
       // Done: rescanataan vain jos viimeinen tapahtumapäivä on tänään tai
       // tulevaisuudessa (monipäiväiset kisat vielä käynnissä). Eiliset ja
       // vanhemmat kisat ovat vakiintuneet — ei tarvitse käydä uudestaan.

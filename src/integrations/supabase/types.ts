@@ -819,6 +819,36 @@ export type Database = {
         }
         Relationships: []
       }
+      origin_call_path_daily: {
+        Row: {
+          count: number
+          day: string
+          path: string
+          path_kind: string
+          source: string
+          status_bucket: string
+          updated_at: string
+        }
+        Insert: {
+          count?: number
+          day: string
+          path: string
+          path_kind: string
+          source: string
+          status_bucket: string
+          updated_at?: string
+        }
+        Update: {
+          count?: number
+          day?: string
+          path?: string
+          path_kind?: string
+          source?: string
+          status_bucket?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       plan_conflict_groups: {
         Row: {
           created_at: string
@@ -1612,6 +1642,16 @@ export type Database = {
       bump_origin_call: {
         Args: {
           _delta?: number
+          _path_kind: string
+          _source: string
+          _status_bucket: string
+        }
+        Returns: undefined
+      }
+      bump_origin_call_path: {
+        Args: {
+          _delta?: number
+          _path: string
           _path_kind: string
           _source: string
           _status_bucket: string

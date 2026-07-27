@@ -255,8 +255,16 @@ export interface OriginCallDayStats {
   servedFromEdge: number; // proxy_cache (hit + stale + circuit + stale-error)
   bySource: Record<string, number>;
   byPathKind: Record<string, number>;
+  byBucket: Record<string, number>;
   errors: number; // origin calls with 4xx/5xx/0
   lastUpdatedAt: string | null;
+  topPaths: Array<{
+    path: string;
+    source: string;
+    pathKind: string;
+    statusBucket: string;
+    count: number;
+  }>;
 }
 
 export const getOriginCallStats = createServerFn({ method: "GET" })
@@ -268,12 +276,29 @@ export const getOriginCallStats = createServerFn({ method: "GET" })
     const since = new Date();
     since.setUTCDate(since.getUTCDate() - 30);
     const sinceDay = since.toISOString().slice(0, 10);
-    const { data, error } = await supabaseAdmin
-      .from("origin_call_daily")
-      .select("day, source, path_kind, status_bucket, count, updated_at")
-      .gte("day", sinceDay)
-      .order("day", { ascending: false });
+    const [{ data, error }, pathResult] = await Promise.all([
+      supabaseAdmin
+        .from("origin_call_daily")
+        .select("day, source, path_kind, status_bucket, count, updated_at")
+        .gte("day", sinceDay)
+        .order("day", { ascending: false }),
+      (supabaseAdmin.from as unknown as (table: string) => {
+        select: (columns: string) => {
+          gte: (column: string, value: string) => {
+            order: (
+              column: string,
+              options: { ascending: boolean },
+            ) => { limit: (count: number) => Promise<{ data: unknown[] | null; error: { message: string } | null }> };
+          };
+        };
+      })("origin_call_path_daily")
+        .select("day, source, path_kind, path, status_bucket, count")
+        .gte("day", sinceDay)
+        .order("count", { ascending: false })
+        .limit(300),
+    ]);
     if (error) throw new Error(error.message);
+    if (pathResult.error) throw new Error(pathResult.error.message);
 
     const byDay = new Map<string, OriginCallDayStats>();
     const ORIGIN_SOURCES = new Set(["harvester", "hot_cycle", "monitor", "proxy_origin", "admin_probe"]);
@@ -290,8 +315,10 @@ export const getOriginCallStats = createServerFn({ method: "GET" })
           servedFromEdge: 0,
           bySource: {},
           byPathKind: {},
+          byBucket: {},
           errors: 0,
           lastUpdatedAt: null,
+          topPaths: [],
         };
         byDay.set(day, entry);
       }
@@ -300,6 +327,7 @@ export const getOriginCallStats = createServerFn({ method: "GET" })
       const bucket = String(r.status_bucket);
       entry.bySource[source] = (entry.bySource[source] ?? 0) + count;
       entry.byPathKind[String(r.path_kind)] = (entry.byPathKind[String(r.path_kind)] ?? 0) + count;
+      entry.byBucket[bucket] = (entry.byBucket[bucket] ?? 0) + count;
       const updatedAt = typeof r.updated_at === "string" ? r.updated_at : null;
       if (updatedAt && (!entry.lastUpdatedAt || updatedAt > entry.lastUpdatedAt)) {
         entry.lastUpdatedAt = updatedAt;
@@ -314,6 +342,26 @@ export const getOriginCallStats = createServerFn({ method: "GET" })
           if (Number.isFinite(n) && n >= 400) entry.errors += count;
         }
       }
+    }
+    for (const r of pathResult.data ?? []) {
+      const row = r as {
+        day?: string;
+        source?: string;
+        path_kind?: string;
+        path?: string;
+        status_bucket?: string;
+        count?: number | string;
+      };
+      const day = String(row.day ?? "");
+      const entry = byDay.get(day);
+      if (!entry || entry.topPaths.length >= 8) continue;
+      entry.topPaths.push({
+        path: String(row.path ?? ""),
+        source: String(row.source ?? ""),
+        pathKind: String(row.path_kind ?? ""),
+        statusBucket: String(row.status_bucket ?? ""),
+        count: Number(row.count) || 0,
+      });
     }
     return Array.from(byDay.values()).sort((a, b) => b.day.localeCompare(a.day));
   });
