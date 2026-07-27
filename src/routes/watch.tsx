@@ -790,14 +790,15 @@ function WatchPage() {
 
                   {(() => {
                     const own = (todayOwnQuery.data?.[athlete.key] ?? []).filter(
-                      (r) => r.competition_id !== competitionId,
+                      (r) => r.competition_id !== competitionId || entries.length === 0,
                     );
                     if (own.length === 0) return null;
                     return (
                       <div className="mb-3 rounded-md border border-amber-300/60 bg-amber-50/40 dark:bg-amber-900/10 px-2 py-2">
                         <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Päivän omat tulokset (muut kisat)
+                          Päivän tulokset (kaikki kisat)
                         </p>
+
                         <ul className="space-y-1">
                           {own.map((r, i) => {
                             const hhmm = new Date(r.captured_at).toLocaleTimeString("fi-FI", {
