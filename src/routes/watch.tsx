@@ -857,10 +857,13 @@ function WatchPage() {
                   })()}
 
                   {entries.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">
-                      Ei lajeja tässä kisassa.
-                    </p>
+                    (todayOwnQuery.data?.[athlete.key] ?? []).length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Ei lajeja tässä kisassa eikä tuloksia tänään.
+                      </p>
+                    ) : null
                   ) : (
+
                     <ul className="divide-y divide-border">
                       {entries.map((e, idx) => {
                         const isRun = isRunningEvent(e.round);
