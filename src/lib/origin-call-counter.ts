@@ -61,15 +61,19 @@ export function bumpOriginCall(
   void (async () => {
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const rpc = supabaseAdmin.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ error: { message: string } | null }>;
       const { error } = path
-        ? await supabaseAdmin.rpc("bump_origin_call_path", {
+        ? await rpc("bump_origin_call_path", {
             _source: source,
             _path: path,
             _path_kind: kind,
             _status_bucket: bucket,
             _delta: delta,
           })
-        : await supabaseAdmin.rpc("bump_origin_call", {
+        : await rpc("bump_origin_call", {
             _source: source,
             _path_kind: kind,
             _status_bucket: bucket,
