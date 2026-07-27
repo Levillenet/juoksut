@@ -56,16 +56,25 @@ export function bumpOriginCall(
 ): void {
   const kind = pathOrKind.startsWith("/") ? classifyPath(pathOrKind) : (pathOrKind as PathKind);
   const bucket = typeof status === "number" ? statusBucket(status) : status;
+  const path = pathOrKind.startsWith("/") ? pathOrKind.replace(/\?.*$/, "") : null;
   // Käynnistä taustatyö ilman awaitia — halvin mahdollinen kutsu upstream-polulla.
   void (async () => {
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { error } = await supabaseAdmin.rpc("bump_origin_call", {
-        _source: source,
-        _path_kind: kind,
-        _status_bucket: bucket,
-        _delta: delta,
-      });
+      const { error } = path
+        ? await supabaseAdmin.rpc("bump_origin_call_path", {
+            _source: source,
+            _path: path,
+            _path_kind: kind,
+            _status_bucket: bucket,
+            _delta: delta,
+          })
+        : await supabaseAdmin.rpc("bump_origin_call", {
+            _source: source,
+            _path_kind: kind,
+            _status_bucket: bucket,
+            _delta: delta,
+          });
       if (error) console.warn("[origin-call-counter] rpc error", error.message);
     } catch (e) {
       console.warn("[origin-call-counter] failed", e);

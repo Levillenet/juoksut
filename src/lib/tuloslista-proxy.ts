@@ -265,8 +265,7 @@ export async function proxyTuloslista(
     }
     if (fresh === "stale") {
       bumpOriginCall(cacheSource, path, "stale");
-      if (cache) kickRefresh(originUrl, cacheKey, cache, ttlOf, path, originSource);
-      else void getOrFetch(originUrl, cacheKey, cache, ttlOf, path, originSource);
+      kickRefresh(originUrl, cacheKey, cache, ttlOf, path, originSource);
       return jsonResponse(mem.body, "stale", (Date.now() - mem.cachedAt) / 1000);
     }
   }
@@ -283,8 +282,7 @@ export async function proxyTuloslista(
     if (fresh === "stale") {
       // Stale-vastaus palautetaan heti; taustalla yritetään päivittää.
       bumpOriginCall(cacheSource, path, "stale");
-      if (cache) kickRefresh(originUrl, cacheKey, cache, ttlOf, path, originSource);
-      else void getOrFetch(originUrl, cacheKey, cache, ttlOf, path, originSource);
+      kickRefresh(originUrl, cacheKey, cache, ttlOf, path, originSource);
       return jsonResponse(dbEnv.body, "stale", (Date.now() - dbEnv.cachedAt) / 1000);
     }
   }
@@ -525,17 +523,39 @@ async function fetchFromOrigin(
 function kickRefresh(
   originUrl: string,
   cacheKey: Request,
-  cache: Cache,
+  cache: Cache | null,
   ttlOf: (body: string) => TtlConfig,
   path: string,
   originSource: CounterSource,
 ) {
   if (inflight.has(path)) return;
-  // Fire-and-forget. Worker-runtime usein pitää isolaatin elossa muiden
-  // pyyntöjen ansiosta, ja seuraava lukija saa freshin vastauksen.
-  const p = fetchFromOrigin(originUrl, cacheKey, cache, ttlOf, path, originSource);
+  // Fire-and-forget, mutta myös stale-refresh käyttää DB-lukkoa. Muuten usea
+  // Worker-isolaatti voi huomata saman stale-rivin yhtä aikaa ja jokainen
+  // tekisi oman origin-kutsun, mikä näkyy turhana origin-piikkinä.
+  const p = refreshWithDbLock(originUrl, cacheKey, cache, ttlOf, path, originSource);
   inflight.set(path, p);
   p.finally(() => inflight.delete(path));
+}
+
+async function refreshWithDbLock(
+  originUrl: string,
+  cacheKey: Request,
+  cache: Cache | null,
+  ttlOf: (body: string) => TtlConfig,
+  path: string,
+  originSource: CounterSource,
+): Promise<string | null> {
+  const locked = await dbTryLock(path, 10);
+  if (!locked) return null;
+  try {
+    const body = await fetchFromOrigin(originUrl, cacheKey, cache, ttlOf, path, originSource);
+    if (body) await dbReleaseLock(path, body);
+    else await dbReleaseLockEmpty(path);
+    return body;
+  } catch (e) {
+    await dbReleaseLockEmpty(path);
+    throw e;
+  }
 }
 
 async function readEnvelope(res: Response): Promise<CachedEnvelope | null> {
@@ -565,13 +585,13 @@ function jsonResponse(body: string, cacheStatus: string, ageSec: number): Respon
 // --- TTL-strategiat per endpoint-tyyppi ---
 
 /** Aikataulu (`/competition/{id}`) — muuttuu hitaasti. */
-export const scheduleTtl = (): TtlConfig => ({ edgeTtl: 60, swrWindow: 120 });
+export const scheduleTtl = (): TtlConfig => ({ edgeTtl: 300, swrWindow: 900 });
 
 /** Kisan properties — muuttuu erittäin harvoin. */
-export const propertiesTtl = (): TtlConfig => ({ edgeTtl: 300, swrWindow: 600 });
+export const propertiesTtl = (): TtlConfig => ({ edgeTtl: 1800, swrWindow: 3600 });
 
 /** Kisalista (`/competition`) — uusia kisoja tulee harvakseltaan. */
-export const competitionListTtl = (): TtlConfig => ({ edgeTtl: 60, swrWindow: 300 });
+export const competitionListTtl = (): TtlConfig => ({ edgeTtl: 300, swrWindow: 900 });
 
 interface EventBody {
   Rounds?: { Status?: string }[];
