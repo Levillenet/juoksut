@@ -107,7 +107,7 @@ function RunningOps() {
     return (data[activeDate] ?? [])
       .filter((r) => isRunningEvent(r))
       .slice()
-      .sort((a, b) => a.BeginDateTimeWithTZ.localeCompare(b.BeginDateTimeWithTZ));
+      .sort(compareByBeginTime);
   }, [data, activeDate]);
 
   const isPast = (iso: string): boolean =>
