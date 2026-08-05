@@ -10,6 +10,7 @@ import {
   isRunningEvent,
   STATUS_LABEL,
   type Round,
+  compareByBeginTime,
 } from "@/lib/tuloslista";
 import {
   competitionScheduleQueryOptions,

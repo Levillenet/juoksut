@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Printer } from "lucide-react";
 
-import { isRunningEvent, formatTime, type Round } from "@/lib/tuloslista";
+import { isRunningEvent, formatTime, compareByBeginTime, type Round } from "@/lib/tuloslista";
 import { competitionScheduleQueryOptions } from "@/lib/tuloslista-queries";
 import { useCompetitionId } from "@/lib/competition-store";
 import { Button } from "@/components/ui/button";

@@ -8,6 +8,7 @@ import {
   formatTime,
   helsinkiDateKey,
   isRunningEvent,
+  compareByBeginTime,
 } from "@/lib/tuloslista";
 import { useCompetitionId } from "@/lib/competition-store";
 import {
