@@ -19,6 +19,7 @@ import {
   isVerticalJump,
   STATUS_LABEL,
   formatRelayLegs,
+  compareByBeginTime,
   type Allocation,
   type Round,
 } from "@/lib/tuloslista";
@@ -140,7 +141,7 @@ function ScoreboardPicker() {
     for (const [date, rs] of Object.entries(rounds)) {
       const fields = rs
         .filter((r) => !isRunningEvent(r))
-        .sort((a, b) => a.BeginDateTimeWithTZ.localeCompare(b.BeginDateTimeWithTZ));
+        .sort(compareByBeginTime);
       if (fields.length) out[date] = fields;
     }
     return out;
