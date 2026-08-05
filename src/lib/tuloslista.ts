@@ -233,6 +233,29 @@ export function formatTime(iso: string): string {
   return HELSINKI_TIME.format(new Date(iso));
 }
 
+/** Aikaleiman millisekunnit, kelvoton arvo menee listan loppuun. */
+export function beginTimeMs(iso: string | null | undefined): number {
+  const t = iso ? new Date(iso).getTime() : NaN;
+  return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
+}
+
+/**
+ * Vertailu kierrosten järjestämiseen todellisen alkuajan mukaan.
+ * Lähdedatassa esiintyy sekä +00:00- että +03:00-merkintöjä, joten
+ * merkkijonovertailu ei vastaa oikeaa kellonaikajärjestystä.
+ */
+export function compareByBeginTime(
+  a: { BeginDateTimeWithTZ: string; Age?: string; Name?: string; EventName?: string },
+  b: { BeginDateTimeWithTZ: string; Age?: string; Name?: string; EventName?: string },
+): number {
+  const d = beginTimeMs(a.BeginDateTimeWithTZ) - beginTimeMs(b.BeginDateTimeWithTZ);
+  if (d !== 0 && Number.isFinite(d)) return d;
+  const age = (a.Age ?? "").localeCompare(b.Age ?? "", "fi");
+  if (age !== 0) return age;
+  return (a.EventName ?? a.Name ?? "").localeCompare(b.EventName ?? b.Name ?? "", "fi");
+}
+
+
 const HELSINKI_DATE_PARTS = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Europe/Helsinki",
   year: "numeric",
