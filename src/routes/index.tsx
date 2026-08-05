@@ -225,7 +225,9 @@ function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; is
       </Link>
       <Link
         to="/print/club-report"
+        search={{ org: 0, auto: false }}
         className="rounded-xl border-2 border-primary/30 bg-card px-4 py-3 text-center hover:bg-secondary"
+
       >
         <div className="text-sm font-semibold leading-snug">Seuran kisaraportti</div>
         <div className="mt-0.5 text-[11px] text-muted-foreground">
