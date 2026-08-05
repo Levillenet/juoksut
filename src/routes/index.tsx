@@ -206,7 +206,7 @@ function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; is
       )}
       <Link
         to="/scoreboard"
-        search={{ top: 10 }}
+        search={{ top: 10, heat: "all", order: "result" }}
         className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
       >
         <div className="text-sm font-semibold leading-tight">Suorituspaikan livenäyttö</div>
