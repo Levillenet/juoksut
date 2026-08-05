@@ -42,7 +42,7 @@ function PrintPage() {
         date,
         runs: rounds
           .filter((r) => (filter === "running" ? isRunningEvent(r) : true))
-          .sort((a, b) => a.BeginDateTimeWithTZ.localeCompare(b.BeginDateTimeWithTZ)),
+          .sort(compareByBeginTime),
       }))
       .filter((g) => g.runs.length > 0)
       .sort((a, b) => {
