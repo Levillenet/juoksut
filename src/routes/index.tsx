@@ -194,6 +194,8 @@ function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; is
       {showOfficialLinks && (
         <Link
           to="/announcer"
+          search={{ pick: undefined }}
+
           className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
         >
           <div className="text-sm font-semibold leading-tight">Kuuluttaja</div>
