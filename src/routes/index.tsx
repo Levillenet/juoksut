@@ -194,6 +194,8 @@ function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; is
       {showOfficialLinks && (
         <Link
           to="/announcer"
+          search={{ pick: undefined }}
+
           className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
         >
           <div className="text-sm font-semibold leading-tight">Kuuluttaja</div>
@@ -204,7 +206,7 @@ function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; is
       )}
       <Link
         to="/scoreboard"
-        search={{ top: 10 }}
+        search={{ top: 10, heat: "all", order: "result" }}
         className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
       >
         <div className="text-sm font-semibold leading-tight">Suorituspaikan livenäyttö</div>
@@ -223,7 +225,9 @@ function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; is
       </Link>
       <Link
         to="/print/club-report"
+        search={{ org: 0, auto: false }}
         className="rounded-xl border-2 border-primary/30 bg-card px-4 py-3 text-center hover:bg-secondary"
+
       >
         <div className="text-sm font-semibold leading-snug">Seuran kisaraportti</div>
         <div className="mt-0.5 text-[11px] text-muted-foreground">

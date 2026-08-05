@@ -7,6 +7,7 @@ import {
   formatTime,
   helsinkiDateKey,
   isRunningEvent,
+  compareByBeginTime,
 } from "@/lib/tuloslista";
 import { useCompetitionId } from "@/lib/competition-store";
 import {
@@ -115,9 +116,7 @@ function PrintClubPage() {
       .map(([date, rounds]) => ({
         date,
         rounds: Array.from(rounds.values())
-          .sort((a, b) =>
-            a.round.BeginDateTimeWithTZ.localeCompare(b.round.BeginDateTimeWithTZ),
-          )
+          .sort((a, b) => compareByBeginTime(a.round, b.round))
           .map((g) => ({
             ...g,
             allocs: [...g.allocs].sort((a, b) => {

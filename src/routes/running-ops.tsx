@@ -10,6 +10,7 @@ import {
   isRunningEvent,
   STATUS_LABEL,
   type Round,
+  compareByBeginTime,
 } from "@/lib/tuloslista";
 import {
   competitionScheduleQueryOptions,
@@ -107,7 +108,7 @@ function RunningOps() {
     return (data[activeDate] ?? [])
       .filter((r) => isRunningEvent(r))
       .slice()
-      .sort((a, b) => a.BeginDateTimeWithTZ.localeCompare(b.BeginDateTimeWithTZ));
+      .sort(compareByBeginTime);
   }, [data, activeDate]);
 
   const isPast = (iso: string): boolean =>
