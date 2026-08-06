@@ -175,7 +175,7 @@ async function fetchJsonEx<T>(
       headers["x-origin-source"] = state.source;
     }
     const r = await fetch(requestUrl, { headers });
-    if (!state.proxyOrigin) bumpOriginCall(state.source, pathForCounter, r.status);
+    if (!state.proxyOrigin) await bumpOriginCall(state.source, pathForCounter, r.status);
     if (r.status === 429 || r.status === 503) {
       state.rateLimited = true;
       return { data: null, notFound: false, failed: true };
@@ -199,7 +199,7 @@ async function fetchJsonEx<T>(
       return { data: null, notFound: false, failed: true };
     }
   } catch {
-    if (!state.proxyOrigin) bumpOriginCall(state.source, pathForCounter, 0);
+    if (!state.proxyOrigin) await bumpOriginCall(state.source, pathForCounter, 0);
     return { data: null, notFound: false, failed: true };
   }
 }
@@ -969,11 +969,13 @@ async function run(request: Request): Promise<Response> {
       // uudestaan: merkintä voi johtua hetkellisestä häiriöstä.
       if (hc.exists_in_source === false) return isRecent(e);
       if (!hc.done) return shouldScanKnownPending(e, hc, hkiTodayIso);
-      // Done: rescanataan vain jos viimeinen tapahtumapäivä on tänään tai
-      // tulevaisuudessa (monipäiväiset kisat vielä käynnissä). Eiliset ja
-      // vanhemmat kisat ovat vakiintuneet — ei tarvitse käydä uudestaan.
+      // Done: aktiivinen monipäiväinen kilpailu tarkistetaan harvemmin täydellä
+      // kierroksella. Tiheä live-päivitys kuuluu käyttäjävetoiselle hot cyclelle.
       if (!hkiTodayIso) return false;
-      if (hc.last_event_date && hc.last_event_date >= hkiTodayIso) return true;
+      if (hc.last_event_date && hc.last_event_date >= hkiTodayIso) {
+        const lastScan = hc.last_scanned_at ? new Date(hc.last_scanned_at).getTime() : 0;
+        return !Number.isFinite(lastScan) || Date.now() - lastScan >= ACTIVE_BACKGROUND_RESCAN_MS;
+      }
       // Monipäiväinen kisa ilman tunnettua viimeistä päivää: varmistetaan
       // tuoreiden kisojen osalta vielä kerran.
       if (!hc.last_event_date) return isRecent(e);

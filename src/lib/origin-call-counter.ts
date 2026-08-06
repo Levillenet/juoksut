@@ -16,12 +16,7 @@ export type CounterSource =
   | "proxy_cache"
   | "admin_probe";
 
-export type PathKind =
-  | "list"
-  | "schedule"
-  | "properties"
-  | "results"
-  | "other";
+export type PathKind = "list" | "schedule" | "properties" | "results" | "other";
 
 /** Poimii tuloslistan URL-polusta karkean tyypin analytiikkaan. */
 export function classifyPath(path: string): PathKind {
@@ -44,44 +39,34 @@ export function statusBucket(status: number): string {
   return `${status}`;
 }
 
-/**
- * Kirjaa yhden kutsun laskuriin. Kutsutaan fire-and-forget — palauttaa
- * välittömästi, kirjoitus tehdään taustalla.
- */
-export function bumpOriginCall(
+/** Kirjaa yhden toteutuneen cache- tai origin-kutsun laskuriin. */
+export async function bumpOriginCall(
   source: CounterSource,
   pathOrKind: string,
   status: number | string,
   delta = 1,
-): void {
+): Promise<void> {
   const kind = pathOrKind.startsWith("/") ? classifyPath(pathOrKind) : (pathOrKind as PathKind);
   const bucket = typeof status === "number" ? statusBucket(status) : status;
   const path = pathOrKind.startsWith("/") ? pathOrKind.replace(/\?.*$/, "") : null;
-  // Käynnistä taustatyö ilman awaitia — halvin mahdollinen kutsu upstream-polulla.
-  void (async () => {
-    try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const rpc = supabaseAdmin.rpc as unknown as (
-        fn: string,
-        args: Record<string, unknown>,
-      ) => Promise<{ error: { message: string } | null }>;
-      const { error } = path
-        ? await rpc("bump_origin_call_path", {
-            _source: source,
-            _path: path,
-            _path_kind: kind,
-            _status_bucket: bucket,
-            _delta: delta,
-          })
-        : await rpc("bump_origin_call", {
-            _source: source,
-            _path_kind: kind,
-            _status_bucket: bucket,
-            _delta: delta,
-          });
-      if (error) console.warn("[origin-call-counter] rpc error", error.message);
-    } catch (e) {
-      console.warn("[origin-call-counter] failed", e);
-    }
-  })();
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = path
+      ? await supabaseAdmin.rpc("bump_origin_call_path", {
+          _source: source,
+          _path: path,
+          _path_kind: kind,
+          _status_bucket: bucket,
+          _delta: delta,
+        })
+      : await supabaseAdmin.rpc("bump_origin_call", {
+          _source: source,
+          _path_kind: kind,
+          _status_bucket: bucket,
+          _delta: delta,
+        });
+    if (error) console.warn("[origin-call-counter] rpc error", error.message);
+  } catch (e) {
+    console.warn("[origin-call-counter] failed", e);
+  }
 }

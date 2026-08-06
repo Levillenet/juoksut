@@ -260,11 +260,11 @@ export async function proxyTuloslista(
   if (mem) {
     const fresh = envelopeFreshness(mem, ttlOf);
     if (fresh === "fresh") {
-      bumpOriginCall(cacheSource, path, "hit");
+      await bumpOriginCall(cacheSource, path, "hit");
       return jsonResponse(mem.body, "hit", (Date.now() - mem.cachedAt) / 1000);
     }
     if (fresh === "stale") {
-      bumpOriginCall(cacheSource, path, "stale");
+      await bumpOriginCall(cacheSource, path, "stale");
       kickRefresh(originUrl, cacheKey, cache, ttlOf, path, originSource);
       return jsonResponse(mem.body, "stale", (Date.now() - mem.cachedAt) / 1000);
     }
@@ -276,12 +276,12 @@ export async function proxyTuloslista(
     memoryPut(path, dbEnv);
     const fresh = envelopeFreshness(dbEnv, ttlOf);
     if (fresh === "fresh") {
-      bumpOriginCall(cacheSource, path, "hit");
+      await bumpOriginCall(cacheSource, path, "hit");
       return jsonResponse(dbEnv.body, "hit", (Date.now() - dbEnv.cachedAt) / 1000);
     }
     if (fresh === "stale") {
       // Stale-vastaus palautetaan heti; taustalla yritetään päivittää.
-      bumpOriginCall(cacheSource, path, "stale");
+      await bumpOriginCall(cacheSource, path, "stale");
       kickRefresh(originUrl, cacheKey, cache, ttlOf, path, originSource);
       return jsonResponse(dbEnv.body, "stale", (Date.now() - dbEnv.cachedAt) / 1000);
     }
@@ -296,11 +296,11 @@ export async function proxyTuloslista(
         memoryPut(path, env);
         const fresh = envelopeFreshness(env, ttlOf);
         if (fresh === "fresh") {
-          bumpOriginCall(cacheSource, path, "hit");
+          await bumpOriginCall(cacheSource, path, "hit");
           return jsonResponse(env.body, "hit", (Date.now() - env.cachedAt) / 1000);
         }
         if (fresh === "stale") {
-          bumpOriginCall(cacheSource, path, "stale");
+          await bumpOriginCall(cacheSource, path, "stale");
           kickRefresh(originUrl, cacheKey, cache, ttlOf, path, originSource);
           return jsonResponse(env.body, "stale", (Date.now() - env.cachedAt) / 1000);
         }
@@ -314,8 +314,12 @@ export async function proxyTuloslista(
   const openUntil = circuitOpenUntil.get(path);
   if (openUntil && Date.now() < openUntil) {
     if (staleFallback) {
-      bumpOriginCall(cacheSource, path, "circuit");
-      return jsonResponse(staleFallback.body, "circuit", (Date.now() - staleFallback.cachedAt) / 1000);
+      await bumpOriginCall(cacheSource, path, "circuit");
+      return jsonResponse(
+        staleFallback.body,
+        "circuit",
+        (Date.now() - staleFallback.cachedAt) / 1000,
+      );
     }
     if (cache) {
       const hit = await cache.match(cacheKey).catch(() => undefined);
@@ -323,7 +327,7 @@ export async function proxyTuloslista(
         const env = await readEnvelope(hit);
         if (env) {
           memoryPut(path, env);
-          bumpOriginCall(cacheSource, path, "circuit");
+          await bumpOriginCall(cacheSource, path, "circuit");
           return jsonResponse(env.body, "circuit", (Date.now() - env.cachedAt) / 1000);
         }
       }
@@ -340,7 +344,7 @@ export async function proxyTuloslista(
       const reCheck = await dbGet(path);
       if (reCheck && envelopeFreshness(reCheck, ttlOf) !== "expired") {
         memoryPut(path, reCheck);
-        bumpOriginCall(cacheSource, path, "hit");
+        await bumpOriginCall(cacheSource, path, "hit");
         return jsonResponse(reCheck.body, "hit", (Date.now() - reCheck.cachedAt) / 1000);
       }
 
@@ -363,7 +367,7 @@ export async function proxyTuloslista(
       if (waitedEnv) {
         memoryPut(path, waitedEnv);
         const fresh = envelopeFreshness(waitedEnv, ttlOf);
-        bumpOriginCall(cacheSource, path, fresh === "fresh" ? "hit" : "stale");
+        await bumpOriginCall(cacheSource, path, fresh === "fresh" ? "hit" : "stale");
         return jsonResponse(
           waitedEnv.body,
           fresh === "fresh" ? "hit" : "stale",
@@ -393,8 +397,12 @@ export async function proxyTuloslista(
   }
 
   if (staleFallback) {
-    bumpOriginCall(cacheSource, path, "stale-error");
-    return jsonResponse(staleFallback.body, "stale-error", (Date.now() - staleFallback.cachedAt) / 1000);
+    await bumpOriginCall(cacheSource, path, "stale-error");
+    return jsonResponse(
+      staleFallback.body,
+      "stale-error",
+      (Date.now() - staleFallback.cachedAt) / 1000,
+    );
   }
 
   // 6) Origin feilasi — viimeinen yritys: anna mikä tahansa cache-kopio
@@ -404,7 +412,7 @@ export async function proxyTuloslista(
       const env = await readEnvelope(hit);
       if (env) {
         memoryPut(path, env);
-        bumpOriginCall(cacheSource, path, "stale-error");
+        await bumpOriginCall(cacheSource, path, "stale-error");
         return jsonResponse(env.body, "stale-error", (Date.now() - env.cachedAt) / 1000);
       }
     }
@@ -457,7 +465,7 @@ async function fetchFromOrigin(
       },
       signal: controller.signal,
     });
-    bumpOriginCall(originSource, path, res.status);
+    await bumpOriginCall(originSource, path, res.status);
     if (res.status === 429 || res.status === 503) {
       console.warn(`[tl-proxy] origin ${res.status} ${path} — circuit open ${CIRCUIT_OPEN_MS}ms`);
       circuitOpenUntil.set(path, Date.now() + CIRCUIT_OPEN_MS);
@@ -500,9 +508,7 @@ async function fetchFromOrigin(
 
     return body;
   } catch (e) {
-    const aborted =
-      (e instanceof Error && e.name === "AbortError") ||
-      controller.signal.aborted;
+    const aborted = (e instanceof Error && e.name === "AbortError") || controller.signal.aborted;
     if (aborted) {
       console.warn(
         `[tl-proxy] origin timeout ${UPSTREAM_TIMEOUT_MS}ms ${path} — circuit open ${CIRCUIT_OPEN_MS}ms`,
@@ -510,7 +516,7 @@ async function fetchFromOrigin(
     } else {
       console.error(`[tl-proxy] fetch error ${path}`, e);
     }
-    bumpOriginCall(originSource, path, 0);
+    await bumpOriginCall(originSource, path, 0);
     // Avaa breaker myös timeoutille ja verkkovirheille, jottei Worker jää
     // jumiin samaan hitaaseen upstreamiin.
     circuitOpenUntil.set(path, Date.now() + CIRCUIT_OPEN_MS);
