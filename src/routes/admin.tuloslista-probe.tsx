@@ -213,6 +213,13 @@ function Page() {
 
   const snap = snapshotQ.data;
   const now = new Date();
+  const newestCounterUpdate = statsQ.data
+    ?.map((day) => day.lastUpdatedAt)
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1);
+  const counterIsStale =
+    !newestCounterUpdate || now.getTime() - new Date(newestCounterUpdate).getTime() > 5 * 60_000;
 
   return (
     <div className="min-h-screen bg-background">
@@ -354,6 +361,15 @@ function Page() {
                 Origin = tuloslista.com · Cache = oma välimuisti
               </div>
             </div>
+            {counterIsStale && (
+              <div className="mb-3 flex items-start gap-2 rounded border border-amber-500/50 bg-amber-500/10 p-2 text-xs text-foreground">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                <span>
+                  Kutsulaskuri ei ole päivittynyt yli viiteen minuuttiin. Uusimman päivän puuttuvat
+                  luvut eivät tarkoita, ettei kutsuja olisi tehty.
+                </span>
+              </div>
+            )}
             {(() => {
               const total = statsQ.data.reduce(
                 (a, d) => {
