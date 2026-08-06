@@ -315,7 +315,11 @@ export async function proxyTuloslista(
   if (openUntil && Date.now() < openUntil) {
     if (staleFallback) {
       await bumpOriginCall(cacheSource, path, "circuit");
-      return jsonResponse(staleFallback.body, "circuit", (Date.now() - staleFallback.cachedAt) / 1000);
+      return jsonResponse(
+        staleFallback.body,
+        "circuit",
+        (Date.now() - staleFallback.cachedAt) / 1000,
+      );
     }
     if (cache) {
       const hit = await cache.match(cacheKey).catch(() => undefined);
@@ -394,7 +398,11 @@ export async function proxyTuloslista(
 
   if (staleFallback) {
     await bumpOriginCall(cacheSource, path, "stale-error");
-    return jsonResponse(staleFallback.body, "stale-error", (Date.now() - staleFallback.cachedAt) / 1000);
+    return jsonResponse(
+      staleFallback.body,
+      "stale-error",
+      (Date.now() - staleFallback.cachedAt) / 1000,
+    );
   }
 
   // 6) Origin feilasi — viimeinen yritys: anna mikä tahansa cache-kopio
@@ -500,9 +508,7 @@ async function fetchFromOrigin(
 
     return body;
   } catch (e) {
-    const aborted =
-      (e instanceof Error && e.name === "AbortError") ||
-      controller.signal.aborted;
+    const aborted = (e instanceof Error && e.name === "AbortError") || controller.signal.aborted;
     if (aborted) {
       console.warn(
         `[tl-proxy] origin timeout ${UPSTREAM_TIMEOUT_MS}ms ${path} — circuit open ${CIRCUIT_OPEN_MS}ms`,

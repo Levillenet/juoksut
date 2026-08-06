@@ -16,12 +16,7 @@ export type CounterSource =
   | "proxy_cache"
   | "admin_probe";
 
-export type PathKind =
-  | "list"
-  | "schedule"
-  | "properties"
-  | "results"
-  | "other";
+export type PathKind = "list" | "schedule" | "properties" | "results" | "other";
 
 /** Poimii tuloslistan URL-polusta karkean tyypin analytiikkaan. */
 export function classifyPath(path: string): PathKind {
