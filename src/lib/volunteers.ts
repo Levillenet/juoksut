@@ -233,10 +233,11 @@ export async function signUpForTask(values: {
     _token: values.token,
     _task_id: values.task_id,
     _name: values.full_name,
-    _phone: values.phone,
-    _email: values.email,
-    _note: values.note,
+    _phone: values.phone ?? undefined,
+    _email: values.email ?? undefined,
+    _note: values.note ?? undefined,
   });
+
   if (error) throw error;
   return data as string;
 }
