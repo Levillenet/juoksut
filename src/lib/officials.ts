@@ -32,7 +32,10 @@ export interface OfficialCall {
   competition_date: string | null;
   open_until: string | null;
   message: string | null;
+  /** Seurat, joille kutsu on suunnattu. Tyhjä = kaikille. */
+  target_clubs: string[];
 }
+
 
 export interface OfficialAvailability {
   id: string;
@@ -70,7 +73,8 @@ const PROFILE_COLS =
 const CHILD_COLS =
   "id, profile_id, athlete_key, surname, firstname, organization, organization_id, is_guardian";
 const CALL_COLS =
-  "id, competition_id, competition_name, competition_date, open_until, message";
+  "id, competition_id, competition_name, competition_date, open_until, message, target_clubs";
+
 const ASSIGNMENT_COLS =
   "id, competition_id, event_id, round_id, event_name, age_class, starts_at, profile_id, role_label, status, is_lead";
 
@@ -169,12 +173,56 @@ export async function openCall(values: {
   open_until: string | null;
   message: string | null;
   opened_by: string;
+  target_clubs?: string[];
 }): Promise<void> {
   const { error } = await supabase
     .from("official_competition_calls")
-    .upsert(values, { onConflict: "competition_id" });
+    .upsert(
+      { ...values, target_clubs: values.target_clubs ?? [] },
+      { onConflict: "competition_id" },
+    );
   if (error) throw error;
 }
+
+/** Päivittää avatun haun kohdeseurat sulkematta hakua. */
+export async function updateCallTargetClubs(
+  competitionId: number,
+  clubs: string[],
+): Promise<void> {
+  const { error } = await supabase
+    .from("official_competition_calls")
+    .update({ target_clubs: clubs })
+    .eq("competition_id", competitionId);
+  if (error) throw error;
+}
+
+/** Kaikki toimitsijaprofiileissa käytetyt seurat, aakkosjärjestyksessä. */
+export async function fetchKnownClubs(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("official_profiles")
+    .select("club")
+    .not("club", "is", null);
+  if (error) throw error;
+  const set = new Set<string>();
+  for (const row of (data ?? []) as { club: string | null }[]) {
+    const c = (row.club ?? "").trim();
+    if (c) set.add(c);
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, "fi"));
+}
+
+/** Näkyykö kutsu tälle seuralle? Tyhjä kohdelista = kaikille. */
+export function callMatchesClub(
+  targetClubs: string[] | null | undefined,
+  club: string | null | undefined,
+): boolean {
+  const targets = (targetClubs ?? []).filter((c) => c.trim());
+  if (targets.length === 0) return true;
+  const mine = (club ?? "").trim().toLowerCase();
+  if (!mine) return false;
+  return targets.some((c) => c.trim().toLowerCase() === mine);
+}
+
 
 export async function closeCall(competitionId: number): Promise<void> {
   const { error } = await supabase
@@ -321,7 +369,8 @@ export interface OfficialCallFull extends OfficialCall {
 }
 
 const CALL_FULL_COLS =
-  "id, competition_id, competition_name, competition_date, open_until, message, share_token, open_from";
+  "id, competition_id, competition_name, competition_date, open_until, message, share_token, open_from, target_clubs";
+
 
 export async function fetchCall(competitionId: number): Promise<OfficialCallFull | null> {
   const { data, error } = await supabase

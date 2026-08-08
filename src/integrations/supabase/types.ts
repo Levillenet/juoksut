@@ -932,6 +932,7 @@ export type Database = {
           open_until: string | null
           opened_by: string | null
           share_token: string | null
+          target_clubs: string[]
           updated_at: string
         }
         Insert: {
@@ -946,6 +947,7 @@ export type Database = {
           open_until?: string | null
           opened_by?: string | null
           share_token?: string | null
+          target_clubs?: string[]
           updated_at?: string
         }
         Update: {
@@ -960,6 +962,7 @@ export type Database = {
           open_until?: string | null
           opened_by?: string | null
           share_token?: string | null
+          target_clubs?: string[]
           updated_at?: string
         }
         Relationships: []

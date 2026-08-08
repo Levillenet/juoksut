@@ -18,7 +18,9 @@ import {
 } from "@/components/officials/OfficialAthletePicker";
 import {
   addChild,
+  callMatchesClub,
   fetchCalls,
+
   fetchMyAvailability,
   fetchMyChildren,
   fetchMyProfile,
@@ -116,6 +118,14 @@ function OfficialHome() {
     () => new Set(children.map((c) => c.athlete_key)),
     [children],
   );
+
+  const myClub = (form.club || profile?.club || "").trim();
+  const visibleCalls = useMemo(
+    () => calls.filter((c) => callMatchesClub(c.target_clubs, myClub)),
+    [calls, myClub],
+  );
+  const hiddenCallCount = calls.length - visibleCalls.length;
+
 
   const saveProfile = async () => {
     if (!form.full_name.trim() || !form.email.trim()) {
@@ -390,13 +400,19 @@ function OfficialHome() {
 
       <section className="mt-4 rounded-xl border bg-card p-4 shadow-sm">
         <h2 className="text-base font-semibold">Käytettävissä kisoihin</h2>
-        {calls.length === 0 ? (
+        {hiddenCallCount > 0 && !(profile?.club ?? "").trim() && (
+          <p className="mt-1 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
+            Lisää seura profiiliisi nähdäksesi seurallesi suunnatut kutsut.
+          </p>
+        )}
+        {visibleCalls.length === 0 ? (
           <p className="mt-1 text-sm text-muted-foreground">
             Avoimia toimitsijahakuja ei ole juuri nyt.
           </p>
         ) : (
           <ul className="mt-2 space-y-3">
-            {calls.map((c) => {
+            {visibleCalls.map((c) => {
+
               const st = availability[c.competition_id];
               return (
                 <li key={c.id} className="rounded-lg border p-3">
@@ -407,7 +423,13 @@ function OfficialHome() {
                         {c.competition_date ? helsinkiDateKey(c.competition_date) : ""}
                         {c.open_until ? ` · vastaa viimeistään ${c.open_until}` : ""}
                       </p>
+                      {(c.target_clubs ?? []).length > 0 && (
+                        <p className="mt-0.5 text-xs font-semibold text-primary">
+                          Suunnattu: {(c.target_clubs ?? []).join(", ")}
+                        </p>
+                      )}
                       {c.message && <p className="mt-1 text-xs">{c.message}</p>}
+
                       <div className="mt-1 flex flex-wrap gap-3">
                         <Link
                           to="/toimitsija/haku/$competitionId"

@@ -48,6 +48,8 @@ import {
   requestConfirmations,
   setAssignmentStatus,
   setRequirement,
+  updateCallTargetClubs,
+
   STATUS_LABEL_FI,
   type EventRequirement,
   type OfficialAssignment,
@@ -96,10 +98,13 @@ function OfficialsCompetition() {
   const [requirements, setRequirements] = useState<EventRequirement[]>([]);
   const [call, setCall] = useState<OfficialCallFull | null>(null);
   const [openUntil, setOpenUntil] = useState("");
+  const [targetClubs, setTargetClubs] = useState<string[]>([]);
+  const [clubInput, setClubInput] = useState("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [manualName, setManualName] = useState("");
   const [manualPhone, setManualPhone] = useState("");
   const [loading, setLoading] = useState(true);
+
 
   const reloadAssignments = async () => setAssignments(await fetchAssignments(compId));
 
@@ -130,7 +135,9 @@ function OfficialsCompetition() {
         setAvailableProfileIds(ids);
         setAssignments(asg);
         setCall(c);
+        setTargetClubs(c?.target_clubs ?? []);
         setRequirements(reqs);
+
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Lataus epäonnistui");
       } finally {
@@ -362,7 +369,18 @@ function OfficialsCompetition() {
     }
   };
 
+  const clubOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of profiles) {
+      const c = (p.club ?? "").trim();
+      if (c) set.add(c);
+    }
+    for (const c of targetClubs) set.add(c);
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "fi"));
+  }, [profiles, targetClubs]);
+
   const toggleCall = async () => {
+
     if (!user) return;
     try {
       if (call) {
@@ -377,14 +395,42 @@ function OfficialsCompetition() {
           open_until: openUntil || null,
           message: null,
           opened_by: user.id,
+          target_clubs: targetClubs,
         });
         setCall(await fetchCall(compId));
-        toast.success("Toimitsijahaku avattu, toimitsijat voivat ilmoittautua.");
+        toast.success(
+          targetClubs.length > 0
+            ? `Toimitsijahaku avattu seuroille: ${targetClubs.join(", ")}`
+            : "Toimitsijahaku avattu kaikille toimitsijoille.",
+        );
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Toiminto epäonnistui");
     }
   };
+
+  const saveTargetClubs = async () => {
+    try {
+      await updateCallTargetClubs(compId, targetClubs);
+      setCall((c) => (c ? { ...c, target_clubs: targetClubs } : c));
+      toast.success("Kohdeseurat tallennettu.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Tallennus epäonnistui");
+    }
+  };
+
+  const toggleClub = (club: string) =>
+    setTargetClubs((prev) =>
+      prev.includes(club) ? prev.filter((c) => c !== club) : [...prev, club],
+    );
+
+  const addClub = () => {
+    const c = clubInput.trim();
+    if (!c) return;
+    setTargetClubs((prev) => (prev.includes(c) ? prev : [...prev, c]));
+    setClubInput("");
+  };
+
 
   const signupUrl =
     call && typeof window !== "undefined"
@@ -481,7 +527,70 @@ function OfficialsCompetition() {
           >
             {call ? "Sulje toimitsijahaku" : "Avaa toimitsijahaku"}
           </Button>
+      </div>
+
+      <div className="mt-3 rounded-xl border bg-card p-3 text-sm shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Kutsu suunnataan seuroille
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Valitse seurat, joiden toimitsijoille kutsu näkyy. Jos et valitse yhtään seuraa, haku on
+          avoin kaikille toimitsijoille.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {clubOptions.length === 0 && (
+            <span className="text-xs text-muted-foreground">
+              Toimitsijaprofiileissa ei ole vielä seuratietoja. Lisää seura alle.
+            </span>
+          )}
+          {clubOptions.map((c) => {
+            const on = targetClubs.includes(c);
+            return (
+              <button
+                key={c}
+                type="button"
+                onClick={() => toggleClub(c)}
+                className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                  on
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "bg-background hover:bg-accent"
+                }`}
+              >
+                {c}
+              </button>
+            );
+          })}
         </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Input
+            className="h-9 w-56"
+            placeholder="Lisää seura, esim. Lahden Ahkera"
+            value={clubInput}
+            onChange={(e) => setClubInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addClub();
+              }
+            }}
+            aria-label="Lisää kohdeseura"
+          />
+          <Button size="sm" variant="outline" onClick={addClub}>
+            Lisää seura
+          </Button>
+          {call && (
+            <Button size="sm" onClick={() => void saveTargetClubs()}>
+              Tallenna kohdeseurat
+            </Button>
+          )}
+          <span className="text-xs text-muted-foreground">
+            {targetClubs.length === 0
+              ? "Nyt: kaikille toimitsijoille"
+              : `Nyt: ${targetClubs.join(", ")}`}
+          </span>
+        </div>
+      </div>
+
       </div>
 
       {call && (
