@@ -129,6 +129,8 @@ function OfficialHome() {
         club: form.club.trim() || null,
         skills: form.skills.trim() || null,
         notes: form.notes.trim() || null,
+        can_lead: form.can_lead,
+        lead_events: form.can_lead ? form.lead_events : [],
       });
       setProfile(p);
       toast.success("Toimitsijaprofiili tallennettu.");
