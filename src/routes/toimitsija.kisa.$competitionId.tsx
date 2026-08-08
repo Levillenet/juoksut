@@ -1,10 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronDown, ChevronRight, Trash2, UserPlus } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Printer,
+  Send,
+  Trash2,
+  UserPlus,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { competitionIndexQueryOptions } from "@/lib/tuloslista-queries";
 import {
@@ -19,15 +30,22 @@ import { athleteKey } from "@/lib/watch-store";
 import {
   addAssignment,
   closeCall,
+  createManualProfile,
   fetchAllOfficials,
   fetchAssignments,
   fetchAvailabilityFor,
-  fetchCalls,
+  fetchCall,
+  fetchDayAvailabilityFor,
+  fetchRequirements,
   openCall,
   removeAssignment,
+  requestConfirmations,
   setAssignmentStatus,
+  setRequirement,
   STATUS_LABEL_FI,
+  type EventRequirement,
   type OfficialAssignment,
+  type OfficialCallFull,
   type OfficialChild,
   type OfficialProfile,
 } from "@/lib/officials";
@@ -53,6 +71,8 @@ const TIER_LABEL: Record<Tier, string> = {
 
 const TIER_ORDER: Tier[] = ["guardian", "attached", "available", "other"];
 
+const DEFAULT_MIN_OFFICIALS = 2;
+
 function OfficialsCompetition() {
   const { competitionId } = Route.useParams();
   const compId = Number(competitionId);
@@ -65,11 +85,14 @@ function OfficialsCompetition() {
 
   const [profiles, setProfiles] = useState<OfficialProfile[]>([]);
   const [children, setChildren] = useState<OfficialChild[]>([]);
-  const [availableUserIds, setAvailableUserIds] = useState<Set<string>>(new Set());
+  const [availableProfileIds, setAvailableProfileIds] = useState<Set<string>>(new Set());
   const [assignments, setAssignments] = useState<OfficialAssignment[]>([]);
-  const [callOpen, setCallOpen] = useState(false);
+  const [requirements, setRequirements] = useState<EventRequirement[]>([]);
+  const [call, setCall] = useState<OfficialCallFull | null>(null);
   const [openUntil, setOpenUntil] = useState("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [manualName, setManualName] = useState("");
+  const [manualPhone, setManualPhone] = useState("");
   const [loading, setLoading] = useState(true);
 
   const reloadAssignments = async () => setAssignments(await fetchAssignments(compId));
@@ -78,18 +101,30 @@ function OfficialsCompetition() {
     let cancelled = false;
     void (async () => {
       try {
-        const [all, avail, asg, calls] = await Promise.all([
+        const [all, avail, dayAvail, asg, c, reqs] = await Promise.all([
           fetchAllOfficials(),
           fetchAvailabilityFor(compId),
+          fetchDayAvailabilityFor(compId),
           fetchAssignments(compId),
-          fetchCalls(),
+          fetchCall(compId),
+          fetchRequirements(compId),
         ]);
         if (cancelled) return;
         setProfiles(all.profiles);
         setChildren(all.children);
-        setAvailableUserIds(new Set(avail.map((a) => a.user_id)));
+        const byUser = new Map(
+          all.profiles.filter((p) => p.user_id).map((p) => [p.user_id as string, p.id]),
+        );
+        const ids = new Set<string>();
+        for (const a of avail) {
+          const pid = byUser.get(a.user_id);
+          if (pid) ids.add(pid);
+        }
+        for (const d of dayAvail) if (d.available) ids.add(d.profile_id);
+        setAvailableProfileIds(ids);
         setAssignments(asg);
-        setCallOpen(calls.some((c) => c.competition_id === compId));
+        setCall(c);
+        setRequirements(reqs);
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Lataus epäonnistui");
       } finally {
@@ -155,6 +190,49 @@ function OfficialsCompetition() {
     return m;
   }, [assignments]);
 
+  const minByRound = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const r of requirements) m.set(r.round_id, r.min_officials);
+    return m;
+  }, [requirements]);
+
+  const minFor = (roundId: number) => minByRound.get(roundId) ?? DEFAULT_MIN_OFFICIALS;
+
+  const saveMin = async (fe: FieldEvent, value: number) => {
+    if (!user) return;
+    const clean = Math.max(0, Math.min(30, Math.round(value)));
+    setRequirements((prev) => {
+      const rest = prev.filter((r) => r.round_id !== fe.round.Id);
+      return [
+        ...rest,
+        {
+          id: `local-${fe.round.Id}`,
+          competition_id: compId,
+          round_id: fe.round.Id,
+          event_id: fe.round.EventId,
+          event_name: eventLabel(fe.round),
+          age_class: fe.round.Age || null,
+          starts_at: fe.round.BeginDateTimeWithTZ,
+          min_officials: clean,
+        },
+      ];
+    });
+    try {
+      await setRequirement({
+        competition_id: compId,
+        round_id: fe.round.Id,
+        event_id: fe.round.EventId,
+        event_name: eventLabel(fe.round),
+        age_class: fe.round.Age || null,
+        starts_at: fe.round.BeginDateTimeWithTZ,
+        min_officials: clean,
+        created_by: user.id,
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Tallennus epäonnistui");
+    }
+  };
+
   /** Toimitsija on varattu, jos hänellä on kiinnitys alle tunnin päässä. */
   const busyProfileIds = (round: Round): Set<string> => {
     const t = beginTimeMs(round.BeginDateTimeWithTZ);
@@ -185,7 +263,7 @@ function OfficialsCompetition() {
     }
     for (const p of profiles) {
       if (tierOf.has(p.id)) continue;
-      tierOf.set(p.id, availableUserIds.has(p.user_id) ? "available" : "other");
+      tierOf.set(p.id, availableProfileIds.has(p.id) ? "available" : "other");
     }
     const busy = busyProfileIds(fe.round);
     return profiles
@@ -211,7 +289,7 @@ function OfficialsCompetition() {
         competition_id: compId,
         event_id: fe.round.EventId,
         round_id: fe.round.Id,
-        event_name: `${fe.round.Age ? `${fe.round.Age} ` : ""}${fe.round.EventName}`.trim(),
+        event_name: eventLabel(fe.round),
         age_class: fe.round.Age || null,
         starts_at: fe.round.BeginDateTimeWithTZ,
         profile_id: profileId,
@@ -224,12 +302,40 @@ function OfficialsCompetition() {
     }
   };
 
+  /** Nimi käsin: luodaan toimitsijakortti ja kiinnitetään se suoraan lajiin. */
+  const addManual = async (fe: FieldEvent) => {
+    if (!user) return;
+    const name = manualName.trim();
+    if (!name) {
+      toast.error("Kirjoita toimitsijan nimi.");
+      return;
+    }
+    try {
+      const p = await createManualProfile({
+        full_name: name,
+        email: null,
+        phone: manualPhone.trim() || null,
+        club: null,
+        created_by: user.id,
+      });
+      setProfiles((prev) =>
+        [...prev, p].sort((a, b) => a.full_name.localeCompare(b.full_name, "fi")),
+      );
+      await assign(fe, p.id);
+      setManualName("");
+      setManualPhone("");
+      toast.success(`${name} lisätty ja kiinnitetty lajiin.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Lisäys epäonnistui");
+    }
+  };
+
   const toggleCall = async () => {
     if (!user) return;
     try {
-      if (callOpen) {
+      if (call) {
         await closeCall(compId);
-        setCallOpen(false);
+        setCall(null);
         toast.success("Toimitsijahaku suljettu.");
       } else {
         await openCall({
@@ -240,7 +346,7 @@ function OfficialsCompetition() {
           message: null,
           opened_by: user.id,
         });
-        setCallOpen(true);
+        setCall(await fetchCall(compId));
         toast.success("Toimitsijahaku avattu, toimitsijat voivat ilmoittautua.");
       }
     } catch (e) {
@@ -248,6 +354,28 @@ function OfficialsCompetition() {
     }
   };
 
+  const signupUrl =
+    call && typeof window !== "undefined"
+      ? `${window.location.origin}/toimitsija/haku/${compId}`
+      : "";
+
+  const sendRequests = async () => {
+    try {
+      const n = await requestConfirmations(compId);
+      await reloadAssignments();
+      toast.success(
+        n === 0
+          ? "Kaikki kiinnitykset on jo pyydetty tai varmennettu."
+          : `Varmennuspyyntö merkitty ${n} kiinnitykselle.`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Toiminto epäonnistui");
+    }
+  };
+
+  const understaffed = fieldEvents.filter(
+    (fe) => (assignmentsByRound.get(fe.round.Id) ?? []).length < minFor(fe.round.Id),
+  ).length;
   const missing = fieldEvents.filter(
     (fe) => (assignmentsByRound.get(fe.round.Id) ?? []).length === 0,
   ).length;
@@ -287,11 +415,15 @@ function OfficialsCompetition() {
           Ilman toimitsijaa: <strong>{missing}</strong>
         </span>
         <span className="text-muted-foreground">·</span>
+        <span className={understaffed > 0 ? "text-destructive" : undefined}>
+          Vajaita: <strong>{understaffed}</strong>
+        </span>
+        <span className="text-muted-foreground">·</span>
         <span>
           Varmennusta odottaa: <strong>{unconfirmed}</strong>
         </span>
         <div className="ml-auto flex items-center gap-2">
-          {!callOpen && (
+          {!call && (
             <Input
               type="date"
               className="h-9 w-40"
@@ -300,11 +432,48 @@ function OfficialsCompetition() {
               aria-label="Ilmoittautuminen auki asti"
             />
           )}
-          <Button size="sm" variant={callOpen ? "secondary" : "default"} onClick={() => void toggleCall()}>
-            {callOpen ? "Sulje toimitsijahaku" : "Avaa toimitsijahaku"}
+          <Button
+            size="sm"
+            variant={call ? "secondary" : "default"}
+            onClick={() => void toggleCall()}
+          >
+            {call ? "Sulje toimitsijahaku" : "Avaa toimitsijahaku"}
           </Button>
         </div>
       </div>
+
+      {call && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3 text-sm shadow-sm">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Jaettava ilmoittautumislinkki
+            </p>
+            <p className="truncate text-xs">{signupUrl}</p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              void navigator.clipboard.writeText(signupUrl);
+              toast.success("Linkki kopioitu. Jaa se toimitsijoille.");
+            }}
+          >
+            <Copy className="h-4 w-4" />
+            <span className="ml-1">Kopioi linkki</span>
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => void sendRequests()}>
+            <Send className="h-4 w-4" />
+            <span className="ml-1">Lähetä varmennuspyynnöt</span>
+          </Button>
+          <Link
+            to="/toimitsija/aikataulu/$competitionId"
+            params={{ competitionId: String(compId) }}
+            className="inline-flex h-9 items-center gap-1 rounded-md border px-3 text-xs hover:bg-accent"
+          >
+            <Printer className="h-4 w-4" /> Tulosta aikataulut
+          </Link>
+        </div>
+      )}
 
       {(indexQuery.isFetching && !indexQuery.data) || loading ? (
         <p className="mt-6 text-sm text-muted-foreground">Ladataan kilpailun lajeja…</p>
@@ -317,8 +486,15 @@ function OfficialsCompetition() {
           {fieldEvents.map((fe) => {
             const rows = assignmentsByRound.get(fe.round.Id) ?? [];
             const isOpen = expanded.has(fe.round.Id);
+            const min = minFor(fe.round.Id);
+            const short = rows.length < min;
             return (
-              <li key={fe.round.Id} className="rounded-xl border bg-card p-4 shadow-sm">
+              <li
+                key={fe.round.Id}
+                className={`rounded-xl border bg-card p-4 shadow-sm ${
+                  short ? "border-destructive/60" : ""
+                }`}
+              >
                 <div className="flex items-start gap-3">
                   <div className="w-16 shrink-0">
                     <p className="text-sm font-bold tabular-nums">
@@ -329,12 +505,36 @@ function OfficialsCompetition() {
                     </p>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">
+                    <p className="flex items-center gap-1 truncate text-sm font-semibold">
+                      {short && (
+                        <AlertTriangle
+                          className="h-4 w-4 shrink-0 text-destructive"
+                          aria-label="Toimitsijoita puuttuu"
+                        />
+                      )}
                       {fe.round.Age} {fe.round.EventName}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {fe.participants} osallistujaa · {rows.length} toimitsijaa
+                      {fe.participants} osallistujaa · {rows.length}/{min} toimitsijaa
+                      {short ? " · vajaa" : ""}
                     </p>
+                  </div>
+                  <div className="shrink-0">
+                    <Label
+                      htmlFor={`min-${fe.round.Id}`}
+                      className="block text-[10px] uppercase text-muted-foreground"
+                    >
+                      Min.
+                    </Label>
+                    <Input
+                      id={`min-${fe.round.Id}`}
+                      type="number"
+                      min={0}
+                      max={30}
+                      className="h-8 w-16"
+                      value={min}
+                      onChange={(e) => void saveMin(fe, Number(e.target.value))}
+                    />
                   </div>
                 </div>
 
@@ -412,33 +612,70 @@ function OfficialsCompetition() {
                 </Button>
 
                 {isOpen && (
-                  <ul className="mt-2 divide-y divide-border rounded-lg border">
-                    {suggestionsFor(fe).length === 0 && (
-                      <li className="p-3 text-xs text-muted-foreground">
-                        Toimitsijaprofiileja ei vielä ole.
-                      </li>
-                    )}
-                    {suggestionsFor(fe).map((s) => (
-                      <li key={s.profile.id} className="flex items-center gap-2 p-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">{s.profile.full_name}</p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {TIER_LABEL[s.tier]}
-                            {s.reason ? ` · ${s.reason}` : ""}
-                            {s.busy ? " · varattu samaan aikaan" : ""}
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant={s.tier === "guardian" ? "default" : "outline"}
-                          onClick={() => void assign(fe, s.profile.id)}
+                  <>
+                    <div className="mt-2 flex flex-wrap items-end gap-2 rounded-lg border p-2">
+                      <div className="min-w-40 flex-1">
+                        <Label
+                          htmlFor={`manual-${fe.round.Id}`}
+                          className="text-[10px] uppercase text-muted-foreground"
                         >
-                          <UserPlus className="h-4 w-4" />
-                          <span className="ml-1">Kiinnitä</span>
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
+                          Lisää toimitsija nimellä
+                        </Label>
+                        <Input
+                          id={`manual-${fe.round.Id}`}
+                          className="h-8"
+                          placeholder="Etunimi Sukunimi"
+                          value={manualName}
+                          onChange={(e) => setManualName(e.target.value)}
+                        />
+                      </div>
+                      <div className="w-32">
+                        <Label
+                          htmlFor={`manual-phone-${fe.round.Id}`}
+                          className="text-[10px] uppercase text-muted-foreground"
+                        >
+                          Puhelin
+                        </Label>
+                        <Input
+                          id={`manual-phone-${fe.round.Id}`}
+                          className="h-8"
+                          value={manualPhone}
+                          onChange={(e) => setManualPhone(e.target.value)}
+                        />
+                      </div>
+                      <Button size="sm" onClick={() => void addManual(fe)}>
+                        <UserPlus className="h-4 w-4" />
+                        <span className="ml-1">Lisää</span>
+                      </Button>
+                    </div>
+                    <ul className="mt-2 divide-y divide-border rounded-lg border">
+                      {suggestionsFor(fe).length === 0 && (
+                        <li className="p-3 text-xs text-muted-foreground">
+                          Toimitsijaprofiileja ei vielä ole.
+                        </li>
+                      )}
+                      {suggestionsFor(fe).map((s) => (
+                        <li key={s.profile.id} className="flex items-center gap-2 p-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{s.profile.full_name}</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {TIER_LABEL[s.tier]}
+                              {s.reason ? ` · ${s.reason}` : ""}
+                              {s.busy ? " · varattu samaan aikaan" : ""}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant={s.tier === "guardian" ? "default" : "outline"}
+                            onClick={() => void assign(fe, s.profile.id)}
+                          >
+                            <UserPlus className="h-4 w-4" />
+                            <span className="ml-1">Kiinnitä</span>
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
                 )}
               </li>
             );
@@ -447,4 +684,8 @@ function OfficialsCompetition() {
       )}
     </div>
   );
+}
+
+function eventLabel(r: Round): string {
+  return `${r.Age ? `${r.Age} ` : ""}${r.EventName}`.trim();
 }
