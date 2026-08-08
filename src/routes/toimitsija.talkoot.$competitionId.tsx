@@ -20,6 +20,7 @@ import {
   openVolunteerCall,
   removeVolunteerSignup,
   taskTimeLabel,
+  updateVolunteerTask,
   type VolunteerCall,
   type VolunteerSignup,
   type VolunteerTask,
@@ -54,6 +55,7 @@ function VolunteerOrganizer() {
     [list, compId],
   );
 
+  const [tplCounts, setTplCounts] = useState<Record<string, number>>({});
   const [call, setCall] = useState<VolunteerCall | null>(null);
   const [tasks, setTasks] = useState<VolunteerTask[]>([]);
   const [signups, setSignups] = useState<VolunteerSignup[]>([]);
@@ -161,6 +163,15 @@ function VolunteerOrganizer() {
       toast.success(`${t.name} lisätty.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Lisäys epäonnistui");
+    }
+  };
+
+  const changeNeeded = async (id: string, needed: number) => {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, needed_count: needed } : t)));
+    try {
+      await updateVolunteerTask(id, { needed_count: needed });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Päivitys epäonnistui");
     }
   };
 
@@ -286,16 +297,41 @@ function VolunteerOrganizer() {
 
       <section className="mt-4 rounded-xl border bg-card p-4 shadow-sm">
         <h2 className="text-base font-semibold">Lisää talkooryhmä</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Valitse pohja ja aseta tarvittava minimimäärä henkilöitä.
+        </p>
         <div className="mt-2 flex flex-wrap gap-2">
           {VOLUNTEER_TEMPLATES.map((tpl) => (
-            <Button
+            <div
               key={tpl.name}
-              size="sm"
-              variant="outline"
-              onClick={() => void addTask(tpl)}
+              className="flex items-center gap-1 rounded-md border bg-background p-1"
             >
-              <Plus className="mr-1 h-3.5 w-3.5" /> {tpl.name}
-            </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() =>
+                  void addTask({
+                    ...tpl,
+                    needed_count: tplCounts[tpl.name] ?? tpl.needed_count,
+                  })
+                }
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" /> {tpl.name}
+              </Button>
+              <Input
+                type="number"
+                min={1}
+                aria-label={`${tpl.name}: minimimäärä`}
+                className="h-8 w-14 text-center"
+                value={tplCounts[tpl.name] ?? tpl.needed_count}
+                onChange={(e) =>
+                  setTplCounts((prev) => ({
+                    ...prev,
+                    [tpl.name]: Math.max(1, Number(e.target.value) || 1),
+                  }))
+                }
+              />
+            </div>
           ))}
         </div>
         <Button
@@ -430,6 +466,16 @@ function VolunteerOrganizer() {
                   >
                     {people.length}/{t.needed_count}
                   </span>
+                  <Input
+                    type="number"
+                    min={1}
+                    aria-label="Minimimäärä"
+                    className="h-8 w-14 text-center"
+                    value={t.needed_count}
+                    onChange={(e) =>
+                      void changeNeeded(t.id, Math.max(1, Number(e.target.value) || 1))
+                    }
+                  />
                   <Button
                     size="icon"
                     variant="ghost"
