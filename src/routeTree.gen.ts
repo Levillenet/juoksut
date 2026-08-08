@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WatchRouteImport } from './routes/watch'
 import { Route as VideotRouteImport } from './routes/videot'
+import { Route as ToimitsijaRouteImport } from './routes/toimitsija'
 import { Route as TietoaPalvelustaRouteImport } from './routes/tietoa-palvelusta'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SeasonLeadersRouteImport } from './routes/season-leaders'
@@ -68,6 +69,11 @@ const WatchRoute = WatchRouteImport.update({
 const VideotRoute = VideotRouteImport.update({
   id: '/videot',
   path: '/videot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToimitsijaRoute = ToimitsijaRouteImport.update({
+  id: '/toimitsija',
+  path: '/toimitsija',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TietoaPalvelustaRoute = TietoaPalvelustaRouteImport.update({
@@ -334,6 +340,7 @@ export interface FileRoutesByFullPath {
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRouteWithChildren
   '/tietoa-palvelusta': typeof TietoaPalvelustaRoute
+  '/toimitsija': typeof ToimitsijaRoute
   '/videot': typeof VideotRoute
   '/watch': typeof WatchRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -383,6 +390,7 @@ export interface FileRoutesByTo {
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRouteWithChildren
   '/tietoa-palvelusta': typeof TietoaPalvelustaRoute
+  '/toimitsija': typeof ToimitsijaRoute
   '/videot': typeof VideotRoute
   '/watch': typeof WatchRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -436,6 +444,7 @@ export interface FileRoutesById {
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRouteWithChildren
   '/tietoa-palvelusta': typeof TietoaPalvelustaRoute
+  '/toimitsija': typeof ToimitsijaRoute
   '/videot': typeof VideotRoute
   '/watch': typeof WatchRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -490,6 +499,7 @@ export interface FileRouteTypes {
     | '/season-leaders'
     | '/settings'
     | '/tietoa-palvelusta'
+    | '/toimitsija'
     | '/videot'
     | '/watch'
     | '/admin/analytics'
@@ -539,6 +549,7 @@ export interface FileRouteTypes {
     | '/season-leaders'
     | '/settings'
     | '/tietoa-palvelusta'
+    | '/toimitsija'
     | '/videot'
     | '/watch'
     | '/admin/analytics'
@@ -591,6 +602,7 @@ export interface FileRouteTypes {
     | '/season-leaders'
     | '/settings'
     | '/tietoa-palvelusta'
+    | '/toimitsija'
     | '/videot'
     | '/watch'
     | '/admin/analytics'
@@ -644,6 +656,7 @@ export interface RootRouteChildren {
   SeasonLeadersRoute: typeof SeasonLeadersRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   TietoaPalvelustaRoute: typeof TietoaPalvelustaRoute
+  ToimitsijaRoute: typeof ToimitsijaRoute
   VideotRoute: typeof VideotRoute
   WatchRoute: typeof WatchRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
@@ -679,6 +692,13 @@ declare module '@tanstack/react-router' {
       path: '/videot'
       fullPath: '/videot'
       preLoaderRoute: typeof VideotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/toimitsija': {
+      id: '/toimitsija'
+      path: '/toimitsija'
+      fullPath: '/toimitsija'
+      preLoaderRoute: typeof ToimitsijaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tietoa-palvelusta': {
@@ -1128,6 +1148,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeasonLeadersRoute: SeasonLeadersRoute,
   SettingsRoute: SettingsRouteWithChildren,
   TietoaPalvelustaRoute: TietoaPalvelustaRoute,
+  ToimitsijaRoute: ToimitsijaRoute,
   VideotRoute: VideotRoute,
   WatchRoute: WatchRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
@@ -1155,13 +1176,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
