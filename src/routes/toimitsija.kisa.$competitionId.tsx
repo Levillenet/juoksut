@@ -9,6 +9,7 @@ import {
   Copy,
   Printer,
   Send,
+  Star,
   Trash2,
   UserPlus,
 } from "lucide-react";
