@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { LEAD_EVENT_OPTIONS } from "@/lib/officials-schedule";
 import { toast } from "sonner";
 import { useCompetitionsWindow } from "@/lib/competition-list";
 import { helsinkiDateKey } from "@/lib/tuloslista";
@@ -51,6 +53,8 @@ function OfficialHome() {
     club: "",
     skills: "",
     notes: "",
+    can_lead: false,
+    lead_events: [] as string[],
   });
 
   const canOrganize = isAdmin || isOfficial;
@@ -77,6 +81,8 @@ function OfficialHome() {
             club: p.club ?? "",
             skills: p.skills ?? "",
             notes: p.notes ?? "",
+            can_lead: p.can_lead ?? false,
+            lead_events: p.lead_events ?? [],
           });
           setChildren(await fetchMyChildren(p.id));
         } else {
@@ -125,6 +131,8 @@ function OfficialHome() {
         club: form.club.trim() || null,
         skills: form.skills.trim() || null,
         notes: form.notes.trim() || null,
+        can_lead: form.can_lead,
+        lead_events: form.can_lead ? form.lead_events : [],
       });
       setProfile(p);
       toast.success("Toimitsijaprofiili tallennettu.");
@@ -241,7 +249,49 @@ function OfficialHome() {
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
           </div>
+          <div className="sm:col-span-2 rounded-lg border bg-muted/30 p-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="can_lead"
+                checked={form.can_lead}
+                onCheckedChange={(v) => setForm({ ...form, can_lead: v === true })}
+              />
+              <Label htmlFor="can_lead" className="text-sm">
+                Voin toimia lajijohtajana
+              </Label>
+            </div>
+            {form.can_lead && (
+              <div className="mt-3">
+                <p className="text-xs text-muted-foreground">
+                  Valitse lajit, joissa voit toimia lajijohtajana.
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {LEAD_EVENT_OPTIONS.map((ev) => {
+                    const checked = form.lead_events.includes(ev);
+                    return (
+                      <label key={ev} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) =>
+                            setForm((f) => ({
+                              ...f,
+                              lead_events:
+                                v === true
+                                  ? [...f.lead_events, ev]
+                                  : f.lead_events.filter((x) => x !== ev),
+                            }))
+                          }
+                        />
+                        <span>{ev}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+
         <Button className="mt-3" onClick={() => void saveProfile()} disabled={saving}>
           {saving ? "Tallennetaan…" : "Tallenna profiili"}
         </Button>

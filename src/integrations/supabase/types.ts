@@ -776,6 +776,7 @@ export type Database = {
           event_id: number | null
           event_name: string
           id: string
+          is_lead: boolean
           profile_id: string
           requested_at: string | null
           responded_at: string | null
@@ -796,6 +797,7 @@ export type Database = {
           event_id?: number | null
           event_name: string
           id?: string
+          is_lead?: boolean
           profile_id: string
           requested_at?: string | null
           responded_at?: string | null
@@ -816,6 +818,7 @@ export type Database = {
           event_id?: number | null
           event_name?: string
           id?: string
+          is_lead?: boolean
           profile_id?: string
           requested_at?: string | null
           responded_at?: string | null
@@ -1052,6 +1055,7 @@ export type Database = {
       }
       official_profiles: {
         Row: {
+          can_lead: boolean
           claimed_at: string | null
           club: string | null
           created_at: string
@@ -1059,6 +1063,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          lead_events: string[]
           notes: string | null
           phone: string | null
           skills: string | null
@@ -1066,6 +1071,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          can_lead?: boolean
           claimed_at?: string | null
           club?: string | null
           created_at?: string
@@ -1073,6 +1079,7 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          lead_events?: string[]
           notes?: string | null
           phone?: string | null
           skills?: string | null
@@ -1080,6 +1087,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          can_lead?: boolean
           claimed_at?: string | null
           club?: string | null
           created_at?: string
@@ -1087,6 +1095,7 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          lead_events?: string[]
           notes?: string | null
           phone?: string | null
           skills?: string | null

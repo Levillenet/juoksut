@@ -9,6 +9,7 @@ import {
   Copy,
   Printer,
   Send,
+  Star,
   Trash2,
   UserPlus,
 } from "lucide-react";
@@ -27,10 +28,13 @@ import {
   type Round,
 } from "@/lib/tuloslista";
 import { athleteKey } from "@/lib/watch-store";
+import { matchesLeadEvent } from "@/lib/officials-schedule";
 import {
   addAssignment,
+  clearAssignmentLead,
   closeCall,
   createManualProfile,
+  setAssignmentLead,
   fetchAllOfficials,
   fetchAssignments,
   fetchAvailabilityFor,
@@ -273,16 +277,19 @@ function OfficialsCompetition() {
         tier: tierOf.get(p.id) ?? "other",
         reason: reason.get(p.id) ?? null,
         busy: busy.has(p.id),
+        canLead:
+          !!p.can_lead && matchesLeadEvent(fe.round.EventName ?? "", p.lead_events ?? []),
       }))
       .sort((a, b) => {
         if (a.busy !== b.busy) return a.busy ? 1 : -1;
+        if (a.canLead !== b.canLead) return a.canLead ? -1 : 1;
         const t = TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(b.tier);
         if (t !== 0) return t;
         return a.profile.full_name.localeCompare(b.profile.full_name, "fi");
       });
   };
 
-  const assign = async (fe: FieldEvent, profileId: string) => {
+  const assign = async (fe: FieldEvent, profileId: string, asLead = false) => {
     if (!user) return;
     try {
       await addAssignment({
@@ -296,11 +303,34 @@ function OfficialsCompetition() {
         role_label: null,
         created_by: user.id,
       });
-      await reloadAssignments();
+      const list = await fetchAssignments(compId);
+      if (asLead) {
+        const row = list.find(
+          (a) => a.round_id === fe.round.Id && a.profile_id === profileId,
+        );
+        if (row) {
+          await setAssignmentLead(compId, fe.round.Id, row.id);
+          setAssignments(await fetchAssignments(compId));
+          toast.success("Lajijohtaja asetettu.");
+          return;
+        }
+      }
+      setAssignments(list);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Kiinnitys epäonnistui");
     }
   };
+
+  const toggleLead = async (fe: FieldEvent, a: OfficialAssignment) => {
+    try {
+      if (a.is_lead) await clearAssignmentLead(a.id);
+      else await setAssignmentLead(compId, fe.round.Id, a.id);
+      await reloadAssignments();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Toiminto epäonnistui");
+    }
+  };
+
 
   /** Nimi käsin: luodaan toimitsijakortti ja kiinnitetään se suoraan lajiin. */
   const addManual = async (fe: FieldEvent) => {
@@ -380,6 +410,9 @@ function OfficialsCompetition() {
     (fe) => (assignmentsByRound.get(fe.round.Id) ?? []).length === 0,
   ).length;
   const unconfirmed = assignments.filter((a) => a.status !== "confirmed").length;
+  const withoutLead = fieldEvents.filter(
+    (fe) => !(assignmentsByRound.get(fe.round.Id) ?? []).some((a) => a.is_lead),
+  ).length;
 
   if (!canManage) {
     return (
@@ -419,9 +452,14 @@ function OfficialsCompetition() {
           Vajaita: <strong>{understaffed}</strong>
         </span>
         <span className="text-muted-foreground">·</span>
+        <span className={withoutLead > 0 ? "text-destructive" : undefined}>
+          Ilman lajijohtajaa: <strong>{withoutLead}</strong>
+        </span>
+        <span className="text-muted-foreground">·</span>
         <span>
           Varmennusta odottaa: <strong>{unconfirmed}</strong>
         </span>
+
         <div className="ml-auto flex items-center gap-2">
           {!call && (
             <Input
@@ -488,6 +526,7 @@ function OfficialsCompetition() {
             const isOpen = expanded.has(fe.round.Id);
             const min = minFor(fe.round.Id);
             const short = rows.length < min;
+            const leadRow = rows.find((r) => r.is_lead) ?? null;
             return (
               <li
                 key={fe.round.Id}
@@ -518,7 +557,19 @@ function OfficialsCompetition() {
                       {fe.participants} osallistujaa · {rows.length}/{min} toimitsijaa
                       {short ? " · vajaa" : ""}
                     </p>
+                    <p className="text-xs">
+                      {leadRow ? (
+                        <span className="text-primary">
+                          Lajijohtaja: {profileById.get(leadRow.profile_id)?.full_name ?? "?"}
+                        </span>
+                      ) : (
+                        <span className="font-semibold text-destructive">
+                          Lajijohtaja puuttuu
+                        </span>
+                      )}
+                    </p>
                   </div>
+
                   <div className="shrink-0">
                     <Label
                       htmlFor={`min-${fe.round.Id}`}
@@ -543,15 +594,34 @@ function OfficialsCompetition() {
                     {rows.map((a) => {
                       const p = profileById.get(a.profile_id);
                       return (
-                        <li key={a.id} className="flex items-center gap-2 py-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">
+                        <li key={a.id} className="flex flex-wrap items-center gap-2 py-2">
+                          <div className="min-w-40 flex-1">
+                            <p className="flex items-center gap-1 truncate text-sm font-medium">
+                              {a.is_lead && (
+                                <Star className="h-3.5 w-3.5 shrink-0 fill-current text-primary" />
+                              )}
                               {p?.full_name ?? "Tuntematon"}
+                              {a.is_lead && (
+                                <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
+                                  Lajijohtaja
+                                </span>
+                              )}
                             </p>
                             <p className="truncate text-xs text-muted-foreground">
                               {p?.phone ?? ""} {p?.email ? `· ${p.email}` : ""}
                             </p>
                           </div>
+                          <Button
+                            size="sm"
+                            variant={a.is_lead ? "secondary" : "outline"}
+                            onClick={() => void toggleLead(fe, a)}
+                          >
+                            <Star className="h-4 w-4" />
+                            <span className="ml-1">
+                              {a.is_lead ? "Poista lajijohtajuus" : "Lajijohtajaksi"}
+                            </span>
+                          </Button>
+
                           <select
                             className="h-8 rounded-md border bg-background px-2 text-xs"
                             value={a.status}
@@ -655,12 +725,13 @@ function OfficialsCompetition() {
                         </li>
                       )}
                       {suggestionsFor(fe).map((s) => (
-                        <li key={s.profile.id} className="flex items-center gap-2 p-2">
-                          <div className="min-w-0 flex-1">
+                        <li key={s.profile.id} className="flex flex-wrap items-center gap-2 p-2">
+                          <div className="min-w-40 flex-1">
                             <p className="truncate text-sm font-medium">{s.profile.full_name}</p>
                             <p className="truncate text-xs text-muted-foreground">
                               {TIER_LABEL[s.tier]}
                               {s.reason ? ` · ${s.reason}` : ""}
+                              {s.canLead ? " · voi toimia lajijohtajana" : ""}
                               {s.busy ? " · varattu samaan aikaan" : ""}
                             </p>
                           </div>
@@ -672,8 +743,17 @@ function OfficialsCompetition() {
                             <UserPlus className="h-4 w-4" />
                             <span className="ml-1">Kiinnitä</span>
                           </Button>
+                          <Button
+                            size="sm"
+                            variant={s.canLead ? "default" : "outline"}
+                            onClick={() => void assign(fe, s.profile.id, true)}
+                          >
+                            <Star className="h-4 w-4" />
+                            <span className="ml-1">Lajijohtajaksi</span>
+                          </Button>
                         </li>
                       ))}
+
                     </ul>
                   </>
                 )}
