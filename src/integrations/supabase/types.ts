@@ -2424,7 +2424,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "planner" | "official"
+      app_role: "admin" | "planner" | "official" | "organizer"
       note_link_invite_status: "pending" | "accepted" | "declined" | "revoked"
       team_invite_status: "pending" | "accepted" | "declined" | "revoked"
       team_role: "owner" | "coach" | "member"
@@ -2555,7 +2555,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "planner", "official"],
+      app_role: ["admin", "planner", "official", "organizer"],
       note_link_invite_status: ["pending", "accepted", "declined", "revoked"],
       team_invite_status: ["pending", "accepted", "declined", "revoked"],
       team_role: ["owner", "coach", "member"],
