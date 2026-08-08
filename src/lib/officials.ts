@@ -93,6 +93,8 @@ export async function saveMyProfile(
     club: string | null;
     skills: string | null;
     notes: string | null;
+    can_lead: boolean;
+    lead_events: string[];
   },
 ): Promise<OfficialProfile> {
   const { data, error } = await supabase
