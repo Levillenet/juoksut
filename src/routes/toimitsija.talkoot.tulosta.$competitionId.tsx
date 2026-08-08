@@ -99,7 +99,7 @@ function VolunteerPrintList() {
                 {people.map((p) => (
                   <li key={p.id}>
                     {p.full_name}
-                    {isOrganizer && p.phone ? ` · ` : ""}
+                    {isOrganizer && p.phone ? ` · ${p.phone}` : ""}
                   </li>
                 ))}
                 {Array.from({ length: Math.max(0, t.needed_count - people.length) }).map(
