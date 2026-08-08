@@ -43,7 +43,7 @@ Uudet taulut (RLS + GRANT jokaiselle):
 
 Näkyvyys: profiilin ja lasten luku vain omistajalle sekä `has_role(auth.uid(),'admin'|'official')`. Kirjoitus vain omistajalle. Assignmentit ja callit: luku kirjautuneille toimitsijoille, kirjoitus admin/official.
 
-Ehdotuslogiikka tehdään palvelinfunktiossa (`src/lib/officials.functions.ts`, `requireSupabaseAuth`): se ottaa lajin osallistujat live-aikataulusta tulevasta allokaatiolistasta, muodostaa athlete_keyt samalla `athleteKey`-funktiolla ja liittää ne `official_children`-riveihin, sen jälkeen lisää käytettävissä olevat ja loput.
+Ehdotuslogiikka tehdään palvelinfunktiossa (`src/lib/officials.functions.ts`, `requireSupabaseAuth`): se ottaa lajin osallistujat live-aikataulusta tulevasta allokaatiolistasta, muodostaa athlete_keyt samalla `athleteKey`-funktiolla ja liittää ne `official_children`-riveihin. Huoltajat (is_guardian) nousevat listan kärkeen, muut kiinnittäjät heti perään, sitten käytettävissä olevat ja loput. Kenttälajisuodatus tehdään olemassa olevalla `isRunningEvent`-logiikalla käänteisesti (`src/lib/tuloslista.ts`).
 
 Uudet tiedostot: `src/routes/toimitsija.index.tsx`, `src/routes/toimitsija.kisa.$competitionId.tsx`, `src/components/officials/*`, `src/lib/officials.functions.ts`, `src/lib/officials.ts`. Muutos `src/routes/index.tsx` (kortti).
 
