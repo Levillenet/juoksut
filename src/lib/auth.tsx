@@ -14,6 +14,7 @@ interface AuthState {
   role: Role;
   isAdmin: boolean;
   isPlanner: boolean;
+  isOrganizer: boolean;
   loading: boolean;
   signInOfficial: (password: string) => boolean;
   signOut: () => Promise<void>;
