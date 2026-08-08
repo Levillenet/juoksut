@@ -518,7 +518,19 @@ function OfficialsCompetition() {
                       {fe.participants} osallistujaa · {rows.length}/{min} toimitsijaa
                       {short ? " · vajaa" : ""}
                     </p>
+                    <p className="text-xs">
+                      {leadRow ? (
+                        <span className="text-primary">
+                          Lajijohtaja: {profileById.get(leadRow.profile_id)?.full_name ?? "?"}
+                        </span>
+                      ) : (
+                        <span className="font-semibold text-destructive">
+                          Lajijohtaja puuttuu
+                        </span>
+                      )}
+                    </p>
                   </div>
+
                   <div className="shrink-0">
                     <Label
                       htmlFor={`min-${fe.round.Id}`}
