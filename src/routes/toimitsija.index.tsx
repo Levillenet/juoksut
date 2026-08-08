@@ -117,6 +117,14 @@ function OfficialHome() {
     [children],
   );
 
+  const myClub = (form.club || profile?.club || "").trim();
+  const visibleCalls = useMemo(
+    () => calls.filter((c) => callMatchesClub(c.target_clubs, myClub)),
+    [calls, myClub],
+  );
+  const hiddenCallCount = calls.length - visibleCalls.length;
+
+
   const saveProfile = async () => {
     if (!form.full_name.trim() || !form.email.trim()) {
       toast.error("Nimi ja sähköposti ovat pakollisia.");
