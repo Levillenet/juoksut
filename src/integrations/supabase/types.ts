@@ -772,6 +772,7 @@ export type Database = {
           confirm_token: string | null
           created_at: string
           created_by: string | null
+          day: string | null
           event_id: number | null
           event_name: string
           id: string
@@ -780,6 +781,7 @@ export type Database = {
           responded_at: string | null
           role_label: string | null
           round_id: number | null
+          source: string
           starts_at: string | null
           status: string
           updated_at: string
@@ -790,6 +792,7 @@ export type Database = {
           confirm_token?: string | null
           created_at?: string
           created_by?: string | null
+          day?: string | null
           event_id?: number | null
           event_name: string
           id?: string
@@ -798,6 +801,7 @@ export type Database = {
           responded_at?: string | null
           role_label?: string | null
           round_id?: number | null
+          source?: string
           starts_at?: string | null
           status?: string
           updated_at?: string
@@ -808,6 +812,7 @@ export type Database = {
           confirm_token?: string | null
           created_at?: string
           created_by?: string | null
+          day?: string | null
           event_id?: number | null
           event_name?: string
           id?: string
@@ -816,6 +821,7 @@ export type Database = {
           responded_at?: string | null
           role_label?: string | null
           round_id?: number | null
+          source?: string
           starts_at?: string | null
           status?: string
           updated_at?: string
@@ -916,10 +922,13 @@ export type Database = {
           competition_id: number
           competition_name: string
           created_at: string
+          days: Json | null
           id: string
           message: string | null
+          open_from: string | null
           open_until: string | null
           opened_by: string | null
+          share_token: string | null
           updated_at: string
         }
         Insert: {
@@ -927,10 +936,13 @@ export type Database = {
           competition_id: number
           competition_name: string
           created_at?: string
+          days?: Json | null
           id?: string
           message?: string | null
+          open_from?: string | null
           open_until?: string | null
           opened_by?: string | null
+          share_token?: string | null
           updated_at?: string
         }
         Update: {
@@ -938,18 +950,112 @@ export type Database = {
           competition_id?: number
           competition_name?: string
           created_at?: string
+          days?: Json | null
           id?: string
           message?: string | null
+          open_from?: string | null
           open_until?: string | null
           opened_by?: string | null
+          share_token?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      official_day_availability: {
+        Row: {
+          available: boolean
+          competition_id: number
+          created_at: string
+          day: string
+          end_time: string | null
+          id: string
+          profile_id: string
+          start_time: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          available?: boolean
+          competition_id: number
+          created_at?: string
+          day: string
+          end_time?: string | null
+          id?: string
+          profile_id: string
+          start_time?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          available?: boolean
+          competition_id?: number
+          created_at?: string
+          day?: string
+          end_time?: string | null
+          id?: string
+          profile_id?: string
+          start_time?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "official_day_availability_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "official_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      official_event_requirements: {
+        Row: {
+          age_class: string | null
+          competition_id: number
+          created_at: string
+          created_by: string | null
+          event_id: number | null
+          event_name: string
+          id: string
+          min_officials: number
+          round_id: number
+          starts_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          age_class?: string | null
+          competition_id: number
+          created_at?: string
+          created_by?: string | null
+          event_id?: number | null
+          event_name?: string
+          id?: string
+          min_officials?: number
+          round_id: number
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          age_class?: string | null
+          competition_id?: number
+          created_at?: string
+          created_by?: string | null
+          event_id?: number | null
+          event_name?: string
+          id?: string
+          min_officials?: number
+          round_id?: number
+          starts_at?: string | null
           updated_at?: string
         }
         Relationships: []
       }
       official_profiles: {
         Row: {
+          claimed_at: string | null
           club: string | null
           created_at: string
+          created_by: string | null
           email: string
           full_name: string
           id: string
@@ -957,11 +1063,13 @@ export type Database = {
           phone: string | null
           skills: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
+          claimed_at?: string | null
           club?: string | null
           created_at?: string
+          created_by?: string | null
           email: string
           full_name: string
           id?: string
@@ -969,11 +1077,13 @@ export type Database = {
           phone?: string | null
           skills?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
+          claimed_at?: string | null
           club?: string | null
           created_at?: string
+          created_by?: string | null
           email?: string
           full_name?: string
           id?: string
@@ -981,7 +1091,7 @@ export type Database = {
           phone?: string | null
           skills?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
