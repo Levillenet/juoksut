@@ -52,6 +52,7 @@ import { Route as AdminTuloslistaProbeRouteImport } from './routes/admin.tulosli
 import { Route as AdminRolesRouteImport } from './routes/admin.roles'
 import { Route as AdminClubLocationsRouteImport } from './routes/admin.club-locations'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
+import { Route as ToimitsijaTalkootIndexRouteImport } from './routes/toimitsija.talkoot.index'
 import { Route as ToimitsijaTalkootCompetitionIdRouteImport } from './routes/toimitsija.talkoot.$competitionId'
 import { Route as ToimitsijaKisaCompetitionIdRouteImport } from './routes/toimitsija.kisa.$competitionId'
 import { Route as ToimitsijaHakuCompetitionIdRouteImport } from './routes/toimitsija.haku.$competitionId'
@@ -283,6 +284,11 @@ const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
   path: '/admin/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToimitsijaTalkootIndexRoute = ToimitsijaTalkootIndexRouteImport.update({
+  id: '/talkoot/',
+  path: '/talkoot/',
+  getParentRoute: () => ToimitsijaRoute,
+} as any)
 const ToimitsijaTalkootCompetitionIdRoute =
   ToimitsijaTalkootCompetitionIdRouteImport.update({
     id: '/talkoot/$competitionId',
@@ -422,6 +428,7 @@ export interface FileRoutesByFullPath {
   '/toimitsija/haku/$competitionId': typeof ToimitsijaHakuCompetitionIdRoute
   '/toimitsija/kisa/$competitionId': typeof ToimitsijaKisaCompetitionIdRoute
   '/toimitsija/talkoot/$competitionId': typeof ToimitsijaTalkootCompetitionIdRoute
+  '/toimitsija/talkoot/': typeof ToimitsijaTalkootIndexRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
   '/api/public/hooks/monitor-tuloslista': typeof ApiPublicHooksMonitorTuloslistaRoute
@@ -478,6 +485,7 @@ export interface FileRoutesByTo {
   '/toimitsija/haku/$competitionId': typeof ToimitsijaHakuCompetitionIdRoute
   '/toimitsija/kisa/$competitionId': typeof ToimitsijaKisaCompetitionIdRoute
   '/toimitsija/talkoot/$competitionId': typeof ToimitsijaTalkootCompetitionIdRoute
+  '/toimitsija/talkoot': typeof ToimitsijaTalkootIndexRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
   '/api/public/hooks/monitor-tuloslista': typeof ApiPublicHooksMonitorTuloslistaRoute
@@ -539,6 +547,7 @@ export interface FileRoutesById {
   '/toimitsija/haku/$competitionId': typeof ToimitsijaHakuCompetitionIdRoute
   '/toimitsija/kisa/$competitionId': typeof ToimitsijaKisaCompetitionIdRoute
   '/toimitsija/talkoot/$competitionId': typeof ToimitsijaTalkootCompetitionIdRoute
+  '/toimitsija/talkoot/': typeof ToimitsijaTalkootIndexRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
   '/api/public/hooks/monitor-tuloslista': typeof ApiPublicHooksMonitorTuloslistaRoute
@@ -601,6 +610,7 @@ export interface FileRouteTypes {
     | '/toimitsija/haku/$competitionId'
     | '/toimitsija/kisa/$competitionId'
     | '/toimitsija/talkoot/$competitionId'
+    | '/toimitsija/talkoot/'
     | '/api/public/hooks/harvest-kilpailukalenteri'
     | '/api/public/hooks/harvest-results'
     | '/api/public/hooks/monitor-tuloslista'
@@ -657,6 +667,7 @@ export interface FileRouteTypes {
     | '/toimitsija/haku/$competitionId'
     | '/toimitsija/kisa/$competitionId'
     | '/toimitsija/talkoot/$competitionId'
+    | '/toimitsija/talkoot'
     | '/api/public/hooks/harvest-kilpailukalenteri'
     | '/api/public/hooks/harvest-results'
     | '/api/public/hooks/monitor-tuloslista'
@@ -717,6 +728,7 @@ export interface FileRouteTypes {
     | '/toimitsija/haku/$competitionId'
     | '/toimitsija/kisa/$competitionId'
     | '/toimitsija/talkoot/$competitionId'
+    | '/toimitsija/talkoot/'
     | '/api/public/hooks/harvest-kilpailukalenteri'
     | '/api/public/hooks/harvest-results'
     | '/api/public/hooks/monitor-tuloslista'
@@ -1069,6 +1081,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/toimitsija/talkoot/': {
+      id: '/toimitsija/talkoot/'
+      path: '/talkoot'
+      fullPath: '/toimitsija/talkoot/'
+      preLoaderRoute: typeof ToimitsijaTalkootIndexRouteImport
+      parentRoute: typeof ToimitsijaRoute
+    }
     '/toimitsija/talkoot/$competitionId': {
       id: '/toimitsija/talkoot/$competitionId'
       path: '/talkoot/$competitionId'
@@ -1260,6 +1279,7 @@ interface ToimitsijaRouteChildren {
   ToimitsijaHakuCompetitionIdRoute: typeof ToimitsijaHakuCompetitionIdRoute
   ToimitsijaKisaCompetitionIdRoute: typeof ToimitsijaKisaCompetitionIdRoute
   ToimitsijaTalkootCompetitionIdRoute: typeof ToimitsijaTalkootCompetitionIdRoute
+  ToimitsijaTalkootIndexRoute: typeof ToimitsijaTalkootIndexRoute
   ToimitsijaTalkootTulostaCompetitionIdRoute: typeof ToimitsijaTalkootTulostaCompetitionIdRoute
 }
 
@@ -1269,6 +1289,7 @@ const ToimitsijaRouteChildren: ToimitsijaRouteChildren = {
   ToimitsijaHakuCompetitionIdRoute: ToimitsijaHakuCompetitionIdRoute,
   ToimitsijaKisaCompetitionIdRoute: ToimitsijaKisaCompetitionIdRoute,
   ToimitsijaTalkootCompetitionIdRoute: ToimitsijaTalkootCompetitionIdRoute,
+  ToimitsijaTalkootIndexRoute: ToimitsijaTalkootIndexRoute,
   ToimitsijaTalkootTulostaCompetitionIdRoute:
     ToimitsijaTalkootTulostaCompetitionIdRoute,
 }
