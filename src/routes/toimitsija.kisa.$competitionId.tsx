@@ -527,7 +527,70 @@ function OfficialsCompetition() {
           >
             {call ? "Sulje toimitsijahaku" : "Avaa toimitsijahaku"}
           </Button>
+      </div>
+
+      <div className="mt-3 rounded-xl border bg-card p-3 text-sm shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Kutsu suunnataan seuroille
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Valitse seurat, joiden toimitsijoille kutsu näkyy. Jos et valitse yhtään seuraa, haku on
+          avoin kaikille toimitsijoille.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {clubOptions.length === 0 && (
+            <span className="text-xs text-muted-foreground">
+              Toimitsijaprofiileissa ei ole vielä seuratietoja. Lisää seura alle.
+            </span>
+          )}
+          {clubOptions.map((c) => {
+            const on = targetClubs.includes(c);
+            return (
+              <button
+                key={c}
+                type="button"
+                onClick={() => toggleClub(c)}
+                className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                  on
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "bg-background hover:bg-accent"
+                }`}
+              >
+                {c}
+              </button>
+            );
+          })}
         </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Input
+            className="h-9 w-56"
+            placeholder="Lisää seura, esim. Lahden Ahkera"
+            value={clubInput}
+            onChange={(e) => setClubInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addClub();
+              }
+            }}
+            aria-label="Lisää kohdeseura"
+          />
+          <Button size="sm" variant="outline" onClick={addClub}>
+            Lisää seura
+          </Button>
+          {call && (
+            <Button size="sm" onClick={() => void saveTargetClubs()}>
+              Tallenna kohdeseurat
+            </Button>
+          )}
+          <span className="text-xs text-muted-foreground">
+            {targetClubs.length === 0
+              ? "Nyt: kaikille toimitsijoille"
+              : `Nyt: ${targetClubs.join(", ")}`}
+          </span>
+        </div>
+      </div>
+
       </div>
 
       {call && (
