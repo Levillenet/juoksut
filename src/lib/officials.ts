@@ -101,14 +101,28 @@ export async function saveMyProfile(
     lead_events: string[];
   },
 ): Promise<OfficialProfile> {
+  // Huom: user_id-indeksi on osittainen (WHERE user_id IS NOT NULL), joten
+  // ON CONFLICT -upsert ei toimi. Haetaan ensin ja päivitetään tai luodaan.
+  const existing = await fetchMyProfile(userId);
+  if (existing) {
+    const { data, error } = await supabase
+      .from("official_profiles")
+      .update(values)
+      .eq("id", existing.id)
+      .select(PROFILE_COLS)
+      .single();
+    if (error) throw error;
+    return data as OfficialProfile;
+  }
   const { data, error } = await supabase
     .from("official_profiles")
-    .upsert({ user_id: userId, ...values }, { onConflict: "user_id" })
+    .insert({ user_id: userId, claimed_at: new Date().toISOString(), ...values })
     .select(PROFILE_COLS)
     .single();
   if (error) throw error;
   return data as OfficialProfile;
 }
+
 
 export async function fetchMyChildren(profileId: string): Promise<OfficialChild[]> {
   const { data, error } = await supabase
