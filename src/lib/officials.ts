@@ -9,6 +9,8 @@ export interface OfficialProfile {
   club: string | null;
   skills: string | null;
   notes: string | null;
+  can_lead: boolean;
+  lead_events: string[];
 }
 
 
