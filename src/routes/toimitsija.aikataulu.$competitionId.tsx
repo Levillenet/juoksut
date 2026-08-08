@@ -140,15 +140,24 @@ function OfficialSchedule() {
                     {a.starts_at ? formatTime(a.starts_at) : "–"}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{a.event_name}</p>
+                    <p className="flex items-center gap-1 truncate text-sm font-medium">
+                      {a.event_name}
+                      {a.is_lead && (
+                        <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
+                          Lajijohtaja
+                        </span>
+                      )}
+                    </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {showAll && canManage
                         ? `${profileById.get(a.profile_id)?.full_name ?? "Tuntematon"} · `
                         : ""}
                       {STATUS_LABEL_FI[a.status as AssignmentStatus] ?? a.status}
+                      {a.is_lead ? " · lajijohtaja" : ""}
                       {a.role_label ? ` · ${a.role_label}` : ""}
                     </p>
                   </div>
+
                 </li>
               ))}
             </ul>
