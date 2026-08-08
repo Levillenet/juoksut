@@ -54,6 +54,7 @@ function VolunteerOrganizer() {
     [list, compId],
   );
 
+  const [tplCounts, setTplCounts] = useState<Record<string, number>>({});
   const [call, setCall] = useState<VolunteerCall | null>(null);
   const [tasks, setTasks] = useState<VolunteerTask[]>([]);
   const [signups, setSignups] = useState<VolunteerSignup[]>([]);
