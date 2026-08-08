@@ -338,6 +338,23 @@ function OfficialHome() {
                         {c.open_until ? ` · vastaa viimeistään ${c.open_until}` : ""}
                       </p>
                       {c.message && <p className="mt-1 text-xs">{c.message}</p>}
+                      <div className="mt-1 flex flex-wrap gap-3">
+                        <Link
+                          to="/toimitsija/haku/$competitionId"
+                          params={{ competitionId: String(c.competition_id) }}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Ilmoittaudu lajeihin
+                        </Link>
+                        <Link
+                          to="/toimitsija/aikataulu/$competitionId"
+                          params={{ competitionId: String(c.competition_id) }}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Oma aikataulu
+                        </Link>
+                      </div>
+
                     </div>
                     <Switch
                       checked={st?.available ?? false}
