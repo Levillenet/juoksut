@@ -8,17 +8,19 @@ Tavoite: korvata WhatsApp-sähläys. Toimitsija luo profiilin ja kiinnittää om
 
 **1. Oma toimitsijaprofiili, /toimitsija**
 - Nimi, sähköposti (esitäytetään tilistä), puhelinnumero, seura, vapaa lisätieto (esim. osaaminen: sähköinen ajanotto, kuulan mittaus).
-- "Omat urheilijat": haku samalla hakukomponentilla kuin kilpailijaseurannassa, valitaan urheilija ja suhde (vanhempi, isovanhempi, muu). Lista poistettavissa.
+- "Omat urheilijat": haku samalla hakukomponentilla kuin kilpailijaseurannassa. Urheilija vain kiinnitetään itselle, sukulaisuussuhdetta ei kysytä. Yksi rasti: "Olen huoltaja". Sama urheilija voi olla kiinnitettynä usealle toimitsijalle (isä, äiti, mummo, pappa). Lista poistettavissa.
 - "Käytettävissä kisoihin": lista tulevista kilpailuista, joihin järjestelytoimikunta on avannut toimitsijahaun. Käyttäjä merkitsee itsensä käytettäväksi ja voi kirjoittaa rajoitteen (esim. vain lauantaina).
 
 **2. Järjestelytoimikunnan näkymä, /toimitsija/kisa/$competitionId**
 - Kilpailu valitaan samalla kilpailuvalitsimella kuin muuallakin, lajilista haetaan live-aikataulusta (sama aikataulurajapinta ja välimuisti kuin kuuluttajanäkymässä), joten lajeja ei syötetä käsin.
+- Vain kenttälajit. Kaikki juoksu- ja viestilajit rajataan pois listalta, koska juoksujen toimitsijat hoidetaan eri prosessissa.
 - Lajit aikajärjestyksessä, jokaisella: tarvittava toimitsijamäärä, kiinnitetyt toimitsijat, tila (ehdotettu, pyydetty, varmennettu, kieltäytynyt).
 - Jokaisen lajin kohdalla "Ehdota toimitsijoita": lista järjestyksessä
-  1. lajissa kilpailevien lasten huoltajat,
-  2. samaan aikaan muussa lajissa kiinni olevat merkitään varatuiksi,
+  1. lajissa kilpailevien urheilijoiden huoltajat,
+  2. muut, jotka ovat kiinnittäneet saman urheilijan itselleen,
   3. kisaan käytettäväksi ilmoittautuneet,
   4. muut profiilin luoneet.
+  Samaan aikaan toisessa lajissa kiinni olevat merkitään varatuiksi.
 - Yhteenveto: montako lajia ilman toimitsijaa, montako vajaata.
 - Yhteystiedot ja lapsikytkennät näkyvät vain järjestelytoimikunnalle ja adminille.
 
