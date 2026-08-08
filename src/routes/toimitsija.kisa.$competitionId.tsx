@@ -48,6 +48,8 @@ import {
   requestConfirmations,
   setAssignmentStatus,
   setRequirement,
+  updateCallTargetClubs,
+
   STATUS_LABEL_FI,
   type EventRequirement,
   type OfficialAssignment,
