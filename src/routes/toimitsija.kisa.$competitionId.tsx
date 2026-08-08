@@ -382,14 +382,42 @@ function OfficialsCompetition() {
           open_until: openUntil || null,
           message: null,
           opened_by: user.id,
+          target_clubs: targetClubs,
         });
         setCall(await fetchCall(compId));
-        toast.success("Toimitsijahaku avattu, toimitsijat voivat ilmoittautua.");
+        toast.success(
+          targetClubs.length > 0
+            ? `Toimitsijahaku avattu seuroille: ${targetClubs.join(", ")}`
+            : "Toimitsijahaku avattu kaikille toimitsijoille.",
+        );
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Toiminto epäonnistui");
     }
   };
+
+  const saveTargetClubs = async () => {
+    try {
+      await updateCallTargetClubs(compId, targetClubs);
+      setCall((c) => (c ? { ...c, target_clubs: targetClubs } : c));
+      toast.success("Kohdeseurat tallennettu.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Tallennus epäonnistui");
+    }
+  };
+
+  const toggleClub = (club: string) =>
+    setTargetClubs((prev) =>
+      prev.includes(club) ? prev.filter((c) => c !== club) : [...prev, club],
+    );
+
+  const addClub = () => {
+    const c = clubInput.trim();
+    if (!c) return;
+    setTargetClubs((prev) => (prev.includes(c) ? prev : [...prev, c]));
+    setClubInput("");
+  };
+
 
   const signupUrl =
     call && typeof window !== "undefined"
