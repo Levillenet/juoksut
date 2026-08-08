@@ -19,6 +19,7 @@ export const Route = createFileRoute("/toimitsija/talkoot/tulosta/$competitionId
 function VolunteerPrintList() {
   const { competitionId } = Route.useParams();
   const compId = Number(competitionId);
+  const { isOrganizer } = useAuth();
   const [name, setName] = useState("");
   const [tasks, setTasks] = useState<VolunteerTask[]>([]);
   const [signups, setSignups] = useState<VolunteerSignup[]>([]);
