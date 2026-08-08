@@ -79,6 +79,8 @@ function OfficialHome() {
             club: p.club ?? "",
             skills: p.skills ?? "",
             notes: p.notes ?? "",
+            can_lead: p.can_lead ?? false,
+            lead_events: p.lead_events ?? [],
           });
           setChildren(await fetchMyChildren(p.id));
         } else {
