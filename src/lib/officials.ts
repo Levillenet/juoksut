@@ -369,7 +369,8 @@ export interface OfficialCallFull extends OfficialCall {
 }
 
 const CALL_FULL_COLS =
-  "id, competition_id, competition_name, competition_date, open_until, message, share_token, open_from";
+  "id, competition_id, competition_name, competition_date, open_until, message, share_token, open_from, target_clubs";
+
 
 export async function fetchCall(competitionId: number): Promise<OfficialCallFull | null> {
   const { data, error } = await supabase
