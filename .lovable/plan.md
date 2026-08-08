@@ -53,9 +53,13 @@ Sovellus:
 
 - `src/lib/volunteers.ts`: ryhmien ja ilmoittautumisten CRUD, tokenpohjaiset RPC-kutsut, täyttöasteen laskenta.
 - `src/lib/volunteer-templates.ts`: valmiiden talkooryhmien pohjat.
-- Uudet reitit: `src/routes/talkoot.tsx` (layout ja head), `src/routes/talkoot.index.tsx`, `src/routes/talkoot.kisa.$competitionId.tsx`, `src/routes/talkoot.haku.$token.tsx` (julkinen, ei kirjautumisvaatimusta), `src/routes/talkoot.lista.$competitionId.tulosta.tsx`.
+- Uudet reitit nykyisen `/toimitsija`-osion alle: `src/routes/toimitsija.talkoot.$competitionId.tsx`, `src/routes/toimitsija.talkoot.haku.$token.tsx` (julkinen, ohittaa osion kirjautumisportin) ja `src/routes/toimitsija.talkoot.tulosta.$competitionId.tsx`.
+- Koska `/toimitsija` on tällä hetkellä kirjautumisen takana, julkinen talkoohaku toteutetaan omana juurireittinä `src/routes/talkoot.haku.$token.tsx` ja osion sisäinen linkki osoittaa siihen.
+- `src/routes/toimitsija.tsx`: otsikot ja head-metatiedot päivitetään muotoon "Kilpailun järjestelyt, toimitsijat ja talkooväki"; lisätään jaettu välilehtipalkki (Lajitoimitsijat / Talkoot).
+- `src/routes/toimitsija.index.tsx`: uusi kaksikorttinen aloitus ja omat talkoovuorot.
 - Uudet komponentit `src/components/volunteers/`: `VolunteerTaskDialog`, `VolunteerTaskCard`, `VolunteerSignupForm`, `VolunteerShareCard`.
 - Kilpailupäivät johdetaan olemassa olevasta kilpailuindeksistä samalla tavalla kuin toimitsijapuolella, joten uusia kutsuja tuloslistalle ei synny.
+
 
 ## Ei tässä vaiheessa
 
