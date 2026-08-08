@@ -139,6 +139,7 @@ function Page() {
               <option value="planner">planner</option>
               <option value="admin">admin</option>
               <option value="official">toimitsija</option>
+              <option value="organizer">kisajärjestäjä</option>
             </select>
             <Button
               onClick={() => grant.mutate()}
