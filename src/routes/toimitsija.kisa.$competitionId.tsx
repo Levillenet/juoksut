@@ -543,15 +543,34 @@ function OfficialsCompetition() {
                     {rows.map((a) => {
                       const p = profileById.get(a.profile_id);
                       return (
-                        <li key={a.id} className="flex items-center gap-2 py-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">
+                        <li key={a.id} className="flex flex-wrap items-center gap-2 py-2">
+                          <div className="min-w-40 flex-1">
+                            <p className="flex items-center gap-1 truncate text-sm font-medium">
+                              {a.is_lead && (
+                                <Star className="h-3.5 w-3.5 shrink-0 fill-current text-primary" />
+                              )}
                               {p?.full_name ?? "Tuntematon"}
+                              {a.is_lead && (
+                                <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
+                                  Lajijohtaja
+                                </span>
+                              )}
                             </p>
                             <p className="truncate text-xs text-muted-foreground">
                               {p?.phone ?? ""} {p?.email ? `· ${p.email}` : ""}
                             </p>
                           </div>
+                          <Button
+                            size="sm"
+                            variant={a.is_lead ? "secondary" : "outline"}
+                            onClick={() => void toggleLead(fe, a)}
+                          >
+                            <Star className="h-4 w-4" />
+                            <span className="ml-1">
+                              {a.is_lead ? "Poista lajijohtajuus" : "Lajijohtajaksi"}
+                            </span>
+                          </Button>
+
                           <select
                             className="h-8 rounded-md border bg-background px-2 text-xs"
                             value={a.status}
