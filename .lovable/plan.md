@@ -21,7 +21,7 @@ Tietomallit, ilmoittautumislinkit ja listat pidetään erillään: talkoorivit e
 - "Avaa talkoohaku" tuottaa jaettavan linkin, jonka voi kopioida WhatsAppiin. Linkki toimii ilman kirjautumista.
 - Tulostettava talkoolista: ryhmä, aika, paikka, vastuuhenkilö ja nimet.
 
-### Talkoolainen, sivu /talkoot/haku/:token
+### Talkoolainen, sivu /toimitsija/talkoot/haku/:token
 
 - Kilpailun nimi, päivät ja lyhyt viesti järjestäjältä.
 - Ryhmät päivittäin listattuna: tehtävän kuvaus, aika, paikka, vapaat paikat.
@@ -29,12 +29,15 @@ Tietomallit, ilmoittautumislinkit ja listat pidetään erillään: talkoorivit e
 - Voi ilmoittautua useaan ryhmään ja perua oman ilmoittautumisensa.
 - Täynnä oleva ryhmä näkyy täytenä, mutta varalle voi ilmoittautua.
 
-### Sivu /talkoot
+### Osion etusivu /toimitsija
 
-- Kirjautuneelle: omat talkoovuorot kilpailuittain ja avoimet talkoohaut.
-- Järjestäjälle (admin tai toimitsija-rooli): lista kilpailuista, joista pääsee ryhmien hallintaan.
+- Otsikko "Kilpailun järjestelyt" ja kaksi korttia: "Lajitoimitsijat" ja "Talkoo- ja järjestelytehtävät".
+- Kirjautuneelle näytetään molemmista omat vuorot: toimitsijatehtävät ja talkoovuorot omina listoinaan.
+- Järjestäjälle kilpailulista, josta pääsee kummankin osion hallintaan.
+- Yhteinen välilehtipalkki näkyy myös kilpailukohtaisilla sivuilla, jotta järjestäjä liikkuu toimitsijoiden ja talkoiden välillä yhdellä klikkauksella.
 
-Etusivulle ja toimitsijasivulle lisätään linkki talkoo-osioon, mutta osiot pidetään erillään myös käyttöliittymän sanastossa: "talkoot" ja "talkooryhmä" eivät esiinny toimitsijanäkymissä.
+Etusivun valikkokortin teksti päivitetään: "Kilpailun järjestelyt, toimitsijat ja talkooväki". Sanasto pidetään erillään: talkootermit eivät esiinny toimitsijalistoissa eivätkä toimitsijatermit talkoolistoissa.
+
 
 ## Tekniset muutokset
 
