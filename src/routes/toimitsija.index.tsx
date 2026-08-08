@@ -390,13 +390,19 @@ function OfficialHome() {
 
       <section className="mt-4 rounded-xl border bg-card p-4 shadow-sm">
         <h2 className="text-base font-semibold">Käytettävissä kisoihin</h2>
-        {calls.length === 0 ? (
+        {hiddenCallCount > 0 && !(profile?.club ?? "").trim() && (
+          <p className="mt-1 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
+            Lisää seura profiiliisi nähdäksesi seurallesi suunnatut kutsut.
+          </p>
+        )}
+        {visibleCalls.length === 0 ? (
           <p className="mt-1 text-sm text-muted-foreground">
             Avoimia toimitsijahakuja ei ole juuri nyt.
           </p>
         ) : (
           <ul className="mt-2 space-y-3">
-            {calls.map((c) => {
+            {visibleCalls.map((c) => {
+
               const st = availability[c.competition_id];
               return (
                 <li key={c.id} className="rounded-lg border p-3">
