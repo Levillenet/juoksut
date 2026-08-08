@@ -124,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role,
         isAdmin,
         isPlanner,
+        isOrganizer,
         loading: loading || rolesLoading,
         signInOfficial,
         signOut,
