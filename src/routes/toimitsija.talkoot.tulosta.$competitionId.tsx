@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import {
   fetchVolunteerCall,
@@ -98,7 +99,7 @@ function VolunteerPrintList() {
                 {people.map((p) => (
                   <li key={p.id}>
                     {p.full_name}
-                    {p.phone ? ` · ${p.phone}` : ""}
+                    {isOrganizer && p.phone ? ` · ` : ""}
                   </li>
                 ))}
                 {Array.from({ length: Math.max(0, t.needed_count - people.length) }).map(
