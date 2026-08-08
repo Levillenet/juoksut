@@ -247,7 +247,49 @@ function OfficialHome() {
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
           </div>
+          <div className="sm:col-span-2 rounded-lg border bg-muted/30 p-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="can_lead"
+                checked={form.can_lead}
+                onCheckedChange={(v) => setForm({ ...form, can_lead: v === true })}
+              />
+              <Label htmlFor="can_lead" className="text-sm">
+                Voin toimia lajijohtajana
+              </Label>
+            </div>
+            {form.can_lead && (
+              <div className="mt-3">
+                <p className="text-xs text-muted-foreground">
+                  Valitse lajit, joissa voit toimia lajijohtajana.
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {LEAD_EVENT_OPTIONS.map((ev) => {
+                    const checked = form.lead_events.includes(ev);
+                    return (
+                      <label key={ev} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) =>
+                            setForm((f) => ({
+                              ...f,
+                              lead_events:
+                                v === true
+                                  ? [...f.lead_events, ev]
+                                  : f.lead_events.filter((x) => x !== ev),
+                            }))
+                          }
+                        />
+                        <span>{ev}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+
         <Button className="mt-3" onClick={() => void saveProfile()} disabled={saving}>
           {saving ? "Tallennetaan…" : "Tallenna profiili"}
         </Button>
