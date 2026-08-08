@@ -655,12 +655,13 @@ function OfficialsCompetition() {
                         </li>
                       )}
                       {suggestionsFor(fe).map((s) => (
-                        <li key={s.profile.id} className="flex items-center gap-2 p-2">
-                          <div className="min-w-0 flex-1">
+                        <li key={s.profile.id} className="flex flex-wrap items-center gap-2 p-2">
+                          <div className="min-w-40 flex-1">
                             <p className="truncate text-sm font-medium">{s.profile.full_name}</p>
                             <p className="truncate text-xs text-muted-foreground">
                               {TIER_LABEL[s.tier]}
                               {s.reason ? ` · ${s.reason}` : ""}
+                              {s.canLead ? " · voi toimia lajijohtajana" : ""}
                               {s.busy ? " · varattu samaan aikaan" : ""}
                             </p>
                           </div>
@@ -672,8 +673,17 @@ function OfficialsCompetition() {
                             <UserPlus className="h-4 w-4" />
                             <span className="ml-1">Kiinnitä</span>
                           </Button>
+                          <Button
+                            size="sm"
+                            variant={s.canLead ? "default" : "outline"}
+                            onClick={() => void assign(fe, s.profile.id, true)}
+                          >
+                            <Star className="h-4 w-4" />
+                            <span className="ml-1">Lajijohtajaksi</span>
+                          </Button>
                         </li>
                       ))}
+
                     </ul>
                   </>
                 )}
