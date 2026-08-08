@@ -36,7 +36,7 @@ Varmennuspyyntö sähköpostilla, julkinen token-linkki (/toimitsija/varmenna/$t
 
 Uudet taulut (RLS + GRANT jokaiselle):
 - `official_profiles`: user_id (uniikki), full_name, email, phone, club, skills, notes.
-- `official_children`: official_profile_id, athlete_key, surname, firstname, organization, organization_id, relation.
+- `official_children`: official_profile_id, athlete_key, surname, firstname, organization, organization_id, is_guardian (huoltaja kyllä/ei). Uniikki pari (profiili, athlete_key), mutta sama athlete_key voi toistua eri profiileilla.
 - `official_competition_calls`: competition_id, competition_name, opened_by, open_from, open_until, message. Järjestelytoimikunta avaa toimitsijahaun.
 - `official_availability`: user_id, competition_id, available, constraint_note.
 - `official_assignments`: competition_id, event_id, round_id, event_name, age_class, starts_at, official_profile_id, role_label, status (`proposed|requested|confirmed|declined`), confirm_token, requested_at, responded_at.
