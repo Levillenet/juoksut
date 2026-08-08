@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { LEAD_EVENT_OPTIONS } from "@/lib/officials-schedule";
 import { toast } from "sonner";
 import { useCompetitionsWindow } from "@/lib/competition-list";
 import { helsinkiDateKey } from "@/lib/tuloslista";
