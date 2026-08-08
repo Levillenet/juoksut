@@ -413,7 +413,13 @@ function OfficialHome() {
                         {c.competition_date ? helsinkiDateKey(c.competition_date) : ""}
                         {c.open_until ? ` · vastaa viimeistään ${c.open_until}` : ""}
                       </p>
+                      {(c.target_clubs ?? []).length > 0 && (
+                        <p className="mt-0.5 text-xs font-semibold text-primary">
+                          Suunnattu: {(c.target_clubs ?? []).join(", ")}
+                        </p>
+                      )}
                       {c.message && <p className="mt-1 text-xs">{c.message}</p>}
+
                       <div className="mt-1 flex flex-wrap gap-3">
                         <Link
                           to="/toimitsija/haku/$competitionId"
