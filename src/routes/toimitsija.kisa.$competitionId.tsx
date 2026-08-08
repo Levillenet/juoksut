@@ -488,6 +488,7 @@ function OfficialsCompetition() {
             const isOpen = expanded.has(fe.round.Id);
             const min = minFor(fe.round.Id);
             const short = rows.length < min;
+            const leadRow = rows.find((r) => r.is_lead) ?? null;
             return (
               <li
                 key={fe.round.Id}
