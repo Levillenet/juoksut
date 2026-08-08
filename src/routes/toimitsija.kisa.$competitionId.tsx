@@ -96,10 +96,13 @@ function OfficialsCompetition() {
   const [requirements, setRequirements] = useState<EventRequirement[]>([]);
   const [call, setCall] = useState<OfficialCallFull | null>(null);
   const [openUntil, setOpenUntil] = useState("");
+  const [targetClubs, setTargetClubs] = useState<string[]>([]);
+  const [clubInput, setClubInput] = useState("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [manualName, setManualName] = useState("");
   const [manualPhone, setManualPhone] = useState("");
   const [loading, setLoading] = useState(true);
+
 
   const reloadAssignments = async () => setAssignments(await fetchAssignments(compId));
 
