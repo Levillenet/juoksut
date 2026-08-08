@@ -52,6 +52,7 @@ import { Route as AdminTuloslistaProbeRouteImport } from './routes/admin.tulosli
 import { Route as AdminRolesRouteImport } from './routes/admin.roles'
 import { Route as AdminClubLocationsRouteImport } from './routes/admin.club-locations'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
+import { Route as ToimitsijaKisaCompetitionIdRouteImport } from './routes/toimitsija.kisa.$competitionId'
 import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
 import { Route as PlannerPlanIdGanttRouteImport } from './routes/planner.$planId.gantt'
 import { Route as ApiPublicHooksMonitorTuloslistaRouteImport } from './routes/api/public/hooks/monitor-tuloslista'
@@ -277,6 +278,12 @@ const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
   path: '/admin/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToimitsijaKisaCompetitionIdRoute =
+  ToimitsijaKisaCompetitionIdRouteImport.update({
+    id: '/kisa/$competitionId',
+    path: '/kisa/$competitionId',
+    getParentRoute: () => ToimitsijaRoute,
+  } as any)
 const RoundEventIdRoundIdRoute = RoundEventIdRoundIdRouteImport.update({
   id: '/round/$eventId/$roundId',
   path: '/round/$eventId/$roundId',
@@ -376,6 +383,7 @@ export interface FileRoutesByFullPath {
   '/toimitsija/': typeof ToimitsijaIndexRoute
   '/planner/$planId/gantt': typeof PlannerPlanIdGanttRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
+  '/toimitsija/kisa/$competitionId': typeof ToimitsijaKisaCompetitionIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
   '/api/public/hooks/monitor-tuloslista': typeof ApiPublicHooksMonitorTuloslistaRoute
@@ -426,6 +434,7 @@ export interface FileRoutesByTo {
   '/toimitsija': typeof ToimitsijaIndexRoute
   '/planner/$planId/gantt': typeof PlannerPlanIdGanttRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
+  '/toimitsija/kisa/$competitionId': typeof ToimitsijaKisaCompetitionIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
   '/api/public/hooks/monitor-tuloslista': typeof ApiPublicHooksMonitorTuloslistaRoute
@@ -481,6 +490,7 @@ export interface FileRoutesById {
   '/toimitsija/': typeof ToimitsijaIndexRoute
   '/planner/$planId/gantt': typeof PlannerPlanIdGanttRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
+  '/toimitsija/kisa/$competitionId': typeof ToimitsijaKisaCompetitionIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
   '/api/public/hooks/harvest-results': typeof ApiPublicHooksHarvestResultsRoute
   '/api/public/hooks/monitor-tuloslista': typeof ApiPublicHooksMonitorTuloslistaRoute
@@ -537,6 +547,7 @@ export interface FileRouteTypes {
     | '/toimitsija/'
     | '/planner/$planId/gantt'
     | '/round/$eventId/$roundId'
+    | '/toimitsija/kisa/$competitionId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
     | '/api/public/hooks/harvest-results'
     | '/api/public/hooks/monitor-tuloslista'
@@ -587,6 +598,7 @@ export interface FileRouteTypes {
     | '/toimitsija'
     | '/planner/$planId/gantt'
     | '/round/$eventId/$roundId'
+    | '/toimitsija/kisa/$competitionId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
     | '/api/public/hooks/harvest-results'
     | '/api/public/hooks/monitor-tuloslista'
@@ -641,6 +653,7 @@ export interface FileRouteTypes {
     | '/toimitsija/'
     | '/planner/$planId/gantt'
     | '/round/$eventId/$roundId'
+    | '/toimitsija/kisa/$competitionId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
     | '/api/public/hooks/harvest-results'
     | '/api/public/hooks/monitor-tuloslista'
@@ -991,6 +1004,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/toimitsija/kisa/$competitionId': {
+      id: '/toimitsija/kisa/$competitionId'
+      path: '/kisa/$competitionId'
+      fullPath: '/toimitsija/kisa/$competitionId'
+      preLoaderRoute: typeof ToimitsijaKisaCompetitionIdRouteImport
+      parentRoute: typeof ToimitsijaRoute
+    }
     '/round/$eventId/$roundId': {
       id: '/round/$eventId/$roundId'
       path: '/round/$eventId/$roundId'
@@ -1136,10 +1156,12 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 
 interface ToimitsijaRouteChildren {
   ToimitsijaIndexRoute: typeof ToimitsijaIndexRoute
+  ToimitsijaKisaCompetitionIdRoute: typeof ToimitsijaKisaCompetitionIdRoute
 }
 
 const ToimitsijaRouteChildren: ToimitsijaRouteChildren = {
   ToimitsijaIndexRoute: ToimitsijaIndexRoute,
+  ToimitsijaKisaCompetitionIdRoute: ToimitsijaKisaCompetitionIdRoute,
 }
 
 const ToimitsijaRouteWithChildren = ToimitsijaRoute._addFileChildren(
