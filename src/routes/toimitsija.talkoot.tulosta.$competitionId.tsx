@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import {
   fetchVolunteerCall,
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/toimitsija/talkoot/tulosta/$competitionId
 function VolunteerPrintList() {
   const { competitionId } = Route.useParams();
   const compId = Number(competitionId);
+  const { isOrganizer } = useAuth();
   const [name, setName] = useState("");
   const [tasks, setTasks] = useState<VolunteerTask[]>([]);
   const [signups, setSignups] = useState<VolunteerSignup[]>([]);
@@ -97,7 +99,7 @@ function VolunteerPrintList() {
                 {people.map((p) => (
                   <li key={p.id}>
                     {p.full_name}
-                    {p.phone ? ` · ${p.phone}` : ""}
+                    {isOrganizer && p.phone ? ` · ${p.phone}` : ""}
                   </li>
                 ))}
                 {Array.from({ length: Math.max(0, t.needed_count - people.length) }).map(

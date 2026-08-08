@@ -14,6 +14,7 @@ interface AuthState {
   role: Role;
   isAdmin: boolean;
   isPlanner: boolean;
+  isOrganizer: boolean;
   loading: boolean;
   signInOfficial: (password: string) => boolean;
   signOut: () => Promise<void>;
@@ -111,6 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const role: Role = effectiveOfficial ? "official" : user ? "user" : null;
   const isAdmin = roles.includes("admin");
   const isPlanner = roles.includes("planner") || isAdmin;
+  // Kisojen järjestelyoikeus: avaa toimitsija- ja talkoohaut sekä yhteystiedot
+  const isOrganizer = roles.includes("organizer") || isAdmin;
 
   return (
     <Ctx.Provider
@@ -121,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role,
         isAdmin,
         isPlanner,
+        isOrganizer,
         loading: loading || rolesLoading,
         signInOfficial,
         signOut,

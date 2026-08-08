@@ -84,8 +84,8 @@ const DEFAULT_MIN_OFFICIALS = 2;
 function OfficialsCompetition() {
   const { competitionId } = Route.useParams();
   const compId = Number(competitionId);
-  const { user, isAdmin, isOfficial } = useAuth();
-  const canManage = isAdmin || isOfficial;
+  const { user, isAdmin, isOfficial, isOrganizer } = useAuth();
+  const canManage = isOrganizer;
 
   const indexQuery = useQuery(
     competitionIndexQueryOptions(compId, { skipBaselines: true }),
