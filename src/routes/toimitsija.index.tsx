@@ -51,6 +51,8 @@ function OfficialHome() {
     club: "",
     skills: "",
     notes: "",
+    can_lead: false,
+    lead_events: [] as string[],
   });
 
   const canOrganize = isAdmin || isOfficial;
