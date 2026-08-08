@@ -1883,6 +1883,155 @@ export type Database = {
         }
         Relationships: []
       }
+      volunteer_calls: {
+        Row: {
+          competition_date: string | null
+          competition_id: number
+          competition_name: string
+          created_at: string
+          id: string
+          message: string | null
+          open_from: string | null
+          open_until: string | null
+          opened_by: string | null
+          share_token: string
+          updated_at: string
+        }
+        Insert: {
+          competition_date?: string | null
+          competition_id: number
+          competition_name: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          open_from?: string | null
+          open_until?: string | null
+          opened_by?: string | null
+          share_token?: string
+          updated_at?: string
+        }
+        Update: {
+          competition_date?: string | null
+          competition_id?: number
+          competition_name?: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          open_from?: string | null
+          open_until?: string | null
+          opened_by?: string | null
+          share_token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      volunteer_signups: {
+        Row: {
+          competition_id: number
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          note: string | null
+          phone: string | null
+          source: string
+          status: string
+          task_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          competition_id: number
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          note?: string | null
+          phone?: string | null
+          source?: string
+          status?: string
+          task_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          competition_id?: number
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          note?: string | null
+          phone?: string | null
+          source?: string
+          status?: string
+          task_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "volunteer_signups_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "volunteer_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      volunteer_tasks: {
+        Row: {
+          competition_id: number
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          day: string | null
+          description: string | null
+          end_time: string | null
+          id: string
+          location: string | null
+          name: string
+          needed_count: number
+          sort_order: number
+          start_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          competition_id: number
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          day?: string | null
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          location?: string | null
+          name: string
+          needed_count?: number
+          sort_order?: number
+          start_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          competition_id?: number
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          day?: string | null
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          location?: string | null
+          name?: string
+          needed_count?: number
+          sort_order?: number
+          start_time?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       watch_shares: {
         Row: {
           competition_id: number
@@ -2120,6 +2269,18 @@ export type Database = {
         }[]
       }
       get_user_id_by_email: { Args: { _email: string }; Returns: string }
+      get_volunteer_call: {
+        Args: { _token: string }
+        Returns: {
+          competition_date: string
+          competition_id: number
+          competition_name: string
+          is_open: boolean
+          message: string
+          open_from: string
+          open_until: string
+        }[]
+      }
       grant_role_by_email: {
         Args: { _email: string; _role: Database["public"]["Enums"]["app_role"] }
         Returns: string
@@ -2186,6 +2347,23 @@ export type Database = {
           user_id: string
         }[]
       }
+      list_volunteer_tasks: {
+        Args: { _token: string }
+        Returns: {
+          contact_name: string
+          contact_phone: string
+          day: string
+          description: string
+          end_time: string
+          id: string
+          location: string
+          name: string
+          needed_count: number
+          signed_count: number
+          sort_order: number
+          start_time: string
+        }[]
+      }
       mark_pbs_for_athletes: {
         Args: { athlete_keys: string[] }
         Returns: number
@@ -2225,6 +2403,21 @@ export type Database = {
       try_tuloslista_proxy_lock: {
         Args: { _path: string; _ttl_seconds?: number }
         Returns: boolean
+      }
+      volunteer_cancel_signup: {
+        Args: { _signup_id: string; _token: string }
+        Returns: boolean
+      }
+      volunteer_signup: {
+        Args: {
+          _email?: string
+          _name: string
+          _note?: string
+          _phone?: string
+          _task_id: string
+          _token: string
+        }
+        Returns: string
       }
     }
     Enums: {

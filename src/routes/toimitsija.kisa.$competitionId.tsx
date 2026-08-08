@@ -29,6 +29,8 @@ import {
 } from "@/lib/tuloslista";
 import { athleteKey } from "@/lib/watch-store";
 import { matchesLeadEvent } from "@/lib/officials-schedule";
+import { OrganizerTabs } from "@/components/volunteers/OrganizerTabs";
+
 import {
   addAssignment,
   clearAssignmentLead,
@@ -432,12 +434,14 @@ function OfficialsCompetition() {
         to="/toimitsija"
         className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
       >
-        <ArrowLeft className="h-4 w-4" /> Toimitsijat
+        <ArrowLeft className="h-4 w-4" /> Kilpailun järjestelyt
       </Link>
       <h1 className="text-xl font-bold">{competitionName || `Kilpailu ${compId}`}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Kenttälajien toimitsijaluettelo. Juoksulajit eivät näy tässä näkymässä.
       </p>
+      <OrganizerTabs competitionId={compId} active="toimitsijat" />
+
 
       <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3 text-sm shadow-sm">
         <span>

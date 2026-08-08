@@ -151,11 +151,12 @@ function NavCards({ role, isAdmin = false, isPlanner = false }: { role: Role; is
         to="/toimitsija"
         className="rounded-xl border-2 border-primary/30 bg-card px-4 py-2.5 text-center hover:bg-secondary"
       >
-        <div className="text-sm font-semibold leading-tight">Toimitsijat</div>
+        <div className="text-sm font-semibold leading-tight">Kilpailun järjestelyt</div>
         <div className="mt-0.5 text-[11px] text-muted-foreground">
-          Toimitsijaprofiili, omat urheilijat ja kenttälajien toimitsijaluettelo
+          Toimitsijat ja talkooväki: lajitoimitsijat sekä talkoo- ja järjestelytehtävät
         </div>
       </Link>
+
 
 
 
