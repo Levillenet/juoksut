@@ -32,7 +32,10 @@ export interface OfficialCall {
   competition_date: string | null;
   open_until: string | null;
   message: string | null;
+  /** Seurat, joille kutsu on suunnattu. Tyhjä = kaikille. */
+  target_clubs: string[];
 }
+
 
 export interface OfficialAvailability {
   id: string;
