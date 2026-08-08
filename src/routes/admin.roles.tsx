@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin/roles")({
   component: Gate,
 });
 
-type AppRole = "admin" | "planner" | "official";
+type AppRole = "admin" | "planner" | "official" | "organizer";
 
 interface RoleRow {
   user_id: string;
