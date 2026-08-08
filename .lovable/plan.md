@@ -1,10 +1,17 @@
-# Talkoohenkilöstö, oma kokonaisuus
+# Kilpailun järjestelyt: toimitsijat ja talkooväki
 
-Talkooväki (aitaryhmä, kahvio, tekninen ryhmä, liikenteenohjaus jne.) hallinnoidaan täysin erillään lajitoimitsijoista. Omat sivut, oma tietomalli, oma ilmoittautumislinkki. Toimitsijanäkymiin ei tule talkoorivejä eikä toisinpäin.
+Sama valikkokokonaisuus, kaksi erillistä osiota. Osion nimi muuttuu muotoon "Kilpailun järjestelyt, toimitsijat ja talkooväki" (lyhyt muoto valikkokortissa: "Kilpailun järjestelyt"). Osion sisällä on kaksi selkeästi erillistä välilehteä:
+
+- Lajitoimitsijat, nykyinen toiminnallisuus sellaisenaan
+- Talkoo- ja järjestelytehtävät, uusi kokonaisuus
+
+Tietomallit, ilmoittautumislinkit ja listat pidetään erillään: talkoorivit eivät näy toimitsijanäkymissä eivätkä toisinpäin. Vain navigaatio ja yhteinen otsikkotaso ovat jaettuja.
 
 ## Mitä käyttäjä näkee
 
-### Järjestäjä, sivu /talkoot/kisa/:competitionId
+### Järjestäjä, sivu /toimitsija/talkoot/:competitionId
+
+
 
 - "Luo talkooryhmä": nimi (esim. Aitaryhmä), kuvaus, vastuuhenkilö, tarvittava henkilömäärä, päivä ja kellonaikaväli, kokoontumispaikka.
 - Valmiit pohjat yhdellä klikkauksella: Aitaryhmä, Kahvio, Tekninen ryhmä, Tulospalvelu, Liikenteenohjaus, Pystytys, Purku, Kuulutus, Ensiapu. Pohjan voi nimetä ja muokata vapaasti.
