@@ -133,7 +133,9 @@ function OfficialsCompetition() {
         setAvailableProfileIds(ids);
         setAssignments(asg);
         setCall(c);
+        setTargetClubs(c?.target_clubs ?? []);
         setRequirements(reqs);
+
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Lataus epäonnistui");
       } finally {
