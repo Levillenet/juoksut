@@ -190,10 +190,30 @@ function OfficialHome() {
       <Link to="/" className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline">
         <ArrowLeft className="h-4 w-4" /> Etusivulle
       </Link>
-      <h1 className="text-xl font-bold">Toimitsijat</h1>
+      <h1 className="text-xl font-bold">Kilpailun järjestelyt</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Kenttälajien toimitsijat. Juoksulajit hoidetaan omassa prosessissaan.
+        Toimitsijat ja talkooväki. Kaksi erillistä kokonaisuutta samassa valikossa.
       </p>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <div className="rounded-xl border-2 border-primary/30 bg-card p-3">
+          <p className="text-sm font-semibold">Lajitoimitsijat</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            Kenttälajien toimitsijat, profiilit ja lajijohtajat. Hallinta löytyy alta.
+          </p>
+        </div>
+        <Link
+          to="/toimitsija/talkoot"
+          className="rounded-xl border-2 border-primary/30 bg-card p-3 hover:bg-secondary"
+        >
+          <p className="text-sm font-semibold">Talkoo- ja järjestelytehtävät</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            Aitaryhmä, kahvio, tekninen ryhmä ja muut kilpailun järjestelytehtävät
+          </p>
+        </Link>
+      </div>
+
+
 
       <section className="mt-5 rounded-xl border bg-card p-4 shadow-sm">
         <h2 className="text-base font-semibold">Oma toimitsijaprofiili</h2>
