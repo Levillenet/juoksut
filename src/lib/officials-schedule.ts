@@ -98,3 +98,23 @@ export function roundInWindow(
 export function roundLabel(r: Round): string {
   return `${r.Age ? `${r.Age} ` : ""}${r.EventName}`.trim();
 }
+
+/** Kenttälajit, joille toimitsija voi ilmoittautua lajijohtajaksi. */
+export const LEAD_EVENT_OPTIONS = [
+  "Korkeus",
+  "Seiväs",
+  "Pituus",
+  "Kolmiloikka",
+  "Kuula",
+  "Kiekko",
+  "Moukari",
+  "Keihäs",
+  "Pallonheitto",
+  "Moniottelu",
+] as const;
+
+/** Osuuko lajin nimi toimitsijan ilmoittamiin lajijohtajalajeihin. */
+export function matchesLeadEvent(eventName: string, leadEvents: string[]): boolean {
+  const n = eventName.toLowerCase();
+  return leadEvents.some((e) => n.includes(e.toLowerCase()));
+}
