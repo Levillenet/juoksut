@@ -1,10 +1,17 @@
-# Talkoohenkilöstö, oma kokonaisuus
+# Kilpailun järjestelyt: toimitsijat ja talkooväki
 
-Talkooväki (aitaryhmä, kahvio, tekninen ryhmä, liikenteenohjaus jne.) hallinnoidaan täysin erillään lajitoimitsijoista. Omat sivut, oma tietomalli, oma ilmoittautumislinkki. Toimitsijanäkymiin ei tule talkoorivejä eikä toisinpäin.
+Sama valikkokokonaisuus, kaksi erillistä osiota. Osion nimi muuttuu muotoon "Kilpailun järjestelyt, toimitsijat ja talkooväki" (lyhyt muoto valikkokortissa: "Kilpailun järjestelyt"). Osion sisällä on kaksi selkeästi erillistä välilehteä:
+
+- Lajitoimitsijat, nykyinen toiminnallisuus sellaisenaan
+- Talkoo- ja järjestelytehtävät, uusi kokonaisuus
+
+Tietomallit, ilmoittautumislinkit ja listat pidetään erillään: talkoorivit eivät näy toimitsijanäkymissä eivätkä toisinpäin. Vain navigaatio ja yhteinen otsikkotaso ovat jaettuja.
 
 ## Mitä käyttäjä näkee
 
-### Järjestäjä, sivu /talkoot/kisa/:competitionId
+### Järjestäjä, sivu /toimitsija/talkoot/:competitionId
+
+
 
 - "Luo talkooryhmä": nimi (esim. Aitaryhmä), kuvaus, vastuuhenkilö, tarvittava henkilömäärä, päivä ja kellonaikaväli, kokoontumispaikka.
 - Valmiit pohjat yhdellä klikkauksella: Aitaryhmä, Kahvio, Tekninen ryhmä, Tulospalvelu, Liikenteenohjaus, Pystytys, Purku, Kuulutus, Ensiapu. Pohjan voi nimetä ja muokata vapaasti.
@@ -14,7 +21,7 @@ Talkooväki (aitaryhmä, kahvio, tekninen ryhmä, liikenteenohjaus jne.) hallinn
 - "Avaa talkoohaku" tuottaa jaettavan linkin, jonka voi kopioida WhatsAppiin. Linkki toimii ilman kirjautumista.
 - Tulostettava talkoolista: ryhmä, aika, paikka, vastuuhenkilö ja nimet.
 
-### Talkoolainen, sivu /talkoot/haku/:token
+### Talkoolainen, sivu /toimitsija/talkoot/haku/:token
 
 - Kilpailun nimi, päivät ja lyhyt viesti järjestäjältä.
 - Ryhmät päivittäin listattuna: tehtävän kuvaus, aika, paikka, vapaat paikat.
@@ -22,12 +29,15 @@ Talkooväki (aitaryhmä, kahvio, tekninen ryhmä, liikenteenohjaus jne.) hallinn
 - Voi ilmoittautua useaan ryhmään ja perua oman ilmoittautumisensa.
 - Täynnä oleva ryhmä näkyy täytenä, mutta varalle voi ilmoittautua.
 
-### Sivu /talkoot
+### Osion etusivu /toimitsija
 
-- Kirjautuneelle: omat talkoovuorot kilpailuittain ja avoimet talkoohaut.
-- Järjestäjälle (admin tai toimitsija-rooli): lista kilpailuista, joista pääsee ryhmien hallintaan.
+- Otsikko "Kilpailun järjestelyt" ja kaksi korttia: "Lajitoimitsijat" ja "Talkoo- ja järjestelytehtävät".
+- Kirjautuneelle näytetään molemmista omat vuorot: toimitsijatehtävät ja talkoovuorot omina listoinaan.
+- Järjestäjälle kilpailulista, josta pääsee kummankin osion hallintaan.
+- Yhteinen välilehtipalkki näkyy myös kilpailukohtaisilla sivuilla, jotta järjestäjä liikkuu toimitsijoiden ja talkoiden välillä yhdellä klikkauksella.
 
-Etusivulle ja toimitsijasivulle lisätään linkki talkoo-osioon, mutta osiot pidetään erillään myös käyttöliittymän sanastossa: "talkoot" ja "talkooryhmä" eivät esiinny toimitsijanäkymissä.
+Etusivun valikkokortin teksti päivitetään: "Kilpailun järjestelyt, toimitsijat ja talkooväki". Sanasto pidetään erillään: talkootermit eivät esiinny toimitsijalistoissa eivätkä toimitsijatermit talkoolistoissa.
+
 
 ## Tekniset muutokset
 
@@ -43,9 +53,13 @@ Sovellus:
 
 - `src/lib/volunteers.ts`: ryhmien ja ilmoittautumisten CRUD, tokenpohjaiset RPC-kutsut, täyttöasteen laskenta.
 - `src/lib/volunteer-templates.ts`: valmiiden talkooryhmien pohjat.
-- Uudet reitit: `src/routes/talkoot.tsx` (layout ja head), `src/routes/talkoot.index.tsx`, `src/routes/talkoot.kisa.$competitionId.tsx`, `src/routes/talkoot.haku.$token.tsx` (julkinen, ei kirjautumisvaatimusta), `src/routes/talkoot.lista.$competitionId.tulosta.tsx`.
+- Uudet reitit nykyisen `/toimitsija`-osion alle: `src/routes/toimitsija.talkoot.$competitionId.tsx`, `src/routes/toimitsija.talkoot.haku.$token.tsx` (julkinen, ohittaa osion kirjautumisportin) ja `src/routes/toimitsija.talkoot.tulosta.$competitionId.tsx`.
+- Koska `/toimitsija` on tällä hetkellä kirjautumisen takana, julkinen talkoohaku toteutetaan omana juurireittinä `src/routes/talkoot.haku.$token.tsx` ja osion sisäinen linkki osoittaa siihen.
+- `src/routes/toimitsija.tsx`: otsikot ja head-metatiedot päivitetään muotoon "Kilpailun järjestelyt, toimitsijat ja talkooväki"; lisätään jaettu välilehtipalkki (Lajitoimitsijat / Talkoot).
+- `src/routes/toimitsija.index.tsx`: uusi kaksikorttinen aloitus ja omat talkoovuorot.
 - Uudet komponentit `src/components/volunteers/`: `VolunteerTaskDialog`, `VolunteerTaskCard`, `VolunteerSignupForm`, `VolunteerShareCard`.
 - Kilpailupäivät johdetaan olemassa olevasta kilpailuindeksistä samalla tavalla kuin toimitsijapuolella, joten uusia kutsuja tuloslistalle ei synny.
+
 
 ## Ei tässä vaiheessa
 
