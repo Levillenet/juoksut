@@ -55,6 +55,7 @@ export interface OfficialAssignment {
   profile_id: string;
   role_label: string | null;
   status: AssignmentStatus;
+  is_lead: boolean;
 }
 
 export const STATUS_LABEL_FI: Record<AssignmentStatus, string> = {
