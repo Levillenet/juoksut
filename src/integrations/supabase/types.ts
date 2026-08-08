@@ -765,6 +765,226 @@ export type Database = {
         }
         Relationships: []
       }
+      official_assignments: {
+        Row: {
+          age_class: string | null
+          competition_id: number
+          confirm_token: string | null
+          created_at: string
+          created_by: string | null
+          event_id: number | null
+          event_name: string
+          id: string
+          profile_id: string
+          requested_at: string | null
+          responded_at: string | null
+          role_label: string | null
+          round_id: number | null
+          starts_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          age_class?: string | null
+          competition_id: number
+          confirm_token?: string | null
+          created_at?: string
+          created_by?: string | null
+          event_id?: number | null
+          event_name: string
+          id?: string
+          profile_id: string
+          requested_at?: string | null
+          responded_at?: string | null
+          role_label?: string | null
+          round_id?: number | null
+          starts_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          age_class?: string | null
+          competition_id?: number
+          confirm_token?: string | null
+          created_at?: string
+          created_by?: string | null
+          event_id?: number | null
+          event_name?: string
+          id?: string
+          profile_id?: string
+          requested_at?: string | null
+          responded_at?: string | null
+          role_label?: string | null
+          round_id?: number | null
+          starts_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "official_assignments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "official_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      official_availability: {
+        Row: {
+          available: boolean
+          competition_id: number
+          constraint_note: string | null
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          available?: boolean
+          competition_id: number
+          constraint_note?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          available?: boolean
+          competition_id?: number
+          constraint_note?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      official_children: {
+        Row: {
+          athlete_key: string
+          created_at: string
+          firstname: string
+          id: string
+          is_guardian: boolean
+          organization: string | null
+          organization_id: number | null
+          profile_id: string
+          surname: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          athlete_key: string
+          created_at?: string
+          firstname: string
+          id?: string
+          is_guardian?: boolean
+          organization?: string | null
+          organization_id?: number | null
+          profile_id: string
+          surname: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          athlete_key?: string
+          created_at?: string
+          firstname?: string
+          id?: string
+          is_guardian?: boolean
+          organization?: string | null
+          organization_id?: number | null
+          profile_id?: string
+          surname?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "official_children_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "official_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      official_competition_calls: {
+        Row: {
+          competition_date: string | null
+          competition_id: number
+          competition_name: string
+          created_at: string
+          id: string
+          message: string | null
+          open_until: string | null
+          opened_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          competition_date?: string | null
+          competition_id: number
+          competition_name: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          open_until?: string | null
+          opened_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          competition_date?: string | null
+          competition_id?: number
+          competition_name?: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          open_until?: string | null
+          opened_by?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      official_profiles: {
+        Row: {
+          club: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          notes: string | null
+          phone: string | null
+          skills: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          club?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          skills?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          club?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          skills?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       organization_locations: {
         Row: {
           city: string
