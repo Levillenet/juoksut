@@ -456,6 +456,16 @@ function VolunteerOrganizer() {
                   >
                     {people.length}/{t.needed_count}
                   </span>
+                  <Input
+                    type="number"
+                    min={1}
+                    aria-label="Minimimäärä"
+                    className="h-8 w-14 text-center"
+                    value={t.needed_count}
+                    onChange={(e) =>
+                      void changeNeeded(t.id, Math.max(1, Number(e.target.value) || 1))
+                    }
+                  />
                   <Button
                     size="icon"
                     variant="ghost"
