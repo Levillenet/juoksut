@@ -165,6 +165,15 @@ function VolunteerOrganizer() {
     }
   };
 
+  const changeNeeded = async (id: string, needed: number) => {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, needed_count: needed } : t)));
+    try {
+      await updateVolunteerTask(id, { needed_count: needed });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Päivitys epäonnistui");
+    }
+  };
+
   const removeTask = async (id: string) => {
     try {
       await deleteVolunteerTask(id);
