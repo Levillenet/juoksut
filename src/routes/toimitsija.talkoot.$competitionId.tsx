@@ -20,6 +20,7 @@ import {
   openVolunteerCall,
   removeVolunteerSignup,
   taskTimeLabel,
+  updateVolunteerTask,
   type VolunteerCall,
   type VolunteerSignup,
   type VolunteerTask,
