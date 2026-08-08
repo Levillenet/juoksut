@@ -410,6 +410,9 @@ function OfficialsCompetition() {
     (fe) => (assignmentsByRound.get(fe.round.Id) ?? []).length === 0,
   ).length;
   const unconfirmed = assignments.filter((a) => a.status !== "confirmed").length;
+  const withoutLead = fieldEvents.filter(
+    (fe) => !(assignmentsByRound.get(fe.round.Id) ?? []).some((a) => a.is_lead),
+  ).length;
 
   if (!canManage) {
     return (
