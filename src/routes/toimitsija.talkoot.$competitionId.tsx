@@ -286,16 +286,41 @@ function VolunteerOrganizer() {
 
       <section className="mt-4 rounded-xl border bg-card p-4 shadow-sm">
         <h2 className="text-base font-semibold">Lisää talkooryhmä</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Valitse pohja ja aseta tarvittava minimimäärä henkilöitä.
+        </p>
         <div className="mt-2 flex flex-wrap gap-2">
           {VOLUNTEER_TEMPLATES.map((tpl) => (
-            <Button
+            <div
               key={tpl.name}
-              size="sm"
-              variant="outline"
-              onClick={() => void addTask(tpl)}
+              className="flex items-center gap-1 rounded-md border bg-background p-1"
             >
-              <Plus className="mr-1 h-3.5 w-3.5" /> {tpl.name}
-            </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() =>
+                  void addTask({
+                    ...tpl,
+                    needed_count: tplCounts[tpl.name] ?? tpl.needed_count,
+                  })
+                }
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" /> {tpl.name}
+              </Button>
+              <Input
+                type="number"
+                min={1}
+                aria-label={`${tpl.name}: minimimäärä`}
+                className="h-8 w-14 text-center"
+                value={tplCounts[tpl.name] ?? tpl.needed_count}
+                onChange={(e) =>
+                  setTplCounts((prev) => ({
+                    ...prev,
+                    [tpl.name]: Math.max(1, Number(e.target.value) || 1),
+                  }))
+                }
+              />
+            </div>
           ))}
         </div>
         <Button
