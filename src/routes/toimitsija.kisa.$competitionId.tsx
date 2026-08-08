@@ -28,7 +28,6 @@ import {
   type Round,
 } from "@/lib/tuloslista";
 import { athleteKey } from "@/lib/watch-store";
-import {
 import { matchesLeadEvent } from "@/lib/officials-schedule";
 import {
   addAssignment,
