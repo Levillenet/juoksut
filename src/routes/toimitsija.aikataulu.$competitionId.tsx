@@ -24,8 +24,8 @@ export const Route = createFileRoute("/toimitsija/aikataulu/$competitionId")({
 function OfficialSchedule() {
   const { competitionId } = Route.useParams();
   const compId = Number(competitionId);
-  const { user, isAdmin, isOfficial } = useAuth();
-  const canManage = isAdmin || isOfficial;
+  const { user, isAdmin, isOfficial, isOrganizer } = useAuth();
+  const canManage = isOrganizer;
   const userId = user?.id ?? "";
 
   const scheduleQuery = useQuery(competitionScheduleQueryOptions(compId));

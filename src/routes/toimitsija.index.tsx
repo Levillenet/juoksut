@@ -38,7 +38,7 @@ export const Route = createFileRoute("/toimitsija/")({
 });
 
 function OfficialHome() {
-  const { user, isAdmin, isOfficial } = useAuth();
+  const { user, isAdmin, isOfficial, isOrganizer } = useAuth();
   const userId = user?.id ?? "";
   const [profile, setProfile] = useState<OfficialProfile | null>(null);
   const [children, setChildren] = useState<OfficialChild[]>([]);
@@ -59,7 +59,7 @@ function OfficialHome() {
     lead_events: [] as string[],
   });
 
-  const canOrganize = isAdmin || isOfficial;
+  const canOrganize = isOrganizer;
   const { list: upcoming } = useCompetitionsWindow(1, 60);
 
   useEffect(() => {

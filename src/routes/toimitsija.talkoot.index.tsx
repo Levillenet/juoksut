@@ -20,8 +20,8 @@ export const Route = createFileRoute("/toimitsija/talkoot/")({
 });
 
 function VolunteerHome() {
-  const { user, isAdmin, isOfficial } = useAuth();
-  const canOrganize = isAdmin || isOfficial;
+  const { user, isAdmin, isOfficial, isOrganizer } = useAuth();
+  const canOrganize = isOrganizer;
   const { list: upcoming } = useCompetitionsWindow(1, 60);
 
   const [calls, setCalls] = useState<VolunteerCall[]>([]);

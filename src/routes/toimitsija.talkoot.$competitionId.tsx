@@ -46,8 +46,8 @@ const emptyForm = {
 function VolunteerOrganizer() {
   const { competitionId } = Route.useParams();
   const compId = Number(competitionId);
-  const { user, isAdmin, isOfficial } = useAuth();
-  const canManage = isAdmin || isOfficial;
+  const { user, isAdmin, isOfficial, isOrganizer } = useAuth();
+  const canManage = isOrganizer;
 
   const { list } = useCompetitionsWindow(30, 365);
   const competition = useMemo(
