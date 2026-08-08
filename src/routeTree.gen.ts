@@ -27,6 +27,7 @@ import { Route as KilpailukalenteriRouteImport } from './routes/kilpailukalenter
 import { Route as HauskatTilastotRouteImport } from './routes/hauskat-tilastot'
 import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ToimitsijaIndexRouteImport } from './routes/toimitsija.index'
 import { Route as StadiumsIndexRouteImport } from './routes/stadiums.index'
 import { Route as PrintIndexRouteImport } from './routes/print.index'
 import { Route as PlannerIndexRouteImport } from './routes/planner.index'
@@ -150,6 +151,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ToimitsijaIndexRoute = ToimitsijaIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ToimitsijaRoute,
 } as any)
 const StadiumsIndexRoute = StadiumsIndexRouteImport.update({
   id: '/stadiums/',
@@ -340,7 +346,7 @@ export interface FileRoutesByFullPath {
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRouteWithChildren
   '/tietoa-palvelusta': typeof TietoaPalvelustaRoute
-  '/toimitsija': typeof ToimitsijaRoute
+  '/toimitsija': typeof ToimitsijaRouteWithChildren
   '/videot': typeof VideotRoute
   '/watch': typeof WatchRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -367,6 +373,7 @@ export interface FileRoutesByFullPath {
   '/planner/': typeof PlannerIndexRoute
   '/print/': typeof PrintIndexRoute
   '/stadiums/': typeof StadiumsIndexRoute
+  '/toimitsija/': typeof ToimitsijaIndexRoute
   '/planner/$planId/gantt': typeof PlannerPlanIdGanttRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
@@ -390,7 +397,6 @@ export interface FileRoutesByTo {
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRouteWithChildren
   '/tietoa-palvelusta': typeof TietoaPalvelustaRoute
-  '/toimitsija': typeof ToimitsijaRoute
   '/videot': typeof VideotRoute
   '/watch': typeof WatchRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -417,6 +423,7 @@ export interface FileRoutesByTo {
   '/planner': typeof PlannerIndexRoute
   '/print': typeof PrintIndexRoute
   '/stadiums': typeof StadiumsIndexRoute
+  '/toimitsija': typeof ToimitsijaIndexRoute
   '/planner/$planId/gantt': typeof PlannerPlanIdGanttRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
@@ -444,7 +451,7 @@ export interface FileRoutesById {
   '/season-leaders': typeof SeasonLeadersRoute
   '/settings': typeof SettingsRouteWithChildren
   '/tietoa-palvelusta': typeof TietoaPalvelustaRoute
-  '/toimitsija': typeof ToimitsijaRoute
+  '/toimitsija': typeof ToimitsijaRouteWithChildren
   '/videot': typeof VideotRoute
   '/watch': typeof WatchRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -471,6 +478,7 @@ export interface FileRoutesById {
   '/planner/': typeof PlannerIndexRoute
   '/print/': typeof PrintIndexRoute
   '/stadiums/': typeof StadiumsIndexRoute
+  '/toimitsija/': typeof ToimitsijaIndexRoute
   '/planner/$planId/gantt': typeof PlannerPlanIdGanttRoute
   '/round/$eventId/$roundId': typeof RoundEventIdRoundIdRoute
   '/api/public/hooks/harvest-kilpailukalenteri': typeof ApiPublicHooksHarvestKilpailukalenteriRoute
@@ -526,6 +534,7 @@ export interface FileRouteTypes {
     | '/planner/'
     | '/print/'
     | '/stadiums/'
+    | '/toimitsija/'
     | '/planner/$planId/gantt'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
@@ -549,7 +558,6 @@ export interface FileRouteTypes {
     | '/season-leaders'
     | '/settings'
     | '/tietoa-palvelusta'
-    | '/toimitsija'
     | '/videot'
     | '/watch'
     | '/admin/analytics'
@@ -576,6 +584,7 @@ export interface FileRouteTypes {
     | '/planner'
     | '/print'
     | '/stadiums'
+    | '/toimitsija'
     | '/planner/$planId/gantt'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
@@ -629,6 +638,7 @@ export interface FileRouteTypes {
     | '/planner/'
     | '/print/'
     | '/stadiums/'
+    | '/toimitsija/'
     | '/planner/$planId/gantt'
     | '/round/$eventId/$roundId'
     | '/api/public/hooks/harvest-kilpailukalenteri'
@@ -656,7 +666,7 @@ export interface RootRouteChildren {
   SeasonLeadersRoute: typeof SeasonLeadersRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   TietoaPalvelustaRoute: typeof TietoaPalvelustaRoute
-  ToimitsijaRoute: typeof ToimitsijaRoute
+  ToimitsijaRoute: typeof ToimitsijaRouteWithChildren
   VideotRoute: typeof VideotRoute
   WatchRoute: typeof WatchRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
@@ -805,6 +815,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/toimitsija/': {
+      id: '/toimitsija/'
+      path: '/'
+      fullPath: '/toimitsija/'
+      preLoaderRoute: typeof ToimitsijaIndexRouteImport
+      parentRoute: typeof ToimitsijaRoute
     }
     '/stadiums/': {
       id: '/stadiums/'
@@ -1117,6 +1134,18 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
   SettingsRouteChildren,
 )
 
+interface ToimitsijaRouteChildren {
+  ToimitsijaIndexRoute: typeof ToimitsijaIndexRoute
+}
+
+const ToimitsijaRouteChildren: ToimitsijaRouteChildren = {
+  ToimitsijaIndexRoute: ToimitsijaIndexRoute,
+}
+
+const ToimitsijaRouteWithChildren = ToimitsijaRoute._addFileChildren(
+  ToimitsijaRouteChildren,
+)
+
 interface ApiPublicTuloslistaLiveV1CompetitionIdRouteChildren {
   ApiPublicTuloslistaLiveV1CompetitionIdPropertiesRoute: typeof ApiPublicTuloslistaLiveV1CompetitionIdPropertiesRoute
 }
@@ -1148,7 +1177,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeasonLeadersRoute: SeasonLeadersRoute,
   SettingsRoute: SettingsRouteWithChildren,
   TietoaPalvelustaRoute: TietoaPalvelustaRoute,
-  ToimitsijaRoute: ToimitsijaRoute,
+  ToimitsijaRoute: ToimitsijaRouteWithChildren,
   VideotRoute: VideotRoute,
   WatchRoute: WatchRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
