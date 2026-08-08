@@ -369,7 +369,18 @@ function OfficialsCompetition() {
     }
   };
 
+  const clubOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of profiles) {
+      const c = (p.club ?? "").trim();
+      if (c) set.add(c);
+    }
+    for (const c of targetClubs) set.add(c);
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "fi"));
+  }, [profiles, targetClubs]);
+
   const toggleCall = async () => {
+
     if (!user) return;
     try {
       if (call) {
