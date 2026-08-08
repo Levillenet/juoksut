@@ -452,9 +452,14 @@ function OfficialsCompetition() {
           Vajaita: <strong>{understaffed}</strong>
         </span>
         <span className="text-muted-foreground">·</span>
+        <span className={withoutLead > 0 ? "text-destructive" : undefined}>
+          Ilman lajijohtajaa: <strong>{withoutLead}</strong>
+        </span>
+        <span className="text-muted-foreground">·</span>
         <span>
           Varmennusta odottaa: <strong>{unconfirmed}</strong>
         </span>
+
         <div className="ml-auto flex items-center gap-2">
           {!call && (
             <Input
