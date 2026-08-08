@@ -29,6 +29,8 @@ import {
 } from "@/lib/tuloslista";
 import { athleteKey } from "@/lib/watch-store";
 import { matchesLeadEvent } from "@/lib/officials-schedule";
+import { OrganizerTabs } from "@/components/volunteers/OrganizerTabs";
+
 import {
   addAssignment,
   clearAssignmentLead,
