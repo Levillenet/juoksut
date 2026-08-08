@@ -273,16 +273,19 @@ function OfficialsCompetition() {
         tier: tierOf.get(p.id) ?? "other",
         reason: reason.get(p.id) ?? null,
         busy: busy.has(p.id),
+        canLead:
+          !!p.can_lead && matchesLeadEvent(fe.round.EventName ?? "", p.lead_events ?? []),
       }))
       .sort((a, b) => {
         if (a.busy !== b.busy) return a.busy ? 1 : -1;
+        if (a.canLead !== b.canLead) return a.canLead ? -1 : 1;
         const t = TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(b.tier);
         if (t !== 0) return t;
         return a.profile.full_name.localeCompare(b.profile.full_name, "fi");
       });
   };
 
-  const assign = async (fe: FieldEvent, profileId: string) => {
+  const assign = async (fe: FieldEvent, profileId: string, asLead = false) => {
     if (!user) return;
     try {
       await addAssignment({
@@ -296,11 +299,34 @@ function OfficialsCompetition() {
         role_label: null,
         created_by: user.id,
       });
-      await reloadAssignments();
+      const list = await fetchAssignments(compId);
+      if (asLead) {
+        const row = list.find(
+          (a) => a.round_id === fe.round.Id && a.profile_id === profileId,
+        );
+        if (row) {
+          await setAssignmentLead(compId, fe.round.Id, row.id);
+          setAssignments(await fetchAssignments(compId));
+          toast.success("Lajijohtaja asetettu.");
+          return;
+        }
+      }
+      setAssignments(list);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Kiinnitys epäonnistui");
     }
   };
+
+  const toggleLead = async (fe: FieldEvent, a: OfficialAssignment) => {
+    try {
+      if (a.is_lead) await clearAssignmentLead(a.id);
+      else await setAssignmentLead(compId, fe.round.Id, a.id);
+      await reloadAssignments();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Toiminto epäonnistui");
+    }
+  };
+
 
   /** Nimi käsin: luodaan toimitsijakortti ja kiinnitetään se suoraan lajiin. */
   const addManual = async (fe: FieldEvent) => {
