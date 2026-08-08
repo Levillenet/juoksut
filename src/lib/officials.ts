@@ -64,13 +64,14 @@ export const STATUS_LABEL_FI: Record<AssignmentStatus, string> = {
   declined: "Kieltäytyi",
 };
 
-const PROFILE_COLS = "id, user_id, full_name, email, phone, club, skills, notes";
+const PROFILE_COLS =
+  "id, user_id, full_name, email, phone, club, skills, notes, can_lead, lead_events";
 const CHILD_COLS =
   "id, profile_id, athlete_key, surname, firstname, organization, organization_id, is_guardian";
 const CALL_COLS =
   "id, competition_id, competition_name, competition_date, open_until, message";
 const ASSIGNMENT_COLS =
-  "id, competition_id, event_id, round_id, event_name, age_class, starts_at, profile_id, role_label, status";
+  "id, competition_id, event_id, round_id, event_name, age_class, starts_at, profile_id, role_label, status, is_lead";
 
 export async function fetchMyProfile(userId: string): Promise<OfficialProfile | null> {
   const { data, error } = await supabase
