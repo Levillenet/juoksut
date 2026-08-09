@@ -1044,7 +1044,7 @@ async function run(request: Request): Promise<Response> {
     });
   } finally {
     await persistApiMessageIfAny(state);
-    await supabaseAdmin.rpc("harvest_unlock");
+    await supabaseAdmin.rpc("harvest_unlock", { _name: "full" });
   }
 }
 
