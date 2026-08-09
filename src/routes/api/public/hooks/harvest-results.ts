@@ -813,7 +813,11 @@ async function run(request: Request): Promise<Response> {
       return Response.json({ ok: true, skipped: "no-hot-ids", mode: "hotlist" });
     }
 
-    const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock");
+    // Nopealla syklillä oma lukkonsa, joka vanhenee itsestään 90 sekunnissa.
+    const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock", {
+      _name: "hot",
+      _ttl_seconds: 90,
+    });
     if (lockData !== true) {
       return Response.json({ ok: true, skipped: "locked", mode: "hotlist" });
     }
@@ -872,7 +876,7 @@ async function run(request: Request): Promise<Response> {
       ids: hotIds,
     });
     } finally {
-      await supabaseAdmin.rpc("harvest_unlock");
+      await supabaseAdmin.rpc("harvest_unlock", { _name: "hot" });
     }
   }
 
@@ -885,7 +889,12 @@ async function run(request: Request): Promise<Response> {
     lastApiMessage: null,
     proxyOrigin: url.origin,
   };
-  const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock");
+  // Täydellä haulla oma lukkonsa; vanhenee itsestään 3 minuutissa, jottei
+  // katkennut ajo jumita seuraavia kierroksia.
+  const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock", {
+    _name: "full",
+    _ttl_seconds: 180,
+  });
   if (lockData !== true) {
     return Response.json({ ok: true, skipped: "locked" });
   }
@@ -1035,7 +1044,7 @@ async function run(request: Request): Promise<Response> {
     });
   } finally {
     await persistApiMessageIfAny(state);
-    await supabaseAdmin.rpc("harvest_unlock");
+    await supabaseAdmin.rpc("harvest_unlock", { _name: "full" });
   }
 }
 

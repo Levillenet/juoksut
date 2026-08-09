@@ -651,6 +651,24 @@ export type Database = {
         }
         Relationships: []
       }
+      harvest_locks: {
+        Row: {
+          expires_at: string
+          locked_at: string
+          name: string
+        }
+        Insert: {
+          expires_at: string
+          locked_at?: string
+          name: string
+        }
+        Update: {
+          expires_at?: string
+          locked_at?: string
+          name?: string
+        }
+        Relationships: []
+      }
       harvest_state: {
         Row: {
           block_checked_at: string | null
@@ -2288,8 +2306,11 @@ export type Database = {
         Args: { _email: string; _role: Database["public"]["Enums"]["app_role"] }
         Returns: string
       }
-      harvest_try_lock: { Args: never; Returns: boolean }
-      harvest_unlock: { Args: never; Returns: undefined }
+      harvest_try_lock: {
+        Args: { _name?: string; _ttl_seconds?: number }
+        Returns: boolean
+      }
+      harvest_unlock: { Args: { _name?: string }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
