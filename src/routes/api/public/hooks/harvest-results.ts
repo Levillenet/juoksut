@@ -813,7 +813,11 @@ async function run(request: Request): Promise<Response> {
       return Response.json({ ok: true, skipped: "no-hot-ids", mode: "hotlist" });
     }
 
-    const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock");
+    // Nopealla syklillä oma lukkonsa, joka vanhenee itsestään 90 sekunnissa.
+    const { data: lockData } = await supabaseAdmin.rpc("harvest_try_lock", {
+      _name: "hot",
+      _ttl_seconds: 90,
+    });
     if (lockData !== true) {
       return Response.json({ ok: true, skipped: "locked", mode: "hotlist" });
     }
