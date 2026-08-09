@@ -2306,12 +2306,11 @@ export type Database = {
         Args: { _email: string; _role: Database["public"]["Enums"]["app_role"] }
         Returns: string
       }
-      harvest_try_lock:
-        | { Args: never; Returns: boolean }
-        | { Args: { _name?: string; _ttl_seconds?: number }; Returns: boolean }
-      harvest_unlock:
-        | { Args: never; Returns: undefined }
-        | { Args: { _name?: string }; Returns: undefined }
+      harvest_try_lock: {
+        Args: { _name?: string; _ttl_seconds?: number }
+        Returns: boolean
+      }
+      harvest_unlock: { Args: { _name?: string }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
