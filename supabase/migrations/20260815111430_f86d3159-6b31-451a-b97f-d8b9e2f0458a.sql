@@ -1,0 +1,1 @@
+DELETE FROM public.official_assignments WHERE competition_id = 99999;
