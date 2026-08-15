@@ -211,7 +211,7 @@ function OfficialSignup() {
             </p>
             <ul className="mt-3 space-y-3">
               {days.map((d) => {
-                const w = windows[d.day];
+                const w = windows[d.isoDay];
                 const available = w?.available ?? false;
                 const hours = hourOptions(d.startHour, d.endHour);
                 return (
@@ -227,7 +227,7 @@ function OfficialSignup() {
                       <Switch
                         checked={available}
                         aria-label={`Käytettävissä ${d.day}`}
-                        onCheckedChange={(v) => void saveWindow(d.day, { available: v })}
+                        onCheckedChange={(v) => void saveWindow(d.isoDay, { available: v })}
                       />
                     </div>
                     {available && (
@@ -238,7 +238,7 @@ function OfficialSignup() {
                             className="block h-8 rounded-md border bg-background px-2 text-xs"
                             value={w?.start_time ?? ""}
                             onChange={(e) =>
-                              void saveWindow(d.day, { start_time: e.target.value || null })
+                              void saveWindow(d.isoDay, { start_time: e.target.value || null })
                             }
                           >
                             <option value="">Koko päivä</option>
@@ -255,7 +255,7 @@ function OfficialSignup() {
                             className="block h-8 rounded-md border bg-background px-2 text-xs"
                             value={w?.end_time ?? ""}
                             onChange={(e) =>
-                              void saveWindow(d.day, { end_time: e.target.value || null })
+                              void saveWindow(d.isoDay, { end_time: e.target.value || null })
                             }
                           >
                             <option value="">Koko päivä</option>
@@ -291,7 +291,7 @@ function OfficialSignup() {
               </Link>
             </div>
             {days.map((d) => {
-              const w = windows[d.day];
+              const w = windows[d.isoDay];
               if (!w?.available) return null;
               const rounds = d.rounds.filter((r) => roundInWindow(r, w));
               return (
@@ -324,7 +324,7 @@ function OfficialSignup() {
                           <Button
                             size="sm"
                             variant={isMine ? "secondary" : "default"}
-                            onClick={() => void toggleRound(r, d.day)}
+                            onClick={() => void toggleRound(r, d.isoDay)}
                           >
                             {isMine ? (
                               <>
@@ -347,7 +347,7 @@ function OfficialSignup() {
                 </div>
               );
             })}
-            {days.every((d) => !windows[d.day]?.available) && (
+            {days.every((d) => !windows[d.isoDay]?.available) && (
               <p className="mt-2 text-sm text-muted-foreground">
                 Merkitse ensin päivät, joina olet käytettävissä.
               </p>
