@@ -24,13 +24,22 @@ export function helsinkiMinutes(iso: string | null | undefined): number | null {
 }
 
 export interface CompetitionDay {
-  /** YYYY-MM-DD in Helsinki time. */
+  /** Näytettävä päivä, esim. 14.8.2026. */
   day: string;
+  /** YYYY-MM-DD Helsingin aikaa, käytetään tietokantaan tallennukseen. */
+  isoDay: string;
   rounds: Round[];
   /** Whole hours covering the day's schedule. */
   startHour: number;
   endHour: number;
 }
+
+const HELSINKI_ISO = new Intl.DateTimeFormat("sv-SE", {
+  timeZone: "Europe/Helsinki",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 
 /** Field events only, grouped by Helsinki day and sorted chronologically. */
 export function fieldDays(byDate: RoundsByDate | undefined | null): CompetitionDay[] {
@@ -51,10 +60,13 @@ export function fieldDays(byDate: RoundsByDate | undefined | null): CompetitionD
         .filter((m): m is number => m != null);
       const startHour = mins.length ? Math.floor(Math.min(...mins) / 60) : 8;
       const endHour = mins.length ? Math.min(23, Math.ceil(Math.max(...mins) / 60) + 2) : 21;
-      return { day, rounds: list, startHour, endHour: Math.max(endHour, startHour + 1) };
+      const first = list[0]?.BeginDateTimeWithTZ;
+      const isoDay = first ? HELSINKI_ISO.format(new Date(first)) : day;
+      return { day, isoDay, rounds: list, startHour, endHour: Math.max(endHour, startHour + 1) };
     })
-    .sort((a, b) => a.day.localeCompare(b.day));
+    .sort((a, b) => a.isoDay.localeCompare(b.isoDay));
 }
+
 
 export function hourOptions(startHour: number, endHour: number): number[] {
   const out: number[] = [];
