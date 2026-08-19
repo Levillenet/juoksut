@@ -2168,6 +2168,7 @@ export type Database = {
         Returns: undefined
       }
       check_district_record: { Args: { _result_id: string }; Returns: boolean }
+      daily_maintenance_cleanup: { Args: never; Returns: undefined }
       district_age_class_equivalent: { Args: { _ac: string }; Returns: string }
       district_event_match_key: {
         Args: { event_name: string }
