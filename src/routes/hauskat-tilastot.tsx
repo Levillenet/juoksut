@@ -121,10 +121,11 @@ function FunStatsPage() {
   }, [ageQuery.data, ageTouched]);
 
   const statsQuery = useQuery({
-    queryKey: ["fun-stats", season, org, [...selectedAges].sort().join(",")],
+    queryKey: ["fun-stats", SEASON, org, [...selectedAges].sort().join(",")],
     queryFn: () =>
       fetchFunStats(
-        season,
+        SEASON,
+
         org || null,
         selectedAges.length > 0 ? selectedAges : null,
       ),
