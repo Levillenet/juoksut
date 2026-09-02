@@ -197,18 +197,8 @@ function FunStatsPage() {
           </Button>
         </div>
         <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-2 px-3 pb-2">
-          <Tabs
-            value={season}
-            onValueChange={(v) => setSeason(v as SeasonKind)}
-          >
-            <TabsList className="h-8">
-              {SEASON_OPTIONS.map((o) => (
-                <TabsTrigger key={o.value} value={o.value} className="text-xs">
-                  {o.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+          {/* Tilastot lasketaan aina kuluvalta kalenterivuodelta. */}
+
 
           {/* Seuravalinta */}
           <Popover open={orgPopoverOpen} onOpenChange={setOrgPopoverOpen}>
