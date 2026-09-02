@@ -177,7 +177,8 @@ function FunStatsPage() {
                 Hauskat tilastot
               </h1>
               <div className="truncate text-[11px] text-muted-foreground">
-                {range.label}
+                Tilastot {range.label}
+
                 {org ? ` · ${org}` : ""}
                 {" · "}
                 <HarvestStatusBadge className="text-[11px] text-muted-foreground" />
