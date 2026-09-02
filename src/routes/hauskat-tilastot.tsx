@@ -81,30 +81,26 @@ function FunStatsPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(SEASON_STORAGE_KEY, season);
-  }, [season]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
     if (ageTouched) {
       window.localStorage.setItem(AGES_STORAGE_KEY, JSON.stringify(selectedAges));
     }
   }, [selectedAges, ageTouched]);
 
-  const range = useMemo(() => seasonRange(season), [season]);
+  const range = useMemo(() => seasonRange(SEASON), []);
 
   const orgsQuery = useQuery({
-    queryKey: ["fun-stats-orgs", season],
-    queryFn: () => fetchOrganizations(season),
+    queryKey: ["fun-stats-orgs", SEASON],
+    queryFn: () => fetchOrganizations(SEASON),
     staleTime: 5 * 60_000,
   });
 
   const ageQuery = useQuery({
-    queryKey: ["fun-stats-ages", season, org],
-    queryFn: () => fetchAgeClassesForOrg(season, org),
+    queryKey: ["fun-stats-ages", SEASON, org],
+    queryFn: () => fetchAgeClassesForOrg(SEASON, org),
     enabled: !!org,
     staleTime: 5 * 60_000,
   });
+
 
   // Kun ikäluokkalista latautuu: jos käyttäjä ei ole valinnut, valitse kaikki.
   // Jos käyttäjä on valinnut, suodata pois ikäluokat joita ei ole tarjolla;
