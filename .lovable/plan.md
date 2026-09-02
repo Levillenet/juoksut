@@ -1,18 +1,18 @@
-# Vanhat tulokset säilytetään ennallaan
+# Hauskat tilastot: aina kalenterivuosi
 
-## Tilanne
+## Tavoite
 
-`athlete_results` sisältää 422 903 tulosriviä, vanhin 1.7.2021. Näistä 121 147 on yli 400 vrk vanhoja. Mitään tulosrivejä ei ole poistettu eikä arkistoitu.
+Hauskat tilastot lasketaan aina kuluvalta kalenterivuodelta (1.1.-31.12.). Kausivalinta (Kuluva vuosi / Kesäkausi / Talvikausi) poistuu, jotta esimerkiksi viesti- ja katulajitilastot eivät katkea kesken kauden.
 
-Aiempi siivous kohdistui vain väliaikaisdataan:
-- tuloslistan välimuisti (yli tunnin vanhat rivit)
-- analytiikkatapahtumat yli 180 vrk
-- probe- ja kutsulokit (30 / 90 vrk)
+## Muutokset
 
-## Päätös
+- Poistetaan kausivalitsin sivulta `Hauskat tilastot`.
+- Kaikki haut (seuralista, ikäluokat, itse tilastot) käyttävät kiinteästi kalenterivuosirajausta.
+- Otsikossa näytetään selkeästi kuluva vuosi, esimerkiksi "Tilastot 2026".
+- Aiemmin tallennettu kausivalinta selaimen muistista jätetään huomiotta.
 
-Vanhat tulokset jätetään ennalleen samaan tauluun. Ei arkistotaulua, ei poistoja.
+## Tekniset yksityiskohdat
 
-## Toimenpiteet
-
-Ei koodi- tai tietokantamuutoksia. Päivittäinen siivousajo (klo 03:20) jatkuu nykyisellään ja koskee vain välimuistia ja lokeja, ei tuloksia.
+- `src/routes/hauskat-tilastot.tsx`: poistetaan `season`-tila, `SEASON_OPTIONS`, `SEASON_STORAGE_KEY` ja kausivalitsin. Käytetään vakioarvoa `"year"` ja `seasonRange("year")`. Query-avaimista poistetaan `season`.
+- `src/lib/fun-stats.ts` säilyy ennallaan (funktiot ottavat edelleen `SeasonKind`-parametrin), sille välitetään aina `"year"`.
+- Ei tietokantamuutoksia.
