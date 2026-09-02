@@ -45,26 +45,18 @@ export const Route = createFileRoute("/hauskat-tilastot")({
   ),
 });
 
-const SEASON_OPTIONS: Array<{ value: SeasonKind; label: string }> = [
-  { value: "year", label: "Kuluva vuosi" },
-  { value: "summer", label: "Kesäkausi" },
-  { value: "winter", label: "Talvikausi" },
-];
-
 const ORG_STORAGE_KEY = "funstats:org";
-const SEASON_STORAGE_KEY = "funstats:season";
 const AGES_STORAGE_KEY = "funstats:ages";
 
+// Hauskat tilastot lasketaan aina kuluvalta kalenterivuodelta (1.1.-31.12.).
+const SEASON: SeasonKind = "year";
+
 function FunStatsPage() {
-  const [season, setSeason] = useState<SeasonKind>(() => {
-    if (typeof window === "undefined") return "year";
-    const v = window.localStorage.getItem(SEASON_STORAGE_KEY);
-    return v === "summer" || v === "winter" || v === "year" ? v : "year";
-  });
   const [org, setOrg] = useState<string>(() => {
     if (typeof window === "undefined") return "";
     return window.localStorage.getItem(ORG_STORAGE_KEY) ?? "";
   });
+
   const [orgPopoverOpen, setOrgPopoverOpen] = useState(false);
   const [selectedAges, setSelectedAges] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
