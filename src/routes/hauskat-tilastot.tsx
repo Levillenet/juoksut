@@ -15,7 +15,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { FunStatCard } from "@/components/FunStatCard";
 import {
   FUN_METRICS,
@@ -45,26 +45,18 @@ export const Route = createFileRoute("/hauskat-tilastot")({
   ),
 });
 
-const SEASON_OPTIONS: Array<{ value: SeasonKind; label: string }> = [
-  { value: "year", label: "Kuluva vuosi" },
-  { value: "summer", label: "Kesäkausi" },
-  { value: "winter", label: "Talvikausi" },
-];
-
 const ORG_STORAGE_KEY = "funstats:org";
-const SEASON_STORAGE_KEY = "funstats:season";
 const AGES_STORAGE_KEY = "funstats:ages";
 
+// Hauskat tilastot lasketaan aina kuluvalta kalenterivuodelta (1.1.-31.12.).
+const SEASON: SeasonKind = "year";
+
 function FunStatsPage() {
-  const [season, setSeason] = useState<SeasonKind>(() => {
-    if (typeof window === "undefined") return "year";
-    const v = window.localStorage.getItem(SEASON_STORAGE_KEY);
-    return v === "summer" || v === "winter" || v === "year" ? v : "year";
-  });
   const [org, setOrg] = useState<string>(() => {
     if (typeof window === "undefined") return "";
     return window.localStorage.getItem(ORG_STORAGE_KEY) ?? "";
   });
+
   const [orgPopoverOpen, setOrgPopoverOpen] = useState(false);
   const [selectedAges, setSelectedAges] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
@@ -89,30 +81,26 @@ function FunStatsPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(SEASON_STORAGE_KEY, season);
-  }, [season]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
     if (ageTouched) {
       window.localStorage.setItem(AGES_STORAGE_KEY, JSON.stringify(selectedAges));
     }
   }, [selectedAges, ageTouched]);
 
-  const range = useMemo(() => seasonRange(season), [season]);
+  const range = useMemo(() => seasonRange(SEASON), []);
 
   const orgsQuery = useQuery({
-    queryKey: ["fun-stats-orgs", season],
-    queryFn: () => fetchOrganizations(season),
+    queryKey: ["fun-stats-orgs", SEASON],
+    queryFn: () => fetchOrganizations(SEASON),
     staleTime: 5 * 60_000,
   });
 
   const ageQuery = useQuery({
-    queryKey: ["fun-stats-ages", season, org],
-    queryFn: () => fetchAgeClassesForOrg(season, org),
+    queryKey: ["fun-stats-ages", SEASON, org],
+    queryFn: () => fetchAgeClassesForOrg(SEASON, org),
     enabled: !!org,
     staleTime: 5 * 60_000,
   });
+
 
   // Kun ikäluokkalista latautuu: jos käyttäjä ei ole valinnut, valitse kaikki.
   // Jos käyttäjä on valinnut, suodata pois ikäluokat joita ei ole tarjolla;
@@ -133,10 +121,11 @@ function FunStatsPage() {
   }, [ageQuery.data, ageTouched]);
 
   const statsQuery = useQuery({
-    queryKey: ["fun-stats", season, org, [...selectedAges].sort().join(",")],
+    queryKey: ["fun-stats", SEASON, org, [...selectedAges].sort().join(",")],
     queryFn: () =>
       fetchFunStats(
-        season,
+        SEASON,
+
         org || null,
         selectedAges.length > 0 ? selectedAges : null,
       ),
@@ -177,7 +166,8 @@ function FunStatsPage() {
                 Hauskat tilastot
               </h1>
               <div className="truncate text-[11px] text-muted-foreground">
-                {range.label}
+                Tilastot {range.label}
+
                 {org ? ` · ${org}` : ""}
                 {" · "}
                 <HarvestStatusBadge className="text-[11px] text-muted-foreground" />
@@ -197,18 +187,8 @@ function FunStatsPage() {
           </Button>
         </div>
         <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-2 px-3 pb-2">
-          <Tabs
-            value={season}
-            onValueChange={(v) => setSeason(v as SeasonKind)}
-          >
-            <TabsList className="h-8">
-              {SEASON_OPTIONS.map((o) => (
-                <TabsTrigger key={o.value} value={o.value} className="text-xs">
-                  {o.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+          {/* Tilastot lasketaan aina kuluvalta kalenterivuodelta. */}
+
 
           {/* Seuravalinta */}
           <Popover open={orgPopoverOpen} onOpenChange={setOrgPopoverOpen}>
