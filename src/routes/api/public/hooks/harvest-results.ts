@@ -742,6 +742,23 @@ async function harvestIds(
     }
   }
 
+  // Mistä kisan lajeista meillä on jo tuloksia? Näin valmiit (viralliset)
+  // lajit voidaan ohittaa taustakierroksella.
+  const storedEventCache = new Map<number, Set<number>>();
+  async function storedEventIdsFor(compId: number): Promise<Set<number>> {
+    const cached = storedEventCache.get(compId);
+    if (cached) return cached;
+    const set = new Set<number>();
+    const { data } = await supabaseAdmin
+      .from("athlete_results")
+      .select("event_id")
+      .eq("competition_id", compId);
+    for (const r of data ?? []) if (r.event_id != null) set.add(r.event_id);
+    storedEventCache.set(compId, set);
+    return set;
+  }
+
+
   for (let i = 0; i < entries.length; i += CONCURRENCY) {
     if (state.rateLimited) break;
 
