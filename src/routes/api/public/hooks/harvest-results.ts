@@ -354,7 +354,11 @@ function selectBackgroundEventIds(
     .filter(([id, a]) => {
       if (!a.started) return false;
       const stored = storedCounts.get(id) ?? 0;
-      const complete = a.allOfficial && stored > 0 && stored >= a.allocated;
+      // Valmis vain kun tiedämme osallistujamäärän ja rivejä on vähintään
+      // yhtä monta. Jos lähde ei kerro määrää (CountAllocated = 0), laji
+      // haetaan uudelleen, koska osittainen tallennus näyttäisi muuten
+      // valmiilta.
+      const complete = a.allOfficial && a.allocated > 0 && stored >= a.allocated;
       return !complete;
     })
     .sort((a, b) => {
