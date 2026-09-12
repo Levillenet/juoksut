@@ -25,9 +25,16 @@ const BACKGROUND_LOOKBACK_DAYS = 7;
 const HOT_EVENT_PAST_WINDOW_MS = 60 * 60 * 1000;
 const HOT_EVENT_FUTURE_WINDOW_MS = 10 * 60 * 1000;
 const HOT_MAX_EVENTS_PER_COMPETITION = 10;
-const EMPTY_TODAY_RESCAN_MS = 2 * 60 * 60 * 1000;
-const ACTIVE_BACKGROUND_RESCAN_MS = 45 * 60 * 1000;
+// Taustakierroksella käynnissä olevasta kisasta katsotaan hieman laajempi
+// joukko lajeja, koska sykli on harvempi kuin käyttäjävetoinen hot cycle.
+const BACKGROUND_HOT_MAX_EVENTS = 24;
+
+
+// Tänään käynnissä oleva kisa tarkistetaan tiheästi, mutta vain
+// ajankohtaisten lajien osalta (kevyt hot-skannaus).
+const ONGOING_TODAY_RESCAN_MS = 10 * 60 * 1000;
 const FUTURE_RESCAN_MS = 6 * 60 * 60 * 1000;
+
 
 type RunState = {
   source: CounterSource;
@@ -250,7 +257,10 @@ function roundTimeMs(value: string | null | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function selectHotEventIds(rounds: RoundsByDateShape[string]): Set<number> {
+function selectHotEventIds(
+  rounds: RoundsByDateShape[string],
+  cap: number = HOT_MAX_EVENTS_PER_COMPETITION,
+): Set<number> {
   const now = Date.now();
   const hasProgress = rounds.some((r) => r.Status === "Progress");
   const selected = rounds
@@ -274,13 +284,63 @@ function selectHotEventIds(rounds: RoundsByDateShape[string]): Set<number> {
     })
     .map((r) => r.EventId);
 
-  return new Set(Array.from(new Set(selected)).slice(0, HOT_MAX_EVENTS_PER_COMPETITION));
+  return new Set(Array.from(new Set(selected)).slice(0, cap));
 }
+
+/**
+ * Taustakierroksen valinta tänään käynnissä olevalle kisalle: kaikki jo
+ * alkaneet lajit, joista meiltä vielä puuttuu valmis tulos. Lajit, jotka ovat
+ * virallisia ja joista meillä on jo rivejä, ohitetaan, jolloin sykli pysyy
+ * kevyenä vaikka kisassa olisi kymmeniä lajeja.
+ */
+function selectBackgroundEventIds(
+  rounds: RoundsByDateShape[string],
+  storedEventIds: Set<number>,
+  cap: number,
+): Set<number> {
+  const now = Date.now();
+  type Agg = { started: boolean; allOfficial: boolean; latestStart: number };
+  const byEvent = new Map<number, Agg>();
+  for (const r of rounds) {
+    const startsAt = roundTimeMs(r.BeginDateTimeWithTZ);
+    const status = r.Status ?? "";
+    const started =
+      status === "Progress" ||
+      status === "Official" ||
+      (startsAt != null && startsAt <= now + HOT_EVENT_FUTURE_WINDOW_MS);
+    const prev = byEvent.get(r.EventId);
+    const agg: Agg = prev ?? { started: false, allOfficial: true, latestStart: 0 };
+    agg.started = agg.started || started;
+    agg.allOfficial = agg.allOfficial && status === "Official";
+    agg.latestStart = Math.max(agg.latestStart, startsAt ?? 0);
+    byEvent.set(r.EventId, agg);
+  }
+  const selected = Array.from(byEvent.entries())
+    .filter(([id, a]) => a.started && !(a.allOfficial && storedEventIds.has(id)))
+    .sort((a, b) => b[1].latestStart - a[1].latestStart)
+    .map(([id]) => id);
+  return new Set(selected.slice(0, cap));
+}
+
 
 function datePart(value: string | null | undefined): string | null {
   if (!value) return null;
   const parsed = helsinkiDateISO(value);
   return parsed ?? value.slice(0, 10) ?? null;
+}
+
+/** Onko kisan tapahtuma-aikaikkuna (alku–loppu) käynnissä tänään? */
+function isOngoingToday(
+  entryDate: string | null,
+  row: { last_event_date: string | null; competition_date: string | null },
+  hkiTodayIso: string | null,
+): boolean {
+  if (!hkiTodayIso) return false;
+  const start = datePart(entryDate ?? row.competition_date);
+  const end = row.last_event_date ?? start;
+  if (start && start > hkiTodayIso) return false;
+  if (end && end < hkiTodayIso) return false;
+  return Boolean(start || end);
 }
 
 function shouldScanKnownPending(
@@ -303,9 +363,10 @@ function shouldScanKnownPending(
   const ageMs = Date.now() - lastScan;
   if (start && start > hkiTodayIso) return ageMs >= FUTURE_RESCAN_MS;
   if (end && end < hkiTodayIso) return false;
-  if ((row.row_count ?? 0) <= 0) return ageMs >= EMPTY_TODAY_RESCAN_MS;
-  return ageMs >= ACTIVE_BACKGROUND_RESCAN_MS;
+  // Tänään käynnissä: tarkista tiheästi (kevyt hot-skannaus).
+  return ageMs >= ONGOING_TODAY_RESCAN_MS;
 }
+
 
 type Row = {
   athlete_key: string;
@@ -348,7 +409,7 @@ async function processCompetition(
   pendingLegs: RelayLegRow[],
   competitionDateHint: string | null,
   state: RunState,
-  options: { hotEventsOnly?: boolean } = {},
+  options: { hotEventsOnly?: boolean; maxHotEvents?: number } = {},
 ): Promise<{
   existed: boolean;
   fetchFailed: boolean;
@@ -395,11 +456,24 @@ async function processCompetition(
   for (const r of scheduleRounds) {
       if (!ageByEvent.has(r.EventId)) ageByEvent.set(r.EventId, r.GroupName ?? "");
   }
-  const hotEventIds = options.hotEventsOnly ? selectHotEventIds(scheduleRounds) : null;
+  const hotEventIds = options.backgroundOngoing
+    ? selectBackgroundEventIds(
+        scheduleRounds,
+        options.storedEventIds ?? new Set<number>(),
+        options.maxHotEvents ?? BACKGROUND_HOT_MAX_EVENTS,
+      )
+    : options.hotEventsOnly
+      ? selectHotEventIds(
+          scheduleRounds,
+          options.maxHotEvents ?? HOT_MAX_EVENTS_PER_COMPETITION,
+        )
+      : null;
+
   const eventIds = Array.from(ageByEvent.keys()).filter((eventId) =>
     hotEventIds ? hotEventIds.has(eventId) : true,
   );
-  if (options.hotEventsOnly && eventIds.length === 0) {
+  if (hotEventIds && eventIds.length === 0) {
+
     return { existed: true, fetchFailed: false, rowsAdded: 0, competitionDate, lastEventDate };
   }
 
@@ -608,7 +682,8 @@ async function markPbsWithRetry(cid: number): Promise<boolean> {
 }
 
 async function harvestIds(
-  entries: Array<{ id: number; date: string | null }>,
+  entries: Array<{ id: number; date: string | null; hot?: boolean }>,
+
   state: RunState,
 ): Promise<{ scanned: number; existed: number; touchedCompIds: Set<number> }> {
   let scanned = 0;
@@ -667,8 +742,12 @@ async function harvestIds(
     const results = await Promise.allSettled(
       chunk.map(async (e) => {
         await jitter();
-        return processCompetition(e.id, pending, pendingLegs, e.date, state);
+        return processCompetition(e.id, pending, pendingLegs, e.date, state, {
+          hotEventsOnly: e.hot === true,
+          maxHotEvents: BACKGROUND_HOT_MAX_EVENTS,
+        });
       }),
+
     );
     const nowIso = new Date().toISOString();
     const hkiToday = helsinkiDateISO(nowIso);
@@ -702,7 +781,14 @@ async function harvestIds(
           competition_id: e.id,
           competition_date:
             v.competitionDate ?? e.date ?? prev?.competition_date ?? null,
-          row_count: v.fetchFailed ? (prev?.row_count ?? 0) : v.rowsAdded,
+          // Kevyt hot-skannaus kattaa vain osan lajeista, joten rivimäärä ei
+          // saa pienentyä aiemmin tiedetystä.
+          row_count: v.fetchFailed
+            ? (prev?.row_count ?? 0)
+            : e.hot
+              ? Math.max(prev?.row_count ?? 0, v.rowsAdded)
+              : v.rowsAdded,
+
           exists_in_source: existsInSource,
           done: v.fetchFailed ? false : !stillOngoing,
           last_scanned_at: nowIso,
@@ -978,13 +1064,15 @@ async function run(request: Request): Promise<Response> {
       // uudestaan: merkintä voi johtua hetkellisestä häiriöstä.
       if (hc.exists_in_source === false) return isRecent(e);
       if (!hc.done) return shouldScanKnownPending(e, hc, hkiTodayIso);
-      // Done: aktiivinen monipäiväinen kilpailu tarkistetaan harvemmin täydellä
-      // kierroksella. Tiheä live-päivitys kuuluu käyttäjävetoiselle hot cyclelle.
+      // Done: tänään käynnissä oleva (monipäiväinen) kisa tarkistetaan
+      // tiheästi kevyellä hot-skannauksella, jotta päivän tulokset saadaan
+      // talteen myös ilman käyttäjän avaamaa livenäkymää.
       if (!hkiTodayIso) return false;
       if (hc.last_event_date && hc.last_event_date >= hkiTodayIso) {
         const lastScan = hc.last_scanned_at ? new Date(hc.last_scanned_at).getTime() : 0;
-        return !Number.isFinite(lastScan) || Date.now() - lastScan >= ACTIVE_BACKGROUND_RESCAN_MS;
+        return !Number.isFinite(lastScan) || Date.now() - lastScan >= ONGOING_TODAY_RESCAN_MS;
       }
+
       // Monipäiväinen kisa ilman tunnettua viimeistä päivää: varmistetaan
       // tuoreiden kisojen osalta vielä kerran.
       if (!hc.last_event_date) return isRecent(e);
@@ -1002,7 +1090,17 @@ async function run(request: Request): Promise<Response> {
       return ha.localeCompare(hb);
     });
 
-    const batch = pending.slice(0, BATCH_SIZE);
+    // Tänään käynnissä olevat, jo kertaalleen skannatut kisat käydään läpi
+    // kevyesti (vain ajankohtaiset lajit), jotta origin-kuorma pysyy pienenä.
+    const batch = pending.slice(0, BATCH_SIZE).map((e) => {
+      const hc = hcMap.get(e.id);
+      const hot =
+        !!hc &&
+        !!hc.last_scanned_at &&
+        isOngoingToday(e.date, hc, hkiTodayIso);
+      return { ...e, hot };
+    });
+
 
 
     if (batch.length === 0) {
