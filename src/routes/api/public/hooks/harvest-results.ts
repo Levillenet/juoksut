@@ -27,7 +27,7 @@ const HOT_EVENT_FUTURE_WINDOW_MS = 10 * 60 * 1000;
 const HOT_MAX_EVENTS_PER_COMPETITION = 10;
 // Taustakierroksella käynnissä olevasta kisasta katsotaan hieman laajempi
 // joukko lajeja, koska sykli on harvempi kuin käyttäjävetoinen hot cycle.
-const BACKGROUND_HOT_MAX_EVENTS = 24;
+const BACKGROUND_HOT_MAX_EVENTS = 40;
 
 
 // Tänään käynnissä oleva kisa tarkistetaan tiheästi, mutta vain
