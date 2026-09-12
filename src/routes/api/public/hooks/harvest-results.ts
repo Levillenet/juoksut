@@ -1021,6 +1021,22 @@ async function run(request: Request): Promise<Response> {
       const results = await Promise.allSettled(
         chunk.map(async (id) => {
           await jitter();
+          if (isFillMode) {
+            const counts = new Map<number, number>();
+            const { data } = await supabaseAdmin
+              .from("athlete_results")
+              .select("event_id")
+              .eq("competition_id", id);
+            for (const r of data ?? []) {
+              if (r.event_id != null)
+                counts.set(r.event_id, (counts.get(r.event_id) ?? 0) + 1);
+            }
+            return processCompetition(id, pending, pendingLegs, null, state, {
+              backgroundOngoing: true,
+              storedEventIds: counts,
+              maxHotEvents: BACKGROUND_HOT_MAX_EVENTS,
+            });
+          }
           return processCompetition(id, pending, pendingLegs, null, state, {
             hotEventsOnly: true,
           });
