@@ -300,17 +300,22 @@ function selectHotEventIds(
 
 /**
  * Taustakierroksen valinta tänään käynnissä olevalle kisalle: kaikki jo
- * alkaneet lajit, joista meiltä vielä puuttuu valmis tulos. Lajit, jotka ovat
- * virallisia ja joista meillä on jo rivejä, ohitetaan, jolloin sykli pysyy
- * kevyenä vaikka kisassa olisi kymmeniä lajeja.
+ * alkaneet lajit, joista meiltä puuttuu tuloksia. Virallinen laji ohitetaan
+ * vain jos meillä on jo vähintään yhtä monta riviä kuin lajissa on
+ * osallistujia, jolloin sykli pysyy kevyenä isoissakin kisoissa.
  */
 function selectBackgroundEventIds(
   rounds: RoundsByDateShape[string],
-  storedEventIds: Set<number>,
+  storedCounts: Map<number, number>,
   cap: number,
 ): Set<number> {
   const now = Date.now();
-  type Agg = { started: boolean; allOfficial: boolean; latestStart: number };
+  type Agg = {
+    started: boolean;
+    allOfficial: boolean;
+    latestStart: number;
+    allocated: number;
+  };
   const byEvent = new Map<number, Agg>();
   for (const r of rounds) {
     const startsAt = roundTimeMs(r.BeginDateTimeWithTZ);
@@ -320,18 +325,33 @@ function selectBackgroundEventIds(
       status === "Official" ||
       (startsAt != null && startsAt <= now + HOT_EVENT_FUTURE_WINDOW_MS);
     const prev = byEvent.get(r.EventId);
-    const agg: Agg = prev ?? { started: false, allOfficial: true, latestStart: 0 };
+    const agg: Agg = prev ?? {
+      started: false,
+      allOfficial: true,
+      latestStart: 0,
+      allocated: 0,
+    };
     agg.started = agg.started || started;
     agg.allOfficial = agg.allOfficial && status === "Official";
     agg.latestStart = Math.max(agg.latestStart, startsAt ?? 0);
+    agg.allocated = Math.max(
+      agg.allocated,
+      r.CountAllocated ?? r.CountConfirmed ?? r.CountEnrolled ?? 0,
+    );
     byEvent.set(r.EventId, agg);
   }
   const selected = Array.from(byEvent.entries())
-    .filter(([id, a]) => a.started && !(a.allOfficial && storedEventIds.has(id)))
+    .filter(([id, a]) => {
+      if (!a.started) return false;
+      const stored = storedCounts.get(id) ?? 0;
+      const complete = a.allOfficial && stored > 0 && (a.allocated === 0 || stored >= a.allocated);
+      return !complete;
+    })
     .sort((a, b) => b[1].latestStart - a[1].latestStart)
     .map(([id]) => id);
   return new Set(selected.slice(0, cap));
 }
+
 
 
 function datePart(value: string | null | undefined): string | null {
