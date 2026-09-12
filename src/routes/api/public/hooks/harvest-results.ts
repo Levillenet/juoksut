@@ -187,7 +187,11 @@ async function fetchJsonEx<T>(
     // omilla lähteillään eivätkä sekoitu käyttäjien selainpyyntöihin.
     if (state.proxyOrigin) {
       headers["x-origin-source"] = state.source;
+      // Tallennettava data halutaan tuoreena: vanhentunut (stale) välimuisti
+      // jättäisi myöhemmin lisätyt tulokset pois tietokannasta.
+      if (opts.fresh) headers["x-force-origin"] = "true";
     }
+
     const r = await fetch(requestUrl, { headers });
     if (!state.proxyOrigin) await bumpOriginCall(state.source, pathForCounter, r.status);
     if (r.status === 429 || r.status === 503) {
