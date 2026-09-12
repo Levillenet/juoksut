@@ -949,7 +949,11 @@ async function run(request: Request): Promise<Response> {
   // harvest_competitions.done-merkintää, jotta hot cycle voi käydä
   // samassa kuluvan päivän kisassa monta kertaa päivän aikana.
   const idsParam = url.searchParams.get("ids");
-  const isHotMode = url.searchParams.get("mode") === "hot" || idsParam != null;
+  const modeParam = url.searchParams.get("mode");
+  // mode=fill: kohdennettu täydennysajo, joka käy läpi kaikki alkaneet lajit
+  // joista meiltä puuttuu rivejä (vertaa tallennettuja rivejä osallistujiin).
+  const isFillMode = modeParam === "fill" && idsParam != null;
+  const isHotMode = modeParam === "hot" || isFillMode || idsParam != null;
   if (isHotMode) {
     const state: RunState = {
       source: "hot_cycle",
