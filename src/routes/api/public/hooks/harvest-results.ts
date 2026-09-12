@@ -344,16 +344,28 @@ function selectBackgroundEventIds(
     );
     byEvent.set(r.EventId, agg);
   }
+  const missingScore = (id: number, a: { allocated: number }) => {
+    const stored = storedCounts.get(id) ?? 0;
+    if (stored === 0) return 0;
+    if (a.allocated > 0 && stored < a.allocated) return 1;
+    return 2;
+  };
   const selected = Array.from(byEvent.entries())
     .filter(([id, a]) => {
       if (!a.started) return false;
       const stored = storedCounts.get(id) ?? 0;
-      const complete = a.allOfficial && stored > 0 && (a.allocated === 0 || stored >= a.allocated);
+      const complete = a.allOfficial && stored > 0 && stored >= a.allocated;
       return !complete;
     })
-    .sort((a, b) => b[1].latestStart - a[1].latestStart)
+    .sort((a, b) => {
+      // Ensin lajit joista puuttuu tuloksia, sitten tuoreimmat.
+      const s = missingScore(a[0], a[1]) - missingScore(b[0], b[1]);
+      if (s !== 0) return s;
+      return b[1].latestStart - a[1].latestStart;
+    })
     .map(([id]) => id);
   return new Set(selected.slice(0, cap));
+
 }
 
 
