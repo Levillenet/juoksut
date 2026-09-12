@@ -149,9 +149,14 @@ function parseResultNumeric(
   return parseResult(text, { category, subCategory, eventName });
 }
 
-async function fetchJson<T>(url: string, state: RunState): Promise<T | null> {
-  return (await fetchJsonEx<T>(url, state)).data;
+async function fetchJson<T>(
+  url: string,
+  state: RunState,
+  opts: { fresh?: boolean } = {},
+): Promise<T | null> {
+  return (await fetchJsonEx<T>(url, state, opts)).data;
 }
+
 
 /**
  * Kuten `fetchJson`, mutta erottelee kaksi tapausta:
@@ -162,7 +167,9 @@ async function fetchJson<T>(url: string, state: RunState): Promise<T | null> {
 async function fetchJsonEx<T>(
   url: string,
   state: RunState,
+  opts: { fresh?: boolean } = {},
 ): Promise<{ data: T | null; notFound: boolean; failed: boolean }> {
+
   // Erota tuloslistan polku URL:sta laskuria varten (`/live/v1/...`).
   const pathForCounter = url.startsWith(API)
     ? "/live/v1" + url.slice(API.length)
