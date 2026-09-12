@@ -131,8 +131,12 @@ interface RoundsByDateShape {
     GroupName?: string;
     BeginDateTimeWithTZ?: string;
     Status?: string;
+    CountEnrolled?: number;
+    CountConfirmed?: number;
+    CountAllocated?: number;
   }[];
 }
+
 
 interface CompetitionListEntry {
   Id?: number;
