@@ -409,7 +409,13 @@ async function processCompetition(
   pendingLegs: RelayLegRow[],
   competitionDateHint: string | null,
   state: RunState,
-  options: { hotEventsOnly?: boolean; maxHotEvents?: number } = {},
+  options: {
+    hotEventsOnly?: boolean;
+    backgroundOngoing?: boolean;
+    storedEventIds?: Set<number>;
+    maxHotEvents?: number;
+  } = {},
+
 ): Promise<{
   existed: boolean;
   fetchFailed: boolean;
