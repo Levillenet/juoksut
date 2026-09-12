@@ -506,7 +506,7 @@ async function processCompetition(
   const hotEventIds = options.backgroundOngoing
     ? selectBackgroundEventIds(
         scheduleRounds,
-        options.storedEventIds ?? new Set<number>(),
+        options.storedEventIds ?? new Map<number, number>(),
         options.maxHotEvents ?? BACKGROUND_HOT_MAX_EVENTS,
       )
     : options.hotEventsOnly
