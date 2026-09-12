@@ -447,7 +447,7 @@ async function processCompetition(
   options: {
     hotEventsOnly?: boolean;
     backgroundOngoing?: boolean;
-    storedEventIds?: Set<number>;
+    storedEventIds?: Map<number, number>;
     maxHotEvents?: number;
   } = {},
 
@@ -786,21 +786,24 @@ async function harvestIds(
     }
   }
 
-  // Mistä kisan lajeista meillä on jo tuloksia? Näin valmiit (viralliset)
-  // lajit voidaan ohittaa taustakierroksella.
-  const storedEventCache = new Map<number, Set<number>>();
-  async function storedEventIdsFor(compId: number): Promise<Set<number>> {
+  // Montako riviä meillä on jo tallessa kisan kutakin lajia kohden. Näin
+  // valmiiksi haetut viralliset lajit voidaan ohittaa taustakierroksella.
+  const storedEventCache = new Map<number, Map<number, number>>();
+  async function storedEventIdsFor(compId: number): Promise<Map<number, number>> {
     const cached = storedEventCache.get(compId);
     if (cached) return cached;
-    const set = new Set<number>();
+    const counts = new Map<number, number>();
     const { data } = await supabaseAdmin
       .from("athlete_results")
       .select("event_id")
       .eq("competition_id", compId);
-    for (const r of data ?? []) if (r.event_id != null) set.add(r.event_id);
-    storedEventCache.set(compId, set);
-    return set;
+    for (const r of data ?? []) {
+      if (r.event_id != null) counts.set(r.event_id, (counts.get(r.event_id) ?? 0) + 1);
+    }
+    storedEventCache.set(compId, counts);
+    return counts;
   }
+
 
 
   for (let i = 0; i < entries.length; i += CONCURRENCY) {
