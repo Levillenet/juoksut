@@ -744,15 +744,18 @@ async function harvestIds(
 
   for (let i = 0; i < entries.length; i += CONCURRENCY) {
     if (state.rateLimited) break;
+
     const chunk = entries.slice(i, i + CONCURRENCY);
     const results = await Promise.allSettled(
       chunk.map(async (e) => {
         await jitter();
         return processCompetition(e.id, pending, pendingLegs, e.date, state, {
-          hotEventsOnly: e.hot === true,
+          backgroundOngoing: e.hot === true,
+          storedEventIds: e.hot === true ? await storedEventIdsFor(e.id) : undefined,
           maxHotEvents: BACKGROUND_HOT_MAX_EVENTS,
         });
       }),
+
 
     );
     const nowIso = new Date().toISOString();
