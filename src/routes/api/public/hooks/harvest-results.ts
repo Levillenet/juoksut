@@ -451,7 +451,13 @@ async function processCompetition(
     };
   }
   const competitionDate = props.Competition?.BeginDate ?? competitionDateHint;
-  const scheduleRes = await fetchJsonEx<RoundsByDateShape>(`${API}/competition/${id}`, state);
+  const live = options.backgroundOngoing === true || options.hotEventsOnly === true;
+  const scheduleRes = await fetchJsonEx<RoundsByDateShape>(
+    `${API}/competition/${id}`,
+    state,
+    { fresh: live },
+  );
+
   const byDate = scheduleRes.data;
   if (!byDate) {
     return {
@@ -496,7 +502,10 @@ async function processCompetition(
 
   let rowsAdded = 0;
   for (const eid of eventIds) {
-    const ev = await fetchJson<EventShape>(`${API}/results/${id}/${eid}`, state);
+    const ev = await fetchJson<EventShape>(`${API}/results/${id}/${eid}`, state, {
+      fresh: live,
+    });
+
     if (!ev) continue;
     const category = ev.EventCategory ?? "";
     const subCategory = ev.EventSubCategory ?? "";
