@@ -98,6 +98,43 @@ const MEMORY_MAX_ENTRIES = 500;
 const memoryCache = new Map<string, CachedEnvelope>();
 let edgeCacheDisabled = false;
 
+// Kausitauolla kaikki proxyn kautta kulkevat origin-haut estetään myös silloin,
+// kun reittiä kutsutaan käsin tai x-force-origin-otsikolla. Tila pidetään
+// hetken isolaatin muistissa, jotta jokainen selainpyyntö ei tee omaa
+// harvest_state-kyselyä.
+const HARVEST_BLOCK_CACHE_MS = 60_000;
+let harvestBlockedCache: { blocked: boolean; checkedAt: number } | null = null;
+
+async function isHarvestBlocked(): Promise<boolean> {
+  if (
+    harvestBlockedCache &&
+    Date.now() - harvestBlockedCache.checkedAt < HARVEST_BLOCK_CACHE_MS
+  ) {
+    return harvestBlockedCache.blocked;
+  }
+
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("harvest_state")
+      .select("blocked")
+      .eq("id", "singleton")
+      .maybeSingle();
+    if (error) {
+      console.warn("[tl-proxy] harvest pause check failed", error.message);
+      // Vikatilanteessa estetään origin-haku: taukotila ei saa purkautua vain
+      // siksi, ettei sen tilaa juuri nyt pystytä lukemaan.
+      return true;
+    }
+    const blocked = data?.blocked === true;
+    harvestBlockedCache = { blocked, checkedAt: Date.now() };
+    return blocked;
+  } catch (e) {
+    console.warn("[tl-proxy] harvest pause check failed", e);
+    return true;
+  }
+}
+
 function getEdgeCache(): Cache | null {
   if (edgeCacheDisabled) return null;
   return typeof caches !== "undefined" && "default" in caches
@@ -242,6 +279,42 @@ export async function proxyTuloslista(
   const cacheOrigin = "https://tulokset.online";
   const cacheKey = new Request(`${cacheOrigin}/__tl-proxy${path}`, { method: "GET" });
   const cache = getEdgeCache();
+
+  const harvestBlocked = await isHarvestBlocked();
+
+  // Kausitauolla annetaan tallennettu vastaus riippumatta sen iästä, mutta
+  // tuloslista.comiin ei tehdä uutta pyyntöä eikä käynnistetä taustapäivitystä.
+  if (harvestBlocked) {
+    const mem = memoryGet(path);
+    if (mem) {
+      return jsonResponse(mem.body, "paused", (Date.now() - mem.cachedAt) / 1000);
+    }
+
+    const dbEnv = await dbGet(path);
+    if (dbEnv) {
+      memoryPut(path, dbEnv);
+      return jsonResponse(dbEnv.body, "paused", (Date.now() - dbEnv.cachedAt) / 1000);
+    }
+
+    if (cache) {
+      const hit = await cache.match(cacheKey).catch(() => undefined);
+      if (hit) {
+        const env = await readEnvelope(hit);
+        if (env) {
+          memoryPut(path, env);
+          return jsonResponse(env.body, "paused", (Date.now() - env.cachedAt) / 1000);
+        }
+      }
+    }
+
+    return new Response(JSON.stringify({ error: "Result updates are paused" }), {
+      status: 503,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "retry-after": "3600",
+      },
+    });
+  }
 
   // Pakotettu origin-kutsu: health-check (monitor) haluaa todellisen
   // origin-vasteen. Ohitetaan kaikki välimuistit, mutta kirjoitetaan
