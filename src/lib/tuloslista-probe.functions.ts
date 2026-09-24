@@ -39,6 +39,27 @@ export const probeTuloslista = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<ProbeResult> => {
     await assertAdmin(context);
 
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: harvestState } = await supabaseAdmin
+      .from("harvest_state")
+      .select("blocked")
+      .eq("id", "singleton")
+      .maybeSingle();
+    if (harvestState?.blocked === true) {
+      return {
+        url: "",
+        status: 503,
+        statusText: "seasonal-pause",
+        durationMs: 0,
+        contentType: "application/json",
+        bodyPreview: "Tulospäivitykset ovat kausitauolla.",
+        bodyBytes: 0,
+        headers: {},
+        userAgentUsed: "",
+        error: "Tulospäivitykset ovat kausitauolla.",
+      };
+    }
+
     let path = data.path.trim();
     if (!path.startsWith("/")) path = "/" + path;
     const url = `${ORIGIN}${path}`;
