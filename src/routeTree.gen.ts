@@ -9,144 +9,69 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WatchRouteImport } from './routes/watch'
-import { Route as VideotRouteImport } from './routes/videot'
-import { Route as ToimitsijaRouteImport } from './routes/toimitsija'
-import { Route as TietoaPalvelustaRouteImport } from './routes/tietoa-palvelusta'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SeasonLeadersRouteImport } from './routes/season-leaders'
-import { Route as SearchRouteImport } from './routes/search'
-import { Route as ScoreboardRouteImport } from './routes/scoreboard'
-import { Route as RunningOpsRouteImport } from './routes/running-ops'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as PrintRouteImport } from './routes/print'
-import { Route as PlannerRouteImport } from './routes/planner'
-import { Route as PiiriennRouteImport } from './routes/piirienn'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as KilpailukalenteriRouteImport } from './routes/kilpailukalenteri'
-import { Route as HauskatTilastotRouteImport } from './routes/hauskat-tilastot'
-import { Route as AnnouncerRouteImport } from './routes/announcer'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ToimitsijaIndexRouteImport } from './routes/toimitsija.index'
-import { Route as StadiumsIndexRouteImport } from './routes/stadiums.index'
-import { Route as PrintIndexRouteImport } from './routes/print.index'
-import { Route as PlannerIndexRouteImport } from './routes/planner.index'
-import { Route as AnnouncerIndexRouteImport } from './routes/announcer.index'
-import { Route as UrheilijaTokenRouteImport } from './routes/urheilija.$token'
-import { Route as StadiumsStadiumIdRouteImport } from './routes/stadiums.$stadiumId'
-import { Route as SeuraaTokenRouteImport } from './routes/seuraa.$token'
-import { Route as SettingsTeamsRouteImport } from './routes/settings.teams'
-import { Route as SettingsNoteLinksRouteImport } from './routes/settings.note-links'
-import { Route as PrintYagCallingRouteImport } from './routes/print.yag-calling'
-import { Route as PrintWatchedRouteImport } from './routes/print.watched'
-import { Route as PrintClubTeamReportRouteImport } from './routes/print.club-team-report'
-import { Route as PrintClubReportRouteImport } from './routes/print.club-report'
-import { Route as PrintClubRouteImport } from './routes/print.club'
-import { Route as PlannerPlanIdRouteImport } from './routes/planner.$planId'
-import { Route as AthleteKeyRouteImport } from './routes/athlete.$key'
-import { Route as AnnouncerPlanningRouteImport } from './routes/announcer.planning'
-import { Route as AnnouncerLiveRouteImport } from './routes/announcer.live'
-import { Route as AnnouncerCombinedRouteImport } from './routes/announcer.combined'
-import { Route as AdminWelcomeRouteImport } from './routes/admin.welcome'
-import { Route as AdminTuloslistaProbeRouteImport } from './routes/admin.tuloslista-probe'
-import { Route as AdminRolesRouteImport } from './routes/admin.roles'
-import { Route as AdminClubLocationsRouteImport } from './routes/admin.club-locations'
+import { Route as AnnouncerRouteImport } from './routes/announcer'
+import { Route as HauskatTilastotRouteImport } from './routes/hauskat-tilastot'
+import { Route as KilpailukalenteriRouteImport } from './routes/kilpailukalenteri'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as PiiriennRouteImport } from './routes/piirienn'
+import { Route as PlannerRouteImport } from './routes/planner'
+import { Route as PrintRouteImport } from './routes/print'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RunningOpsRouteImport } from './routes/running-ops'
+import { Route as ScoreboardRouteImport } from './routes/scoreboard'
+import { Route as SearchRouteImport } from './routes/search'
+import { Route as SeasonLeadersRouteImport } from './routes/season-leaders'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as TietoaPalvelustaRouteImport } from './routes/tietoa-palvelusta'
+import { Route as ToimitsijaRouteImport } from './routes/toimitsija'
+import { Route as VideotRouteImport } from './routes/videot'
+import { Route as WatchRouteImport } from './routes/watch'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
+import { Route as AdminClubLocationsRouteImport } from './routes/admin.club-locations'
+import { Route as AdminRolesRouteImport } from './routes/admin.roles'
+import { Route as AdminTuloslistaProbeRouteImport } from './routes/admin.tuloslista-probe'
+import { Route as AdminWelcomeRouteImport } from './routes/admin.welcome'
+import { Route as AnnouncerIndexRouteImport } from './routes/announcer.index'
+import { Route as AnnouncerCombinedRouteImport } from './routes/announcer.combined'
+import { Route as AnnouncerLiveRouteImport } from './routes/announcer.live'
+import { Route as AnnouncerPlanningRouteImport } from './routes/announcer.planning'
+import { Route as AthleteKeyRouteImport } from './routes/athlete.$key'
+import { Route as PlannerIndexRouteImport } from './routes/planner.index'
+import { Route as PlannerPlanIdRouteImport } from './routes/planner.$planId'
+import { Route as PrintIndexRouteImport } from './routes/print.index'
+import { Route as PrintClubRouteImport } from './routes/print.club'
+import { Route as PrintClubReportRouteImport } from './routes/print.club-report'
+import { Route as PrintClubTeamReportRouteImport } from './routes/print.club-team-report'
+import { Route as PrintWatchedRouteImport } from './routes/print.watched'
+import { Route as PrintYagCallingRouteImport } from './routes/print.yag-calling'
+import { Route as SettingsNoteLinksRouteImport } from './routes/settings.note-links'
+import { Route as SettingsTeamsRouteImport } from './routes/settings.teams'
+import { Route as SeuraaTokenRouteImport } from './routes/seuraa.$token'
+import { Route as StadiumsIndexRouteImport } from './routes/stadiums.index'
+import { Route as StadiumsStadiumIdRouteImport } from './routes/stadiums.$stadiumId'
+import { Route as ToimitsijaIndexRouteImport } from './routes/toimitsija.index'
+import { Route as UrheilijaTokenRouteImport } from './routes/urheilija.$token'
+import { Route as PlannerPlanIdGanttRouteImport } from './routes/planner.$planId.gantt'
+import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
+import { Route as TalkootHakuTokenRouteImport } from './routes/talkoot.haku.$token'
+import { Route as ToimitsijaAikatauluCompetitionIdRouteImport } from './routes/toimitsija.aikataulu.$competitionId'
+import { Route as ToimitsijaHakuCompetitionIdRouteImport } from './routes/toimitsija.haku.$competitionId'
+import { Route as ToimitsijaKisaCompetitionIdRouteImport } from './routes/toimitsija.kisa.$competitionId'
 import { Route as ToimitsijaTalkootIndexRouteImport } from './routes/toimitsija.talkoot.index'
 import { Route as ToimitsijaTalkootCompetitionIdRouteImport } from './routes/toimitsija.talkoot.$competitionId'
-import { Route as ToimitsijaKisaCompetitionIdRouteImport } from './routes/toimitsija.kisa.$competitionId'
-import { Route as ToimitsijaHakuCompetitionIdRouteImport } from './routes/toimitsija.haku.$competitionId'
-import { Route as ToimitsijaAikatauluCompetitionIdRouteImport } from './routes/toimitsija.aikataulu.$competitionId'
-import { Route as TalkootHakuTokenRouteImport } from './routes/talkoot.haku.$token'
-import { Route as RoundEventIdRoundIdRouteImport } from './routes/round.$eventId.$roundId'
-import { Route as PlannerPlanIdGanttRouteImport } from './routes/planner.$planId.gantt'
-import { Route as ToimitsijaTalkootTulostaCompetitionIdRouteImport } from './routes/toimitsija.talkoot.tulosta.$competitionId'
-import { Route as ApiPublicHooksMonitorTuloslistaRouteImport } from './routes/api/public/hooks/monitor-tuloslista'
-import { Route as ApiPublicHooksHarvestResultsRouteImport } from './routes/api/public/hooks/harvest-results'
 import { Route as ApiPublicHooksHarvestKilpailukalenteriRouteImport } from './routes/api/public/hooks/harvest-kilpailukalenteri'
+import { Route as ApiPublicHooksHarvestResultsRouteImport } from './routes/api/public/hooks/harvest-results'
+import { Route as ApiPublicHooksMonitorTuloslistaRouteImport } from './routes/api/public/hooks/monitor-tuloslista'
+import { Route as ToimitsijaTalkootTulostaCompetitionIdRouteImport } from './routes/toimitsija.talkoot.tulosta.$competitionId'
 import { Route as ApiPublicTuloslistaLiveV1CompetitionIndexRouteImport } from './routes/api/public/tuloslista/live/v1/competition/index'
 import { Route as ApiPublicTuloslistaLiveV1CompetitionIdRouteImport } from './routes/api/public/tuloslista/live/v1/competition/$id'
-import { Route as ApiPublicTuloslistaLiveV1ResultsIdEventIdRouteImport } from './routes/api/public/tuloslista/live/v1/results/$id/$eventId'
 import { Route as ApiPublicTuloslistaLiveV1CompetitionIdPropertiesRouteImport } from './routes/api/public/tuloslista/live/v1/competition/$id/properties'
+import { Route as ApiPublicTuloslistaLiveV1ResultsIdEventIdRouteImport } from './routes/api/public/tuloslista/live/v1/results/$id/$eventId'
 
-const WatchRoute = WatchRouteImport.update({
-  id: '/watch',
-  path: '/watch',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const VideotRoute = VideotRouteImport.update({
-  id: '/videot',
-  path: '/videot',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ToimitsijaRoute = ToimitsijaRouteImport.update({
-  id: '/toimitsija',
-  path: '/toimitsija',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TietoaPalvelustaRoute = TietoaPalvelustaRouteImport.update({
-  id: '/tietoa-palvelusta',
-  path: '/tietoa-palvelusta',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SeasonLeadersRoute = SeasonLeadersRouteImport.update({
-  id: '/season-leaders',
-  path: '/season-leaders',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SearchRoute = SearchRouteImport.update({
-  id: '/search',
-  path: '/search',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ScoreboardRoute = ScoreboardRouteImport.update({
-  id: '/scoreboard',
-  path: '/scoreboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RunningOpsRoute = RunningOpsRouteImport.update({
-  id: '/running-ops',
-  path: '/running-ops',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrintRoute = PrintRouteImport.update({
-  id: '/print',
-  path: '/print',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PlannerRoute = PlannerRouteImport.update({
-  id: '/planner',
-  path: '/planner',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PiiriennRoute = PiiriennRouteImport.update({
-  id: '/piirienn',
-  path: '/piirienn',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const KilpailukalenteriRoute = KilpailukalenteriRouteImport.update({
-  id: '/kilpailukalenteri',
-  path: '/kilpailukalenteri',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HauskatTilastotRoute = HauskatTilastotRouteImport.update({
-  id: '/hauskat-tilastot',
-  path: '/hauskat-tilastot',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnnouncerRoute = AnnouncerRouteImport.update({
@@ -154,129 +79,84 @@ const AnnouncerRoute = AnnouncerRouteImport.update({
   path: '/announcer',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const HauskatTilastotRoute = HauskatTilastotRouteImport.update({
+  id: '/hauskat-tilastot',
+  path: '/hauskat-tilastot',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ToimitsijaIndexRoute = ToimitsijaIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ToimitsijaRoute,
-} as any)
-const StadiumsIndexRoute = StadiumsIndexRouteImport.update({
-  id: '/stadiums/',
-  path: '/stadiums/',
+const KilpailukalenteriRoute = KilpailukalenteriRouteImport.update({
+  id: '/kilpailukalenteri',
+  path: '/kilpailukalenteri',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PrintIndexRoute = PrintIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => PrintRoute,
-} as any)
-const PlannerIndexRoute = PlannerIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => PlannerRoute,
-} as any)
-const AnnouncerIndexRoute = AnnouncerIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AnnouncerRoute,
-} as any)
-const UrheilijaTokenRoute = UrheilijaTokenRouteImport.update({
-  id: '/urheilija/$token',
-  path: '/urheilija/$token',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StadiumsStadiumIdRoute = StadiumsStadiumIdRouteImport.update({
-  id: '/stadiums/$stadiumId',
-  path: '/stadiums/$stadiumId',
+const PiiriennRoute = PiiriennRouteImport.update({
+  id: '/piirienn',
+  path: '/piirienn',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SeuraaTokenRoute = SeuraaTokenRouteImport.update({
-  id: '/seuraa/$token',
-  path: '/seuraa/$token',
+const PlannerRoute = PlannerRouteImport.update({
+  id: '/planner',
+  path: '/planner',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SettingsTeamsRoute = SettingsTeamsRouteImport.update({
-  id: '/teams',
-  path: '/teams',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsNoteLinksRoute = SettingsNoteLinksRouteImport.update({
-  id: '/note-links',
-  path: '/note-links',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const PrintYagCallingRoute = PrintYagCallingRouteImport.update({
-  id: '/yag-calling',
-  path: '/yag-calling',
-  getParentRoute: () => PrintRoute,
-} as any)
-const PrintWatchedRoute = PrintWatchedRouteImport.update({
-  id: '/watched',
-  path: '/watched',
-  getParentRoute: () => PrintRoute,
-} as any)
-const PrintClubTeamReportRoute = PrintClubTeamReportRouteImport.update({
-  id: '/club-team-report',
-  path: '/club-team-report',
-  getParentRoute: () => PrintRoute,
-} as any)
-const PrintClubReportRoute = PrintClubReportRouteImport.update({
-  id: '/club-report',
-  path: '/club-report',
-  getParentRoute: () => PrintRoute,
-} as any)
-const PrintClubRoute = PrintClubRouteImport.update({
-  id: '/club',
-  path: '/club',
-  getParentRoute: () => PrintRoute,
-} as any)
-const PlannerPlanIdRoute = PlannerPlanIdRouteImport.update({
-  id: '/$planId',
-  path: '/$planId',
-  getParentRoute: () => PlannerRoute,
-} as any)
-const AthleteKeyRoute = AthleteKeyRouteImport.update({
-  id: '/athlete/$key',
-  path: '/athlete/$key',
+const PrintRoute = PrintRouteImport.update({
+  id: '/print',
+  path: '/print',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AnnouncerPlanningRoute = AnnouncerPlanningRouteImport.update({
-  id: '/planning',
-  path: '/planning',
-  getParentRoute: () => AnnouncerRoute,
-} as any)
-const AnnouncerLiveRoute = AnnouncerLiveRouteImport.update({
-  id: '/live',
-  path: '/live',
-  getParentRoute: () => AnnouncerRoute,
-} as any)
-const AnnouncerCombinedRoute = AnnouncerCombinedRouteImport.update({
-  id: '/combined',
-  path: '/combined',
-  getParentRoute: () => AnnouncerRoute,
-} as any)
-const AdminWelcomeRoute = AdminWelcomeRouteImport.update({
-  id: '/admin/welcome',
-  path: '/admin/welcome',
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminTuloslistaProbeRoute = AdminTuloslistaProbeRouteImport.update({
-  id: '/admin/tuloslista-probe',
-  path: '/admin/tuloslista-probe',
+const RunningOpsRoute = RunningOpsRouteImport.update({
+  id: '/running-ops',
+  path: '/running-ops',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRolesRoute = AdminRolesRouteImport.update({
-  id: '/admin/roles',
-  path: '/admin/roles',
+const ScoreboardRoute = ScoreboardRouteImport.update({
+  id: '/scoreboard',
+  path: '/scoreboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminClubLocationsRoute = AdminClubLocationsRouteImport.update({
-  id: '/admin/club-locations',
-  path: '/admin/club-locations',
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeasonLeadersRoute = SeasonLeadersRouteImport.update({
+  id: '/season-leaders',
+  path: '/season-leaders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TietoaPalvelustaRoute = TietoaPalvelustaRouteImport.update({
+  id: '/tietoa-palvelusta',
+  path: '/tietoa-palvelusta',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToimitsijaRoute = ToimitsijaRouteImport.update({
+  id: '/toimitsija',
+  path: '/toimitsija',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VideotRoute = VideotRouteImport.update({
+  id: '/videot',
+  path: '/videot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WatchRoute = WatchRouteImport.update({
+  id: '/watch',
+  path: '/watch',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
@@ -284,6 +164,159 @@ const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
   path: '/admin/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminClubLocationsRoute = AdminClubLocationsRouteImport.update({
+  id: '/admin/club-locations',
+  path: '/admin/club-locations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRolesRoute = AdminRolesRouteImport.update({
+  id: '/admin/roles',
+  path: '/admin/roles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminTuloslistaProbeRoute = AdminTuloslistaProbeRouteImport.update({
+  id: '/admin/tuloslista-probe',
+  path: '/admin/tuloslista-probe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminWelcomeRoute = AdminWelcomeRouteImport.update({
+  id: '/admin/welcome',
+  path: '/admin/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnnouncerIndexRoute = AnnouncerIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AnnouncerRoute,
+} as any)
+const AnnouncerCombinedRoute = AnnouncerCombinedRouteImport.update({
+  id: '/combined',
+  path: '/combined',
+  getParentRoute: () => AnnouncerRoute,
+} as any)
+const AnnouncerLiveRoute = AnnouncerLiveRouteImport.update({
+  id: '/live',
+  path: '/live',
+  getParentRoute: () => AnnouncerRoute,
+} as any)
+const AnnouncerPlanningRoute = AnnouncerPlanningRouteImport.update({
+  id: '/planning',
+  path: '/planning',
+  getParentRoute: () => AnnouncerRoute,
+} as any)
+const AthleteKeyRoute = AthleteKeyRouteImport.update({
+  id: '/athlete/$key',
+  path: '/athlete/$key',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlannerIndexRoute = PlannerIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PlannerRoute,
+} as any)
+const PlannerPlanIdRoute = PlannerPlanIdRouteImport.update({
+  id: '/$planId',
+  path: '/$planId',
+  getParentRoute: () => PlannerRoute,
+} as any)
+const PrintIndexRoute = PrintIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PrintRoute,
+} as any)
+const PrintClubRoute = PrintClubRouteImport.update({
+  id: '/club',
+  path: '/club',
+  getParentRoute: () => PrintRoute,
+} as any)
+const PrintClubReportRoute = PrintClubReportRouteImport.update({
+  id: '/club-report',
+  path: '/club-report',
+  getParentRoute: () => PrintRoute,
+} as any)
+const PrintClubTeamReportRoute = PrintClubTeamReportRouteImport.update({
+  id: '/club-team-report',
+  path: '/club-team-report',
+  getParentRoute: () => PrintRoute,
+} as any)
+const PrintWatchedRoute = PrintWatchedRouteImport.update({
+  id: '/watched',
+  path: '/watched',
+  getParentRoute: () => PrintRoute,
+} as any)
+const PrintYagCallingRoute = PrintYagCallingRouteImport.update({
+  id: '/yag-calling',
+  path: '/yag-calling',
+  getParentRoute: () => PrintRoute,
+} as any)
+const SettingsNoteLinksRoute = SettingsNoteLinksRouteImport.update({
+  id: '/note-links',
+  path: '/note-links',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsTeamsRoute = SettingsTeamsRouteImport.update({
+  id: '/teams',
+  path: '/teams',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SeuraaTokenRoute = SeuraaTokenRouteImport.update({
+  id: '/seuraa/$token',
+  path: '/seuraa/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StadiumsIndexRoute = StadiumsIndexRouteImport.update({
+  id: '/stadiums/',
+  path: '/stadiums/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StadiumsStadiumIdRoute = StadiumsStadiumIdRouteImport.update({
+  id: '/stadiums/$stadiumId',
+  path: '/stadiums/$stadiumId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToimitsijaIndexRoute = ToimitsijaIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ToimitsijaRoute,
+} as any)
+const UrheilijaTokenRoute = UrheilijaTokenRouteImport.update({
+  id: '/urheilija/$token',
+  path: '/urheilija/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlannerPlanIdGanttRoute = PlannerPlanIdGanttRouteImport.update({
+  id: '/gantt',
+  path: '/gantt',
+  getParentRoute: () => PlannerPlanIdRoute,
+} as any)
+const RoundEventIdRoundIdRoute = RoundEventIdRoundIdRouteImport.update({
+  id: '/round/$eventId/$roundId',
+  path: '/round/$eventId/$roundId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TalkootHakuTokenRoute = TalkootHakuTokenRouteImport.update({
+  id: '/talkoot/haku/$token',
+  path: '/talkoot/haku/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToimitsijaAikatauluCompetitionIdRoute =
+  ToimitsijaAikatauluCompetitionIdRouteImport.update({
+    id: '/aikataulu/$competitionId',
+    path: '/aikataulu/$competitionId',
+    getParentRoute: () => ToimitsijaRoute,
+  } as any)
+const ToimitsijaHakuCompetitionIdRoute =
+  ToimitsijaHakuCompetitionIdRouteImport.update({
+    id: '/haku/$competitionId',
+    path: '/haku/$competitionId',
+    getParentRoute: () => ToimitsijaRoute,
+  } as any)
+const ToimitsijaKisaCompetitionIdRoute =
+  ToimitsijaKisaCompetitionIdRouteImport.update({
+    id: '/kisa/$competitionId',
+    path: '/kisa/$competitionId',
+    getParentRoute: () => ToimitsijaRoute,
+  } as any)
 const ToimitsijaTalkootIndexRoute = ToimitsijaTalkootIndexRouteImport.update({
   id: '/talkoot/',
   path: '/talkoot/',
@@ -295,49 +328,10 @@ const ToimitsijaTalkootCompetitionIdRoute =
     path: '/talkoot/$competitionId',
     getParentRoute: () => ToimitsijaRoute,
   } as any)
-const ToimitsijaKisaCompetitionIdRoute =
-  ToimitsijaKisaCompetitionIdRouteImport.update({
-    id: '/kisa/$competitionId',
-    path: '/kisa/$competitionId',
-    getParentRoute: () => ToimitsijaRoute,
-  } as any)
-const ToimitsijaHakuCompetitionIdRoute =
-  ToimitsijaHakuCompetitionIdRouteImport.update({
-    id: '/haku/$competitionId',
-    path: '/haku/$competitionId',
-    getParentRoute: () => ToimitsijaRoute,
-  } as any)
-const ToimitsijaAikatauluCompetitionIdRoute =
-  ToimitsijaAikatauluCompetitionIdRouteImport.update({
-    id: '/aikataulu/$competitionId',
-    path: '/aikataulu/$competitionId',
-    getParentRoute: () => ToimitsijaRoute,
-  } as any)
-const TalkootHakuTokenRoute = TalkootHakuTokenRouteImport.update({
-  id: '/talkoot/haku/$token',
-  path: '/talkoot/haku/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RoundEventIdRoundIdRoute = RoundEventIdRoundIdRouteImport.update({
-  id: '/round/$eventId/$roundId',
-  path: '/round/$eventId/$roundId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PlannerPlanIdGanttRoute = PlannerPlanIdGanttRouteImport.update({
-  id: '/gantt',
-  path: '/gantt',
-  getParentRoute: () => PlannerPlanIdRoute,
-} as any)
-const ToimitsijaTalkootTulostaCompetitionIdRoute =
-  ToimitsijaTalkootTulostaCompetitionIdRouteImport.update({
-    id: '/talkoot/tulosta/$competitionId',
-    path: '/talkoot/tulosta/$competitionId',
-    getParentRoute: () => ToimitsijaRoute,
-  } as any)
-const ApiPublicHooksMonitorTuloslistaRoute =
-  ApiPublicHooksMonitorTuloslistaRouteImport.update({
-    id: '/api/public/hooks/monitor-tuloslista',
-    path: '/api/public/hooks/monitor-tuloslista',
+const ApiPublicHooksHarvestKilpailukalenteriRoute =
+  ApiPublicHooksHarvestKilpailukalenteriRouteImport.update({
+    id: '/api/public/hooks/harvest-kilpailukalenteri',
+    path: '/api/public/hooks/harvest-kilpailukalenteri',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksHarvestResultsRoute =
@@ -346,11 +340,17 @@ const ApiPublicHooksHarvestResultsRoute =
     path: '/api/public/hooks/harvest-results',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicHooksHarvestKilpailukalenteriRoute =
-  ApiPublicHooksHarvestKilpailukalenteriRouteImport.update({
-    id: '/api/public/hooks/harvest-kilpailukalenteri',
-    path: '/api/public/hooks/harvest-kilpailukalenteri',
+const ApiPublicHooksMonitorTuloslistaRoute =
+  ApiPublicHooksMonitorTuloslistaRouteImport.update({
+    id: '/api/public/hooks/monitor-tuloslista',
+    path: '/api/public/hooks/monitor-tuloslista',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const ToimitsijaTalkootTulostaCompetitionIdRoute =
+  ToimitsijaTalkootTulostaCompetitionIdRouteImport.update({
+    id: '/talkoot/tulosta/$competitionId',
+    path: '/talkoot/tulosta/$competitionId',
+    getParentRoute: () => ToimitsijaRoute,
   } as any)
 const ApiPublicTuloslistaLiveV1CompetitionIndexRoute =
   ApiPublicTuloslistaLiveV1CompetitionIndexRouteImport.update({
@@ -364,17 +364,17 @@ const ApiPublicTuloslistaLiveV1CompetitionIdRoute =
     path: '/api/public/tuloslista/live/v1/competition/$id',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicTuloslistaLiveV1ResultsIdEventIdRoute =
-  ApiPublicTuloslistaLiveV1ResultsIdEventIdRouteImport.update({
-    id: '/api/public/tuloslista/live/v1/results/$id/$eventId',
-    path: '/api/public/tuloslista/live/v1/results/$id/$eventId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPublicTuloslistaLiveV1CompetitionIdPropertiesRoute =
   ApiPublicTuloslistaLiveV1CompetitionIdPropertiesRouteImport.update({
     id: '/properties',
     path: '/properties',
     getParentRoute: () => ApiPublicTuloslistaLiveV1CompetitionIdRoute,
+  } as any)
+const ApiPublicTuloslistaLiveV1ResultsIdEventIdRoute =
+  ApiPublicTuloslistaLiveV1ResultsIdEventIdRouteImport.update({
+    id: '/api/public/tuloslista/live/v1/results/$id/$eventId',
+    path: '/api/public/tuloslista/live/v1/results/$id/$eventId',
+    getParentRoute: () => rootRouteImport,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -780,116 +780,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/watch': {
-      id: '/watch'
-      path: '/watch'
-      fullPath: '/watch'
-      preLoaderRoute: typeof WatchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/videot': {
-      id: '/videot'
-      path: '/videot'
-      fullPath: '/videot'
-      preLoaderRoute: typeof VideotRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/toimitsija': {
-      id: '/toimitsija'
-      path: '/toimitsija'
-      fullPath: '/toimitsija'
-      preLoaderRoute: typeof ToimitsijaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tietoa-palvelusta': {
-      id: '/tietoa-palvelusta'
-      path: '/tietoa-palvelusta'
-      fullPath: '/tietoa-palvelusta'
-      preLoaderRoute: typeof TietoaPalvelustaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/season-leaders': {
-      id: '/season-leaders'
-      path: '/season-leaders'
-      fullPath: '/season-leaders'
-      preLoaderRoute: typeof SeasonLeadersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/search': {
-      id: '/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof SearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/scoreboard': {
-      id: '/scoreboard'
-      path: '/scoreboard'
-      fullPath: '/scoreboard'
-      preLoaderRoute: typeof ScoreboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/running-ops': {
-      id: '/running-ops'
-      path: '/running-ops'
-      fullPath: '/running-ops'
-      preLoaderRoute: typeof RunningOpsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/print': {
-      id: '/print'
-      path: '/print'
-      fullPath: '/print'
-      preLoaderRoute: typeof PrintRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/planner': {
-      id: '/planner'
-      path: '/planner'
-      fullPath: '/planner'
-      preLoaderRoute: typeof PlannerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/piirienn': {
-      id: '/piirienn'
-      path: '/piirienn'
-      fullPath: '/piirienn'
-      preLoaderRoute: typeof PiiriennRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/kilpailukalenteri': {
-      id: '/kilpailukalenteri'
-      path: '/kilpailukalenteri'
-      fullPath: '/kilpailukalenteri'
-      preLoaderRoute: typeof KilpailukalenteriRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/hauskat-tilastot': {
-      id: '/hauskat-tilastot'
-      path: '/hauskat-tilastot'
-      fullPath: '/hauskat-tilastot'
-      preLoaderRoute: typeof HauskatTilastotRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/announcer': {
@@ -899,172 +794,123 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnnouncerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/hauskat-tilastot': {
+      id: '/hauskat-tilastot'
+      path: '/hauskat-tilastot'
+      fullPath: '/hauskat-tilastot'
+      preLoaderRoute: typeof HauskatTilastotRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/toimitsija/': {
-      id: '/toimitsija/'
-      path: '/'
-      fullPath: '/toimitsija/'
-      preLoaderRoute: typeof ToimitsijaIndexRouteImport
-      parentRoute: typeof ToimitsijaRoute
-    }
-    '/stadiums/': {
-      id: '/stadiums/'
-      path: '/stadiums'
-      fullPath: '/stadiums/'
-      preLoaderRoute: typeof StadiumsIndexRouteImport
+    '/kilpailukalenteri': {
+      id: '/kilpailukalenteri'
+      path: '/kilpailukalenteri'
+      fullPath: '/kilpailukalenteri'
+      preLoaderRoute: typeof KilpailukalenteriRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/print/': {
-      id: '/print/'
-      path: '/'
-      fullPath: '/print/'
-      preLoaderRoute: typeof PrintIndexRouteImport
-      parentRoute: typeof PrintRoute
-    }
-    '/planner/': {
-      id: '/planner/'
-      path: '/'
-      fullPath: '/planner/'
-      preLoaderRoute: typeof PlannerIndexRouteImport
-      parentRoute: typeof PlannerRoute
-    }
-    '/announcer/': {
-      id: '/announcer/'
-      path: '/'
-      fullPath: '/announcer/'
-      preLoaderRoute: typeof AnnouncerIndexRouteImport
-      parentRoute: typeof AnnouncerRoute
-    }
-    '/urheilija/$token': {
-      id: '/urheilija/$token'
-      path: '/urheilija/$token'
-      fullPath: '/urheilija/$token'
-      preLoaderRoute: typeof UrheilijaTokenRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/stadiums/$stadiumId': {
-      id: '/stadiums/$stadiumId'
-      path: '/stadiums/$stadiumId'
-      fullPath: '/stadiums/$stadiumId'
-      preLoaderRoute: typeof StadiumsStadiumIdRouteImport
+    '/piirienn': {
+      id: '/piirienn'
+      path: '/piirienn'
+      fullPath: '/piirienn'
+      preLoaderRoute: typeof PiiriennRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/seuraa/$token': {
-      id: '/seuraa/$token'
-      path: '/seuraa/$token'
-      fullPath: '/seuraa/$token'
-      preLoaderRoute: typeof SeuraaTokenRouteImport
+    '/planner': {
+      id: '/planner'
+      path: '/planner'
+      fullPath: '/planner'
+      preLoaderRoute: typeof PlannerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings/teams': {
-      id: '/settings/teams'
-      path: '/teams'
-      fullPath: '/settings/teams'
-      preLoaderRoute: typeof SettingsTeamsRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/note-links': {
-      id: '/settings/note-links'
-      path: '/note-links'
-      fullPath: '/settings/note-links'
-      preLoaderRoute: typeof SettingsNoteLinksRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/print/yag-calling': {
-      id: '/print/yag-calling'
-      path: '/yag-calling'
-      fullPath: '/print/yag-calling'
-      preLoaderRoute: typeof PrintYagCallingRouteImport
-      parentRoute: typeof PrintRoute
-    }
-    '/print/watched': {
-      id: '/print/watched'
-      path: '/watched'
-      fullPath: '/print/watched'
-      preLoaderRoute: typeof PrintWatchedRouteImport
-      parentRoute: typeof PrintRoute
-    }
-    '/print/club-team-report': {
-      id: '/print/club-team-report'
-      path: '/club-team-report'
-      fullPath: '/print/club-team-report'
-      preLoaderRoute: typeof PrintClubTeamReportRouteImport
-      parentRoute: typeof PrintRoute
-    }
-    '/print/club-report': {
-      id: '/print/club-report'
-      path: '/club-report'
-      fullPath: '/print/club-report'
-      preLoaderRoute: typeof PrintClubReportRouteImport
-      parentRoute: typeof PrintRoute
-    }
-    '/print/club': {
-      id: '/print/club'
-      path: '/club'
-      fullPath: '/print/club'
-      preLoaderRoute: typeof PrintClubRouteImport
-      parentRoute: typeof PrintRoute
-    }
-    '/planner/$planId': {
-      id: '/planner/$planId'
-      path: '/$planId'
-      fullPath: '/planner/$planId'
-      preLoaderRoute: typeof PlannerPlanIdRouteImport
-      parentRoute: typeof PlannerRoute
-    }
-    '/athlete/$key': {
-      id: '/athlete/$key'
-      path: '/athlete/$key'
-      fullPath: '/athlete/$key'
-      preLoaderRoute: typeof AthleteKeyRouteImport
+    '/print': {
+      id: '/print'
+      path: '/print'
+      fullPath: '/print'
+      preLoaderRoute: typeof PrintRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/announcer/planning': {
-      id: '/announcer/planning'
-      path: '/planning'
-      fullPath: '/announcer/planning'
-      preLoaderRoute: typeof AnnouncerPlanningRouteImport
-      parentRoute: typeof AnnouncerRoute
-    }
-    '/announcer/live': {
-      id: '/announcer/live'
-      path: '/live'
-      fullPath: '/announcer/live'
-      preLoaderRoute: typeof AnnouncerLiveRouteImport
-      parentRoute: typeof AnnouncerRoute
-    }
-    '/announcer/combined': {
-      id: '/announcer/combined'
-      path: '/combined'
-      fullPath: '/announcer/combined'
-      preLoaderRoute: typeof AnnouncerCombinedRouteImport
-      parentRoute: typeof AnnouncerRoute
-    }
-    '/admin/welcome': {
-      id: '/admin/welcome'
-      path: '/admin/welcome'
-      fullPath: '/admin/welcome'
-      preLoaderRoute: typeof AdminWelcomeRouteImport
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/tuloslista-probe': {
-      id: '/admin/tuloslista-probe'
-      path: '/admin/tuloslista-probe'
-      fullPath: '/admin/tuloslista-probe'
-      preLoaderRoute: typeof AdminTuloslistaProbeRouteImport
+    '/running-ops': {
+      id: '/running-ops'
+      path: '/running-ops'
+      fullPath: '/running-ops'
+      preLoaderRoute: typeof RunningOpsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/roles': {
-      id: '/admin/roles'
-      path: '/admin/roles'
-      fullPath: '/admin/roles'
-      preLoaderRoute: typeof AdminRolesRouteImport
+    '/scoreboard': {
+      id: '/scoreboard'
+      path: '/scoreboard'
+      fullPath: '/scoreboard'
+      preLoaderRoute: typeof ScoreboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/season-leaders': {
+      id: '/season-leaders'
+      path: '/season-leaders'
+      fullPath: '/season-leaders'
+      preLoaderRoute: typeof SeasonLeadersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tietoa-palvelusta': {
+      id: '/tietoa-palvelusta'
+      path: '/tietoa-palvelusta'
+      fullPath: '/tietoa-palvelusta'
+      preLoaderRoute: typeof TietoaPalvelustaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/toimitsija': {
+      id: '/toimitsija'
+      path: '/toimitsija'
+      fullPath: '/toimitsija'
+      preLoaderRoute: typeof ToimitsijaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/videot': {
+      id: '/videot'
+      path: '/videot'
+      fullPath: '/videot'
+      preLoaderRoute: typeof VideotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/watch': {
+      id: '/watch'
+      path: '/watch'
+      fullPath: '/watch'
+      preLoaderRoute: typeof WatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/admin/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/club-locations': {
@@ -1074,12 +920,208 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminClubLocationsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/analytics': {
-      id: '/admin/analytics'
-      path: '/admin/analytics'
-      fullPath: '/admin/analytics'
-      preLoaderRoute: typeof AdminAnalyticsRouteImport
+    '/admin/roles': {
+      id: '/admin/roles'
+      path: '/admin/roles'
+      fullPath: '/admin/roles'
+      preLoaderRoute: typeof AdminRolesRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/tuloslista-probe': {
+      id: '/admin/tuloslista-probe'
+      path: '/admin/tuloslista-probe'
+      fullPath: '/admin/tuloslista-probe'
+      preLoaderRoute: typeof AdminTuloslistaProbeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/welcome': {
+      id: '/admin/welcome'
+      path: '/admin/welcome'
+      fullPath: '/admin/welcome'
+      preLoaderRoute: typeof AdminWelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/announcer/': {
+      id: '/announcer/'
+      path: '/'
+      fullPath: '/announcer/'
+      preLoaderRoute: typeof AnnouncerIndexRouteImport
+      parentRoute: typeof AnnouncerRoute
+    }
+    '/announcer/combined': {
+      id: '/announcer/combined'
+      path: '/combined'
+      fullPath: '/announcer/combined'
+      preLoaderRoute: typeof AnnouncerCombinedRouteImport
+      parentRoute: typeof AnnouncerRoute
+    }
+    '/announcer/live': {
+      id: '/announcer/live'
+      path: '/live'
+      fullPath: '/announcer/live'
+      preLoaderRoute: typeof AnnouncerLiveRouteImport
+      parentRoute: typeof AnnouncerRoute
+    }
+    '/announcer/planning': {
+      id: '/announcer/planning'
+      path: '/planning'
+      fullPath: '/announcer/planning'
+      preLoaderRoute: typeof AnnouncerPlanningRouteImport
+      parentRoute: typeof AnnouncerRoute
+    }
+    '/athlete/$key': {
+      id: '/athlete/$key'
+      path: '/athlete/$key'
+      fullPath: '/athlete/$key'
+      preLoaderRoute: typeof AthleteKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planner/': {
+      id: '/planner/'
+      path: '/'
+      fullPath: '/planner/'
+      preLoaderRoute: typeof PlannerIndexRouteImport
+      parentRoute: typeof PlannerRoute
+    }
+    '/planner/$planId': {
+      id: '/planner/$planId'
+      path: '/$planId'
+      fullPath: '/planner/$planId'
+      preLoaderRoute: typeof PlannerPlanIdRouteImport
+      parentRoute: typeof PlannerRoute
+    }
+    '/print/': {
+      id: '/print/'
+      path: '/'
+      fullPath: '/print/'
+      preLoaderRoute: typeof PrintIndexRouteImport
+      parentRoute: typeof PrintRoute
+    }
+    '/print/club': {
+      id: '/print/club'
+      path: '/club'
+      fullPath: '/print/club'
+      preLoaderRoute: typeof PrintClubRouteImport
+      parentRoute: typeof PrintRoute
+    }
+    '/print/club-report': {
+      id: '/print/club-report'
+      path: '/club-report'
+      fullPath: '/print/club-report'
+      preLoaderRoute: typeof PrintClubReportRouteImport
+      parentRoute: typeof PrintRoute
+    }
+    '/print/club-team-report': {
+      id: '/print/club-team-report'
+      path: '/club-team-report'
+      fullPath: '/print/club-team-report'
+      preLoaderRoute: typeof PrintClubTeamReportRouteImport
+      parentRoute: typeof PrintRoute
+    }
+    '/print/watched': {
+      id: '/print/watched'
+      path: '/watched'
+      fullPath: '/print/watched'
+      preLoaderRoute: typeof PrintWatchedRouteImport
+      parentRoute: typeof PrintRoute
+    }
+    '/print/yag-calling': {
+      id: '/print/yag-calling'
+      path: '/yag-calling'
+      fullPath: '/print/yag-calling'
+      preLoaderRoute: typeof PrintYagCallingRouteImport
+      parentRoute: typeof PrintRoute
+    }
+    '/settings/note-links': {
+      id: '/settings/note-links'
+      path: '/note-links'
+      fullPath: '/settings/note-links'
+      preLoaderRoute: typeof SettingsNoteLinksRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/teams': {
+      id: '/settings/teams'
+      path: '/teams'
+      fullPath: '/settings/teams'
+      preLoaderRoute: typeof SettingsTeamsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/seuraa/$token': {
+      id: '/seuraa/$token'
+      path: '/seuraa/$token'
+      fullPath: '/seuraa/$token'
+      preLoaderRoute: typeof SeuraaTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stadiums/': {
+      id: '/stadiums/'
+      path: '/stadiums'
+      fullPath: '/stadiums/'
+      preLoaderRoute: typeof StadiumsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stadiums/$stadiumId': {
+      id: '/stadiums/$stadiumId'
+      path: '/stadiums/$stadiumId'
+      fullPath: '/stadiums/$stadiumId'
+      preLoaderRoute: typeof StadiumsStadiumIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/toimitsija/': {
+      id: '/toimitsija/'
+      path: '/'
+      fullPath: '/toimitsija/'
+      preLoaderRoute: typeof ToimitsijaIndexRouteImport
+      parentRoute: typeof ToimitsijaRoute
+    }
+    '/urheilija/$token': {
+      id: '/urheilija/$token'
+      path: '/urheilija/$token'
+      fullPath: '/urheilija/$token'
+      preLoaderRoute: typeof UrheilijaTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planner/$planId/gantt': {
+      id: '/planner/$planId/gantt'
+      path: '/gantt'
+      fullPath: '/planner/$planId/gantt'
+      preLoaderRoute: typeof PlannerPlanIdGanttRouteImport
+      parentRoute: typeof PlannerPlanIdRoute
+    }
+    '/round/$eventId/$roundId': {
+      id: '/round/$eventId/$roundId'
+      path: '/round/$eventId/$roundId'
+      fullPath: '/round/$eventId/$roundId'
+      preLoaderRoute: typeof RoundEventIdRoundIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/talkoot/haku/$token': {
+      id: '/talkoot/haku/$token'
+      path: '/talkoot/haku/$token'
+      fullPath: '/talkoot/haku/$token'
+      preLoaderRoute: typeof TalkootHakuTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/toimitsija/aikataulu/$competitionId': {
+      id: '/toimitsija/aikataulu/$competitionId'
+      path: '/aikataulu/$competitionId'
+      fullPath: '/toimitsija/aikataulu/$competitionId'
+      preLoaderRoute: typeof ToimitsijaAikatauluCompetitionIdRouteImport
+      parentRoute: typeof ToimitsijaRoute
+    }
+    '/toimitsija/haku/$competitionId': {
+      id: '/toimitsija/haku/$competitionId'
+      path: '/haku/$competitionId'
+      fullPath: '/toimitsija/haku/$competitionId'
+      preLoaderRoute: typeof ToimitsijaHakuCompetitionIdRouteImport
+      parentRoute: typeof ToimitsijaRoute
+    }
+    '/toimitsija/kisa/$competitionId': {
+      id: '/toimitsija/kisa/$competitionId'
+      path: '/kisa/$competitionId'
+      fullPath: '/toimitsija/kisa/$competitionId'
+      preLoaderRoute: typeof ToimitsijaKisaCompetitionIdRouteImport
+      parentRoute: typeof ToimitsijaRoute
     }
     '/toimitsija/talkoot/': {
       id: '/toimitsija/talkoot/'
@@ -1095,60 +1137,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToimitsijaTalkootCompetitionIdRouteImport
       parentRoute: typeof ToimitsijaRoute
     }
-    '/toimitsija/kisa/$competitionId': {
-      id: '/toimitsija/kisa/$competitionId'
-      path: '/kisa/$competitionId'
-      fullPath: '/toimitsija/kisa/$competitionId'
-      preLoaderRoute: typeof ToimitsijaKisaCompetitionIdRouteImport
-      parentRoute: typeof ToimitsijaRoute
-    }
-    '/toimitsija/haku/$competitionId': {
-      id: '/toimitsija/haku/$competitionId'
-      path: '/haku/$competitionId'
-      fullPath: '/toimitsija/haku/$competitionId'
-      preLoaderRoute: typeof ToimitsijaHakuCompetitionIdRouteImport
-      parentRoute: typeof ToimitsijaRoute
-    }
-    '/toimitsija/aikataulu/$competitionId': {
-      id: '/toimitsija/aikataulu/$competitionId'
-      path: '/aikataulu/$competitionId'
-      fullPath: '/toimitsija/aikataulu/$competitionId'
-      preLoaderRoute: typeof ToimitsijaAikatauluCompetitionIdRouteImport
-      parentRoute: typeof ToimitsijaRoute
-    }
-    '/talkoot/haku/$token': {
-      id: '/talkoot/haku/$token'
-      path: '/talkoot/haku/$token'
-      fullPath: '/talkoot/haku/$token'
-      preLoaderRoute: typeof TalkootHakuTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/round/$eventId/$roundId': {
-      id: '/round/$eventId/$roundId'
-      path: '/round/$eventId/$roundId'
-      fullPath: '/round/$eventId/$roundId'
-      preLoaderRoute: typeof RoundEventIdRoundIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/planner/$planId/gantt': {
-      id: '/planner/$planId/gantt'
-      path: '/gantt'
-      fullPath: '/planner/$planId/gantt'
-      preLoaderRoute: typeof PlannerPlanIdGanttRouteImport
-      parentRoute: typeof PlannerPlanIdRoute
-    }
-    '/toimitsija/talkoot/tulosta/$competitionId': {
-      id: '/toimitsija/talkoot/tulosta/$competitionId'
-      path: '/talkoot/tulosta/$competitionId'
-      fullPath: '/toimitsija/talkoot/tulosta/$competitionId'
-      preLoaderRoute: typeof ToimitsijaTalkootTulostaCompetitionIdRouteImport
-      parentRoute: typeof ToimitsijaRoute
-    }
-    '/api/public/hooks/monitor-tuloslista': {
-      id: '/api/public/hooks/monitor-tuloslista'
-      path: '/api/public/hooks/monitor-tuloslista'
-      fullPath: '/api/public/hooks/monitor-tuloslista'
-      preLoaderRoute: typeof ApiPublicHooksMonitorTuloslistaRouteImport
+    '/api/public/hooks/harvest-kilpailukalenteri': {
+      id: '/api/public/hooks/harvest-kilpailukalenteri'
+      path: '/api/public/hooks/harvest-kilpailukalenteri'
+      fullPath: '/api/public/hooks/harvest-kilpailukalenteri'
+      preLoaderRoute: typeof ApiPublicHooksHarvestKilpailukalenteriRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/harvest-results': {
@@ -1158,12 +1151,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksHarvestResultsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/harvest-kilpailukalenteri': {
-      id: '/api/public/hooks/harvest-kilpailukalenteri'
-      path: '/api/public/hooks/harvest-kilpailukalenteri'
-      fullPath: '/api/public/hooks/harvest-kilpailukalenteri'
-      preLoaderRoute: typeof ApiPublicHooksHarvestKilpailukalenteriRouteImport
+    '/api/public/hooks/monitor-tuloslista': {
+      id: '/api/public/hooks/monitor-tuloslista'
+      path: '/api/public/hooks/monitor-tuloslista'
+      fullPath: '/api/public/hooks/monitor-tuloslista'
+      preLoaderRoute: typeof ApiPublicHooksMonitorTuloslistaRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/toimitsija/talkoot/tulosta/$competitionId': {
+      id: '/toimitsija/talkoot/tulosta/$competitionId'
+      path: '/talkoot/tulosta/$competitionId'
+      fullPath: '/toimitsija/talkoot/tulosta/$competitionId'
+      preLoaderRoute: typeof ToimitsijaTalkootTulostaCompetitionIdRouteImport
+      parentRoute: typeof ToimitsijaRoute
     }
     '/api/public/tuloslista/live/v1/competition/': {
       id: '/api/public/tuloslista/live/v1/competition/'
@@ -1179,19 +1179,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTuloslistaLiveV1CompetitionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/tuloslista/live/v1/results/$id/$eventId': {
-      id: '/api/public/tuloslista/live/v1/results/$id/$eventId'
-      path: '/api/public/tuloslista/live/v1/results/$id/$eventId'
-      fullPath: '/api/public/tuloslista/live/v1/results/$id/$eventId'
-      preLoaderRoute: typeof ApiPublicTuloslistaLiveV1ResultsIdEventIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/tuloslista/live/v1/competition/$id/properties': {
       id: '/api/public/tuloslista/live/v1/competition/$id/properties'
       path: '/properties'
       fullPath: '/api/public/tuloslista/live/v1/competition/$id/properties'
       preLoaderRoute: typeof ApiPublicTuloslistaLiveV1CompetitionIdPropertiesRouteImport
       parentRoute: typeof ApiPublicTuloslistaLiveV1CompetitionIdRoute
+    }
+    '/api/public/tuloslista/live/v1/results/$id/$eventId': {
+      id: '/api/public/tuloslista/live/v1/results/$id/$eventId'
+      path: '/api/public/tuloslista/live/v1/results/$id/$eventId'
+      fullPath: '/api/public/tuloslista/live/v1/results/$id/$eventId'
+      preLoaderRoute: typeof ApiPublicTuloslistaLiveV1ResultsIdEventIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
